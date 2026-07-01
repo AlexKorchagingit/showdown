@@ -1,0 +1,85 @@
+import { useState } from 'react';
+import type { Tournament } from '../types/tournament';
+import { TournamentCard } from '../components/TournamentCard';
+import { TournamentDetailPage } from './TournamentDetailPage';
+import { useTournaments } from '../context/TournamentContext';
+
+type Tab = 'upcoming' | 'finished';
+
+const TAB_LABELS: Record<Tab, string> = {
+  upcoming: 'Текущие',
+  finished: 'Прошедшие',
+};
+
+export function TournamentsPage() {
+  const { tournaments } = useTournaments();
+  const [activeTab, setActiveTab] = useState<Tab>('upcoming');
+  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+
+  const filtered = tournaments.filter((t) =>
+    activeTab === 'upcoming' ? t.status !== 'finished' : t.status === 'finished'
+  );
+
+  if (selectedTournament) {
+    return (
+      <TournamentDetailPage
+        tournament={selectedTournament}
+        onBack={() => setSelectedTournament(null)}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 px-5 pt-6 pb-4 space-y-4">
+        <h1 className="text-center text-xl font-bold tracking-[0.2em] text-white uppercase">
+          ТУРНИРЫ
+        </h1>
+
+        {/* Tabs */}
+        <div className="relative flex bg-[#1A1A1A] rounded-xl p-1">
+          {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`relative flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                activeTab === tab ? 'text-[#0A0A0A]' : 'text-[#5A5A5A]'
+              }`}
+            >
+              {activeTab === tab && (
+                <span
+                  className="absolute inset-0 rounded-lg"
+                  style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 100%)' }}
+                />
+              )}
+              <span className="relative z-10">{TAB_LABELS[tab]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tournament list */}
+      <div className="flex-1 scrollable px-4 pb-4 space-y-3">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 gap-3 text-center px-8">
+            <span className="text-4xl opacity-20">♠</span>
+            <p className="text-[#5A5A5A] text-sm">
+              {activeTab === 'upcoming'
+                ? 'Предстоящих турниров пока нет'
+                : 'Прошедших турниров нет'}
+            </p>
+          </div>
+        ) : (
+          filtered.map((tournament) => (
+            <TournamentCard
+              key={tournament.id}
+              tournament={tournament}
+              onClick={setSelectedTournament}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
