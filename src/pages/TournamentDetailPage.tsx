@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
@@ -9,28 +8,36 @@ interface Props {
   onBack: () => void;
 }
 
-// ─── Mock participants ────────────────────────────────────────────────────────
-const MOCK_PARTICIPANTS = [
-  { id: '1',  nickname: 'Alex_King',    rating: 4200 },
-  { id: '2',  nickname: 'DmitriyVP',    rating: 3850 },
-  { id: '3',  nickname: 'MikhailS',     rating: 3610 },
-  { id: '4',  nickname: 'AndreyPP',     rating: 2980 },
-  { id: '5',  nickname: 'SergeyN',      rating: 2740 },
+// All mock participants — shown without slicing
+const ALL_PARTICIPANTS = [
+  { id: '1',  nickname: 'Alex_King',     rating: 4200 },
+  { id: '2',  nickname: 'DmitriyVP',     rating: 3850 },
+  { id: '3',  nickname: 'MikhailS',      rating: 3610 },
+  { id: '4',  nickname: 'AndreyPP',      rating: 2980 },
+  { id: '5',  nickname: 'SergeyN',       rating: 2740 },
   { id: '6',  nickname: 'IvanKuznetsov', rating: 2510 },
-  { id: '7',  nickname: 'OlegMaster',   rating: 2380 },
-  { id: '8',  nickname: 'ArtemVolkov',  rating: 2150 },
-  { id: '9',  nickname: 'NikolaevD',    rating: 1970 },
-  { id: '10', nickname: 'PavelCar',     rating: 1810 },
+  { id: '7',  nickname: 'OlegMaster',    rating: 2380 },
+  { id: '8',  nickname: 'ArtemVolkov',   rating: 2150 },
+  { id: '9',  nickname: 'NikolaevD',     rating: 1970 },
+  { id: '10', nickname: 'PavelCar',      rating: 1810 },
+  { id: '11', nickname: 'VasilyK',       rating: 1650 },
+  { id: '12', nickname: 'RomanZ',        rating: 1540 },
+  { id: '13', nickname: 'TimurB',        rating: 1420 },
+  { id: '14', nickname: 'KirillM',       rating: 1310 },
+  { id: '15', nickname: 'AlinaP',        rating: 1200 },
+  { id: '16', nickname: 'StasR',         rating: 1080 },
+  { id: '17', nickname: 'YuriF',         rating:  970 },
+  { id: '18', nickname: 'NataV',         rating:  860 },
+  { id: '19', nickname: 'GlebS',         rating:  750 },
+  { id: '20', nickname: 'MaximN',        rating:  640 },
 ];
 
 const SUIT_ICONS = ['♠', '♥', '♦', '♣', '♠', '♥'];
 
 function HeroImage({ title }: { title: string }) {
   return (
-    <div
-      className="relative w-full h-52 overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #3a2015 0%, #2A211D 55%, #0A0908 100%)' }}
-    >
+    <div className="relative w-full h-52 overflow-hidden"
+         style={{ background: 'linear-gradient(135deg, #3a2015 0%, #2A211D 55%, #0A0908 100%)' }}>
       {SUIT_ICONS.map((s, i) => (
         <span key={i} className="absolute select-none"
           style={{ color: '#F2D8A7', opacity: 0.055,
@@ -55,7 +62,6 @@ function HeroImage({ title }: { title: string }) {
 
 export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { isRegistered, toggleRegistration, tournaments } = useTournaments();
-  const [leaving, setLeaving] = useState(false);
 
   const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
   const registered = isRegistered(live.id);
@@ -64,50 +70,25 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
-  // Show only as many participants as registered seats
-  const participants = MOCK_PARTICIPANTS.slice(0, Math.min(live.registeredSeats, MOCK_PARTICIPANTS.length));
-
-  const handleBack = () => {
-    if (leaving) return;
-    setLeaving(true);
-    // spin 380ms → fade 180ms → navigate
-    setTimeout(() => onBack(), 560);
-  };
+  // Show participants up to registeredSeats count (no slice limit)
+  const participants = ALL_PARTICIPANTS.filter((_, i) => i < live.registeredSeats);
 
   return (
     <>
-      {/* Fade overlay — faster */}
-      <div
-        className="fixed inset-0 z-[70] bg-black pointer-events-none"
-        style={{
-          opacity: leaving ? 1 : 0,
-          transition: leaving ? 'opacity 180ms ease' : 'none',
-          transitionDelay: leaving ? '380ms' : '0ms',
-        }}
-      />
-
-      <div
-        className="fixed inset-0 z-[60] flex flex-col bg-obsidian"
-        style={{
-          opacity: leaving ? 0 : 1,
-          transition: leaving ? 'opacity 180ms ease 380ms' : 'none',
-        }}
-      >
+      <div className="fixed inset-0 z-[60] flex flex-col bg-obsidian">
         {/* Hero */}
         <div className="relative flex-shrink-0">
           <HeroImage title={live.title} />
 
-          {/* Back button — neutral/gold, no red */}
+          {/* Back button — instant, no animation */}
           <button
-            onClick={handleBack}
-            disabled={leaving}
+            onClick={onBack}
             className="absolute top-4 left-4 w-12 h-12 rounded-full flex items-center justify-center"
             style={{
               background: 'rgba(28,20,16,0.78)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
               border: '1px solid rgba(217,153,98,0.28)',
-              animation: leaving ? 'spin-once 380ms cubic-bezier(0.4,0,0.2,1) forwards' : 'none',
             }}
           >
             <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
@@ -137,7 +118,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               </div>
             </div>
 
-            {/* Progress */}
+            {/* Progress — tick-free */}
             <div className="rounded-2xl p-4"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
               <ProgressBar value={live.registeredSeats} max={live.totalSeats} />
@@ -175,9 +156,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   {live.description}
                 </p>
               </section>
-
               <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
-
               <section>
                 <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
                   Особенности
@@ -185,21 +164,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 <ul className="space-y-2">
                   {live.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13px] font-400" style={{ color: '#A39B98' }}>
-                      <span style={{ color: '#8C4C27', marginTop: 2 }}>•</span>
-                      {f}
+                      <span style={{ color: '#8C4C27', marginTop: 2 }}>•</span>{f}
                     </li>
                   ))}
                 </ul>
               </section>
-
               <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
-
               <section>
                 <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
-                  Запись на турниры
+                  Запись
                 </h3>
                 <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
-                  Если вы записались, но не можете прийти — пожалуйста, отмените запись заранее, чтобы не занимать место.
+                  Если вы записались, но не можете прийти — отмените запись заранее, чтобы не занимать место.
                 </p>
               </section>
             </div>
@@ -207,18 +183,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* ─── УЧАСТНИКИ ─── */}
             <div className="rounded-2xl overflow-hidden"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Section header */}
-              <div className="px-5 py-4 flex items-center justify-between"
+              {/* Header: left = "Участники (20/36)", right = "Рейтинг сезона" */}
+              <div className="flex items-center justify-between px-5 py-4"
                    style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <h3 className="text-[12px] font-700 uppercase tracking-[0.2em]" style={{ color: '#F2D8A7' }}>
-                  Участники
+                  Участники ({live.registeredSeats}/{live.totalSeats})
                 </h3>
-                <p className="text-[12px] font-600" style={{ color: '#6B6360' }}>
-                  {live.registeredSeats} / {live.totalSeats}
-                </p>
+                <span className="text-[12px] font-600" style={{ color: '#D99962' }}>
+                  Рейтинг сезона
+                </span>
               </div>
 
-              {/* Participant rows */}
+              {/* All participants — no slice */}
               {participants.length === 0 ? (
                 <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
                   Пока никто не зарегистрировался
@@ -229,30 +205,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     <div
                       key={p.id}
                       className="flex items-center gap-3.5 px-5 py-3"
-                      style={{
-                        borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                      }}
+                      style={{ borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
                     >
-                      {/* Rank */}
-                      <span className="text-[11px] font-700 w-5 text-right shrink-0"
-                            style={{ color: '#6B6360' }}>
+                      <span className="text-[11px] font-700 w-5 text-right shrink-0" style={{ color: '#6B6360' }}>
                         {idx + 1}
                       </span>
-
-                      {/* Avatar */}
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-                        style={{ background: 'rgba(140,76,39,0.22)', color: '#c8a38e' }}
-                      >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
+                           style={{ background: 'rgba(140,76,39,0.22)', color: '#c8a38e' }}>
                         {p.nickname[0].toUpperCase()}
                       </div>
-
-                      {/* Nickname */}
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-[13px] font-600 truncate">{p.nickname}</p>
                       </div>
-
-                      {/* Rating */}
                       <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
                         {p.rating.toLocaleString('ru-RU')}
                       </p>
@@ -285,23 +249,12 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   }
             }
           >
-            {registered ? (
-              <><XCircle size={19} />Отменить запись</>
-            ) : (
-              <><CheckCircle2 size={19} />Участвовать</>
-            )}
+            {registered
+              ? <><XCircle size={19} />Отменить запись</>
+              : <><CheckCircle2 size={19} />Участвовать</>}
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin-once {
-          0%   { transform: rotate(0deg)   scale(1);    }
-          45%  { transform: rotate(210deg) scale(1.12); }
-          75%  { transform: rotate(345deg) scale(0.96); }
-          100% { transform: rotate(360deg) scale(1);    }
-        }
-      `}</style>
     </>
   );
 }

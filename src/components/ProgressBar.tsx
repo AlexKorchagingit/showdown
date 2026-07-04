@@ -23,14 +23,13 @@ export function ProgressBar({ value, max, className = '' }: Props) {
           <span className="text-white font-700">{value}</span>
           <span style={{ color: '#6B6360' }}> / {max}</span>
         </span>
-        <span
-          className="font-700"
-          style={{ color: isFull ? '#ef4444' : isAlmostFull ? '#D99962' : '#F2D8A7' }}
-        >
+        <span className="font-700"
+              style={{ color: isFull ? '#ef4444' : isAlmostFull ? '#D99962' : '#F2D8A7' }}>
           {percent}%
         </span>
       </div>
 
+      {/* Smooth fill — no tick marks */}
       <div className="relative h-3 rounded-full overflow-hidden" style={{ background: '#514f4c' }}>
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
@@ -40,13 +39,6 @@ export function ProgressBar({ value, max, className = '' }: Props) {
             boxShadow: `0 0 8px ${isFull ? 'rgba(239,68,68,0.4)' : 'rgba(200,163,142,0.4)'}`,
           }}
         />
-        {Array.from({ length: max / 4 - 1 }, (_, i) => (
-          <div
-            key={i}
-            className="absolute top-0 bottom-0 w-px opacity-25"
-            style={{ left: `${((i + 1) * 4 / max) * 100}%`, background: '#0A0908' }}
-          />
-        ))}
       </div>
 
       <div className="flex justify-between text-[11px] font-500">
