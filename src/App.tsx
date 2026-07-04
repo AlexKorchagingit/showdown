@@ -8,7 +8,8 @@ import { RatingPage } from './pages/RatingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { TournamentProvider } from './context/TournamentContext';
 
-const NAV_HEIGHT = '4rem';
+// Floating pill nav: 60px height + 12px bottom margin + 8px top buffer = ~5rem
+const NAV_HEIGHT = '5rem';
 
 export default function App() {
   useEffect(() => {

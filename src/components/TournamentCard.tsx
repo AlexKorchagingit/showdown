@@ -1,4 +1,4 @@
-import { Calendar, Clock, Users } from 'lucide-react';
+import { Clock, Users } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 
 interface Props {
@@ -9,26 +9,20 @@ interface Props {
 function ImagePlaceholder({ title }: { title: string }) {
   return (
     <div
-      className="relative w-full h-36 rounded-t-2xl overflow-hidden flex items-center justify-center"
+      className="relative w-full h-36 overflow-hidden flex items-center justify-center"
       style={{ background: 'linear-gradient(135deg, #2A211D 0%, #3a2520 50%, #1E1612 100%)' }}
     >
       {['♠','♥','♦','♣'].map((s, i) => (
-        <span
-          key={i}
-          className="absolute select-none"
-          style={{
-            color: '#F2D8A7', opacity: 0.07,
+        <span key={i} className="absolute select-none"
+          style={{ color: '#F2D8A7', opacity: 0.07,
             fontSize: `${22 + (i % 3) * 10}px`,
             top: `${[10,50,20,60][i]}%`, left: `${[10,70,40,25][i]}%`,
-            transform: `rotate(${[-15,20,-5,10][i]}deg)`,
-          }}
-        >
-          {s}
-        </span>
+            transform: `rotate(${[-15,20,-5,10][i]}deg)` }}
+        >{s}</span>
       ))}
       <div className="relative z-10 text-center px-4">
-        <div className="text-[34px] mb-1" style={{ color: '#D99962', opacity: 0.4 }}>♠</div>
-        <p className="text-white font-700 text-[12px] tracking-widest uppercase opacity-70 leading-tight">
+        <div className="text-[34px] mb-1" style={{ color: '#D99962', opacity: 0.38 }}>♠</div>
+        <p className="text-white font-700 text-[11px] tracking-widest uppercase opacity-65 leading-tight">
           {title}
         </p>
       </div>
@@ -37,15 +31,17 @@ function ImagePlaceholder({ title }: { title: string }) {
 }
 
 export function TournamentCard({ tournament, onClick }: Props) {
-  const { title, startDate, startTime, totalSeats, registeredSeats, buyIn, status } = tournament;
+  const { title, startDate, startTime, totalSeats, registeredSeats, status } = tournament;
 
   const seatsLeft   = totalSeats - registeredSeats;
   const isFull      = seatsLeft === 0;
   const fillPercent = Math.round((registeredSeats / totalSeats) * 100);
 
-  const formattedDate = new Date(startDate).toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long',
-  });
+  // Full weekday + day + month  →  "Суббота, 5 июля"
+  const dateObj   = new Date(startDate);
+  const weekday   = dateObj.toLocaleDateString('ru-RU', { weekday: 'long' });
+  const dayMonth  = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
 
   return (
     <button
@@ -60,35 +56,21 @@ export function TournamentCard({ tournament, onClick }: Props) {
       <ImagePlaceholder title={title} />
 
       <div className="px-4 py-4 space-y-3.5">
-        {/* Title + buy-in badge */}
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-white font-700 text-[15px] tracking-wide leading-tight uppercase">
-            {title}
-          </h3>
-          <span
-            className="shrink-0 text-[12px] font-700 px-2.5 py-1 rounded-lg whitespace-nowrap"
-            style={{
-              background: 'linear-gradient(to right, #8C4C27, #D99962)',
-              color: '#0A0908',
-            }}
-          >
-            {buyIn.toLocaleString('ru-RU')} ₽
-          </span>
+        {/* Title — no buy-in badge */}
+        <h3 className="text-white font-700 text-[15px] tracking-wide leading-tight uppercase">
+          {title}
+        </h3>
+
+        {/* Date row: gold weekday + muted rest + time */}
+        <div className="flex items-center gap-2 text-[12px] font-500 flex-wrap">
+          <span style={{ color: '#D99962' }}>{weekdayCap}</span>
+          <span style={{ color: '#A39B98' }}>, {dayMonth}</span>
+          <span className="opacity-30 text-white">·</span>
+          <Clock size={12} style={{ color: '#c8a38e' }} />
+          <span style={{ color: '#A39B98' }}>{startTime}</span>
         </div>
 
-        {/* Date / time */}
-        <div className="flex items-center gap-4 text-[12px] font-500" style={{ color: '#A39B98' }}>
-          <span className="flex items-center gap-1.5">
-            <Calendar size={12} style={{ color: '#c8a38e' }} />
-            {formattedDate}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Clock size={12} style={{ color: '#c8a38e' }} />
-            {startTime}
-          </span>
-        </div>
-
-        {/* Seats + mini progress */}
+        {/* Seats + progress */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[12px] font-500">
             <span className="flex items-center gap-1.5" style={{ color: '#A39B98' }}>
@@ -103,10 +85,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
                 </span>
               )}
             </span>
-            <span
-              className="font-700"
-              style={{ color: fillPercent >= 80 ? '#ef4444' : '#F2D8A7' }}
-            >
+            <span className="font-700" style={{ color: fillPercent >= 80 ? '#ef4444' : '#F2D8A7' }}>
               {fillPercent}%
             </span>
           </div>
