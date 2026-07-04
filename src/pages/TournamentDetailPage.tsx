@@ -319,11 +319,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           }}
         >
           {live.status === 'finished' ? (
-            /* Finished tournament — solid filled gray, no opacity tricks */
+            /* Finished — 100% opaque solid fill, disabled:opacity-100 overrides Tailwind default */
             <button
               disabled
-              className="w-full h-14 rounded-2xl font-700 text-[14px] tracking-wide flex items-center justify-center gap-2.5 cursor-not-allowed"
-              style={{ background: '#514f4c', color: '#ffffff' }}
+              className="w-full h-14 rounded-2xl font-700 text-[14px] tracking-wide flex items-center justify-center gap-2.5 cursor-not-allowed disabled:opacity-100"
+              style={{ background: '#514f4c', color: 'rgba(255,255,255,0.5)', opacity: 1 }}
             >
               Турнир завершился
             </button>

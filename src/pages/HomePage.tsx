@@ -19,7 +19,7 @@ const PODIUM = [
 function Header() {
   return (
     <header
-      className="flex-shrink-0 flex items-center justify-between px-5 py-3.5"
+      className="flex-shrink-0 flex items-center justify-between px-5 py-2"
       style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
     >
       <div className="flex items-center gap-3">
@@ -52,68 +52,86 @@ function Header() {
   );
 }
 
-// ─── Hero card — pulls from single data source ────────────────────────────────
+// ─── Hero card — layered design with background image ────────────────────────
 function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: () => void }) {
-  const dateObj   = new Date(tournament.startDate);
-  const dateStr   = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dateObj = new Date(tournament.startDate);
+  const weekday = dateObj.toLocaleDateString('ru-RU', { weekday: 'long' });
+  const dayMonth = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  const dateStr = `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${dayMonth}`;
 
   return (
     <button
       onClick={onPress}
-      className="w-full text-left rounded-2xl overflow-hidden active:scale-[0.984] transition-transform duration-150"
+      className="relative w-full text-left rounded-2xl overflow-hidden active:scale-[0.984] transition-transform duration-150"
       style={{
-        background: 'linear-gradient(135deg, #463129 0%, #3a2720 100%)',
+        background: '#1d0b07',
         border: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 4px 28px rgba(0,0,0,0.5)',
+        boxShadow: '0 4px 28px rgba(0,0,0,0.55)',
         minHeight: 200,
       }}
     >
-      <div className="flex gap-4 px-6 py-7">
-        {/* Left */}
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
-          <div>
-            <p className="text-[11px] font-600 uppercase tracking-[0.15em] mb-2" style={{ color: '#8C4C27' }}>
-              Ближайший турнир
-            </p>
-            <h2 className="font-900 text-[22px] uppercase tracking-wider leading-tight text-white">
-              {tournament.title}
-            </h2>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[13px]" style={{ color: '#A39B98' }}>
-              <Calendar size={13} style={{ color: '#c8a38e' }} />
-              {dateStr}
-              <span className="opacity-30">·</span>
-              <Clock size={13} style={{ color: '#c8a38e' }} />
-              {tournament.startTime}
-            </div>
-            <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6360' }}>
-              <MapPin size={12} style={{ color: '#8C4C27' }} />
-              <span className="truncate">{tournament.address}</span>
-            </div>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onPress(); }}
-            className="self-start px-6 py-2.5 rounded-xl text-[14px] font-700 active:scale-95 transition-transform"
-            style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                     boxShadow: '0 0 16px rgba(217,153,98,0.28)', color: '#0A0908' }}
+      {/* Background fishka — huge, right-anchored, clipped by overflow-hidden */}
+      <img
+        src="/fishka.svg"
+        alt=""
+        aria-hidden
+        className="absolute w-auto z-0 pointer-events-none select-none"
+        style={{
+          height: '140%',
+          right: '-10%',
+          top: '-20%',
+          opacity: 0.55,
+        }}
+      />
+
+      {/* Gradient overlay: solid left → transparent right, for text contrast */}
+      <div
+        className="absolute inset-0 z-10 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(to right, #1d0b07 0%, rgba(29,11,7,0.85) 55%, rgba(29,11,7,0.2) 100%)',
+        }}
+      />
+
+      {/* Text content — over gradient */}
+      <div className="relative z-20 flex flex-col gap-4 px-6 py-7" style={{ width: '68%' }}>
+        <div>
+          <p
+            className="text-xs font-bold tracking-widest uppercase mb-2"
+            style={{ color: '#D99962' }}
           >
-            Записаться
-          </button>
+            Ближайший турнир
+          </p>
+          <h2 className="text-3xl font-black text-white uppercase leading-tight" style={{ letterSpacing: '0.04em' }}>
+            {tournament.title}
+          </h2>
         </div>
 
-        {/* Right: fishka image */}
-        <div
-          className="w-[100px] shrink-0 rounded-xl relative flex items-center justify-center overflow-hidden"
-          style={{ background: 'linear-gradient(160deg, #1A130F, #2d2020)' }}
-        >
-          <img
-            src="/fishka.svg"
-            alt=""
-            className="w-20 h-20 object-contain"
-            style={{ opacity: 0.75 }}
-          />
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-[13px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            <Calendar size={13} style={{ color: '#c8a38e' }} />
+            {dateStr}
+            <span className="opacity-40">·</span>
+            <Clock size={13} style={{ color: '#c8a38e' }} />
+            {tournament.startTime}
+          </div>
+          <div className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            <MapPin size={12} style={{ color: '#c8a38e' }} />
+            <span className="truncate">{tournament.address}</span>
+          </div>
         </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onPress(); }}
+          className="self-start px-6 py-2.5 rounded-xl text-[14px] font-700 active:scale-95 transition-transform"
+          style={{
+            background: 'linear-gradient(to right, #8C4C27, #D99962)',
+            boxShadow: '0 0 16px rgba(217,153,98,0.28)',
+            color: '#0A0908',
+          }}
+        >
+          Записаться
+        </button>
       </div>
     </button>
   );
