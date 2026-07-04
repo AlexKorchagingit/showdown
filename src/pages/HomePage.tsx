@@ -29,8 +29,12 @@ function Header() {
       style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
     >
       <div className="flex items-center gap-3">
-        <img src="/logo.svg" alt="SD" className="w-9 h-9"
-             style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }} />
+        <img
+          src="/flux-2-dev_b_Оставь_из_фото_тольк.svg"
+          alt="Showdown"
+          className="h-10 w-auto object-contain"
+          style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }}
+        />
         <span className="font-900 text-[17px] uppercase tracking-[0.18em]" style={{ color: '#F2D8A7' }}>
           Showdown
         </span>
@@ -196,26 +200,30 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         {PODIUM.map((p) => <PodiumPlayer key={p.rank} player={p} />)}
       </div>
 
-      {/* Current user — gold gradient strip, dark text for contrast */}
+      {/* Current user — dark gold-tinted bg + vivid gold border */}
       <div
         className="flex items-center gap-3 rounded-2xl px-4 py-3"
-        style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+        style={{
+          background: 'rgba(217,153,98,0.10)',
+          border: '1px solid #D99962',
+        }}
       >
-        <span className="text-[14px] font-800 w-10 shrink-0" style={{ color: '#110b09' }}>
+        {/* Position number — bright gold */}
+        <span className="text-[14px] font-800 w-10 shrink-0" style={{ color: '#D99962' }}>
           #{CURRENT_USER_RATING.rank}
         </span>
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-          style={{ background: 'rgba(17,11,9,0.15)', color: '#110b09' }}
+          style={{ background: 'rgba(217,153,98,0.18)', color: '#c8a38e' }}
         >
           {CURRENT_USER_RATING.initial}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-700 truncate" style={{ color: '#110b09' }}>
+          <p className="text-[13px] font-700 truncate text-white">
             {CURRENT_USER_RATING.nickname}
           </p>
         </div>
-        <p className="text-[13px] font-800 shrink-0" style={{ color: '#110b09' }}>
+        <p className="text-[13px] font-700 shrink-0" style={{ color: '#F2D8A7' }}>
           {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}
         </p>
       </div>

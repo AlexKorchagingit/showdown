@@ -86,12 +86,10 @@ export function TournamentCard({ tournament, onClick }: Props) {
             <span style={{ color: '#A39B98' }}>{startTime}</span>
           </div>
 
-          {/* Seat count — compact single line */}
+          {/* Seat count — uniform single colour, no inner contrast */}
           {!isFinished ? (
-            <p className="text-[11px] font-500" style={{ color: isFull ? '#ef4444' : '#6B6360' }}>
-              {isFull
-                ? 'Мест нет'
-                : <>Мест: <span className="text-white font-700">{seatsLeft}</span>/{totalSeats}</>}
+            <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
+              {isFull ? 'Мест нет' : `Мест: ${seatsLeft}/${totalSeats}`}
             </p>
           ) : (
             <p className="text-[11px] font-500" style={{ color: '#6B6360' }}>Завершён</p>

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Crosshair, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { RatingPlayer } from '../types/player';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL } from '../types/player';
 
@@ -18,11 +18,12 @@ const TOP3_GLOW: Record<number, string> = {
   3: '#8C4C27',
 };
 
+// Rank number colour: metallic for top-3, white for 4+
 const rankTextColor = (rank: number): string => {
   if (rank === 1) return '#F2D8A7';
   if (rank === 2) return '#A39B98';
   if (rank === 3) return '#c8a38e';
-  return '#6B6360';
+  return '#ffffff';
 };
 
 // ─── Column header ────────────────────────────────────────────────────────────
@@ -40,8 +41,10 @@ function TableHeader() {
       <span className="flex-1 min-w-0 pl-2">Никнейм</span>
       {/* Турниры (played) — extra right margin to visually separate */}
       <span className="w-14 shrink-0 text-center pr-2">Турниры</span>
-      {/* Победы (won) */}
-      <span className="w-10 shrink-0 text-center">Победы</span>
+      {/* Победы (won) — Trophy icon, centred */}
+      <span className="w-10 shrink-0 flex items-center justify-center">
+        <Trophy size={11} />
+      </span>
       {/* Нокауты — Crosshair icon */}
       <span className="w-9 shrink-0 flex items-center justify-center">
         <Crosshair size={11} />
@@ -96,12 +99,9 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
           {player.initial}
         </div>
 
-        {/* Nickname */}
+        {/* Nickname — white for ALL ranks (glow only on top-3 card) */}
         <div className="flex-1 min-w-0 pl-2">
-          <p
-            className="text-[13px] font-600 truncate"
-            style={{ color: isTop3 ? '#ffffff' : '#A39B98' }}
-          >
+          <p className="text-[13px] font-600 truncate text-white">
             {player.nickname}
           </p>
         </div>
