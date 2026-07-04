@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { Tournament } from '../types/tournament';
 import { TournamentCard } from '../components/TournamentCard';
 import { TournamentDetailPage } from './TournamentDetailPage';
@@ -13,8 +14,22 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export function TournamentsPage() {
   const { tournaments } = useTournaments();
+  const location = useLocation();
+
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+
+  // Navigate directly to a tournament if we arrived with state (e.g. from HomePage hero card)
+  useEffect(() => {
+    const id = (location.state as { openTournamentId?: string } | null)?.openTournamentId;
+    if (id) {
+      const t = tournaments.find((t) => t.id === id);
+      if (t) setSelectedTournament(t);
+      // Clear navigation state so back doesn't re-open
+      window.history.replaceState({}, '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = tournaments.filter((t) =>
     activeTab === 'upcoming' ? t.status !== 'finished' : t.status === 'finished'
@@ -30,7 +45,7 @@ export function TournamentsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-obsidian">
       <div className="flex-shrink-0 px-5 pt-6 pb-4 space-y-4">
         <h1 className="text-center text-xl font-bold tracking-[0.2em] text-white uppercase">
           ТУРНИРЫ
@@ -39,19 +54,19 @@ export function TournamentsPage() {
         {/* Tab switcher */}
         <div
           className="relative flex rounded-xl p-1"
-          style={{ background: '#5a1c0c' }}
+          style={{ background: '#463129' }}
         >
           {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className="relative flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200"
-              style={{ color: activeTab === tab ? '#0D0000' : '#8C4C27' }}
+              style={{ color: activeTab === tab ? '#110b09' : '#69584f' }}
             >
               {activeTab === tab && (
                 <span
                   className="absolute inset-0 rounded-lg"
-                  style={{ background: 'linear-gradient(135deg, #8C4C27, #D99962)' }}
+                  style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
                 />
               )}
               <span className="relative z-10">{TAB_LABELS[tab]}</span>
@@ -63,8 +78,8 @@ export function TournamentsPage() {
       <div className="flex-1 scrollable px-4 pb-4 space-y-3">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3 text-center px-8">
-            <span className="text-4xl" style={{ color: '#400904' }}>♠</span>
-            <p className="text-sm" style={{ color: '#8C4C27' }}>
+            <span className="text-4xl" style={{ color: '#463129' }}>♠</span>
+            <p className="text-sm" style={{ color: '#69584f' }}>
               {activeTab === 'upcoming'
                 ? 'Предстоящих турниров пока нет'
                 : 'Прошедших турниров нет'}

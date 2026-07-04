@@ -15,8 +15,8 @@ export default function App() {
     try {
       WebApp.ready();
       WebApp.expand();
-      WebApp.setHeaderColor('#1d0b07');
-      WebApp.setBackgroundColor('#1d0b07');
+      WebApp.setHeaderColor('#110b09');
+      WebApp.setBackgroundColor('#110b09');
     } catch {
       // Outside Telegram — silently ignore
     }
@@ -24,7 +24,7 @@ export default function App() {
 
   return (
     <TournamentProvider>
-      <div className="relative w-full bg-coal-deep" style={{ height: '100dvh' }}>
+      <div className="relative w-full bg-obsidian" style={{ height: '100dvh' }}>
         <div
           className="absolute inset-0 overflow-hidden"
           style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})` }}

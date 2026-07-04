@@ -15,7 +15,7 @@
   }
 
   body {
-    background-color: #1d0b07;
+    background-color: #110b09;
     color: #ffffff;
     font-family: 'Inter', system-ui, sans-serif;
     overscroll-behavior: none;
@@ -31,8 +31,15 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .ember-text {
-    background: linear-gradient(135deg, #8C4C27 0%, #D99962 55%, #F2D8A7 100%);
+  .cta-text {
+    background: linear-gradient(to right, #8C4C27, #D99962);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .badge-text {
+    background: linear-gradient(to right, #D99962, #F2D8A7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

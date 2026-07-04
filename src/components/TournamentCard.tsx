@@ -12,7 +12,7 @@ function TournamentImagePlaceholder({ title }: { title: string }) {
   return (
     <div
       className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center"
-      style={{ background: 'linear-gradient(135deg, #5a1c0c 0%, #8C4C27 50%, #5a1c0c 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #463129 0%, #50444c 50%, #463129 100%)' }}
     >
       <div className="absolute inset-0 opacity-[0.12]">
         {SUIT_ICONS.map((s, i) => (
@@ -57,8 +57,8 @@ export function TournamentCard({ tournament, onClick }: Props) {
       onClick={() => onClick(tournament)}
       className="w-full text-left rounded-2xl overflow-hidden shadow-card active:scale-[0.98] transition-transform duration-150"
       style={{
-        background: 'linear-gradient(180deg, #5a1c0c 0%, #4c180b 100%)',
-        border: '1px solid rgba(217,153,98,0.18)',
+        background: 'linear-gradient(180deg, #463129 0%, #3a2720 100%)',
+        border: '1px solid rgba(200,163,142,0.15)',
       }}
     >
       <TournamentImagePlaceholder title={title} />
@@ -70,31 +70,31 @@ export function TournamentCard({ tournament, onClick }: Props) {
           <span
             className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap"
             style={{
-              background: 'linear-gradient(135deg, #8C4C27, #D99962)',
-              color: '#1d0b07',
+              background: 'linear-gradient(to right, #8C4C27, #D99962)',
+              color: '#110b09',
             }}
           >
             {buyIn.toLocaleString('ru-RU')} ₽
           </span>
         </div>
 
-        {/* Date + time */}
-        <div className="flex items-center gap-4 text-xs" style={{ color: '#D99962' }}>
+        {/* Date / time */}
+        <div className="flex items-center gap-4 text-xs" style={{ color: '#8c8c88' }}>
           <span className="flex items-center gap-1.5">
-            <Calendar size={13} />
+            <Calendar size={13} style={{ color: '#c8a38e' }} />
             {formattedDate}
           </span>
           <span className="flex items-center gap-1.5">
-            <Clock size={13} />
+            <Clock size={13} style={{ color: '#c8a38e' }} />
             {startTime}
           </span>
         </div>
 
-        {/* Seats + progress */}
+        {/* Seats + mini progress */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5" style={{ color: '#D99962' }}>
-              <Users size={13} />
+            <span className="flex items-center gap-1.5" style={{ color: '#8c8c88' }}>
+              <Users size={13} style={{ color: '#c8a38e' }} />
               {isFull ? (
                 <span className="text-red-400 font-medium">Мест нет</span>
               ) : (
@@ -113,17 +113,14 @@ export function TournamentCard({ tournament, onClick }: Props) {
             </span>
           </div>
 
-          <div
-            className="h-1.5 rounded-full overflow-hidden"
-            style={{ background: 'rgba(140,76,39,0.35)' }}
-          >
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#514f4c' }}>
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${fillPercent}%`,
                 background: fillPercent >= 80
                   ? 'linear-gradient(90deg, #D99962, #ef4444)'
-                  : 'linear-gradient(90deg, #8C4C27, #F2D8A7)',
+                  : 'linear-gradient(90deg, #8C4C27, #c8a38e)',
               }}
             />
           </div>
@@ -133,7 +130,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
           <div className="flex items-center gap-2 pt-1">
             <span
               className="text-xs px-2.5 py-1 rounded-full"
-              style={{ color: '#8C4C27', background: 'rgba(140,76,39,0.2)' }}
+              style={{ color: '#69584f', background: 'rgba(81,79,76,0.4)' }}
             >
               Завершён
             </span>

@@ -15,7 +15,7 @@ function HeroImage({ title }: { title: string }) {
   return (
     <div
       className="relative w-full h-52 overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #8C4C27 0%, #5a1c0c 55%, #1d0b07 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #8C4C27 0%, #463129 55%, #110b09 100%)' }}
     >
       {SUIT_ICONS.map((s, i) => (
         <span
@@ -41,7 +41,7 @@ function HeroImage({ title }: { title: string }) {
       </div>
       <div
         className="absolute inset-x-0 bottom-0 h-16"
-            style={{ background: 'linear-gradient(to top, #1d0b07, transparent)' }}
+        style={{ background: 'linear-gradient(to top, #110b09, transparent)' }}
       />
     </div>
   );
@@ -75,7 +75,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
       <div
         className="fixed inset-0 z-[60] flex flex-col"
         style={{
-          background: '#1d0b07',
+          background: '#110b09',
           opacity: leaving ? 0 : 1,
           transition: leaving ? 'opacity 300ms ease 500ms' : 'none',
         }}
@@ -106,13 +106,13 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Title + date */}
             <div className="space-y-2">
               <h1 className="text-white text-2xl font-black tracking-wide">{live.title}</h1>
-              <div className="flex items-center gap-4 text-sm" style={{ color: '#D99962' }}>
+              <div className="flex items-center gap-4 text-sm" style={{ color: '#8c8c88' }}>
                 <span className="flex items-center gap-1.5">
-                  <Calendar size={14} style={{ color: '#F2D8A7' }} />
+                  <Calendar size={14} style={{ color: '#c8a38e' }} />
                   <span className="capitalize">{formattedDate}</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Clock size={14} style={{ color: '#F2D8A7' }} />
+                  <Clock size={14} style={{ color: '#c8a38e' }} />
                   {live.startTime}
                 </span>
               </div>
@@ -121,10 +121,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Progress */}
             <div
               className="rounded-2xl p-4"
-              style={{
-              background: '#5a1c0c',
-              border: '1px solid rgba(217,153,98,0.2)',
-              }}
+              style={{ background: '#463129', border: '1px solid rgba(200,163,142,0.18)' }}
             >
               <ProgressBar value={live.registeredSeats} max={live.totalSeats} />
             </div>
@@ -132,27 +129,21 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Guarantee badge */}
             <div className="relative rounded-2xl overflow-hidden">
               <div
-                className="absolute inset-0"
-                style={{
-                  background: 'linear-gradient(135deg, #8C4C27, #D99962)',
-                  opacity: 0.18,
-                }}
+                className="absolute inset-0 opacity-[0.15]"
+                style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
               />
               <div
                 className="relative flex items-center gap-3 px-4 py-4 rounded-2xl"
-                style={{ border: '1px solid rgba(242,216,167,0.5)' }}
+                style={{ border: '1px solid rgba(242,216,167,0.4)' }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)' }}
+                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
                 >
-                  <Star size={20} fill="currentColor" style={{ color: '#0D0000' }} />
+                  <Star size={20} fill="currentColor" style={{ color: '#110b09' }} />
                 </div>
                 <div>
-                  <p
-                    className="text-xs uppercase tracking-wider"
-                    style={{ color: '#D99962' }}
-                  >
+                  <p className="text-xs uppercase tracking-wider" style={{ color: '#8c8c88' }}>
                     Гарантия очков
                   </p>
                   <p className="text-white font-black text-2xl tracking-wide">
@@ -165,56 +156,40 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Info block */}
             <div
               className="rounded-2xl p-5 space-y-4"
-              style={{
-              background: '#5a1c0c',
-              border: '1px solid rgba(140,76,39,0.3)',
-              }}
+              style={{ background: '#463129', border: '1px solid rgba(81,79,76,0.4)' }}
             >
               <section>
-                <h3
-                  className="font-bold text-base mb-2 uppercase tracking-wider"
-                  style={{ color: '#F2D8A7' }}
-                >
+                <h3 className="font-bold text-base mb-2 uppercase tracking-wider" style={{ color: '#F2D8A7' }}>
                   О турнире
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#D99962' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#8c8c88' }}>
                   {live.description}
                 </p>
               </section>
 
-              <div style={{ height: 1, background: 'rgba(140,76,39,0.3)' }} />
+              <div style={{ height: 1, background: 'rgba(200,163,142,0.12)' }} />
 
               <section>
-                <h3
-                  className="font-bold text-base mb-3 uppercase tracking-wider"
-                  style={{ color: '#F2D8A7' }}
-                >
+                <h3 className="font-bold text-base mb-3 uppercase tracking-wider" style={{ color: '#F2D8A7' }}>
                   Особенности
                 </h3>
                 <ul className="space-y-2">
                   {live.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-2.5 text-sm"
-                      style={{ color: '#D99962' }}
-                    >
-                      <span className="mt-0.5 shrink-0" style={{ color: '#8C4C27' }}>•</span>
+                    <li key={feature} className="flex items-start gap-2.5 text-sm" style={{ color: '#8c8c88' }}>
+                      <span className="mt-0.5 shrink-0" style={{ color: '#985c3a' }}>•</span>
                       {feature}
                     </li>
                   ))}
                 </ul>
               </section>
 
-              <div style={{ height: 1, background: 'rgba(140,76,39,0.3)' }} />
+              <div style={{ height: 1, background: 'rgba(200,163,142,0.12)' }} />
 
               <section>
-                <h3
-                  className="font-bold text-base mb-2 uppercase tracking-wider"
-                  style={{ color: '#F2D8A7' }}
-                >
+                <h3 className="font-bold text-base mb-2 uppercase tracking-wider" style={{ color: '#F2D8A7' }}>
                   Запись на турниры
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#D99962' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#8c8c88' }}>
                   Если вы записались, но не можете прийти — пожалуйста, отмените запись заранее,
                   чтобы не занимать место.
                 </p>
@@ -228,7 +203,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           className="absolute bottom-0 left-0 right-0 px-4 pt-4"
           style={{
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-            background: 'linear-gradient(to top, #1d0b07 70%, transparent)',
+            background: 'linear-gradient(to top, #110b09 70%, transparent)',
           }}
         >
           <button
@@ -236,28 +211,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             className="w-full h-14 rounded-2xl font-bold text-base tracking-wide flex items-center justify-center gap-2.5 transition-all duration-300 active:scale-[0.97]"
             style={
               registered
-                ? {
-                    background: 'rgba(90,28,12,0.8)',
-                    border: '2px solid rgba(239,68,68,0.45)',
-                    color: '#f87171',
-                  }
+                ? { background: 'rgba(70,49,41,0.8)', border: '2px solid rgba(239,68,68,0.4)', color: '#f87171' }
                 : {
-                    background: 'linear-gradient(135deg, #8C4C27, #D99962)',
-                    color: '#1d0b07',
-                    boxShadow: '0 0 24px rgba(217,153,98,0.45)',
+                    background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                    color: '#110b09',
+                    boxShadow: '0 0 22px rgba(217,153,98,0.4)',
                   }
             }
           >
             {registered ? (
-              <>
-                <XCircle size={20} />
-                Отменить запись
-              </>
+              <><XCircle size={20} />Отменить запись</>
             ) : (
-              <>
-                <CheckCircle2 size={20} />
-                Участвовать
-              </>
+              <><CheckCircle2 size={20} />Участвовать</>
             )}
           </button>
         </div>
