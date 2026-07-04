@@ -13,7 +13,7 @@ export function BottomNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50"
       style={{
-        background: '#0D0000',
+        background: '#1d0b07',
         borderTop: '1px solid rgba(140,76,39,0.45)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}

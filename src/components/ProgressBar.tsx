@@ -52,7 +52,7 @@ export function ProgressBar({ value, max, className = '' }: Props) {
             className="absolute top-0 bottom-0 w-px opacity-30"
             style={{
               left: `${((i + 1) * 4 / max) * 100}%`,
-              background: '#0D0000',
+              background: '#1d0b07',
             }}
           />
         ))}

@@ -22,7 +22,7 @@ export function RatingPage() {
         <div
           className="rounded-2xl p-4 flex items-center gap-4"
           style={{
-            background: '#400904',
+            background: '#5a1c0c',
             border: '1px solid rgba(217,153,98,0.25)',
           }}
         >
@@ -47,7 +47,7 @@ export function RatingPage() {
               key={p.rank}
               className="flex items-center gap-3 rounded-xl px-4 py-3"
               style={{
-                background: p.rank <= 3 ? '#400904' : 'rgba(64,9,4,0.6)',
+                background: p.rank <= 3 ? '#5a1c0c' : 'rgba(90,28,12,0.6)',
                 border: `1px solid ${p.rank <= 3 ? 'rgba(242,216,167,0.25)' : 'rgba(140,76,39,0.2)'}`,
               }}
             >
@@ -77,7 +77,7 @@ export function RatingPage() {
         <div
           className="flex items-center gap-3 rounded-xl px-4 py-3"
           style={{
-            background: '#400904',
+            background: '#5a1c0c',
             border: '1px solid rgba(217,153,98,0.35)',
           }}
         >

@@ -22,7 +22,7 @@ export function ProfilePage() {
             <div
               className="w-20 h-20 rounded-full flex items-center justify-center"
               style={{
-                background: '#400904',
+                background: '#5a1c0c',
                 border: '2px solid rgba(217,153,98,0.45)',
                 boxShadow: '0 0 16px rgba(217,153,98,0.2)',
               }}
@@ -33,7 +33,7 @@ export function ProfilePage() {
               className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
               style={{
                 background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)',
-                color: '#0D0000',
+                color: '#1d0b07',
               }}
             >
               1
@@ -56,8 +56,8 @@ export function ProfilePage() {
               key={s.label}
               className="rounded-xl p-3 text-center"
               style={{
-                background: '#400904',
-                border: '1px solid rgba(140,76,39,0.35)',
+              background: '#5a1c0c',
+              border: '1px solid rgba(140,76,39,0.35)',
               }}
             >
               <p className="text-white font-bold text-xl">{s.value}</p>
@@ -70,7 +70,7 @@ export function ProfilePage() {
         <div
           className="rounded-2xl overflow-hidden"
           style={{
-            background: '#400904',
+            background: '#5a1c0c',
             border: '1px solid rgba(140,76,39,0.3)',
           }}
         >
@@ -97,7 +97,7 @@ export function ProfilePage() {
           ))}
         </div>
 
-        <p className="text-center text-xs pb-2" style={{ color: '#400904' }}>
+        <p className="text-center text-xs pb-2" style={{ color: '#8C4C27' }}>
           SHOWDOWN v1.0.0
         </p>
       </div>

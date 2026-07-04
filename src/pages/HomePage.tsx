@@ -14,7 +14,7 @@ export function HomePage() {
         <div
           className="w-24 h-24 rounded-3xl flex items-center justify-center"
           style={{
-            background: '#400904',
+            background: '#5a1c0c',
             border: '1px solid rgba(217,153,98,0.3)',
             boxShadow: '0 0 28px rgba(217,153,98,0.35)',
           }}
@@ -33,7 +33,7 @@ export function HomePage() {
             key={item}
             className="flex items-center gap-3 rounded-xl px-4 py-3"
             style={{
-              background: '#400904',
+              background: '#5a1c0c',
               border: '1px solid rgba(140,76,39,0.4)',
             }}
           >

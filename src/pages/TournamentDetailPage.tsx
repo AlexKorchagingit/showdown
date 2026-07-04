@@ -15,7 +15,7 @@ function HeroImage({ title }: { title: string }) {
   return (
     <div
       className="relative w-full h-52 overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #8C4C27 0%, #400904 55%, #0D0000 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #8C4C27 0%, #5a1c0c 55%, #1d0b07 100%)' }}
     >
       {SUIT_ICONS.map((s, i) => (
         <span
@@ -41,7 +41,7 @@ function HeroImage({ title }: { title: string }) {
       </div>
       <div
         className="absolute inset-x-0 bottom-0 h-16"
-        style={{ background: 'linear-gradient(to top, #0D0000, transparent)' }}
+            style={{ background: 'linear-gradient(to top, #1d0b07, transparent)' }}
       />
     </div>
   );
@@ -75,7 +75,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
       <div
         className="fixed inset-0 z-[60] flex flex-col"
         style={{
-          background: '#0D0000',
+          background: '#1d0b07',
           opacity: leaving ? 0 : 1,
           transition: leaving ? 'opacity 300ms ease 500ms' : 'none',
         }}
@@ -122,8 +122,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             <div
               className="rounded-2xl p-4"
               style={{
-                background: '#400904',
-                border: '1px solid rgba(217,153,98,0.2)',
+              background: '#5a1c0c',
+              border: '1px solid rgba(217,153,98,0.2)',
               }}
             >
               <ProgressBar value={live.registeredSeats} max={live.totalSeats} />
@@ -166,8 +166,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             <div
               className="rounded-2xl p-5 space-y-4"
               style={{
-                background: '#400904',
-                border: '1px solid rgba(140,76,39,0.3)',
+              background: '#5a1c0c',
+              border: '1px solid rgba(140,76,39,0.3)',
               }}
             >
               <section>
@@ -228,7 +228,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           className="absolute bottom-0 left-0 right-0 px-4 pt-4"
           style={{
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-            background: 'linear-gradient(to top, #0D0000 70%, transparent)',
+            background: 'linear-gradient(to top, #1d0b07 70%, transparent)',
           }}
         >
           <button
@@ -237,13 +237,13 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             style={
               registered
                 ? {
-                    background: 'rgba(64,9,4,0.8)',
+                    background: 'rgba(90,28,12,0.8)',
                     border: '2px solid rgba(239,68,68,0.45)',
                     color: '#f87171',
                   }
                 : {
                     background: 'linear-gradient(135deg, #8C4C27, #D99962)',
-                    color: '#0D0000',
+                    color: '#1d0b07',
                     boxShadow: '0 0 24px rgba(217,153,98,0.45)',
                   }
             }

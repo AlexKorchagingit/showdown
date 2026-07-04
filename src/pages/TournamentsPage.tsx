@@ -39,7 +39,7 @@ export function TournamentsPage() {
         {/* Tab switcher */}
         <div
           className="relative flex rounded-xl p-1"
-          style={{ background: '#400904' }}
+          style={{ background: '#5a1c0c' }}
         >
           {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
             <button

@@ -13,14 +13,14 @@ export default {
           dark:    '#8C4C27',  // brown — secondary accent, borders
         },
         coal: {
-          DEFAULT: '#400904',  // deep red-brown — card surfaces
-          deep:    '#0D0000',  // near-black — main background
+          DEFAULT: '#5a1c0c',  // red-brown — card surfaces
+          deep:    '#1d0b07',  // very dark mahogany — main background
         },
       },
       backgroundImage: {
         'ember-gradient':      'linear-gradient(135deg, #8C4C27 0%, #D99962 55%, #F2D8A7 100%)',
         'ember-gradient-soft': 'linear-gradient(135deg, #8C4C27 0%, #D99962 100%)',
-        'card-gradient':       'linear-gradient(180deg, #400904 0%, #360703 100%)',
+        'card-gradient':       'linear-gradient(180deg, #5a1c0c 0%, #4c180b 100%)',
       },
       boxShadow: {
         'ember':    '0 0 22px rgba(217,153,98,0.45)',

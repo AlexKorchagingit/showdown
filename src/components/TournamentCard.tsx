@@ -12,7 +12,7 @@ function TournamentImagePlaceholder({ title }: { title: string }) {
   return (
     <div
       className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center"
-      style={{ background: 'linear-gradient(135deg, #400904 0%, #8C4C27 50%, #400904 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #5a1c0c 0%, #8C4C27 50%, #5a1c0c 100%)' }}
     >
       <div className="absolute inset-0 opacity-[0.12]">
         {SUIT_ICONS.map((s, i) => (
@@ -57,7 +57,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
       onClick={() => onClick(tournament)}
       className="w-full text-left rounded-2xl overflow-hidden shadow-card active:scale-[0.98] transition-transform duration-150"
       style={{
-        background: 'linear-gradient(180deg, #400904 0%, #360703 100%)',
+        background: 'linear-gradient(180deg, #5a1c0c 0%, #4c180b 100%)',
         border: '1px solid rgba(217,153,98,0.18)',
       }}
     >
@@ -71,7 +71,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
             className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap"
             style={{
               background: 'linear-gradient(135deg, #8C4C27, #D99962)',
-              color: '#0D0000',
+              color: '#1d0b07',
             }}
           >
             {buyIn.toLocaleString('ru-RU')} ₽
