@@ -103,7 +103,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           <div className="px-5 pt-5 space-y-5">
             {/* Title */}
             <div className="space-y-2">
-              <h1 className="text-white text-[22px] font-900 uppercase tracking-wider leading-tight">
+              <h1 className="text-white text-[22px] font-900 uppercase tracking-widest leading-tight">
                 {live.title}
               </h1>
               <div className="flex items-center gap-4 text-[12px] font-500" style={{ color: '#A39B98' }}>
@@ -199,34 +199,137 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </span>
               </div>
 
-              {/* All participants — no slice */}
+              {/* Participant rows */}
               {participants.length === 0 ? (
                 <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
                   Пока никто не зарегистрировался
                 </p>
               ) : (
                 <div>
-                  {participants.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-3.5 px-5 py-3"
-                      style={{ borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
-                    >
-                      <span className="text-[11px] font-700 w-5 text-right shrink-0" style={{ color: '#6B6360' }}>
-                        {idx + 1}
-                      </span>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-                           style={{ background: 'rgba(140,76,39,0.22)', color: '#c8a38e' }}>
-                        {p.nickname[0].toUpperCase()}
+                  {participants.map((p, idx) => {
+                    const isFinished   = live.status === 'finished';
+                    const isPodium     = isFinished && idx < 3;   // top-3: wreath + gradient
+                    const isFinalist   = isFinished && idx < 9;   // 4-9: gradient + badge
+                    const isFinalTable = isFinished && idx < 9;   // 1-9 combined
+
+                    // Wreath colours per podium position
+                    const wreathColor = ['#D99962', '#8c8c88', '#8C4C27'][idx] ?? null;
+
+                    // Section header dividers for finished tournaments
+                    const showFinalTableHeader  = isFinished && idx === 0;
+                    const showRestHeader        = isFinished && idx === 9;
+
+                    return (
+                      <div key={p.id}>
+                        {/* "Финальный стол" header */}
+                        {showFinalTableHeader && (
+                          <div
+                            className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
+                            style={{ color: '#D99962' }}
+                          >
+                            🏆 Финальный стол
+                          </div>
+                        )}
+                        {/* "Остальные участники" divider */}
+                        {showRestHeader && (
+                          <div
+                            className="px-5 pt-3 pb-1 text-[10px] font-600 uppercase tracking-[0.15em]"
+                            style={{
+                              color: '#6B6360',
+                              borderTop: '1px solid rgba(255,255,255,0.06)',
+                            }}
+                          >
+                            Остальные участники
+                          </div>
+                        )}
+
+                        {/* Row */}
+                        <div
+                          className="flex items-center gap-3.5 px-5 py-3"
+                          style={{
+                            borderTop:
+                              idx > 0 && !(showFinalTableHeader || showRestHeader)
+                                ? '1px solid rgba(255,255,255,0.05)'
+                                : 'none',
+                          }}
+                        >
+                          {/* Rank number */}
+                          <span
+                            className="text-[11px] font-700 w-5 text-right shrink-0"
+                            style={{ color: isFinalTable ? '#D99962' : '#6B6360' }}
+                          >
+                            {idx + 1}
+                          </span>
+
+                          {/* Avatar — wreath ring for top-3 */}
+                          <div className="relative shrink-0">
+                            {isPodium && (
+                              <div
+                                className="absolute rounded-full pointer-events-none animate-pulse"
+                                style={{
+                                  inset: '-3px',
+                                  border: `2px solid ${wreathColor}`,
+                                  boxShadow: `0 0 8px ${wreathColor}`,
+                                }}
+                              />
+                            )}
+                            <div
+                              className="relative w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 z-10"
+                              style={{
+                                background: isFinalTable
+                                  ? 'rgba(140,76,39,0.28)'
+                                  : 'rgba(255,255,255,0.06)',
+                                color: isFinalTable ? '#c8a38e' : '#6B6360',
+                              }}
+                            >
+                              {p.nickname[0].toUpperCase()}
+                            </div>
+                          </div>
+
+                          {/* Nickname + optional ФИНАЛИСТ badge */}
+                          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                            <p
+                              className="text-[13px] font-600 truncate"
+                              style={
+                                isFinalTable
+                                  ? {
+                                      background: 'linear-gradient(to right, #D99962, #F2D8A7)',
+                                      WebkitBackgroundClip: 'text',
+                                      WebkitTextFillColor: 'transparent',
+                                      backgroundClip: 'text',
+                                    }
+                                  : { color: '#A39B98' }
+                              }
+                            >
+                              {p.nickname}
+                            </p>
+
+                            {/* ФИНАЛИСТ badge — places 4-9 only */}
+                            {isFinalist && !isPodium && (
+                              <span
+                                className="text-[8px] font-700 uppercase tracking-wide px-1.5 py-0.5 rounded shrink-0"
+                                style={{
+                                  background: 'rgba(217,153,98,0.12)',
+                                  color: '#D99962',
+                                  border: '1px solid rgba(217,153,98,0.28)',
+                                }}
+                              >
+                                ФИНАЛИСТ
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Rating */}
+                          <p
+                            className="text-[12px] font-700 shrink-0"
+                            style={{ color: isFinalTable ? '#D99962' : '#6B6360' }}
+                          >
+                            {p.rating.toLocaleString('ru-RU')}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-[13px] font-600 truncate">{p.nickname}</p>
-                      </div>
-                      <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
-                        {p.rating.toLocaleString('ru-RU')}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

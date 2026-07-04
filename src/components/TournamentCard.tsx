@@ -70,10 +70,10 @@ export function TournamentCard({ tournament, onClick }: Props) {
       }}
     >
       {/* Horizontal layout: text left, image right */}
-      <div className="flex items-center gap-3 px-4 py-4" style={{ minHeight: 110 }}>
+      <div className="flex items-center gap-3 px-4 py-5" style={{ minHeight: 152 }}>
         {/* Left: title + date */}
         <div className="flex-1 min-w-0 space-y-1.5">
-          <h3 className="text-white font-700 text-[14px] uppercase tracking-wide leading-tight truncate">
+          <h3 className="text-white font-800 text-[14px] uppercase tracking-wider leading-tight truncate">
             {title}
           </h3>
 

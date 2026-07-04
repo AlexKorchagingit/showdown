@@ -40,9 +40,10 @@ function TableHeader() {
       {/* nickname */}
       <span className="flex-1 min-w-0 pl-2">Никнейм</span>
       {/* Турниры (played) — extra right margin to visually separate */}
-      <span className="w-14 shrink-0 text-center pr-2">Турниры</span>
-      {/* Победы (won) — Trophy icon, centred */}
-      <span className="w-10 shrink-0 flex items-center justify-center">
+      {/* Турниры — wider to push Победы rightward */}
+      <span className="w-16 shrink-0 text-center">Турниры</span>
+      {/* Победы — Trophy icon, extra left pad for visual gap */}
+      <span className="w-12 shrink-0 flex items-center justify-center">
         <Trophy size={11} />
       </span>
       {/* Нокауты — Crosshair icon */}
@@ -106,16 +107,16 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
           </p>
         </div>
 
-        {/* Турниры (played) — extra right padding */}
+        {/* Турниры (played) */}
         <span
-          className="w-14 shrink-0 text-center text-[12px] font-500 pr-2"
+          className="w-16 shrink-0 text-center text-[12px] font-500"
           style={{ color: '#A39B98' }}
         >
           {player.played}
         </span>
 
-        {/* Победы (won) */}
-        <span className="w-10 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
+        {/* Победы (won) — aligned with w-12 header */}
+        <span className="w-12 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
           {player.won}
         </span>
 

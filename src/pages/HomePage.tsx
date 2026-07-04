@@ -30,7 +30,7 @@ function Header() {
     >
       <div className="flex items-center gap-3">
         <img
-          src="/flux-2-dev_b_Оставь_из_фото_тольк.svg"
+          src="/logo-final.svg"
           alt="Showdown"
           className="h-10 w-auto object-contain"
           style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }}
@@ -200,11 +200,11 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         {PODIUM.map((p) => <PodiumPlayer key={p.rank} player={p} />)}
       </div>
 
-      {/* Current user — dark gold-tinted bg + vivid gold border */}
+      {/* Current user — warm mid-tone gradient + gold border */}
       <div
         className="flex items-center gap-3 rounded-2xl px-4 py-3"
         style={{
-          background: 'rgba(217,153,98,0.10)',
+          background: 'linear-gradient(to right, #463129, #514f4c)',
           border: '1px solid #D99962',
         }}
       >
