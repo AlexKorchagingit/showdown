@@ -15,11 +15,9 @@ export default function App() {
     try {
       WebApp.ready();
       WebApp.expand();
-      WebApp.setHeaderColor('#110b09');
-      WebApp.setBackgroundColor('#110b09');
-    } catch {
-      // Outside Telegram — silently ignore
-    }
+      WebApp.setHeaderColor('#0A0908');
+      WebApp.setBackgroundColor('#0A0908');
+    } catch { /* Outside Telegram */ }
   }, []);
 
   return (

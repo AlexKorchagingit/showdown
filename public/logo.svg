@@ -1,63 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110" fill="none">
   <defs>
-    <linearGradient id="goldMain" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8C4C27"/>
-      <stop offset="45%" stop-color="#F2D8A7"/>
-      <stop offset="100%" stop-color="#D99962"/>
-    </linearGradient>
-    <linearGradient id="goldEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#D99962"/>
       <stop offset="100%" stop-color="#F2D8A7"/>
     </linearGradient>
-    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3a2418"/>
-      <stop offset="100%" stop-color="#1d0b07"/>
-    </linearGradient>
     <filter id="glow">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="1 0.6 0 0 0  0.6 0.3 0 0 0  0 0 0 0 0  0 0 0 0.8 0" result="coloredBlur"/>
-      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="innerShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-      <feOffset dx="0" dy="1"/>
-      <feComposite in2="SourceGraphic" operator="arithmetic" k2="-1" k3="1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <!-- Outer badge ring (glow) -->
-  <path d="M50 4 L66 8 L80 18 L88 34 L88 54 L80 70 L66 82 L50 88 L34 82 L20 70 L12 54 L12 34 L20 18 L34 8 Z"
-        fill="url(#goldEdge)" filter="url(#glow)" opacity="0.35"/>
+  <!-- ── Top diamond chevrons ──────────────────────────────── -->
+  <!-- Outer diamond -->
+  <polygon points="50,4  62,18  50,28  38,18"
+           fill="#0A0908" stroke="url(#gold)" stroke-width="1.8"/>
+  <!-- Inner diamond -->
+  <polygon points="50,10 58,18 50,25 42,18"
+           fill="none"    stroke="url(#gold)" stroke-width="1" opacity="0.55"/>
 
-  <!-- Outer shield -->
-  <path d="M50 6 L65 10 L78 20 L86 35 L86 53 L78 68 L65 80 L50 86 L35 80 L22 68 L14 53 L14 35 L22 20 L35 10 Z"
-        fill="url(#shieldBg)" stroke="url(#goldEdge)" stroke-width="2"/>
+  <!-- ── Main badge body ───────────────────────────────────── -->
+  <!-- Outer ring -->
+  <path d="M50 24
+           L87 37 L94 55 L86 73 L72 88 L50 97
+           L28 88 L14 73 L6 55  L13 37 Z"
+        fill="#0A0908" stroke="url(#gold)" stroke-width="1.8"/>
+  <!-- Middle ring -->
+  <path d="M50 30
+           L83 42 L89 57 L82 72 L69 85 L50 93
+           L31 85 L18 72 L11 57 L17 42 Z"
+        fill="none" stroke="url(#gold)" stroke-width="1" opacity="0.5"/>
+  <!-- Inner fill -->
+  <path d="M50 36
+           L79 47 L84 59 L78 71 L67 82 L50 89
+           L33 82 L22 71 L16 59 L21 47 Z"
+        fill="#12100E" stroke="url(#gold)" stroke-width="0.8" opacity="0.4"/>
 
-  <!-- Notch cuts (badge effect  top corners) -->
-  <path d="M50 6 L65 10 L78 20" fill="none" stroke="url(#goldEdge)" stroke-width="1.5" opacity="0.6"/>
-  <path d="M50 6 L35 10 L22 20" fill="none" stroke="url(#goldEdge)" stroke-width="1.5" opacity="0.6"/>
+  <!-- ── Left wing ─────────────────────────────────────────── -->
+  <path d="M13 37 L3  46 L6  55" fill="none" stroke="url(#gold)" stroke-width="1.5"/>
+  <path d="M13 37 L4  41"        fill="none" stroke="url(#gold)" stroke-width="0.8" opacity="0.4"/>
 
-  <!-- Inner shield body -->
-  <path d="M50 14 L62 18 L72 26 L78 39 L78 54 L70 66 L58 76 L50 80 L42 76 L30 66 L22 54 L22 39 L28 26 L38 18 Z"
-        fill="#463129" stroke="#8C4C27" stroke-width="1.2" opacity="0.9"/>
+  <!-- ── Right wing ────────────────────────────────────────── -->
+  <path d="M87 37 L97 46 L94 55" fill="none" stroke="url(#gold)" stroke-width="1.5"/>
+  <path d="M87 37 L96 41"        fill="none" stroke="url(#gold)" stroke-width="0.8" opacity="0.4"/>
 
-  <!-- Card element (back) -->
-  <g transform="translate(13,24) rotate(-18, 14, 13)">
-    <rect width="24" height="30" rx="3" fill="#d8c4a8" stroke="#c8a38e" stroke-width="1"/>
-    <text x="4" y="11" fill="#1d0b07" font-size="7" font-weight="800" font-family="serif">A</text>
-    <text x="12" y="22" text-anchor="middle" fill="#110b09" font-size="13" font-family="serif">`</text>
+  <!-- ── Ace of spades card (upper-left, rotated) ──────────── -->
+  <g transform="translate(10,30) rotate(-14, 12, 13)">
+    <rect width="22" height="28" rx="2.5"
+          fill="#D8C5A6" stroke="#c8a38e" stroke-width="0.6" opacity="0.92"/>
+    <text x="4"  y="10" fill="#0A0908" font-size="7"  font-weight="700" font-family="serif">A</text>
+    <text x="11" y="22" fill="#0A0908" font-size="12" font-family="serif" text-anchor="middle">♠</text>
   </g>
 
-  <!-- SD monogram -->
-  <text x="50" y="62"
+  <!-- ── SD Monogram ───────────────────────────────────────── -->
+  <text x="54" y="74"
         text-anchor="middle"
-        fill="url(#goldMain)"
-        font-size="30"
+        fill="url(#gold)"
+        font-size="34"
         font-weight="900"
-        font-family="'Georgia', 'Times New Roman', serif"
-        letter-spacing="-2"
+        font-family="'Arial Black', 'Impact', sans-serif"
+        letter-spacing="-3"
         filter="url(#glow)">SD</text>
 
-  <!-- Decorative bottom line -->
-  <line x1="32" y1="68" x2="68" y2="68" stroke="url(#goldEdge)" stroke-width="0.8" opacity="0.5"/>
+  <!-- Thin baseline rule under SD -->
+  <line x1="30" y1="79" x2="70" y2="79"
+        stroke="url(#gold)" stroke-width="0.7" opacity="0.4"/>
 </svg>

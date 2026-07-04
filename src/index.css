@@ -15,9 +15,10 @@
   }
 
   body {
-    background-color: #110b09;
+    background-color: #0A0908;
     color: #ffffff;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Montserrat', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
   }
 
@@ -31,14 +32,8 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .cta-text {
-    background: linear-gradient(to right, #8C4C27, #D99962);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .badge-text {
+  /* Reusable gradient text */
+  .gold-text {
     background: linear-gradient(to right, #D99962, #F2D8A7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

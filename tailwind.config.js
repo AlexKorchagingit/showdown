@@ -1,51 +1,37 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Montserrat', 'system-ui', 'sans-serif'],
+      },
       colors: {
-        // Rose-gold / dark-wood palette
+        obsidian: '#0A0908',
+        card:     '#2A211D',
+        'card-deep': '#231A16',
+        muted:    '#A39B98',
+        subdued:  '#6B6360',
+        // accent palette
         rg: {
-          cream:  '#F2D8A7',   // lightest — highlight labels, active text
-          amber:  '#D99962',   // primary accent — icons, secondary text
-          sand:   '#c8a38e',   // rose-gold accent — icon tints
-          warm:   '#985c3a',   // list markers, secondary accents
-          mid:    '#8C4C27',   // gradient start for CTAs
-          dark:   '#94543c',   // deep rose accent
+          amber: '#D99962',
+          cream: '#F2D8A7',
+          warm:  '#c8a38e',
+          mid:   '#8C4C27',
+          dark:  '#94543c',
+          mark:  '#985c3a',
         },
-        wood: {
-          DEFAULT: '#463129',  // card / surface background
-          deep:    '#3a2720',  // card gradient dark end
-          muted:   '#69584f',  // subdued text / inactive icons
-        },
-        surface: {
-          raised:  '#514f4c',  // progress tracks, raised elements
-          nav:     '#50444c',  // bottom navigation
-          text:    '#8c8c88',  // primary muted text
-          sub:     '#858484',  // secondary muted text
-        },
-        obsidian: '#110b09',   // main background
       },
       backgroundImage: {
-        // CTA gradient (Участвовать, Регистрация)
-        'cta-gradient':    'linear-gradient(to right, #8C4C27, #D99962)',
-        // Badge / highlight gradient
-        'badge-gradient':  'linear-gradient(to right, #D99962, #F2D8A7)',
-        // Accent for subtle elements
-        'rg-gradient':     'linear-gradient(135deg, #94543c 0%, #c8a38e 100%)',
-        // Card background
-        'card-gradient':   'linear-gradient(180deg, #463129 0%, #3a2720 100%)',
+        'cta-gradient':   'linear-gradient(to right, #8C4C27, #D99962)',
+        'badge-gradient': 'linear-gradient(to right, #D99962, #F2D8A7)',
+        'rg-gradient':    'linear-gradient(135deg, #94543c, #c8a38e)',
+        'card-gradient':  'linear-gradient(180deg, #2A211D 0%, #1E1612 100%)',
       },
       boxShadow: {
-        'rg':     '0 0 22px rgba(200,163,142,0.4)',
-        'amber':  '0 0 22px rgba(217,153,98,0.4)',
-        'card':   '0 4px 24px rgba(0,0,0,0.6)',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        'amber': '0 0 20px rgba(217,153,98,0.35)',
+        'card':  '0 2px 20px rgba(0,0,0,0.5)',
+        'glow':  '0 0 30px rgba(242,216,167,0.2)',
       },
     },
   },

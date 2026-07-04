@@ -6,6 +6,7 @@ import { useTournaments } from '../context/TournamentContext';
 
 interface Props {
   tournament: Tournament;
+  /** Smart back: parent decides where to go (home or tournament list) */
   onBack: () => void;
 }
 
@@ -15,15 +16,14 @@ function HeroImage({ title }: { title: string }) {
   return (
     <div
       className="relative w-full h-52 overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #8C4C27 0%, #463129 55%, #110b09 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #3a2015 0%, #2A211D 55%, #0A0908 100%)' }}
     >
       {SUIT_ICONS.map((s, i) => (
         <span
           key={i}
           className="absolute select-none"
           style={{
-            color: '#F2D8A7',
-            opacity: 0.07,
+            color: '#F2D8A7', opacity: 0.06,
             fontSize: `${60 + i * 20}px`,
             top:  `${[-10, 30, 55, 10, 40, -5][i]}%`,
             left: `${[5, 55, 20, 75, 40, 85][i]}%`,
@@ -34,14 +34,16 @@ function HeroImage({ title }: { title: string }) {
         </span>
       ))}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-        <span style={{ color: '#D99962', fontSize: '4rem', opacity: 0.45 }}>♠</span>
-        <h2 className="text-white text-lg font-black tracking-[0.25em] uppercase px-4 text-center leading-tight">
+        <span style={{ color: '#D99962', fontSize: '4rem', opacity: 0.4 }}>♠</span>
+        <h2
+          className="text-white text-[17px] font-900 uppercase tracking-[0.25em] px-6 text-center leading-tight"
+        >
           {title}
         </h2>
       </div>
       <div
         className="absolute inset-x-0 bottom-0 h-16"
-        style={{ background: 'linear-gradient(to top, #110b09, transparent)' }}
+        style={{ background: 'linear-gradient(to top, #0A0908, transparent)' }}
       />
     </div>
   );
@@ -61,21 +63,21 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const handleBack = () => {
     if (leaving) return;
     setLeaving(true);
+    // spin 500ms → fade 300ms → call parent's onBack (which navigates correctly)
     setTimeout(() => onBack(), 800);
   };
 
   return (
     <>
-      {/* Fade overlay */}
+      {/* Black fade overlay */}
       <div
         className="fixed inset-0 z-[70] bg-black pointer-events-none transition-opacity duration-300"
         style={{ opacity: leaving ? 1 : 0, transitionDelay: leaving ? '500ms' : '0ms' }}
       />
 
       <div
-        className="fixed inset-0 z-[60] flex flex-col"
+        className="fixed inset-0 z-[60] flex flex-col bg-obsidian"
         style={{
-          background: '#110b09',
           opacity: leaving ? 0 : 1,
           transition: leaving ? 'opacity 300ms ease 500ms' : 'none',
         }}
@@ -83,13 +85,15 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
         {/* Hero + back button */}
         <div className="relative flex-shrink-0">
           <HeroImage title={live.title} />
+
+          {/* Back button — red, large, spins on tap */}
           <button
             onClick={handleBack}
             disabled={leaving}
             className="absolute top-4 left-4 w-14 h-14 rounded-full flex items-center justify-center"
             style={{
               background: 'linear-gradient(135deg, #dc2626, #991b1b)',
-              boxShadow: '0 0 18px rgba(220,38,38,0.55)',
+              boxShadow: '0 0 20px rgba(220,38,38,0.5)',
               animation: leaving ? 'spin-once 500ms cubic-bezier(0.4,0,0.2,1) forwards' : 'none',
             }}
           >
@@ -97,22 +101,24 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           </button>
         </div>
 
-        {/* Scrollable content */}
+        {/* Scrollable body */}
         <div
           className="flex-1 scrollable"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' }}
         >
-          <div className="px-4 pt-4 space-y-5">
+          <div className="px-5 pt-5 space-y-5">
             {/* Title + date */}
             <div className="space-y-2">
-              <h1 className="text-white text-2xl font-black tracking-wide">{live.title}</h1>
-              <div className="flex items-center gap-4 text-sm" style={{ color: '#8c8c88' }}>
+              <h1 className="text-white text-[22px] font-900 uppercase tracking-wider leading-tight">
+                {live.title}
+              </h1>
+              <div className="flex items-center gap-4 text-[12px] font-500" style={{ color: '#A39B98' }}>
                 <span className="flex items-center gap-1.5">
-                  <Calendar size={14} style={{ color: '#c8a38e' }} />
+                  <Calendar size={13} style={{ color: '#c8a38e' }} />
                   <span className="capitalize">{formattedDate}</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Clock size={14} style={{ color: '#c8a38e' }} />
+                  <Clock size={13} style={{ color: '#c8a38e' }} />
                   {live.startTime}
                 </span>
               </div>
@@ -121,7 +127,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Progress */}
             <div
               className="rounded-2xl p-4"
-              style={{ background: '#463129', border: '1px solid rgba(200,163,142,0.18)' }}
+              style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
             >
               <ProgressBar value={live.registeredSeats} max={live.totalSeats} />
             </div>
@@ -129,67 +135,86 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Guarantee badge */}
             <div className="relative rounded-2xl overflow-hidden">
               <div
-                className="absolute inset-0 opacity-[0.15]"
+                className="absolute inset-0 opacity-[0.12]"
                 style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
               />
               <div
-                className="relative flex items-center gap-3 px-4 py-4 rounded-2xl"
-                style={{ border: '1px solid rgba(242,216,167,0.4)' }}
+                className="relative flex items-center gap-4 px-5 py-4 rounded-2xl"
+                style={{ border: '1px solid rgba(242,216,167,0.35)' }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
                 >
-                  <Star size={20} fill="currentColor" style={{ color: '#110b09' }} />
+                  <Star size={20} fill="currentColor" style={{ color: '#0A0908' }} />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wider" style={{ color: '#8c8c88' }}>
+                  <p
+                    className="text-[11px] font-600 uppercase tracking-[0.12em]"
+                    style={{ color: '#A39B98' }}
+                  >
                     Гарантия очков
                   </p>
-                  <p className="text-white font-black text-2xl tracking-wide">
+                  <p className="text-white font-900 text-[24px] tracking-wide leading-tight">
                     {live.guarantee.toLocaleString('ru-RU')}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Info block */}
+            {/* Info sections */}
             <div
-              className="rounded-2xl p-5 space-y-4"
-              style={{ background: '#463129', border: '1px solid rgba(81,79,76,0.4)' }}
+              className="rounded-2xl p-5 space-y-5"
+              style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.05)' }}
             >
+              {/* О турнире */}
               <section>
-                <h3 className="font-bold text-base mb-2 uppercase tracking-wider" style={{ color: '#F2D8A7' }}>
+                <h3
+                  className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3"
+                  style={{ color: '#F2D8A7' }}
+                >
                   О турнире
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#8c8c88' }}>
+                <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
                   {live.description}
                 </p>
               </section>
 
-              <div style={{ height: 1, background: 'rgba(200,163,142,0.12)' }} />
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
 
+              {/* Особенности */}
               <section>
-                <h3 className="font-bold text-base mb-3 uppercase tracking-wider" style={{ color: '#F2D8A7' }}>
+                <h3
+                  className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3"
+                  style={{ color: '#F2D8A7' }}
+                >
                   Особенности
                 </h3>
                 <ul className="space-y-2">
-                  {live.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm" style={{ color: '#8c8c88' }}>
-                      <span className="mt-0.5 shrink-0" style={{ color: '#985c3a' }}>•</span>
-                      {feature}
+                  {live.features.map((f) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2.5 text-[13px] font-400"
+                      style={{ color: '#A39B98' }}
+                    >
+                      <span style={{ color: '#8C4C27', marginTop: 2 }}>•</span>
+                      {f}
                     </li>
                   ))}
                 </ul>
               </section>
 
-              <div style={{ height: 1, background: 'rgba(200,163,142,0.12)' }} />
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
 
+              {/* Запись */}
               <section>
-                <h3 className="font-bold text-base mb-2 uppercase tracking-wider" style={{ color: '#F2D8A7' }}>
+                <h3
+                  className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3"
+                  style={{ color: '#F2D8A7' }}
+                >
                   Запись на турниры
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#8c8c88' }}>
+                <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
                   Если вы записались, но не можете прийти — пожалуйста, отмените запись заранее,
                   чтобы не занимать место.
                 </p>
@@ -200,29 +225,29 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
         {/* Sticky CTA */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-4 pt-4"
+          className="absolute bottom-0 left-0 right-0 px-5 pt-4"
           style={{
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-            background: 'linear-gradient(to top, #110b09 70%, transparent)',
+            background: 'linear-gradient(to top, #0A0908 65%, transparent)',
           }}
         >
           <button
             onClick={() => toggleRegistration(live.id)}
-            className="w-full h-14 rounded-2xl font-bold text-base tracking-wide flex items-center justify-center gap-2.5 transition-all duration-300 active:scale-[0.97]"
+            className="w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 transition-all duration-300 active:scale-[0.97]"
             style={
               registered
-                ? { background: 'rgba(70,49,41,0.8)', border: '2px solid rgba(239,68,68,0.4)', color: '#f87171' }
+                ? { background: 'rgba(42,33,29,0.9)', border: '1.5px solid rgba(239,68,68,0.4)', color: '#f87171' }
                 : {
                     background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                    color: '#110b09',
-                    boxShadow: '0 0 22px rgba(217,153,98,0.4)',
+                    color: '#0A0908',
+                    boxShadow: '0 0 24px rgba(217,153,98,0.35)',
                   }
             }
           >
             {registered ? (
-              <><XCircle size={20} />Отменить запись</>
+              <><XCircle size={19} />Отменить запись</>
             ) : (
-              <><CheckCircle2 size={20} />Участвовать</>
+              <><CheckCircle2 size={19} />Участвовать</>
             )}
           </button>
         </div>
