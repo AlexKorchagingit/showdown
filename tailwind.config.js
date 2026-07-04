@@ -6,6 +6,14 @@ export default {
       fontFamily: {
         sans: ['Montserrat', 'system-ui', 'sans-serif'],
       },
+      fontWeight: {
+        400: '400',
+        500: '500',
+        600: '600',
+        700: '700',
+        800: '800',
+        900: '900',
+      },
       colors: {
         obsidian: '#0A0908',
         card:     '#2A211D',

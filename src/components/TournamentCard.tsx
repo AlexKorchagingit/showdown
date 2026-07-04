@@ -6,42 +6,19 @@ interface Props {
   onClick: (tournament: Tournament) => void;
 }
 
-// Decorative suit characters for the image placeholder
-const SUITS = ['♠', '♥', '♦', '♣'];
 
 function ImageThumb({ title }: { title: string }) {
   return (
     <div
-      className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden relative flex items-center justify-center"
-      style={{ background: 'linear-gradient(135deg, #1A130F 0%, #3a2520 100%)' }}
+      className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+      style={{ background: 'linear-gradient(135deg, #1A130F 0%, #2d2020 100%)' }}
     >
-      {SUITS.slice(0, 2).map((s, i) => (
-        <span
-          key={i}
-          className="absolute select-none"
-          style={{
-            color: '#c8a38e', opacity: 0.12,
-            fontSize: `${18 + i * 10}px`,
-            top: `${[8, 48][i]}%`, left: `${[10, 50][i]}%`,
-            transform: `rotate(${[-12, 15][i]}deg)`,
-          }}
-        >
-          {s}
-        </span>
-      ))}
-      <span
-        className="relative z-10 text-[32px] leading-none"
-        style={{ color: '#D99962', opacity: 0.45 }}
-      >
-        ♠
-      </span>
-      {/* small title overlay */}
-      <p
-        className="absolute bottom-1.5 left-0 right-0 text-center text-[8px] font-700 uppercase tracking-widest px-1 truncate"
-        style={{ color: '#c8a38e', opacity: 0.7 }}
-      >
-        {title.split(' ')[0]}
-      </p>
+      <img
+        src="/fishka.svg"
+        alt={title}
+        className="w-16 h-16 object-contain"
+        style={{ opacity: 0.8 }}
+      />
     </div>
   );
 }

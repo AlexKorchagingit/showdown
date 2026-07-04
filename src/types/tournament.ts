@@ -4,6 +4,7 @@ export interface Tournament {
   id: string;
   title: string;
   imageUrl: string;
+  address: string;
   startDate: string;
   startTime: string;
   totalSeats: number;

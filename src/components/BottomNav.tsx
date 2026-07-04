@@ -84,7 +84,7 @@ export function BottomNav() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -8 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
-                        className="text-[10px] font-700 uppercase tracking-wide leading-none select-none whitespace-nowrap"
+                        className="text-[10px] font-bold uppercase tracking-wide leading-none select-none whitespace-nowrap"
                         style={{ color: '#c8a38e' }}
                       >
                         {label}

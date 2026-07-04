@@ -1,10 +1,13 @@
 import type { Tournament } from '../types/tournament';
 
+const CLUB_ADDRESS = 'г. Брянск, ул. Покровская, 1';
+
 export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '1',
     title: 'ROYAL FREEZEOUT',
-    imageUrl: '',
+    imageUrl: '/fishka.svg',
+    address: CLUB_ADDRESS,
     startDate: '2026-07-05',
     startTime: '19:00',
     totalSeats: 36,
@@ -33,7 +36,8 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '2',
     title: 'GOLDEN BOUNTY',
-    imageUrl: '',
+    imageUrl: '/fishka.svg',
+    address: CLUB_ADDRESS,
     startDate: '2026-07-06',
     startTime: '15:00',
     totalSeats: 36,
@@ -61,7 +65,8 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '3',
     title: 'SATURDAY DEEPSTACK',
-    imageUrl: '',
+    imageUrl: '/fishka.svg',
+    address: CLUB_ADDRESS,
     startDate: '2026-07-07',
     startTime: '17:00',
     totalSeats: 36,
@@ -88,7 +93,8 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '4',
     title: 'TURBO CHAMPIONSHIP',
-    imageUrl: '',
+    imageUrl: '/fishka.svg',
+    address: CLUB_ADDRESS,
     startDate: '2026-06-28',
     startTime: '14:00',
     totalSeats: 36,
@@ -113,7 +119,8 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '5',
     title: 'KINGS CLASSIC',
-    imageUrl: '',
+    imageUrl: '/fishka.svg',
+    address: CLUB_ADDRESS,
     startDate: '2026-06-25',
     startTime: '19:00',
     totalSeats: 36,

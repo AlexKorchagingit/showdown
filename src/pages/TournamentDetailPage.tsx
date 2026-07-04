@@ -32,25 +32,19 @@ const ALL_PARTICIPANTS = [
   { id: '20', nickname: 'MaximN',        rating:  640 },
 ];
 
-const SUIT_ICONS = ['♠', '♥', '♦', '♣', '♠', '♥'];
-
 function HeroImage({ title }: { title: string }) {
   return (
     <div className="relative w-full h-52 overflow-hidden"
          style={{ background: 'linear-gradient(135deg, #3a2015 0%, #2A211D 55%, #0A0908 100%)' }}>
-      {SUIT_ICONS.map((s, i) => (
-        <span key={i} className="absolute select-none"
-          style={{ color: '#F2D8A7', opacity: 0.055,
-            fontSize: `${60 + i * 20}px`,
-            top:  `${[-10, 30, 55, 10, 40, -5][i]}%`,
-            left: `${[5, 55, 20, 75, 40, 85][i]}%`,
-            transform: `rotate(${[-20, 15, -10, 25, -5, 12][i]}deg)` }}>
-          {s}
-        </span>
-      ))}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-        <span style={{ color: '#D99962', fontSize: '3.8rem', opacity: 0.38 }}>♠</span>
-        <h2 className="text-white text-[17px] font-900 uppercase tracking-[0.25em] px-6 text-center leading-tight">
+      {/* fishka image — centred, slightly opaque */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <img src="/fishka.svg" alt="" className="h-36 w-auto object-contain"
+             style={{ opacity: 0.35 }} />
+      </div>
+      {/* Tournament title overlay */}
+      <div className="absolute inset-0 flex flex-col items-end justify-end px-6 pb-5">
+        <h2 className="text-white text-[18px] font-900 uppercase tracking-widest text-right leading-tight"
+            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}>
           {title}
         </h2>
       </div>
@@ -209,37 +203,27 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   {participants.map((p, idx) => {
                     const isFinished   = live.status === 'finished';
                     const isPodium     = isFinished && idx < 3;   // top-3: wreath + gradient
-                    const isFinalist   = isFinished && idx < 9;   // 4-9: gradient + badge
-                    const isFinalTable = isFinished && idx < 9;   // 1-9 combined
-
-                    // Wreath colours per podium position
-                    const wreathColor = ['#D99962', '#8c8c88', '#8C4C27'][idx] ?? null;
-
-                    // Section header dividers for finished tournaments
-                    const showFinalTableHeader  = isFinished && idx === 0;
-                    const showRestHeader        = isFinished && idx === 9;
+                    const isFinalTable = isFinished && idx < 9;   // 1-9: gold gradient text
+                    const wreathColor  = ['#D99962', '#8c8c88', '#8C4C27'][idx] ?? null;
 
                     return (
                       <div key={p.id}>
-                        {/* "Финальный стол" header */}
-                        {showFinalTableHeader && (
-                          <div
-                            className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
-                            style={{ color: '#D99962' }}
-                          >
-                            🏆 Финальный стол
-                          </div>
+                        {/* "Финальный стол" header + thick top border */}
+                        {isFinished && idx === 0 && (
+                          <>
+                            <div className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
+                                 style={{ color: '#D99962' }}>
+                              🏆 Финальный стол
+                            </div>
+                            {/* Thick gold border above final table */}
+                            <div style={{ height: 2, background: 'rgba(217,153,98,0.35)', margin: '0 16px 4px' }} />
+                          </>
                         )}
-                        {/* "Остальные участники" divider */}
-                        {showRestHeader && (
-                          <div
-                            className="px-5 pt-3 pb-1 text-[10px] font-600 uppercase tracking-[0.15em]"
-                            style={{
-                              color: '#6B6360',
-                              borderTop: '1px solid rgba(255,255,255,0.06)',
-                            }}
-                          >
-                            Остальные участники
+
+                        {/* Thick border AFTER 9th place */}
+                        {isFinished && idx === 8 && participants.length > 9 && (
+                          <div>
+                            {/* Row rendered below, then border after */}
                           </div>
                         )}
 
@@ -247,21 +231,20 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                         <div
                           className="flex items-center gap-3.5 px-5 py-3"
                           style={{
-                            borderTop:
-                              idx > 0 && !(showFinalTableHeader || showRestHeader)
-                                ? '1px solid rgba(255,255,255,0.05)'
-                                : 'none',
+                            borderTop: idx > 0 && !(isFinished && idx === 0)
+                              ? '1px solid rgba(255,255,255,0.05)'
+                              : 'none',
                           }}
                         >
-                          {/* Rank number */}
+                          {/* Rank */}
                           <span
                             className="text-[11px] font-700 w-5 text-right shrink-0"
-                            style={{ color: isFinalTable ? '#D99962' : '#6B6360' }}
+                            style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                           >
                             {idx + 1}
                           </span>
 
-                          {/* Avatar — wreath ring for top-3 */}
+                          {/* Avatar — wreath for top-3 */}
                           <div className="relative shrink-0">
                             {isPodium && (
                               <div
@@ -278,16 +261,16 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                               style={{
                                 background: isFinalTable
                                   ? 'rgba(140,76,39,0.28)'
-                                  : 'rgba(255,255,255,0.06)',
-                                color: isFinalTable ? '#c8a38e' : '#6B6360',
+                                  : 'rgba(255,255,255,0.08)',
+                                color: isFinalTable ? '#c8a38e' : '#A39B98',
                               }}
                             >
                               {p.nickname[0].toUpperCase()}
                             </div>
                           </div>
 
-                          {/* Nickname + optional ФИНАЛИСТ badge */}
-                          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                          {/* Nickname */}
+                          <div className="flex-1 min-w-0">
                             <p
                               className="text-[13px] font-600 truncate"
                               style={
@@ -298,35 +281,26 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                                       WebkitTextFillColor: 'transparent',
                                       backgroundClip: 'text',
                                     }
-                                  : { color: '#A39B98' }
+                                  : { color: '#ffffff' }   /* places 10+: white */
                               }
                             >
                               {p.nickname}
                             </p>
-
-                            {/* ФИНАЛИСТ badge — places 4-9 only */}
-                            {isFinalist && !isPodium && (
-                              <span
-                                className="text-[8px] font-700 uppercase tracking-wide px-1.5 py-0.5 rounded shrink-0"
-                                style={{
-                                  background: 'rgba(217,153,98,0.12)',
-                                  color: '#D99962',
-                                  border: '1px solid rgba(217,153,98,0.28)',
-                                }}
-                              >
-                                ФИНАЛИСТ
-                              </span>
-                            )}
                           </div>
 
                           {/* Rating */}
                           <p
                             className="text-[12px] font-700 shrink-0"
-                            style={{ color: isFinalTable ? '#D99962' : '#6B6360' }}
+                            style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                           >
                             {p.rating.toLocaleString('ru-RU')}
                           </p>
                         </div>
+
+                        {/* Thick gold border AFTER 9th place */}
+                        {isFinished && idx === 8 && participants.length > 9 && (
+                          <div style={{ height: 2, background: 'rgba(217,153,98,0.35)', margin: '4px 16px' }} />
+                        )}
                       </div>
                     );
                   })}
