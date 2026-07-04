@@ -53,11 +53,11 @@ export function TournamentCard({ tournament, onClick }: Props) {
   const isFull      = seatsLeft === 0;
   const isFinished  = status === 'finished';
 
-  // "Суббота, 5 июля"
-  const dateObj    = new Date(startDate);
-  const weekday    = dateObj.toLocaleDateString('ru-RU', { weekday: 'long' });
-  const dayMonth   = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-  const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  // "СУББОТА 5 июля" — uppercase weekday, no comma
+  const dateObj      = new Date(startDate);
+  const weekday      = dateObj.toLocaleDateString('ru-RU', { weekday: 'long' });
+  const dayMonth     = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  const weekdayUpper = weekday.toUpperCase();
 
   return (
     <button
@@ -70,7 +70,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
       }}
     >
       {/* Horizontal layout: text left, image right */}
-      <div className="flex items-center gap-3 px-4 py-3.5">
+      <div className="flex items-center gap-3 px-4 py-4" style={{ minHeight: 110 }}>
         {/* Left: title + date */}
         <div className="flex-1 min-w-0 space-y-1.5">
           <h3 className="text-white font-700 text-[14px] uppercase tracking-wide leading-tight truncate">
@@ -79,8 +79,8 @@ export function TournamentCard({ tournament, onClick }: Props) {
 
           {/* Weekday bold gold + date muted + time */}
           <div className="flex items-center gap-1.5 text-[12px] font-500 flex-wrap">
-            <span className="font-700" style={{ color: '#D99962' }}>{weekdayCap}</span>
-            <span style={{ color: '#A39B98' }}>, {dayMonth}</span>
+            <span className="font-700" style={{ color: '#D99962' }}>{weekdayUpper}</span>
+            <span style={{ color: '#A39B98' }}>{dayMonth}</span>
             <span className="opacity-25 text-white mx-0.5">·</span>
             <Clock size={11} style={{ color: '#c8a38e' }} />
             <span style={{ color: '#A39B98' }}>{startTime}</span>

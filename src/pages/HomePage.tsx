@@ -61,10 +61,9 @@ function HeroCard({ onPress }: { onPress: () => void }) {
       onClick={onPress}
       className="w-full text-left rounded-2xl overflow-hidden active:scale-[0.984] transition-transform duration-150"
       style={{
-        /* Noticeably lighter than other cards — makes it the main accent */
-        background: 'linear-gradient(135deg, #514f4c 0%, #3a3633 100%)',
-        border: '1px solid rgba(217,153,98,0.28)',
-        boxShadow: '0 4px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(217,153,98,0.06)',
+        background: 'linear-gradient(135deg, #463129 0%, #3a2720 100%)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 4px 28px rgba(0,0,0,0.5)',
         minHeight: 200,
       }}
     >
@@ -197,27 +196,26 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         {PODIUM.map((p) => <PodiumPlayer key={p.rank} player={p} />)}
       </div>
 
-      {/* Current user position strip — distinct bg, gold border */}
+      {/* Current user — gold gradient strip, dark text for contrast */}
       <div
         className="flex items-center gap-3 rounded-2xl px-4 py-3"
-        style={{
-          background: '#1d0b07',
-          border: '1px solid rgba(217,153,98,0.3)',
-        }}
+        style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
       >
-        <span className="text-[14px] font-800 w-10 shrink-0" style={{ color: '#A39B98' }}>
+        <span className="text-[14px] font-800 w-10 shrink-0" style={{ color: '#110b09' }}>
           #{CURRENT_USER_RATING.rank}
         </span>
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-          style={{ background: 'rgba(140,76,39,0.25)', color: '#c8a38e' }}
+          style={{ background: 'rgba(17,11,9,0.15)', color: '#110b09' }}
         >
           {CURRENT_USER_RATING.initial}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white text-[13px] font-600 truncate">{CURRENT_USER_RATING.nickname}</p>
+          <p className="text-[13px] font-700 truncate" style={{ color: '#110b09' }}>
+            {CURRENT_USER_RATING.nickname}
+          </p>
         </div>
-        <p className="text-[13px] font-700 shrink-0" style={{ color: '#D99962' }}>
+        <p className="text-[13px] font-800 shrink-0" style={{ color: '#110b09' }}>
           {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}
         </p>
       </div>
@@ -246,8 +244,8 @@ function InfoGrid() {
           key={label}
           className="text-left rounded-2xl p-4 active:brightness-110 transition-all"
           style={{
-            /* Stronger gradient — more depth and volume */
-            background: 'linear-gradient(to bottom right, #5a1c0c, #231A16)',
+            /* Dark left → light right */
+            background: 'linear-gradient(to right, #231A16, #463129)',
             border: '1px solid rgba(255,255,255,0.06)',
           }}
         >

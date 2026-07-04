@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Crosshair, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { RatingPlayer } from '../types/player';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL } from '../types/player';
 
@@ -11,89 +11,127 @@ const MONTHS = [
   'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
 ];
 
-const rankColor = (rank: number): string => {
+// Glow colour per rank
+const TOP3_GLOW: Record<number, string> = {
+  1: '#D99962',
+  2: '#8c8c88',
+  3: '#8C4C27',
+};
+
+const rankTextColor = (rank: number): string => {
   if (rank === 1) return '#F2D8A7';
   if (rank === 2) return '#A39B98';
-  if (rank === 3) return '#8C4C27';
+  if (rank === 3) return '#c8a38e';
   return '#6B6360';
 };
 
-// ─── Table header ─────────────────────────────────────────────────────────────
+// ─── Column header ────────────────────────────────────────────────────────────
 function TableHeader() {
   return (
     <div
       className="flex items-center px-4 py-2 text-[10px] font-600 uppercase tracking-wider"
       style={{ color: '#69584f' }}
     >
+      {/* rank */}
       <span className="w-7 shrink-0 text-center">#</span>
+      {/* avatar spacer */}
       <span className="w-8 shrink-0" />
+      {/* nickname */}
       <span className="flex-1 min-w-0 pl-2">Никнейм</span>
-      {/* Knockouts — Crosshair icon */}
+      {/* Турниры (played) — extra right margin to visually separate */}
+      <span className="w-14 shrink-0 text-center pr-2">Турниры</span>
+      {/* Победы (won) */}
+      <span className="w-10 shrink-0 text-center">Победы</span>
+      {/* Нокауты — Crosshair icon */}
       <span className="w-9 shrink-0 flex items-center justify-center">
         <Crosshair size={11} />
       </span>
-      {/* Games played — "Турниры" */}
-      <span className="w-12 shrink-0 text-center">Турниры</span>
-      {/* Wins — Trophy icon */}
-      <span className="w-9 shrink-0 flex items-center justify-center">
-        <Trophy size={10} />
-      </span>
+      {/* Рейтинг */}
       <span className="w-14 shrink-0 text-right">Рейтинг</span>
     </div>
   );
 }
 
-// ─── Single player row ────────────────────────────────────────────────────────
+// ─── Player row card ──────────────────────────────────────────────────────────
 function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
-  const isTop3 = rank <= 3;
+  const isTop3     = rank <= 3;
+  const glowColor  = isTop3 ? TOP3_GLOW[rank] : null;
 
   return (
-    <div
-      className="flex items-center px-4 py-3"
-      style={{
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        background: isTop3 ? 'rgba(70,49,41,0.25)' : 'transparent',
-      }}
-    >
-      <span
-        className="w-7 shrink-0 text-center font-800 leading-none"
-        style={{ fontSize: isTop3 ? '18px' : '13px', color: rankColor(rank) }}
-      >
-        {rank}
-      </span>
+    <div className="relative">
+      {/* Glow ring for top-3 — pulsates independently */}
+      {isTop3 && (
+        <div
+          className="absolute inset-0 rounded-2xl animate-pulse pointer-events-none"
+          style={{ boxShadow: `0 0 10px ${glowColor}` }}
+        />
+      )}
 
+      {/* Row card */}
       <div
-        className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
+        className="relative z-10 flex items-center px-4 py-3 rounded-2xl"
         style={{
-          background: isTop3 ? 'rgba(140,76,39,0.28)' : 'rgba(255,255,255,0.06)',
-          color: isTop3 ? '#c8a38e' : '#A39B98',
+          background: isTop3 ? 'rgba(70,49,41,0.45)' : '#2A211D',
+          border: isTop3
+            ? `1px solid ${glowColor}50`
+            : '1px solid rgba(255,255,255,0.05)',
         }}
       >
-        {player.initial}
+        {/* Rank — all large + bold */}
+        <span
+          className="w-7 shrink-0 text-center font-800 leading-none"
+          style={{ fontSize: 18, color: rankTextColor(rank) }}
+        >
+          {rank}
+        </span>
+
+        {/* Avatar */}
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
+          style={{
+            background: isTop3 ? 'rgba(140,76,39,0.28)' : 'rgba(255,255,255,0.06)',
+            color: isTop3 ? '#c8a38e' : '#A39B98',
+          }}
+        >
+          {player.initial}
+        </div>
+
+        {/* Nickname */}
+        <div className="flex-1 min-w-0 pl-2">
+          <p
+            className="text-[13px] font-600 truncate"
+            style={{ color: isTop3 ? '#ffffff' : '#A39B98' }}
+          >
+            {player.nickname}
+          </p>
+        </div>
+
+        {/* Турниры (played) — extra right padding */}
+        <span
+          className="w-14 shrink-0 text-center text-[12px] font-500 pr-2"
+          style={{ color: '#A39B98' }}
+        >
+          {player.played}
+        </span>
+
+        {/* Победы (won) */}
+        <span className="w-10 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
+          {player.won}
+        </span>
+
+        {/* Нокауты (knockouts) */}
+        <span className="w-9 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
+          {player.knockouts}
+        </span>
+
+        {/* Рейтинг — most prominent */}
+        <span
+          className="w-14 shrink-0 text-right text-[13px] font-800"
+          style={{ color: '#F2D8A7' }}
+        >
+          {player.points.toLocaleString('ru-RU')}
+        </span>
       </div>
-
-      <div className="flex-1 min-w-0 pl-2">
-        <p className="text-[13px] font-600 truncate"
-           style={{ color: isTop3 ? '#ffffff' : '#A39B98' }}>
-          {player.nickname}
-        </p>
-      </div>
-
-      <span className="w-9 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
-        {player.knockouts}
-      </span>
-
-      <span className="w-12 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
-        {player.played}
-      </span>
-
-      <span className="w-9 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
-        {player.won}
-      </span>
-
-      <span className="w-14 shrink-0 text-right text-[13px] font-800" style={{ color: '#F2D8A7' }}>
-        {player.points.toLocaleString('ru-RU')}
-      </span>
     </div>
   );
 }
@@ -101,14 +139,12 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function RatingPage() {
   const [activeTab, setActiveTab]         = useState<RatingTab>('general');
-  // Default to actual current month
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const directionRef                      = useRef<number>(1);
 
   const handleTabChange = (tab: RatingTab) => {
     if (tab === activeTab) return;
     directionRef.current = tab === 'seasonal' ? 1 : -1;
-    // When switching to seasonal, reset to the real current month
     if (tab === 'seasonal') setSelectedMonth(new Date().getMonth());
     setActiveTab(tab);
   };
@@ -123,13 +159,12 @@ export function RatingPage() {
 
   return (
     <div className="flex flex-col h-full bg-obsidian">
-      {/* Header */}
       <div className="flex-shrink-0 px-5 pt-6 pb-4 space-y-4">
         <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
           РЕЙТИНГ
         </h1>
 
-        {/* Общий / Сезонный */}
+        {/* Tab switcher */}
         <div className="relative flex rounded-xl p-1" style={{ background: '#1E1612' }}>
           {(['general', 'seasonal'] as RatingTab[]).map((tab) => (
             <button
@@ -153,7 +188,7 @@ export function RatingPage() {
           ))}
         </div>
 
-        {/* Month navigator — prev/current/next (only in Seasonal tab) */}
+        {/* Month navigator */}
         <AnimatePresence initial={false}>
           {activeTab === 'seasonal' && (
             <motion.div
@@ -175,11 +210,9 @@ export function RatingPage() {
                 >
                   <ChevronLeft size={18} strokeWidth={2.5} />
                 </button>
-
                 <span className="text-[15px] font-700 text-white tracking-wide">
                   {MONTHS[selectedMonth]}
                 </span>
-
                 <button
                   onClick={nextMonth}
                   className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform"
@@ -193,7 +226,7 @@ export function RatingPage() {
         </AnimatePresence>
       </div>
 
-      {/* Table with directional slide */}
+      {/* Leaderboard */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait" initial={false} custom={directionRef.current}>
           <motion.div
@@ -218,10 +251,7 @@ export function RatingPage() {
                 </p>
               </div>
             ) : (
-              <div
-                className="mx-4 rounded-2xl overflow-hidden"
-                style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
-              >
+              <div className="px-4 space-y-2">
                 <TableHeader />
                 {players.map((p, idx) => (
                   <PlayerRow key={p.id} player={p} rank={idx + 1} />

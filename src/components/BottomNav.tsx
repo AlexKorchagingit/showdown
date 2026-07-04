@@ -35,11 +35,11 @@ export function BottomNav() {
           >
             {({ isActive }) => (
               <>
-                {/* Bubble glides between active items */}
+                {/* Animated bubble */}
                 {isActive && (
                   <motion.div
                     layoutId="nav-bubble"
-                    className="absolute pointer-events-none rounded-full"
+                    className="absolute rounded-full pointer-events-none"
                     style={{
                       inset: '6px 4px',
                       background:
@@ -50,10 +50,16 @@ export function BottomNav() {
                   />
                 )}
 
-                {/* Icon (always visible) + label (only when active) */}
-                <div className="relative z-10 flex flex-col items-center justify-center gap-[3px] h-full w-full">
+                {/*
+                  Active:   flex-row  → icon on left, label on right
+                  Inactive: just icon centred
+                */}
+                <motion.div
+                  layout
+                  className="relative z-10 flex items-center justify-center gap-2"
+                >
                   <motion.div
-                    animate={{ scale: isActive ? 1.22 : 1, y: isActive ? -1 : 0 }}
+                    animate={{ scale: isActive ? 1.18 : 1 }}
                     transition={{ type: 'spring', stiffness: 380, damping: 22 }}
                   >
                     <Icon
@@ -61,28 +67,31 @@ export function BottomNav() {
                       strokeWidth={isActive ? 2.3 : 1.6}
                       style={{
                         color: isActive ? '#c8a38e' : '#6B6360',
-                        filter: isActive ? 'drop-shadow(0 0 5px rgba(200,163,142,0.6))' : 'none',
+                        filter: isActive
+                          ? 'drop-shadow(0 0 5px rgba(200,163,142,0.6))'
+                          : 'none',
                         transition: 'color 0.2s',
                       }}
                     />
                   </motion.div>
 
-                  {/* Label — ONLY active tab, bold + uppercase, fades in */}
+                  {/* Label — ONLY for active tab, to the RIGHT of icon */}
                   <AnimatePresence initial={false}>
                     {isActive && (
                       <motion.span
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 4 }}
-                        transition={{ duration: 0.15, delay: 0.05 }}
-                        className="text-[9px] font-700 uppercase tracking-wide leading-none select-none"
+                        key="label"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="text-[10px] font-700 uppercase tracking-wide leading-none select-none whitespace-nowrap"
                         style={{ color: '#c8a38e' }}
                       >
                         {label}
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </div>
+                </motion.div>
               </>
             )}
           </NavLink>

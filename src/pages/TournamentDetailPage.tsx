@@ -169,15 +169,20 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   ))}
                 </ul>
               </section>
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
-              <section>
-                <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
-                  Запись
-                </h3>
-                <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
-                  Если вы записались, но не можете прийти — отмените запись заранее, чтобы не занимать место.
-                </p>
-              </section>
+              {/* "Запись" section — hidden for past tournaments */}
+              {live.status !== 'finished' && (
+                <>
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                  <section>
+                    <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
+                      Запись
+                    </h3>
+                    <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
+                      Если вы записались, но не можете прийти — отмените запись заранее, чтобы не занимать место.
+                    </p>
+                  </section>
+                </>
+              )}
             </div>
 
             {/* ─── УЧАСТНИКИ ─── */}
@@ -237,15 +242,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           }}
         >
           {live.status === 'finished' ? (
-            /* Finished tournament — disabled, gray */
+            /* Finished tournament — solid filled gray, no opacity tricks */
             <button
               disabled
               className="w-full h-14 rounded-2xl font-700 text-[14px] tracking-wide flex items-center justify-center gap-2.5 cursor-not-allowed"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                color: '#6B6360',
-                border: '1px solid rgba(255,255,255,0.06)',
-              }}
+              style={{ background: '#514f4c', color: '#ffffff' }}
             >
               Турнир завершился
             </button>
