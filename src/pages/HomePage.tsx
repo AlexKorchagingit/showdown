@@ -14,16 +14,16 @@ export function HomePage() {
         <div
           className="w-24 h-24 rounded-3xl flex items-center justify-center"
           style={{
-            background: '#463129',
-            border: '1px solid rgba(200,163,142,0.25)',
-            boxShadow: '0 0 22px rgba(200,163,142,0.3)',
+            background: '#400904',
+            border: '1px solid rgba(217,153,98,0.3)',
+            boxShadow: '0 0 28px rgba(217,153,98,0.35)',
           }}
         >
-          <Spade size={48} className="text-[#c8a38e]" strokeWidth={1.5} />
+          <Spade size={48} strokeWidth={1.5} style={{ color: '#D99962' }} />
         </div>
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold tracking-widest text-white uppercase">SHOWDOWN</h1>
-          <p className="text-[#8c8c88] text-sm">Poker in Bryansk</p>
+          <p className="text-sm" style={{ color: '#D99962' }}>Poker in Bryansk</p>
         </div>
       </div>
 
@@ -33,11 +33,11 @@ export function HomePage() {
             key={item}
             className="flex items-center gap-3 rounded-xl px-4 py-3"
             style={{
-              background: '#463129',
-              border: '1px solid rgba(200,163,142,0.12)',
+              background: '#400904',
+              border: '1px solid rgba(140,76,39,0.4)',
             }}
           >
-            <span className="text-[#c8a38e] text-sm font-medium">{item}</span>
+            <span className="text-sm font-medium" style={{ color: '#F2D8A7' }}>{item}</span>
           </div>
         ))}
       </div>

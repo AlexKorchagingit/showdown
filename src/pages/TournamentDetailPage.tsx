@@ -15,15 +15,17 @@ function HeroImage({ title }: { title: string }) {
   return (
     <div
       className="relative w-full h-52 overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #463129 0%, #50444c 50%, #110b09 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #8C4C27 0%, #400904 55%, #0D0000 100%)' }}
     >
       {SUIT_ICONS.map((s, i) => (
         <span
           key={i}
-          className="absolute select-none text-[#c8a38e] opacity-[0.07]"
+          className="absolute select-none"
           style={{
+            color: '#F2D8A7',
+            opacity: 0.07,
             fontSize: `${60 + i * 20}px`,
-            top: `${[-10, 30, 55, 10, 40, -5][i]}%`,
+            top:  `${[-10, 30, 55, 10, 40, -5][i]}%`,
             left: `${[5, 55, 20, 75, 40, 85][i]}%`,
             transform: `rotate(${[-20, 15, -10, 25, -5, 12][i]}deg)`,
           }}
@@ -32,14 +34,14 @@ function HeroImage({ title }: { title: string }) {
         </span>
       ))}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-        <span className="text-[#c8a38e] text-6xl opacity-40">♠</span>
+        <span style={{ color: '#D99962', fontSize: '4rem', opacity: 0.45 }}>♠</span>
         <h2 className="text-white text-lg font-black tracking-[0.25em] uppercase px-4 text-center leading-tight">
           {title}
         </h2>
       </div>
       <div
         className="absolute inset-x-0 bottom-0 h-16"
-        style={{ background: 'linear-gradient(to top, #110b09, transparent)' }}
+        style={{ background: 'linear-gradient(to top, #0D0000, transparent)' }}
       />
     </div>
   );
@@ -49,13 +51,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { isRegistered, toggleRegistration, tournaments } = useTournaments();
   const [leaving, setLeaving] = useState(false);
 
-  const live = tournaments.find((t) => t.id === tournament.id) ?? tournament;
+  const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
   const registered = isRegistered(live.id);
 
   const formattedDate = new Date(live.startDate).toLocaleDateString('ru-RU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
+    weekday: 'long', day: 'numeric', month: 'long',
   });
 
   const handleBack = () => {
@@ -66,7 +66,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
   return (
     <>
-      {/* Full-screen fade overlay */}
+      {/* Fade overlay */}
       <div
         className="fixed inset-0 z-[70] bg-black pointer-events-none transition-opacity duration-300"
         style={{ opacity: leaving ? 1 : 0, transitionDelay: leaving ? '500ms' : '0ms' }}
@@ -75,18 +75,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
       <div
         className="fixed inset-0 z-[60] flex flex-col"
         style={{
-          background: '#110b09',
+          background: '#0D0000',
           opacity: leaving ? 0 : 1,
           transition: leaving ? 'opacity 300ms ease 500ms' : 'none',
         }}
       >
-        {/* Hero with back button */}
+        {/* Hero + back button */}
         <div className="relative flex-shrink-0">
           <HeroImage title={live.title} />
           <button
             onClick={handleBack}
             disabled={leaving}
-            className="absolute top-4 left-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg"
+            className="absolute top-4 left-4 w-14 h-14 rounded-full flex items-center justify-center"
             style={{
               background: 'linear-gradient(135deg, #dc2626, #991b1b)',
               boxShadow: '0 0 18px rgba(220,38,38,0.55)',
@@ -106,24 +106,24 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Title + date */}
             <div className="space-y-2">
               <h1 className="text-white text-2xl font-black tracking-wide">{live.title}</h1>
-              <div className="flex items-center gap-4 text-[#8c8c88] text-sm">
+              <div className="flex items-center gap-4 text-sm" style={{ color: '#D99962' }}>
                 <span className="flex items-center gap-1.5">
-                  <Calendar size={14} className="text-[#c8a38e]" />
+                  <Calendar size={14} style={{ color: '#F2D8A7' }} />
                   <span className="capitalize">{formattedDate}</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Clock size={14} className="text-[#c8a38e]" />
+                  <Clock size={14} style={{ color: '#F2D8A7' }} />
                   {live.startTime}
                 </span>
               </div>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress */}
             <div
               className="rounded-2xl p-4"
               style={{
-                background: '#463129',
-                border: '1px solid rgba(200,163,142,0.18)',
+                background: '#400904',
+                border: '1px solid rgba(217,153,98,0.2)',
               }}
             >
               <ProgressBar value={live.registeredSeats} max={live.totalSeats} />
@@ -132,21 +132,29 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Guarantee badge */}
             <div className="relative rounded-2xl overflow-hidden">
               <div
-                className="absolute inset-0 opacity-15"
-                style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e, #985c3a)' }}
+                className="absolute inset-0"
+                style={{
+                  background: 'linear-gradient(135deg, #8C4C27, #D99962)',
+                  opacity: 0.18,
+                }}
               />
               <div
-                className="relative flex items-center gap-3 px-4 py-4 border rounded-2xl"
-                style={{ borderColor: 'rgba(200,163,142,0.5)' }}
+                className="relative flex items-center gap-3 px-4 py-4 rounded-2xl"
+                style={{ border: '1px solid rgba(242,216,167,0.5)' }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e)' }}
+                  style={{ background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)' }}
                 >
-                  <Star size={20} className="text-[#110b09]" fill="currentColor" />
+                  <Star size={20} fill="currentColor" style={{ color: '#0D0000' }} />
                 </div>
                 <div>
-                  <p className="text-[#8c8c88] text-xs uppercase tracking-wider">Гарантия очков</p>
+                  <p
+                    className="text-xs uppercase tracking-wider"
+                    style={{ color: '#D99962' }}
+                  >
+                    Гарантия очков
+                  </p>
                   <p className="text-white font-black text-2xl tracking-wide">
                     {live.guarantee.toLocaleString('ru-RU')}
                   </p>
@@ -154,44 +162,59 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               </div>
             </div>
 
-            {/* About block */}
+            {/* Info block */}
             <div
               className="rounded-2xl p-5 space-y-4"
               style={{
-                background: '#463129',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: '#400904',
+                border: '1px solid rgba(140,76,39,0.3)',
               }}
             >
               <section>
-                <h3 className="text-[#c8a38e] font-bold text-base mb-2 uppercase tracking-wider">
+                <h3
+                  className="font-bold text-base mb-2 uppercase tracking-wider"
+                  style={{ color: '#F2D8A7' }}
+                >
                   О турнире
                 </h3>
-                <p className="text-[#8c8c88] text-sm leading-relaxed">{live.description}</p>
+                <p className="text-sm leading-relaxed" style={{ color: '#D99962' }}>
+                  {live.description}
+                </p>
               </section>
 
-              <div className="h-px" style={{ background: 'rgba(200,163,142,0.12)' }} />
+              <div style={{ height: 1, background: 'rgba(140,76,39,0.3)' }} />
 
               <section>
-                <h3 className="text-[#c8a38e] font-bold text-base mb-3 uppercase tracking-wider">
+                <h3
+                  className="font-bold text-base mb-3 uppercase tracking-wider"
+                  style={{ color: '#F2D8A7' }}
+                >
                   Особенности
                 </h3>
                 <ul className="space-y-2">
                   {live.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm text-[#8c8c88]">
-                      <span className="text-[#985c3a] mt-0.5 shrink-0">•</span>
+                    <li
+                      key={feature}
+                      className="flex items-start gap-2.5 text-sm"
+                      style={{ color: '#D99962' }}
+                    >
+                      <span className="mt-0.5 shrink-0" style={{ color: '#8C4C27' }}>•</span>
                       {feature}
                     </li>
                   ))}
                 </ul>
               </section>
 
-              <div className="h-px" style={{ background: 'rgba(200,163,142,0.12)' }} />
+              <div style={{ height: 1, background: 'rgba(140,76,39,0.3)' }} />
 
               <section>
-                <h3 className="text-[#c8a38e] font-bold text-base mb-2 uppercase tracking-wider">
+                <h3
+                  className="font-bold text-base mb-2 uppercase tracking-wider"
+                  style={{ color: '#F2D8A7' }}
+                >
                   Запись на турниры
                 </h3>
-                <p className="text-[#8c8c88] text-sm leading-relaxed">
+                <p className="text-sm leading-relaxed" style={{ color: '#D99962' }}>
                   Если вы записались, но не можете прийти — пожалуйста, отмените запись заранее,
                   чтобы не занимать место.
                 </p>
@@ -202,10 +225,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
         {/* Sticky CTA */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-4 pt-3"
+          className="absolute bottom-0 left-0 right-0 px-4 pt-4"
           style={{
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-            background: 'linear-gradient(to top, #110b09 70%, transparent)',
+            background: 'linear-gradient(to top, #0D0000 70%, transparent)',
           }}
         >
           <button
@@ -214,14 +237,14 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             style={
               registered
                 ? {
-                    background: '#2a1818',
-                    border: '2px solid rgba(239,68,68,0.4)',
+                    background: 'rgba(64,9,4,0.8)',
+                    border: '2px solid rgba(239,68,68,0.45)',
                     color: '#f87171',
                   }
                 : {
-                    background: 'linear-gradient(135deg, #94543c, #c8a38e)',
-                    color: '#110b09',
-                    boxShadow: '0 0 22px rgba(200,163,142,0.4)',
+                    background: 'linear-gradient(135deg, #8C4C27, #D99962)',
+                    color: '#0D0000',
+                    boxShadow: '0 0 24px rgba(217,153,98,0.45)',
                   }
             }
           >
@@ -242,10 +265,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
       <style>{`
         @keyframes spin-once {
-          0%   { transform: rotate(0deg) scale(1); }
+          0%   { transform: rotate(0deg)   scale(1);    }
           40%  { transform: rotate(200deg) scale(1.15); }
           70%  { transform: rotate(340deg) scale(0.95); }
-          100% { transform: rotate(360deg) scale(1); }
+          100% { transform: rotate(360deg) scale(1);    }
         }
       `}</style>
     </>

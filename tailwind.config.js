@@ -7,36 +7,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Rose gold / obsidian palette
-        rg: {
-          light:   '#c8a38e',  // rose gold highlight
-          mid:     '#985c3a',  // rose gold medium
-          dark:    '#94543c',  // rose gold dark
+        ember: {
+          light:   '#F2D8A7',  // cream — highlights, active labels
+          DEFAULT: '#D99962',  // amber — primary accent, icons
+          dark:    '#8C4C27',  // brown — secondary accent, borders
         },
-        wood: {
-          DEFAULT: '#463129',  // dark brown wood — card bg
-          mid:     '#69584f',  // medium warm gray-brown — surface
-          shadow:  '#50444c',  // dark purple-gray — nav bg
-          stone:   '#514f4c',  // dark gray-brown — raised surface
-        },
-        obsidian: {
-          DEFAULT: '#110b09',  // near-black — main bg
-        },
-        muted: {
-          DEFAULT: '#8c8c88',  // warm gray text
-          sub:     '#858484',  // neutral gray text
-          faint:   '#69584f',  // very subdued
+        coal: {
+          DEFAULT: '#400904',  // deep red-brown — card surfaces
+          deep:    '#0D0000',  // near-black — main background
         },
       },
       backgroundImage: {
-        'rg-gradient':        'linear-gradient(135deg, #94543c 0%, #c8a38e 60%, #985c3a 100%)',
-        'rg-gradient-subtle': 'linear-gradient(135deg, #94543c 0%, #c8a38e 100%)',
-        'card-gradient':      'linear-gradient(180deg, #463129 0%, #3d2a22 100%)',
+        'ember-gradient':      'linear-gradient(135deg, #8C4C27 0%, #D99962 55%, #F2D8A7 100%)',
+        'ember-gradient-soft': 'linear-gradient(135deg, #8C4C27 0%, #D99962 100%)',
+        'card-gradient':       'linear-gradient(180deg, #400904 0%, #360703 100%)',
       },
       boxShadow: {
-        'rg':    '0 0 22px rgba(200,163,142,0.4)',
-        'rg-sm': '0 0 10px rgba(200,163,142,0.25)',
-        'card':  '0 4px 24px rgba(0,0,0,0.6)',
+        'ember':    '0 0 22px rgba(217,153,98,0.45)',
+        'ember-sm': '0 0 10px rgba(217,153,98,0.25)',
+        'card':     '0 4px 28px rgba(0,0,0,0.7)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

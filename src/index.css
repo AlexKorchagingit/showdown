@@ -15,40 +15,26 @@
   }
 
   body {
-    background-color: #110b09;
+    background-color: #0D0000;
     color: #ffffff;
     font-family: 'Inter', system-ui, sans-serif;
     overscroll-behavior: none;
   }
 
-  ::-webkit-scrollbar {
-    display: none;
-  }
-
-  * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
 }
 
 @layer utilities {
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
   .scrollable {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .rg-text {
-    background: linear-gradient(135deg, #94543c 0%, #c8a38e 60%, #985c3a 100%);
+  .ember-text {
+    background: linear-gradient(135deg, #8C4C27 0%, #D99962 55%, #F2D8A7 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-  }
-
-  .rg-border {
-    border: 1px solid rgba(200, 163, 142, 0.25);
   }
 }

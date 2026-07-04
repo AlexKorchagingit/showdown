@@ -15,27 +15,27 @@ export default function App() {
     try {
       WebApp.ready();
       WebApp.expand();
-      WebApp.setHeaderColor('#110b09');
-      WebApp.setBackgroundColor('#110b09');
+      WebApp.setHeaderColor('#0D0000');
+      WebApp.setBackgroundColor('#0D0000');
     } catch {
-      // Running outside Telegram — silently ignore
+      // Outside Telegram — silently ignore
     }
   }, []);
 
   return (
     <TournamentProvider>
-      <div className="relative w-full bg-obsidian" style={{ height: '100dvh' }}>
+      <div className="relative w-full bg-coal-deep" style={{ height: '100dvh' }}>
         <div
           className="absolute inset-0 overflow-hidden"
           style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})` }}
         >
           <div className="h-full">
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/"            element={<HomePage />} />
               <Route path="/tournaments" element={<TournamentsPage />} />
-              <Route path="/rating" element={<RatingPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/rating"      element={<RatingPage />} />
+              <Route path="/profile"     element={<ProfilePage />} />
+              <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </div>

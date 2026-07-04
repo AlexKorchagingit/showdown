@@ -22,26 +22,30 @@ export function ProfilePage() {
             <div
               className="w-20 h-20 rounded-full flex items-center justify-center"
               style={{
-                background: '#50444c',
-                border: '2px solid rgba(200,163,142,0.4)',
+                background: '#400904',
+                border: '2px solid rgba(217,153,98,0.45)',
+                boxShadow: '0 0 16px rgba(217,153,98,0.2)',
               }}
             >
-              <User size={36} className="text-[#c8a38e]" strokeWidth={1.5} />
+              <User size={36} strokeWidth={1.5} style={{ color: '#D99962' }} />
             </div>
             <div
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[#110b09] text-xs font-bold"
-              style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e)' }}
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+              style={{
+                background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)',
+                color: '#0D0000',
+              }}
             >
               1
             </div>
           </div>
           <div className="text-center">
             <p className="text-white font-bold text-lg">Игрок</p>
-            <p className="text-[#69584f] text-xs mt-0.5">Новичок</p>
+            <p className="text-xs mt-0.5" style={{ color: '#8C4C27' }}>Новичок</p>
           </div>
         </div>
 
-        {/* Stats grid */}
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
             { label: 'Турниры', value: '3' },
@@ -52,56 +56,50 @@ export function ProfilePage() {
               key={s.label}
               className="rounded-xl p-3 text-center"
               style={{
-                background: '#463129',
-                border: '1px solid rgba(200,163,142,0.12)',
+                background: '#400904',
+                border: '1px solid rgba(140,76,39,0.35)',
               }}
             >
               <p className="text-white font-bold text-xl">{s.value}</p>
-              <p className="text-[#69584f] text-[11px] mt-0.5">{s.label}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: '#8C4C27' }}>{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Menu */}
         <div
-          className="rounded-2xl overflow-hidden divide-y"
+          className="rounded-2xl overflow-hidden"
           style={{
-            background: '#463129',
-            border: '1px solid rgba(255,255,255,0.05)',
-            ['--tw-divide-opacity' as string]: '1',
+            background: '#400904',
+            border: '1px solid rgba(140,76,39,0.3)',
           }}
         >
-          {MENU_ITEMS.map(({ icon: Icon, label, sub }) => (
+          {MENU_ITEMS.map(({ icon: Icon, label, sub }, idx) => (
             <button
               key={label}
-              className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors"
-              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
-              onPointerDown={(e) =>
-                (e.currentTarget.style.background = '#50444c')
-              }
-              onPointerUp={(e) =>
-                (e.currentTarget.style.background = 'transparent')
-              }
-              onPointerLeave={(e) =>
-                (e.currentTarget.style.background = 'transparent')
-              }
+              className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors active:brightness-125"
+              style={{
+                borderTop: idx > 0 ? '1px solid rgba(140,76,39,0.2)' : 'none',
+              }}
             >
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: '#514f4c' }}
+                style={{ background: 'rgba(140,76,39,0.35)' }}
               >
-                <Icon size={16} className="text-[#c8a38e]" />
+                <Icon size={16} style={{ color: '#D99962' }} />
               </div>
               <div className="flex-1 text-left">
                 <p className="text-white text-sm font-medium">{label}</p>
-                {sub && <p className="text-[#69584f] text-xs mt-0.5">{sub}</p>}
+                {sub && <p className="text-xs mt-0.5" style={{ color: '#8C4C27' }}>{sub}</p>}
               </div>
-              <ChevronRight size={16} className="text-[#69584f]" />
+              <ChevronRight size={16} style={{ color: '#8C4C27' }} />
             </button>
           ))}
         </div>
 
-        <p className="text-center text-[#514f4c] text-xs pb-2">SHOWDOWN v1.0.0</p>
+        <p className="text-center text-xs pb-2" style={{ color: '#400904' }}>
+          SHOWDOWN v1.0.0
+        </p>
       </div>
     </div>
   );

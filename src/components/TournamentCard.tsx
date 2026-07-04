@@ -10,17 +10,19 @@ const SUIT_ICONS = ['♠', '♥', '♦', '♣'];
 
 function TournamentImagePlaceholder({ title }: { title: string }) {
   return (
-    <div className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center"
-      style={{ background: 'linear-gradient(135deg, #463129 0%, #50444c 50%, #463129 100%)' }}
+    <div
+      className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center"
+      style={{ background: 'linear-gradient(135deg, #400904 0%, #8C4C27 50%, #400904 100%)' }}
     >
-      <div className="absolute inset-0 opacity-10">
+      <div className="absolute inset-0 opacity-[0.12]">
         {SUIT_ICONS.map((s, i) => (
           <span
             key={i}
-            className="absolute text-[#c8a38e] select-none"
+            className="absolute select-none"
             style={{
+              color: '#F2D8A7',
               fontSize: `${24 + (i % 3) * 12}px`,
-              top: `${[10, 50, 20, 60][i]}%`,
+              top:  `${[10, 50, 20, 60][i]}%`,
               left: `${[10, 70, 40, 25][i]}%`,
               transform: `rotate(${[-15, 20, -5, 10][i]}deg)`,
             }}
@@ -30,8 +32,8 @@ function TournamentImagePlaceholder({ title }: { title: string }) {
         ))}
       </div>
       <div className="relative z-10 text-center px-4">
-        <div className="text-[#c8a38e] text-4xl mb-1 opacity-40">♠</div>
-        <p className="text-white font-bold text-sm tracking-widest uppercase opacity-70 leading-tight">
+        <div className="text-4xl mb-1" style={{ color: '#D99962', opacity: 0.45 }}>♠</div>
+        <p className="text-white font-bold text-sm tracking-widest uppercase opacity-80 leading-tight">
           {title}
         </p>
       </div>
@@ -42,35 +44,42 @@ function TournamentImagePlaceholder({ title }: { title: string }) {
 export function TournamentCard({ tournament, onClick }: Props) {
   const { title, startDate, startTime, totalSeats, registeredSeats, buyIn, status } = tournament;
 
-  const seatsLeft = totalSeats - registeredSeats;
-  const isFull = seatsLeft === 0;
+  const seatsLeft   = totalSeats - registeredSeats;
+  const isFull      = seatsLeft === 0;
   const fillPercent = Math.round((registeredSeats / totalSeats) * 100);
 
   const formattedDate = new Date(startDate).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
+    day: 'numeric', month: 'long',
   });
 
   return (
     <button
       onClick={() => onClick(tournament)}
-      className="w-full text-left rounded-2xl overflow-hidden shadow-card active:scale-[0.98] transition-transform duration-150 border border-[rgba(200,163,142,0.15)]"
-      style={{ background: 'linear-gradient(180deg, #463129 0%, #3d2a22 100%)' }}
+      className="w-full text-left rounded-2xl overflow-hidden shadow-card active:scale-[0.98] transition-transform duration-150"
+      style={{
+        background: 'linear-gradient(180deg, #400904 0%, #360703 100%)',
+        border: '1px solid rgba(217,153,98,0.18)',
+      }}
     >
       <TournamentImagePlaceholder title={title} />
 
       <div className="p-4 space-y-3">
+        {/* Title + buy-in */}
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-white font-bold text-base tracking-wide leading-tight">{title}</h3>
           <span
-            className="shrink-0 text-xs font-bold text-[#110b09] px-2.5 py-1 rounded-lg whitespace-nowrap"
-            style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e)' }}
+            className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap"
+            style={{
+              background: 'linear-gradient(135deg, #8C4C27, #D99962)',
+              color: '#0D0000',
+            }}
           >
             {buyIn.toLocaleString('ru-RU')} ₽
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[#8c8c88] text-xs">
+        {/* Date + time */}
+        <div className="flex items-center gap-4 text-xs" style={{ color: '#D99962' }}>
           <span className="flex items-center gap-1.5">
             <Calendar size={13} />
             {formattedDate}
@@ -81,9 +90,10 @@ export function TournamentCard({ tournament, onClick }: Props) {
           </span>
         </div>
 
+        {/* Seats + progress */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 text-[#8c8c88]">
+            <span className="flex items-center gap-1.5" style={{ color: '#D99962' }}>
               <Users size={13} />
               {isFull ? (
                 <span className="text-red-400 font-medium">Мест нет</span>
@@ -95,19 +105,25 @@ export function TournamentCard({ tournament, onClick }: Props) {
                 </span>
               )}
             </span>
-            <span className={`font-medium ${fillPercent >= 80 ? 'text-red-400' : 'text-[#c8a38e]'}`}>
+            <span
+              className="font-medium"
+              style={{ color: fillPercent >= 80 ? '#ef4444' : '#F2D8A7' }}
+            >
               {fillPercent}%
             </span>
           </div>
 
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#514f4c' }}>
+          <div
+            className="h-1.5 rounded-full overflow-hidden"
+            style={{ background: 'rgba(140,76,39,0.35)' }}
+          >
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${fillPercent}%`,
                 background: fillPercent >= 80
-                  ? 'linear-gradient(90deg, #c8a38e, #ef4444)'
-                  : 'linear-gradient(90deg, #94543c, #c8a38e)',
+                  ? 'linear-gradient(90deg, #D99962, #ef4444)'
+                  : 'linear-gradient(90deg, #8C4C27, #F2D8A7)',
               }}
             />
           </div>
@@ -115,7 +131,10 @@ export function TournamentCard({ tournament, onClick }: Props) {
 
         {status === 'finished' && (
           <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-[#858484] bg-[#514f4c] px-2.5 py-1 rounded-full">
+            <span
+              className="text-xs px-2.5 py-1 rounded-full"
+              style={{ color: '#8C4C27', background: 'rgba(140,76,39,0.2)' }}
+            >
               Завершён
             </span>
           </div>

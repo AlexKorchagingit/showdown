@@ -22,19 +22,21 @@ export function RatingPage() {
         <div
           className="rounded-2xl p-4 flex items-center gap-4"
           style={{
-            background: '#463129',
-            border: '1px solid rgba(200,163,142,0.22)',
+            background: '#400904',
+            border: '1px solid rgba(217,153,98,0.25)',
           }}
         >
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e)' }}
+            style={{ background: 'linear-gradient(135deg, #8C4C27, #D99962)' }}
           >
-            <Trophy size={22} className="text-[#110b09]" />
+            <Trophy size={22} style={{ color: '#0D0000' }} />
           </div>
           <div>
             <p className="text-white font-bold">Сезон Июль 2026</p>
-            <p className="text-[#8c8c88] text-xs mt-0.5">Рейтинг обновляется после каждого турнира</p>
+            <p className="text-xs mt-0.5" style={{ color: '#D99962' }}>
+              Рейтинг обновляется после каждого турнира
+            </p>
           </div>
         </div>
 
@@ -43,27 +45,27 @@ export function RatingPage() {
           {MOCK_PLAYERS.map((p) => (
             <div
               key={p.rank}
-              className="flex items-center gap-3 rounded-xl px-4 py-3 border transition-all"
+              className="flex items-center gap-3 rounded-xl px-4 py-3"
               style={{
-                background: p.rank <= 3 ? '#3d2820' : '#463129',
-                borderColor: p.rank <= 3
-                  ? 'rgba(200,163,142,0.28)'
-                  : 'rgba(255,255,255,0.05)',
+                background: p.rank <= 3 ? '#400904' : 'rgba(64,9,4,0.6)',
+                border: `1px solid ${p.rank <= 3 ? 'rgba(242,216,167,0.25)' : 'rgba(140,76,39,0.2)'}`,
               }}
             >
               <div className="w-8 text-center">
                 {p.badge ? (
                   <span className="text-xl">{p.badge}</span>
                 ) : (
-                  <span className="text-[#69584f] font-bold text-sm">#{p.rank}</span>
+                  <span className="font-bold text-sm" style={{ color: '#8C4C27' }}>
+                    #{p.rank}
+                  </span>
                 )}
               </div>
               <div className="flex-1">
                 <p className="text-white font-medium text-sm">{p.name}</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <Medal size={13} className="text-[#c8a38e]" />
-                <span className="text-[#c8a38e] font-bold text-sm">
+                <Medal size={13} style={{ color: '#D99962' }} />
+                <span className="font-bold text-sm" style={{ color: '#F2D8A7' }}>
                   {p.points.toLocaleString('ru-RU')}
                 </span>
               </div>
@@ -71,16 +73,16 @@ export function RatingPage() {
           ))}
         </div>
 
-        {/* Info note */}
+        {/* Info */}
         <div
           className="flex items-center gap-3 rounded-xl px-4 py-3"
           style={{
-            background: '#3d2820',
-            border: '1px solid rgba(200,163,142,0.35)',
+            background: '#400904',
+            border: '1px solid rgba(217,153,98,0.35)',
           }}
         >
-          <BarChart2 size={18} className="text-[#c8a38e] shrink-0" />
-          <p className="text-[#8c8c88] text-xs">
+          <BarChart2 size={18} className="shrink-0" style={{ color: '#D99962' }} />
+          <p className="text-xs" style={{ color: '#D99962' }}>
             Полный рейтинг будет доступен после первого сезона турниров
           </p>
         </div>
