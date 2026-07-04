@@ -236,23 +236,40 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             background: 'linear-gradient(to top, #0A0908 65%, transparent)',
           }}
         >
-          <button
-            onClick={() => toggleRegistration(live.id)}
-            className="w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 transition-all duration-300 active:scale-[0.97]"
-            style={
-              registered
-                ? { background: 'rgba(42,33,29,0.9)', border: '1.5px solid rgba(239,68,68,0.38)', color: '#f87171' }
-                : {
-                    background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                    color: '#0A0908',
-                    boxShadow: '0 0 24px rgba(217,153,98,0.32)',
-                  }
-            }
-          >
-            {registered
-              ? <><XCircle size={19} />Отменить запись</>
-              : <><CheckCircle2 size={19} />Участвовать</>}
-          </button>
+          {live.status === 'finished' ? (
+            /* Finished tournament — disabled, gray */
+            <button
+              disabled
+              className="w-full h-14 rounded-2xl font-700 text-[14px] tracking-wide flex items-center justify-center gap-2.5 cursor-not-allowed"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                color: '#6B6360',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              Турнир завершился
+            </button>
+          ) : registered ? (
+            <button
+              onClick={() => toggleRegistration(live.id)}
+              className="w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
+              style={{ background: 'rgba(42,33,29,0.9)', border: '1.5px solid rgba(239,68,68,0.38)', color: '#f87171' }}
+            >
+              <XCircle size={19} />Отменить запись
+            </button>
+          ) : (
+            <button
+              onClick={() => toggleRegistration(live.id)}
+              className="w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
+              style={{
+                background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                color: '#0A0908',
+                boxShadow: '0 0 24px rgba(217,153,98,0.32)',
+              }}
+            >
+              <CheckCircle2 size={19} />Участвовать
+            </button>
+          )}
         </div>
       </div>
     </>

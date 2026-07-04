@@ -1,17 +1,16 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Trophy } from 'lucide-react';
+import { Crosshair, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { RatingPlayer } from '../types/player';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL } from '../types/player';
 
 type RatingTab = 'general' | 'seasonal';
 
 const MONTHS = [
-  'Янв','Фев','Мар','Апр','Май','Июн',
-  'Июл','Авг','Сен','Окт','Ноя','Дек',
+  'Январь','Февраль','Март','Апрель','Май','Июнь',
+  'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
 ];
 
-// Colour per rank for top-3
 const rankColor = (rank: number): string => {
   if (rank === 1) return '#F2D8A7';
   if (rank === 2) return '#A39B98';
@@ -27,13 +26,16 @@ function TableHeader() {
       style={{ color: '#69584f' }}
     >
       <span className="w-7 shrink-0 text-center">#</span>
-      <span className="w-8 shrink-0" /> {/* avatar spacer */}
+      <span className="w-8 shrink-0" />
       <span className="flex-1 min-w-0 pl-2">Никнейм</span>
-      <span className="w-9 shrink-0 text-center flex items-center justify-center gap-0.5">
-        <Target size={10} />
+      {/* Knockouts — Crosshair icon */}
+      <span className="w-9 shrink-0 flex items-center justify-center">
+        <Crosshair size={11} />
       </span>
-      <span className="w-9 shrink-0 text-center">Игры</span>
-      <span className="w-9 shrink-0 text-center flex items-center justify-center gap-0.5">
+      {/* Games played — "Турниры" */}
+      <span className="w-12 shrink-0 text-center">Турниры</span>
+      {/* Wins — Trophy icon */}
+      <span className="w-9 shrink-0 flex items-center justify-center">
         <Trophy size={10} />
       </span>
       <span className="w-14 shrink-0 text-right">Рейтинг</span>
@@ -53,18 +55,13 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
         background: isTop3 ? 'rgba(70,49,41,0.25)' : 'transparent',
       }}
     >
-      {/* Rank */}
       <span
         className="w-7 shrink-0 text-center font-800 leading-none"
-        style={{
-          fontSize: isTop3 ? '18px' : '13px',
-          color: rankColor(rank),
-        }}
+        style={{ fontSize: isTop3 ? '18px' : '13px', color: rankColor(rank) }}
       >
         {rank}
       </span>
 
-      {/* Avatar */}
       <div
         className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
         style={{
@@ -75,36 +72,26 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
         {player.initial}
       </div>
 
-      {/* Nickname */}
       <div className="flex-1 min-w-0 pl-2">
-        <p
-          className="text-[13px] font-600 truncate"
-          style={{ color: isTop3 ? '#ffffff' : '#A39B98' }}
-        >
+        <p className="text-[13px] font-600 truncate"
+           style={{ color: isTop3 ? '#ffffff' : '#A39B98' }}>
           {player.nickname}
         </p>
       </div>
 
-      {/* Knockouts */}
       <span className="w-9 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
         {player.knockouts}
       </span>
 
-      {/* Games played */}
-      <span className="w-9 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
+      <span className="w-12 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
         {player.played}
       </span>
 
-      {/* Wins */}
       <span className="w-9 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
         {player.won}
       </span>
 
-      {/* Rating — bold, prominent */}
-      <span
-        className="w-14 shrink-0 text-right text-[13px] font-800"
-        style={{ color: '#F2D8A7' }}
-      >
+      <span className="w-14 shrink-0 text-right text-[13px] font-800" style={{ color: '#F2D8A7' }}>
         {player.points.toLocaleString('ru-RU')}
       </span>
     </div>
@@ -113,18 +100,22 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function RatingPage() {
-  const [activeTab, setActiveTab]     = useState<RatingTab>('general');
-  const [selectedMonth, setSelectedMonth] = useState<number>(6); // July
-
-  const directionRef = useRef<number>(1);
+  const [activeTab, setActiveTab]         = useState<RatingTab>('general');
+  // Default to actual current month
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const directionRef                      = useRef<number>(1);
 
   const handleTabChange = (tab: RatingTab) => {
     if (tab === activeTab) return;
     directionRef.current = tab === 'seasonal' ? 1 : -1;
+    // When switching to seasonal, reset to the real current month
+    if (tab === 'seasonal') setSelectedMonth(new Date().getMonth());
     setActiveTab(tab);
   };
 
-  // Pick the correct dataset
+  const prevMonth = () => setSelectedMonth((m) => (m === 0 ? 11 : m - 1));
+  const nextMonth = () => setSelectedMonth((m) => (m === 11 ? 0 : m + 1));
+
   const players: RatingPlayer[] =
     activeTab === 'general'
       ? MOCK_PLAYERS_GENERAL
@@ -138,7 +129,7 @@ export function RatingPage() {
           РЕЙТИНГ
         </h1>
 
-        {/* Tab switcher */}
+        {/* Общий / Сезонный */}
         <div className="relative flex rounded-xl p-1" style={{ background: '#1E1612' }}>
           {(['general', 'seasonal'] as RatingTab[]).map((tab) => (
             <button
@@ -162,43 +153,47 @@ export function RatingPage() {
           ))}
         </div>
 
-        {/* Month selector — only for seasonal tab */}
+        {/* Month navigator — prev/current/next (only in Seasonal tab) */}
         <AnimatePresence initial={false}>
           {activeTab === 'seasonal' && (
             <motion.div
-              key="month-selector"
+              key="month-nav"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.22 }}
               className="overflow-hidden"
             >
-              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                {MONTHS.map((month, idx) => (
-                  <button
-                    key={month}
-                    onClick={() => setSelectedMonth(idx)}
-                    className="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-600 transition-all active:scale-95"
-                    style={{
-                      background: selectedMonth === idx
-                        ? 'linear-gradient(to right, #8C4C27, #D99962)'
-                        : '#2A211D',
-                      color: selectedMonth === idx ? '#0A0908' : '#6B6360',
-                      border: selectedMonth === idx
-                        ? 'none'
-                        : '1px solid rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    {month}
-                  </button>
-                ))}
+              <div
+                className="flex items-center justify-between rounded-xl px-2 py-2"
+                style={{ background: '#1E1612' }}
+              >
+                <button
+                  onClick={prevMonth}
+                  className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                  style={{ color: '#A39B98' }}
+                >
+                  <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+
+                <span className="text-[15px] font-700 text-white tracking-wide">
+                  {MONTHS[selectedMonth]}
+                </span>
+
+                <button
+                  onClick={nextMonth}
+                  className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                  style={{ color: '#A39B98' }}
+                >
+                  <ChevronRight size={18} strokeWidth={2.5} />
+                </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Table */}
+      {/* Table with directional slide */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait" initial={false} custom={directionRef.current}>
           <motion.div

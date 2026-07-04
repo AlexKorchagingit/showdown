@@ -61,9 +61,10 @@ function HeroCard({ onPress }: { onPress: () => void }) {
       onClick={onPress}
       className="w-full text-left rounded-2xl overflow-hidden active:scale-[0.984] transition-transform duration-150"
       style={{
-        background: 'linear-gradient(135deg, #2A211D 0%, #1E1612 100%)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 4px 28px rgba(0,0,0,0.5)',
+        /* Noticeably lighter than other cards — makes it the main accent */
+        background: 'linear-gradient(135deg, #514f4c 0%, #3a3633 100%)',
+        border: '1px solid rgba(217,153,98,0.28)',
+        boxShadow: '0 4px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(217,153,98,0.06)',
         minHeight: 200,
       }}
     >
@@ -196,10 +197,13 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         {PODIUM.map((p) => <PodiumPlayer key={p.rank} player={p} />)}
       </div>
 
-      {/* Current user position strip */}
+      {/* Current user position strip — distinct bg, gold border */}
       <div
         className="flex items-center gap-3 rounded-2xl px-4 py-3"
-        style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.07)' }}
+        style={{
+          background: '#1d0b07',
+          border: '1px solid rgba(217,153,98,0.3)',
+        }}
       >
         <span className="text-[14px] font-800 w-10 shrink-0" style={{ color: '#A39B98' }}>
           #{CURRENT_USER_RATING.rank}
@@ -242,7 +246,8 @@ function InfoGrid() {
           key={label}
           className="text-left rounded-2xl p-4 active:brightness-110 transition-all"
           style={{
-            background: 'linear-gradient(to bottom right, #463129, #231A16)',
+            /* Stronger gradient — more depth and volume */
+            background: 'linear-gradient(to bottom right, #5a1c0c, #231A16)',
             border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
