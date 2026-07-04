@@ -8,7 +8,6 @@ import { RatingPage } from './pages/RatingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { TournamentProvider } from './context/TournamentContext';
 
-// Height of the bottom nav bar (4rem = 64px)
 const NAV_HEIGHT = '4rem';
 
 export default function App() {
@@ -16,8 +15,8 @@ export default function App() {
     try {
       WebApp.ready();
       WebApp.expand();
-      WebApp.setHeaderColor('#0A0A0A');
-      WebApp.setBackgroundColor('#0A0A0A');
+      WebApp.setHeaderColor('#110b09');
+      WebApp.setBackgroundColor('#110b09');
     } catch {
       // Running outside Telegram — silently ignore
     }
@@ -25,13 +24,10 @@ export default function App() {
 
   return (
     <TournamentProvider>
-      <div className="relative w-full bg-[#0A0A0A]" style={{ height: '100dvh' }}>
-        {/* Page content, padded at bottom so it never hides behind the nav */}
+      <div className="relative w-full bg-obsidian" style={{ height: '100dvh' }}>
         <div
           className="absolute inset-0 overflow-hidden"
-          style={{
-            paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})`,
-          }}
+          style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})` }}
         >
           <div className="h-full">
             <Routes>
@@ -43,7 +39,6 @@ export default function App() {
             </Routes>
           </div>
         </div>
-
         <BottomNav />
       </div>
     </TournamentProvider>

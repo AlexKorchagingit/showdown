@@ -7,30 +7,36 @@ export default {
   theme: {
     extend: {
       colors: {
-        gold: {
-          DEFAULT: '#D4AF37',
-          light: '#FFD700',
-          dark: '#A8860C',
+        // Rose gold / obsidian palette
+        rg: {
+          light:   '#c8a38e',  // rose gold highlight
+          mid:     '#985c3a',  // rose gold medium
+          dark:    '#94543c',  // rose gold dark
         },
-        surface: {
-          DEFAULT: '#1A1A1A',
-          raised: '#242424',
-          overlay: '#2E2E2E',
+        wood: {
+          DEFAULT: '#463129',  // dark brown wood — card bg
+          mid:     '#69584f',  // medium warm gray-brown — surface
+          shadow:  '#50444c',  // dark purple-gray — nav bg
+          stone:   '#514f4c',  // dark gray-brown — raised surface
         },
-        bg: {
-          DEFAULT: '#0A0A0A',
-          secondary: '#111111',
+        obsidian: {
+          DEFAULT: '#110b09',  // near-black — main bg
+        },
+        muted: {
+          DEFAULT: '#8c8c88',  // warm gray text
+          sub:     '#858484',  // neutral gray text
+          faint:   '#69584f',  // very subdued
         },
       },
       backgroundImage: {
-        'gold-gradient': 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%)',
-        'gold-gradient-subtle': 'linear-gradient(135deg, #A8860C 0%, #D4AF37 100%)',
-        'card-gradient': 'linear-gradient(180deg, #1A1A1A 0%, #141414 100%)',
+        'rg-gradient':        'linear-gradient(135deg, #94543c 0%, #c8a38e 60%, #985c3a 100%)',
+        'rg-gradient-subtle': 'linear-gradient(135deg, #94543c 0%, #c8a38e 100%)',
+        'card-gradient':      'linear-gradient(180deg, #463129 0%, #3d2a22 100%)',
       },
       boxShadow: {
-        'gold': '0 0 20px rgba(212, 175, 55, 0.3)',
-        'gold-sm': '0 0 10px rgba(212, 175, 55, 0.2)',
-        'card': '0 4px 24px rgba(0, 0, 0, 0.5)',
+        'rg':    '0 0 22px rgba(200,163,142,0.4)',
+        'rg-sm': '0 0 10px rgba(200,163,142,0.25)',
+        'card':  '0 4px 24px rgba(0,0,0,0.6)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -38,19 +38,19 @@ export function TournamentsPage() {
         </h1>
 
         {/* Tabs */}
-        <div className="relative flex bg-[#1A1A1A] rounded-xl p-1">
+        <div className="relative flex rounded-xl p-1" style={{ background: '#463129' }}>
           {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`relative flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                activeTab === tab ? 'text-[#0A0A0A]' : 'text-[#5A5A5A]'
+                activeTab === tab ? 'text-[#110b09]' : 'text-[#69584f]'
               }`}
             >
               {activeTab === tab && (
                 <span
                   className="absolute inset-0 rounded-lg"
-                  style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 100%)' }}
+                  style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e)' }}
                 />
               )}
               <span className="relative z-10">{TAB_LABELS[tab]}</span>
@@ -64,7 +64,7 @@ export function TournamentsPage() {
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3 text-center px-8">
             <span className="text-4xl opacity-20">♠</span>
-            <p className="text-[#5A5A5A] text-sm">
+            <p className="text-[#69584f] text-sm">
               {activeTab === 'upcoming'
                 ? 'Предстоящих турниров пока нет'
                 : 'Прошедших турниров нет'}

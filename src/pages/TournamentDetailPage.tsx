@@ -13,11 +13,14 @@ const SUIT_ICONS = ['♠', '♥', '♦', '♣', '♠', '♥'];
 
 function HeroImage({ title }: { title: string }) {
   return (
-    <div className="relative w-full h-52 bg-gradient-to-br from-[#1E1A0E] via-[#2A2010] to-[#0A0A0A] overflow-hidden">
+    <div
+      className="relative w-full h-52 overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #463129 0%, #50444c 50%, #110b09 100%)' }}
+    >
       {SUIT_ICONS.map((s, i) => (
         <span
           key={i}
-          className="absolute select-none text-[#D4AF37] opacity-[0.07]"
+          className="absolute select-none text-[#c8a38e] opacity-[0.07]"
           style={{
             fontSize: `${60 + i * 20}px`,
             top: `${[-10, 30, 55, 10, 40, -5][i]}%`,
@@ -29,12 +32,15 @@ function HeroImage({ title }: { title: string }) {
         </span>
       ))}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-        <span className="text-[#D4AF37] text-6xl opacity-50">♠</span>
+        <span className="text-[#c8a38e] text-6xl opacity-40">♠</span>
         <h2 className="text-white text-lg font-black tracking-[0.25em] uppercase px-4 text-center leading-tight">
           {title}
         </h2>
       </div>
-      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0A0A0A] to-transparent" />
+      <div
+        className="absolute inset-x-0 bottom-0 h-16"
+        style={{ background: 'linear-gradient(to top, #110b09, transparent)' }}
+      />
     </div>
   );
 }
@@ -55,29 +61,28 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const handleBack = () => {
     if (leaving) return;
     setLeaving(true);
-    // Spin runs for 500ms, then fade-to-black for 300ms, then unmount
     setTimeout(() => onBack(), 800);
   };
 
   return (
     <>
-      {/* Full-screen fade overlay — appears after spin completes */}
+      {/* Full-screen fade overlay */}
       <div
         className="fixed inset-0 z-[70] bg-black pointer-events-none transition-opacity duration-300"
         style={{ opacity: leaving ? 1 : 0, transitionDelay: leaving ? '500ms' : '0ms' }}
       />
 
       <div
-        className="fixed inset-0 z-[60] bg-[#0A0A0A] flex flex-col"
+        className="fixed inset-0 z-[60] flex flex-col"
         style={{
+          background: '#110b09',
           opacity: leaving ? 0 : 1,
           transition: leaving ? 'opacity 300ms ease 500ms' : 'none',
         }}
       >
-        {/* Back button overlay on top of hero */}
+        {/* Hero with back button */}
         <div className="relative flex-shrink-0">
           <HeroImage title={live.title} />
-
           <button
             onClick={handleBack}
             disabled={leaving}
@@ -88,14 +93,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               animation: leaving ? 'spin-once 500ms cubic-bezier(0.4,0,0.2,1) forwards' : 'none',
             }}
           >
-            <ArrowLeft
-              size={26}
-              strokeWidth={2.5}
-              className="text-white"
-              style={{
-                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))',
-              }}
-            />
+            <ArrowLeft size={26} strokeWidth={2.5} className="text-white" />
           </button>
         </div>
 
@@ -105,41 +103,50 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' }}
         >
           <div className="px-4 pt-4 space-y-5">
-            {/* Title + date/time */}
+            {/* Title + date */}
             <div className="space-y-2">
               <h1 className="text-white text-2xl font-black tracking-wide">{live.title}</h1>
-              <div className="flex items-center gap-4 text-[#A3A3A3] text-sm">
+              <div className="flex items-center gap-4 text-[#8c8c88] text-sm">
                 <span className="flex items-center gap-1.5">
-                  <Calendar size={14} className="text-[#D4AF37]" />
+                  <Calendar size={14} className="text-[#c8a38e]" />
                   <span className="capitalize">{formattedDate}</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Clock size={14} className="text-[#D4AF37]" />
+                  <Clock size={14} className="text-[#c8a38e]" />
                   {live.startTime}
                 </span>
               </div>
             </div>
 
             {/* Progress bar */}
-            <div className="rounded-2xl bg-[#1A1A1A] border border-[rgba(212,175,55,0.15)] p-4">
+            <div
+              className="rounded-2xl p-4"
+              style={{
+                background: '#463129',
+                border: '1px solid rgba(200,163,142,0.18)',
+              }}
+            >
               <ProgressBar value={live.registeredSeats} max={live.totalSeats} />
             </div>
 
             {/* Guarantee badge */}
             <div className="relative rounded-2xl overflow-hidden">
               <div
-                className="absolute inset-0 opacity-20"
-                style={{ background: 'linear-gradient(135deg, #D4AF37, #FFD700, #A8860C)' }}
+                className="absolute inset-0 opacity-15"
+                style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e, #985c3a)' }}
               />
               <div
                 className="relative flex items-center gap-3 px-4 py-4 border rounded-2xl"
-                style={{ borderColor: 'rgba(212,175,55,0.5)' }}
+                style={{ borderColor: 'rgba(200,163,142,0.5)' }}
               >
-                <div className="w-10 h-10 rounded-xl bg-gold-gradient flex items-center justify-center shrink-0">
-                  <Star size={20} className="text-[#0A0A0A]" fill="currentColor" />
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #94543c, #c8a38e)' }}
+                >
+                  <Star size={20} className="text-[#110b09]" fill="currentColor" />
                 </div>
                 <div>
-                  <p className="text-[#A3A3A3] text-xs uppercase tracking-wider">Гарантия очков</p>
+                  <p className="text-[#8c8c88] text-xs uppercase tracking-wider">Гарантия очков</p>
                   <p className="text-white font-black text-2xl tracking-wide">
                     {live.guarantee.toLocaleString('ru-RU')}
                   </p>
@@ -148,37 +155,43 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             </div>
 
             {/* About block */}
-            <div className="rounded-2xl bg-[#1A1A1A] border border-[rgba(255,255,255,0.06)] p-5 space-y-4">
+            <div
+              className="rounded-2xl p-5 space-y-4"
+              style={{
+                background: '#463129',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
               <section>
-                <h3 className="text-[#D4AF37] font-bold text-base mb-2 uppercase tracking-wider">
+                <h3 className="text-[#c8a38e] font-bold text-base mb-2 uppercase tracking-wider">
                   О турнире
                 </h3>
-                <p className="text-[#C0C0C0] text-sm leading-relaxed">{live.description}</p>
+                <p className="text-[#8c8c88] text-sm leading-relaxed">{live.description}</p>
               </section>
 
-              <div className="h-px bg-[rgba(255,255,255,0.06)]" />
+              <div className="h-px" style={{ background: 'rgba(200,163,142,0.12)' }} />
 
               <section>
-                <h3 className="text-[#D4AF37] font-bold text-base mb-3 uppercase tracking-wider">
+                <h3 className="text-[#c8a38e] font-bold text-base mb-3 uppercase tracking-wider">
                   Особенности
                 </h3>
                 <ul className="space-y-2">
                   {live.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm text-[#C0C0C0]">
-                      <span className="text-[#D4AF37] mt-0.5 shrink-0">•</span>
+                    <li key={feature} className="flex items-start gap-2.5 text-sm text-[#8c8c88]">
+                      <span className="text-[#985c3a] mt-0.5 shrink-0">•</span>
                       {feature}
                     </li>
                   ))}
                 </ul>
               </section>
 
-              <div className="h-px bg-[rgba(255,255,255,0.06)]" />
+              <div className="h-px" style={{ background: 'rgba(200,163,142,0.12)' }} />
 
               <section>
-                <h3 className="text-[#D4AF37] font-bold text-base mb-2 uppercase tracking-wider">
+                <h3 className="text-[#c8a38e] font-bold text-base mb-2 uppercase tracking-wider">
                   Запись на турниры
                 </h3>
-                <p className="text-[#C0C0C0] text-sm leading-relaxed">
+                <p className="text-[#8c8c88] text-sm leading-relaxed">
                   Если вы записались, но не можете прийти — пожалуйста, отмените запись заранее,
                   чтобы не занимать место.
                 </p>
@@ -187,18 +200,30 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           </div>
         </div>
 
-        {/* Sticky CTA button */}
+        {/* Sticky CTA */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-4 pt-3 pb-3 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+          className="absolute bottom-0 left-0 right-0 px-4 pt-3"
+          style={{
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+            background: 'linear-gradient(to top, #110b09 70%, transparent)',
+          }}
         >
           <button
             onClick={() => toggleRegistration(live.id)}
-            className={`w-full h-14 rounded-2xl font-bold text-base tracking-wide flex items-center justify-center gap-2.5 transition-all duration-300 active:scale-[0.97] ${
+            className="w-full h-14 rounded-2xl font-bold text-base tracking-wide flex items-center justify-center gap-2.5 transition-all duration-300 active:scale-[0.97]"
+            style={
               registered
-                ? 'bg-[#2A1A1A] border-2 border-red-500/50 text-red-400'
-                : 'bg-gold-gradient text-[#0A0A0A] shadow-gold'
-            }`}
+                ? {
+                    background: '#2a1818',
+                    border: '2px solid rgba(239,68,68,0.4)',
+                    color: '#f87171',
+                  }
+                : {
+                    background: 'linear-gradient(135deg, #94543c, #c8a38e)',
+                    color: '#110b09',
+                    boxShadow: '0 0 22px rgba(200,163,142,0.4)',
+                  }
+            }
           >
             {registered ? (
               <>
@@ -215,7 +240,6 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
         </div>
       </div>
 
-      {/* Keyframe for back-button spin */}
       <style>{`
         @keyframes spin-once {
           0%   { transform: rotate(0deg) scale(1); }
