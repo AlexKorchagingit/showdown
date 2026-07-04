@@ -32,24 +32,63 @@ const ALL_PARTICIPANTS = [
   { id: '20', nickname: 'MaximN',        rating:  640 },
 ];
 
-function HeroImage({ title }: { title: string }) {
+// Lobby hero — mirrors the Home page "Nearest tournament" card design
+function LobbyHero({ title, onBack }: { title: string; onBack: () => void }) {
   return (
-    <div className="relative w-full h-52 overflow-hidden"
-         style={{ background: 'linear-gradient(135deg, #3a2015 0%, #2A211D 55%, #0A0908 100%)' }}>
-      {/* fishka image — centred, slightly opaque */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img src="/fishka.svg" alt="" className="h-36 w-auto object-contain"
-             style={{ opacity: 0.35 }} />
-      </div>
-      {/* Tournament title overlay */}
-      <div className="absolute inset-0 flex flex-col items-end justify-end px-6 pb-5">
-        <h2 className="text-white text-[18px] font-900 uppercase tracking-widest text-right leading-tight"
-            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}>
+    <div
+      className="relative overflow-hidden flex-shrink-0"
+      style={{ height: 260, background: '#1d0b07' }}
+    >
+      {/* Background fishka */}
+      <img
+        src="/fishka.svg"
+        alt=""
+        aria-hidden
+        className="absolute w-auto z-0 pointer-events-none select-none"
+        style={{
+          height: '160%',
+          right: '-20%',
+          top: '-30%',
+          opacity: 0.55,
+          filter: 'brightness(1.1) contrast(1.25)',
+        }}
+      />
+
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0 z-10 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(to right, #1d0b07 0%, rgba(29,11,7,0.6) 55%, transparent 100%)',
+        }}
+      />
+
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="absolute top-4 left-4 z-30 w-12 h-12 rounded-full flex items-center justify-center"
+        style={{
+          background: 'rgba(28,20,16,0.78)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(217,153,98,0.28)',
+        }}
+      >
+        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
+      </button>
+
+      {/* Title — bottom-left, same text style as hero card */}
+      <div className="absolute bottom-5 left-6 z-20" style={{ width: '68%' }}>
+        <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: '#D99962' }}>
+          Лобби турнира
+        </p>
+        <h1
+          className="text-3xl font-black text-white uppercase leading-tight"
+          style={{ letterSpacing: '0.04em' }}
+        >
           {title}
-        </h2>
+        </h1>
       </div>
-      <div className="absolute inset-x-0 bottom-0 h-16"
-           style={{ background: 'linear-gradient(to top, #0A0908, transparent)' }} />
     </div>
   );
 }
@@ -70,24 +109,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-[60] flex flex-col bg-obsidian">
-        {/* Hero */}
-        <div className="relative flex-shrink-0">
-          <HeroImage title={live.title} />
-
-          {/* Back button — instant, no animation */}
-          <button
-            onClick={onBack}
-            className="absolute top-4 left-4 w-12 h-12 rounded-full flex items-center justify-center"
-            style={{
-              background: 'rgba(28,20,16,0.78)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(217,153,98,0.28)',
-            }}
-          >
-            <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-          </button>
-        </div>
+        {/* Hero — matches Home "Nearest tournament" design */}
+        <LobbyHero title={live.title} onBack={onBack} />
 
         {/* Content */}
         <div
@@ -312,10 +335,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
         {/* Sticky CTA */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-5 pt-4"
+          className="absolute bottom-0 left-0 right-0 px-5 pt-4 z-50"
           style={{
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-            background: 'linear-gradient(to top, #0A0908 65%, transparent)',
+            background: '#110b09',   /* solid — no transparency bleed-through */
           }}
         >
           {live.status === 'finished' ? (

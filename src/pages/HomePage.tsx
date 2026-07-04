@@ -77,19 +77,20 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"
         style={{
-          height: '140%',
-          right: '-10%',
-          top: '-20%',
+          height: '160%',
+          right: '-20%',
+          top: '-30%',
           opacity: 0.55,
+          filter: 'brightness(1.1) contrast(1.25)',
         }}
       />
 
-      {/* Gradient overlay: solid left → transparent right, for text contrast */}
+      {/* Gradient overlay — lighter via stop so right side stays vivid */}
       <div
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
           background:
-            'linear-gradient(to right, #1d0b07 0%, rgba(29,11,7,0.85) 55%, rgba(29,11,7,0.2) 100%)',
+            'linear-gradient(to right, #1d0b07 0%, rgba(29,11,7,0.6) 55%, transparent 100%)',
         }}
       />
 
