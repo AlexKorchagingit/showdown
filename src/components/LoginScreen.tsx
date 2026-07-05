@@ -112,14 +112,13 @@ export function LoginScreen({ onLogin }: Props) {
     : null;
 
   return (
-    <div className="absolute inset-0 relative bg-[#F2D8A7] overflow-hidden overflow-y-auto">
-      {/* Background pulse layer — content stays static */}
+    <div className="relative w-full h-screen overflow-hidden flex flex-col justify-center items-center">
       <div
         className="absolute inset-0 z-0 bg-gradient-to-br from-[#F2D8A7] via-[#f7e8c6] to-[#D99962] login-bg-pulse"
       />
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-full w-full max-w-sm px-6 mx-auto -mt-32">
-        <img src="/logo-final.svg" alt="Showdown" className="h-32 w-auto mb-4" />
+      <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center mb-20">
+        <img src="/logo-final.svg" alt="Showdown" className="h-32 w-auto mb-8" />
         <h1 className="text-3xl font-black text-[#110b09] mb-8 uppercase tracking-wide">
           Вход
         </h1>

@@ -96,8 +96,7 @@ export default function App() {
     return (
       <div className={shellClass}>
         <div
-          className="relative w-full max-w-[480px] overflow-hidden shadow-2xl"
-          style={{ height: '100dvh' }}
+          className="relative w-full max-w-[480px] overflow-hidden shadow-2xl h-screen"
         >
           <LoginScreen onLogin={handleLogin} />
         </div>
