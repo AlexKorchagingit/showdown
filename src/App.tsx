@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
 import { LoginScreen } from './components/LoginScreen';
@@ -16,12 +15,14 @@ const NAV_HEIGHT = '5rem';
 const LOBBY_PATH = /^\/tournaments\/[^/]+$/;
 const SPLASH_MS = 2000;
 
+const shellClass = 'w-full min-h-screen bg-black flex justify-center';
+const columnClass = 'relative w-full max-w-[480px] overflow-hidden shadow-2xl';
+
 interface AppLayoutProps {
   userEmail: string;
-  isReady: boolean;
 }
 
-function AppLayout({ userEmail, isReady }: AppLayoutProps) {
+function AppLayout({ userEmail }: AppLayoutProps) {
   const location = useLocation();
   const isLobby = LOBBY_PATH.test(location.pathname);
 
@@ -30,14 +31,7 @@ function AppLayout({ userEmail, isReady }: AppLayoutProps) {
     : `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})`;
 
   return (
-    <div
-      className="relative w-full max-w-[480px] bg-[#110b09] overflow-hidden shadow-2xl"
-      style={{ height: '100dvh' }}
-    >
-      <AnimatePresence>
-        {!isReady && <SplashScreen key="splash" />}
-      </AnimatePresence>
-
+    <div className={columnClass} style={{ height: '100dvh' }}>
       <div
         className="absolute inset-0 overflow-hidden"
         style={{ paddingBottom: contentPaddingBottom }}
@@ -54,7 +48,7 @@ function AppLayout({ userEmail, isReady }: AppLayoutProps) {
         </div>
       </div>
 
-      {!isLobby && isReady && <BottomNav />}
+      {!isLobby && <BottomNav />}
     </div>
   );
 }
@@ -66,7 +60,9 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => !!localStorage.getItem('userEmail'),
   );
-  const [isReady, setIsReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(
+    () => !!localStorage.getItem('userEmail'),
+  );
 
   useEffect(() => {
     try {
@@ -78,9 +74,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    setIsReady(false);
-    const timer = setTimeout(() => setIsReady(true), SPLASH_MS);
+    if (!isAuthenticated) {
+      setShowSplash(false);
+      return;
+    }
+
+    setShowSplash(true);
+    const timer = setTimeout(() => setShowSplash(false), SPLASH_MS);
     return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
@@ -90,15 +90,21 @@ export default function App() {
     setIsAuthenticated(true);
   };
 
-  const shellClass = 'w-full min-h-screen bg-black flex justify-center';
-
   if (!isAuthenticated) {
     return (
       <div className={shellClass}>
-        <div
-          className="relative w-full max-w-[480px] overflow-hidden shadow-2xl h-screen"
-        >
+        <div className={`${columnClass} h-screen`}>
           <LoginScreen onLogin={handleLogin} />
+        </div>
+      </div>
+    );
+  }
+
+  if (showSplash) {
+    return (
+      <div className={shellClass}>
+        <div className={columnClass} style={{ height: '100dvh' }}>
+          <SplashScreen />
         </div>
       </div>
     );
@@ -107,7 +113,7 @@ export default function App() {
   return (
     <div className={shellClass}>
       <TournamentProvider>
-        <AppLayout userEmail={userEmail} isReady={isReady} />
+        <AppLayout userEmail={userEmail} />
       </TournamentProvider>
     </div>
   );

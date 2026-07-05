@@ -24,6 +24,7 @@ export function LoginScreen({ onLogin }: Props) {
   const [isSuccess, setIsSuccess]         = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const verifiedRef = useRef(false);
 
   const isEmailValid = EMAIL_REGEX.test(email.trim());
 
@@ -44,6 +45,7 @@ export function LoginScreen({ onLogin }: Props) {
       setOtp(['', '', '', '']);
       setOtpError(false);
       setIsSuccess(false);
+      verifiedRef.current = false;
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
       console.error(err);
@@ -70,14 +72,18 @@ export function LoginScreen({ onLogin }: Props) {
   }, [timer]);
 
   useEffect(() => {
-    if (step !== 'code' || isSuccess) return;
-    const entered = otp.join('');
-    if (entered.length < 4) return;
+    if (step !== 'code' || verifiedRef.current) return;
 
-    if (entered === generatedCode) {
+    const codeString = otp.join('');
+    if (codeString.length < 4) return;
+
+    if (codeString === generatedCode) {
+      verifiedRef.current = true;
       setIsSuccess(true);
-      const id = setTimeout(() => onLogin(email.trim()), 1200);
-      return () => clearTimeout(id);
+      const timer = setTimeout(() => {
+        if (onLogin) onLogin(email.trim());
+      }, 1000);
+      return () => clearTimeout(timer);
     }
 
     setOtpError(true);
@@ -86,7 +92,7 @@ export function LoginScreen({ onLogin }: Props) {
 
     const id = setTimeout(() => setOtpError(false), 1000);
     return () => clearTimeout(id);
-  }, [otp, generatedCode, step, email, onLogin, isSuccess]);
+  }, [otp, generatedCode, step, email, onLogin]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (isSuccess || !/^\d?$/.test(value)) return;
@@ -189,12 +195,12 @@ export function LoginScreen({ onLogin }: Props) {
                     readOnly={isSuccess}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e.key)}
-                    className={`w-14 h-14 rounded-xl text-2xl font-bold text-center outline-none bg-[#231A16] transition-colors duration-300 ${
+                    className={`w-14 h-14 rounded-xl text-2xl font-bold text-center outline-none bg-[#231A16] text-white transition-colors duration-300 ${
                       isSuccess
-                        ? 'border-2 border-green-500 text-green-500'
+                        ? 'border-2 border-green-500'
                         : otpError
-                          ? 'border-2 border-red-500 text-white scale-100'
-                          : 'border border-[#D99962]/50 text-white focus:border-[#D99962]'
+                          ? 'border-2 border-red-500 scale-100'
+                          : 'border border-[#D99962]/50 focus:border-[#D99962]'
                     }`}
                     style={{ transitionDelay: isSuccess ? `${i * 150}ms` : '0ms' }}
                   />
@@ -224,6 +230,7 @@ export function LoginScreen({ onLogin }: Props) {
                   setOtp(['', '', '', '']);
                   setTimer(0);
                   setIsSuccess(false);
+                  verifiedRef.current = false;
                 }}
                 disabled={isSuccess}
                 className="mt-6 text-[12px] font-600 text-[#463129] active:opacity-60 disabled:opacity-40"
