@@ -32,12 +32,20 @@ const ALL_PARTICIPANTS = [
   { id: '20', nickname: 'MaximN',        rating:  640 },
 ];
 
-// Lobby hero — mirrors the Home page "Nearest tournament" card design
-function LobbyHero({ title, onBack }: { title: string; onBack: () => void }) {
+// Hero block (inside scroll) — rounded, with date/time, no back button
+function LobbyHero({
+  title,
+  formattedDate,
+  startTime,
+}: {
+  title: string;
+  formattedDate: string;
+  startTime: string;
+}) {
   return (
     <div
-      className="relative overflow-hidden flex-shrink-0"
-      style={{ height: 260, background: '#1d0b07' }}
+      className="relative overflow-hidden rounded-2xl mx-4 mt-4"
+      style={{ height: 240, background: '#1d0b07' }}
     >
       {/* Background fishka */}
       <img
@@ -50,7 +58,7 @@ function LobbyHero({ title, onBack }: { title: string; onBack: () => void }) {
           right: '-20%',
           top: '-30%',
           opacity: 0.55,
-          filter: 'brightness(1.1) contrast(1.25)',
+          filter: 'brightness(1.3) contrast(1.3) saturate(1.1)',
         }}
       />
 
@@ -63,31 +71,25 @@ function LobbyHero({ title, onBack }: { title: string; onBack: () => void }) {
         }}
       />
 
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="absolute top-4 left-4 z-30 w-12 h-12 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(217,153,98,0.28)',
-        }}
-      >
-        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </button>
-
-      {/* Title — bottom-left, same text style as hero card */}
-      <div className="absolute bottom-5 left-6 z-20" style={{ width: '68%' }}>
+      {/* Title + date/time — bottom-left */}
+      <div className="absolute bottom-5 left-6 z-20" style={{ width: '72%' }}>
         <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: '#D99962' }}>
           Лобби турнира
         </p>
         <h1
-          className="text-3xl font-black text-white uppercase leading-tight"
+          className="text-2xl font-black text-white uppercase leading-tight mb-2"
           style={{ letterSpacing: '0.04em' }}
         >
           {title}
         </h1>
+        {/* Date + time inside hero */}
+        <div className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+          <Calendar size={12} style={{ color: '#c8a38e' }} />
+          <span className="capitalize">{formattedDate}</span>
+          <span className="opacity-30">·</span>
+          <Clock size={12} style={{ color: '#c8a38e' }} />
+          {startTime}
+        </div>
       </div>
     </div>
   );
@@ -109,32 +111,34 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-[60] flex flex-col bg-obsidian">
-        {/* Hero — matches Home "Nearest tournament" design */}
-        <LobbyHero title={live.title} onBack={onBack} />
 
-        {/* Content */}
+        {/* ── Back button: fixed on outer layer, never scrolls ── */}
+        <button
+          onClick={onBack}
+          className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
+          style={{
+            background: 'rgba(28,20,16,0.78)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(217,153,98,0.28)',
+          }}
+        >
+          <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
+        </button>
+
+        {/* ── Scrollable: hero + all content ── */}
         <div
           className="flex-1 scrollable"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' }}
         >
-          <div className="px-5 pt-5 space-y-5">
-            {/* Title */}
-            <div className="space-y-2">
-              <h1 className="text-white text-[22px] font-900 uppercase tracking-widest leading-tight">
-                {live.title}
-              </h1>
-              <div className="flex items-center gap-4 text-[12px] font-500" style={{ color: '#A39B98' }}>
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={13} style={{ color: '#c8a38e' }} />
-                  <span className="capitalize">{formattedDate}</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock size={13} style={{ color: '#c8a38e' }} />
-                  {live.startTime}
-                </span>
-              </div>
-            </div>
+          {/* Hero inside scroll — rounded corners, date/time baked in */}
+          <LobbyHero
+            title={live.title}
+            formattedDate={formattedDate}
+            startTime={live.startTime}
+          />
 
+          <div className="px-5 pt-4 space-y-5">
             {/* Progress — tick-free */}
             <div className="rounded-2xl p-4"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -331,14 +335,14 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               )}
             </div>
           </div>
-        </div>
+        </div>{/* end scrollable */}
 
-        {/* Sticky CTA */}
+        {/* ── CTA: solid bg, no transparency, content never bleeds through ── */}
         <div
           className="absolute bottom-0 left-0 right-0 px-5 pt-4 z-50"
           style={{
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-            background: '#110b09',   /* solid — no transparency bleed-through */
+            background: '#110b09',
           }}
         >
           {live.status === 'finished' ? (

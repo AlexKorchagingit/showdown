@@ -15,7 +15,7 @@
   }
 
   body {
-    background-color: #0A0908;
+    background-color: #000000; /* black desktop surround */
     color: #ffffff;
     font-family: 'Montserrat', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;

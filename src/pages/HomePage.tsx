@@ -81,7 +81,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           right: '-20%',
           top: '-30%',
           opacity: 0.55,
-          filter: 'brightness(1.1) contrast(1.25)',
+          filter: 'brightness(1.3) contrast(1.3) saturate(1.1)',
         }}
       />
 
@@ -150,17 +150,21 @@ function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
 
   return (
     <div className="flex flex-col items-center gap-2" style={{ minWidth: 88 }}>
+      {/* Thin ring wreath — identical style to lobby finalists top-3 */}
       <div className="relative">
         <div
           className="absolute rounded-full animate-pulse pointer-events-none"
-          style={{ inset: '-3px', boxShadow: `0 0 14px 5px ${player.glowColor}`, borderRadius: '50%' }}
+          style={{
+            inset: '-3px',
+            border: `2px solid ${player.glowColor}`,
+            boxShadow: `0 0 8px ${player.glowColor}`,
+          }}
         />
         <div
           className="relative w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-700 z-10"
           style={isFirst
-            ? { background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)', color: '#0A0908',
-                border: '2px solid rgba(242,216,167,0.55)' }
-            : { background: '#2A211D', color: '#A39B98', border: '1px solid rgba(255,255,255,0.08)' }}
+            ? { background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)', color: '#0A0908' }
+            : { background: '#2A211D', color: '#A39B98' }}
         >
           {player.name[0]}
         </div>

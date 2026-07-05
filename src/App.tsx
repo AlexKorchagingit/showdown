@@ -8,7 +8,6 @@ import { RatingPage } from './pages/RatingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { TournamentProvider } from './context/TournamentContext';
 
-// Floating pill nav: 60px height + 12px bottom margin + 8px top buffer = ~5rem
 const NAV_HEIGHT = '5rem';
 
 export default function App() {
@@ -16,30 +15,39 @@ export default function App() {
     try {
       WebApp.ready();
       WebApp.expand();
-      WebApp.setHeaderColor('#0A0908');
-      WebApp.setBackgroundColor('#0A0908');
+      WebApp.setHeaderColor('#110b09');
+      WebApp.setBackgroundColor('#110b09');
     } catch { /* Outside Telegram */ }
   }, []);
 
   return (
-    <TournamentProvider>
-      <div className="relative w-full bg-obsidian" style={{ height: '100dvh' }}>
+    // Outer wrapper — black on desktop so the phone column stands out
+    <div className="w-full min-h-screen bg-black flex justify-center">
+      {/* Mobile-constrained app column */}
+      <TournamentProvider>
         <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})` }}
+          className="relative w-full max-w-[480px] bg-[#110b09] overflow-hidden shadow-2xl"
+          style={{ height: '100dvh' }}
         >
-          <div className="h-full">
-            <Routes>
-              <Route path="/"            element={<HomePage />} />
-              <Route path="/tournaments" element={<TournamentsPage />} />
-              <Route path="/rating"      element={<RatingPage />} />
-              <Route path="/profile"     element={<ProfilePage />} />
-              <Route path="*"            element={<Navigate to="/" replace />} />
-            </Routes>
+          {/* Page content — padded so it clears the floating nav */}
+          <div
+            className="absolute inset-0 overflow-hidden"
+            style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})` }}
+          >
+            <div className="h-full">
+              <Routes>
+                <Route path="/"            element={<HomePage />} />
+                <Route path="/tournaments" element={<TournamentsPage />} />
+                <Route path="/rating"      element={<RatingPage />} />
+                <Route path="/profile"     element={<ProfilePage />} />
+                <Route path="*"            element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
           </div>
+
+          <BottomNav />
         </div>
-        <BottomNav />
-      </div>
-    </TournamentProvider>
+      </TournamentProvider>
+    </div>
   );
 }

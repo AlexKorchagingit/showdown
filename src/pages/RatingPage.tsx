@@ -252,11 +252,20 @@ export function RatingPage() {
                 </p>
               </div>
             ) : (
-              <div className="px-4 space-y-2">
-                <TableHeader />
-                {players.map((p, idx) => (
-                  <PlayerRow key={p.id} player={p} rank={idx + 1} />
-                ))}
+              <div className="px-4">
+                {/* Sticky header — stays at top of scroll container */}
+                <div
+                  className="sticky top-0 z-20 border-b border-white/5"
+                  style={{ background: '#110b09' }}
+                >
+                  <TableHeader />
+                </div>
+                {/* Player cards */}
+                <div className="space-y-2 pt-2">
+                  {players.map((p, idx) => (
+                    <PlayerRow key={p.id} player={p} rank={idx + 1} />
+                  ))}
+                </div>
               </div>
             )}
           </motion.div>
