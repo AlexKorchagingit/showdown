@@ -253,9 +253,9 @@ export function RatingPage() {
               </div>
             ) : (
               <div className="px-4">
-                {/* Sticky header — stays at top of scroll container */}
+                {/* Sticky header — full-width, -mx-4 px-4 cancels parent padding */}
                 <div
-                  className="sticky top-0 z-20 border-b border-white/5"
+                  className="sticky top-0 z-20 border-b border-white/5 -mx-4 px-4"
                   style={{ background: '#110b09' }}
                 >
                   <TableHeader />

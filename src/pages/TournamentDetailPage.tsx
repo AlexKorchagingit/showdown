@@ -58,7 +58,7 @@ function LobbyHero({
           right: '-20%',
           top: '-30%',
           opacity: 0.55,
-          filter: 'brightness(1.3) contrast(1.3) saturate(1.1)',
+          filter: 'brightness(1.5) contrast(1.4) saturate(1.2)',
         }}
       />
 
@@ -110,7 +110,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[60] flex flex-col bg-obsidian">
+      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
 
         {/* ── Back button: fixed on outer layer, never scrolls ── */}
         <button
@@ -129,7 +129,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
         {/* ── Scrollable: hero + all content ── */}
         <div
           className="flex-1 scrollable"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' }}
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}
         >
           {/* Hero inside scroll — rounded corners, date/time baked in */}
           <LobbyHero
@@ -337,19 +337,16 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           </div>
         </div>{/* end scrollable */}
 
-        {/* ── CTA: solid bg, no transparency, content never bleeds through ── */}
+        {/* ── CTA: transparent wrapper, button "floats" over content ── */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-5 pt-4 z-50"
-          style={{
-            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
-            background: '#110b09',
-          }}
+          className="absolute bottom-0 left-0 right-0 px-5 pt-4 z-50 bg-transparent pointer-events-none"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
         >
           {live.status === 'finished' ? (
             /* Finished — 100% opaque solid fill, disabled:opacity-100 overrides Tailwind default */
             <button
               disabled
-              className="w-full h-14 rounded-2xl font-700 text-[14px] tracking-wide flex items-center justify-center gap-2.5 cursor-not-allowed disabled:opacity-100"
+              className="pointer-events-auto w-full h-14 rounded-2xl font-700 text-[14px] tracking-wide flex items-center justify-center gap-2.5 cursor-not-allowed disabled:opacity-100"
               style={{ background: '#514f4c', color: 'rgba(255,255,255,0.5)', opacity: 1 }}
             >
               Турнир завершился
@@ -357,7 +354,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           ) : registered ? (
             <button
               onClick={() => toggleRegistration(live.id)}
-              className="w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
+              className="pointer-events-auto w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
               style={{ background: 'rgba(42,33,29,0.9)', border: '1.5px solid rgba(239,68,68,0.38)', color: '#f87171' }}
             >
               <XCircle size={19} />Отменить запись
@@ -365,7 +362,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           ) : (
             <button
               onClick={() => toggleRegistration(live.id)}
-              className="w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
+              className="pointer-events-auto w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
               style={{
                 background: 'linear-gradient(to right, #8C4C27, #D99962)',
                 color: '#0A0908',

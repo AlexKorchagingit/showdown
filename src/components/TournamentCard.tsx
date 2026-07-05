@@ -40,7 +40,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
           right: '-20%',
           top: '-30%',
           opacity: 0.55,
-          filter: 'brightness(1.3) contrast(1.3) saturate(1.1)',
+          filter: 'brightness(1.5) contrast(1.4) saturate(1.2)',
         }}
       />
 

@@ -12,7 +12,7 @@ const NAV_ITEMS = [
 export function BottomNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 px-4"
+      className="absolute bottom-0 left-0 right-0 z-50 px-4"
       style={{ paddingBottom: 'max(calc(env(safe-area-inset-bottom, 0px) + 8px), 12px)' }}
     >
       {/* Floating pill */}

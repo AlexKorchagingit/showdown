@@ -81,7 +81,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           right: '-20%',
           top: '-30%',
           opacity: 0.55,
-          filter: 'brightness(1.3) contrast(1.3) saturate(1.1)',
+          filter: 'brightness(1.5) contrast(1.4) saturate(1.2)',
         }}
       />
 
@@ -201,7 +201,8 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
       <div
         className="flex items-center gap-3 rounded-2xl px-4 py-3"
         style={{
-          background: 'linear-gradient(to right, #231A16, rgba(217,153,98,0.4))',
+          background:
+            'linear-gradient(to right, #231A16, rgba(217,153,98,0.4) 40%, rgba(217,153,98,0.8) 100%)',
           border: '1px solid #D99962',
         }}
       >
@@ -284,7 +285,7 @@ export function HomePage() {
   return (
     <div className="flex flex-col h-full bg-obsidian">
       <Header />
-      <div className="flex-1 scrollable" style={{ paddingBottom: '2rem' }}>
+      <div className="flex-1 scrollable" style={{ paddingBottom: '0.5rem' }}>
         <div className="px-5 pt-5 space-y-6">
           {isLoggedIn && (
             <p className="text-[13px] font-500" style={{ color: '#A39B98' }}>
@@ -305,7 +306,6 @@ export function HomePage() {
 
           <RatingSection onNavigate={() => navigate('/rating')} />
           <InfoGrid />
-          <div className="h-4" />
         </div>
       </div>
     </div>
