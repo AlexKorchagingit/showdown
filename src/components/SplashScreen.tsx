@@ -22,7 +22,7 @@ export function SplashScreen() {
       />
 
       <motion.img
-        src="/final-logo_big-v2.svg"
+        src="/final-logo_big-v3.svg"
         alt="Showdown"
         className="relative z-10 object-contain"
         style={{ width: 220, height: 220 }}

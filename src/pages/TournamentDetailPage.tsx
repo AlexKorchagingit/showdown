@@ -337,11 +337,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           </div>
         </div>{/* end scrollable */}
 
-        {/* ── CTA: fixed at bottom, transparent wrapper ── */}
-        <div
-          className="fixed bottom-4 left-0 right-0 px-4 z-50 bg-transparent pointer-events-none"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        >
+        {/* ── CTA: absolute inside 480px column, transparent wrapper ── */}
+        <div className="absolute bottom-4 left-0 right-0 px-4 z-50 pointer-events-none bg-transparent">
           {live.status === 'finished' ? (
             /* Finished — 100% opaque solid fill, disabled:opacity-100 overrides Tailwind default */
             <button
