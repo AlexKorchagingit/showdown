@@ -129,7 +129,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
         {/* ── Scrollable: hero + all content ── */}
         <div
           className="flex-1 scrollable"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' }}
         >
           {/* Hero inside scroll — rounded corners, date/time baked in */}
           <LobbyHero
@@ -337,10 +337,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           </div>
         </div>{/* end scrollable */}
 
-        {/* ── CTA: transparent wrapper, button "floats" over content ── */}
+        {/* ── CTA: fixed at bottom, transparent wrapper ── */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-5 pt-4 z-50 bg-transparent pointer-events-none"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+          className="fixed bottom-4 left-0 right-0 px-4 z-50 bg-transparent pointer-events-none"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
           {live.status === 'finished' ? (
             /* Finished — 100% opaque solid fill, disabled:opacity-100 overrides Tailwind default */

@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Tournament } from '../types/tournament';
 import { TournamentCard } from '../components/TournamentCard';
-import { TournamentDetailPage } from './TournamentDetailPage';
 import { useTournaments } from '../context/TournamentContext';
 
 type Tab = 'upcoming' | 'finished';
@@ -12,12 +11,9 @@ const TAB_ORDER: Tab[] = ['upcoming', 'finished'];
 
 export function TournamentsPage() {
   const { tournaments } = useTournaments();
-  const location        = useLocation();
   const navigate        = useNavigate();
 
-  const [activeTab, setActiveTab]                   = useState<Tab>('upcoming');
-  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-  const [backToHome, setBackToHome]                 = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('upcoming');
 
   // Track slide direction when switching tabs
   const directionRef = useRef<number>(1);
@@ -28,33 +24,13 @@ export function TournamentsPage() {
     setActiveTab(tab);
   };
 
-  useEffect(() => {
-    const state = location.state as { openTournamentId?: string; from?: string } | null;
-    if (state?.openTournamentId) {
-      const t = tournaments.find((t) => t.id === state.openTournamentId);
-      if (t) { setSelectedTournament(t); setBackToHome(state.from === '/'); }
-      window.history.replaceState({}, '');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleCardClick = (t: Tournament) => {
-    setSelectedTournament(t);
-    setBackToHome(false);
-  };
-
-  const handleBack = () => {
-    if (backToHome) navigate('/');
-    else { setSelectedTournament(null); setBackToHome(false); }
+    navigate(`/tournaments/${t.id}`);
   };
 
   const filtered = tournaments.filter((t) =>
     activeTab === 'upcoming' ? t.status !== 'finished' : t.status === 'finished'
   );
-
-  if (selectedTournament) {
-    return <TournamentDetailPage tournament={selectedTournament} onBack={handleBack} />;
-  }
 
   return (
     <div className="flex flex-col h-full bg-obsidian">

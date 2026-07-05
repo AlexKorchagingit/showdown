@@ -5,8 +5,6 @@ import { CURRENT_USER_RATING } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
 // ─── Mock state ───────────────────────────────────────────────────────────────
-const isLoggedIn = false;
-const userName   = 'Alex_King';
 
 // Podium order: [2nd, 1st, 3rd]
 const PODIUM = [
@@ -33,21 +31,6 @@ function Header() {
           Showdown
         </span>
       </div>
-      {!isLoggedIn && (
-        <div className="flex items-center gap-2">
-          <button className="px-3.5 py-1.5 text-[13px] font-600 rounded-xl active:opacity-60"
-                  style={{ color: '#D99962' }}>
-            Войти
-          </button>
-          <button
-            className="px-3.5 py-1.5 text-[13px] font-700 rounded-xl active:scale-95 transition-transform"
-            style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)', color: '#0A0908',
-                     boxShadow: '0 0 12px rgba(217,153,98,0.22)' }}
-          >
-            Регистрация
-          </button>
-        </div>
-      )}
     </header>
   );
 }
@@ -218,7 +201,7 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-700 truncate text-white">{CURRENT_USER_RATING.nickname}</p>
         </div>
-        <p className="text-[13px] font-700 shrink-0" style={{ color: '#F2D8A7' }}>
+        <p className="text-[13px] font-black shrink-0 text-[#110b09]">
           {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}
         </p>
       </div>
@@ -287,19 +270,11 @@ export function HomePage() {
       <Header />
       <div className="flex-1 scrollable" style={{ paddingBottom: '0.5rem' }}>
         <div className="px-5 pt-5 space-y-6">
-          {isLoggedIn && (
-            <p className="text-[13px] font-500" style={{ color: '#A39B98' }}>
-              Здравствуйте, <span className="font-700 text-white">{userName}</span>
-            </p>
-          )}
-
           {nextTournament && (
             <HeroCard
               tournament={nextTournament}
               onPress={() =>
-                navigate('/tournaments', {
-                  state: { openTournamentId: nextTournament.id, from: '/' },
-                })
+                navigate(`/tournaments/${nextTournament.id}`, { state: { from: '/' } })
               }
             />
           )}
