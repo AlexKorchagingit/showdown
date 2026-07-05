@@ -13,6 +13,24 @@ interface Props {
 
 type Step = 'email' | 'code';
 
+const TEMP_AUTH_KEYS = [
+  'temp_auth_email',
+  'temp_auth_code',
+  'temp_auth_step',
+  'temp_auth_expire',
+] as const;
+
+function clearTempAuth() {
+  TEMP_AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
+}
+
+function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
+  localStorage.setItem('temp_auth_email', targetEmail.trim());
+  localStorage.setItem('temp_auth_code', code);
+  localStorage.setItem('temp_auth_step', 'code');
+  localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
+}
+
 export function LoginScreen({ onLogin }: Props) {
   const [step, setStep]                   = useState<Step>('email');
   const [email, setEmail]                 = useState('');
@@ -28,6 +46,19 @@ export function LoginScreen({ onLogin }: Props) {
 
   const isEmailValid = EMAIL_REGEX.test(email.trim());
 
+  useEffect(() => {
+    const savedStep = localStorage.getItem('temp_auth_step');
+    if (savedStep !== 'code') return;
+
+    setEmail(localStorage.getItem('temp_auth_email') || '');
+    setGeneratedCode(localStorage.getItem('temp_auth_code') || '');
+    setStep('code');
+
+    const expireTime = Number(localStorage.getItem('temp_auth_expire') || 0);
+    const timeLeft = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
+    setTimer(timeLeft);
+  }, []);
+
   const sendCode = useCallback(async (targetEmail: string, nextTimer: number) => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedCode(code);
@@ -40,6 +71,7 @@ export function LoginScreen({ onLogin }: Props) {
         { to_email: targetEmail.trim(), code },
         EMAILJS_PUBLIC,
       );
+      saveTempAuth(targetEmail.trim(), code, nextTimer);
       setStep('code');
       setTimer(nextTimer);
       setOtp(['', '', '', '']);
@@ -81,6 +113,7 @@ export function LoginScreen({ onLogin }: Props) {
       verifiedRef.current = true;
       setIsSuccess(true);
       const timer = setTimeout(() => {
+        clearTempAuth();
         if (onLogin) onLogin(email.trim());
       }, 1000);
       return () => clearTimeout(timer);
@@ -226,6 +259,7 @@ export function LoginScreen({ onLogin }: Props) {
               <button
                 type="button"
                 onClick={() => {
+                  clearTempAuth();
                   setStep('email');
                   setOtp(['', '', '', '']);
                   setTimer(0);

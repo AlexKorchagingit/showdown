@@ -1,7 +1,12 @@
-import { Mail } from 'lucide-react';
+import { LogOut, Mail } from 'lucide-react';
 
 interface Props {
   userEmail: string;
+}
+
+function handleLogout() {
+  localStorage.removeItem('userEmail');
+  window.location.reload();
 }
 
 export function ProfilePage({ userEmail }: Props) {
@@ -13,7 +18,7 @@ export function ProfilePage({ userEmail }: Props) {
         </h1>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-24">
+      <div className="flex-1 flex flex-col items-center justify-center px-6">
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
           style={{
@@ -29,11 +34,23 @@ export function ProfilePage({ userEmail }: Props) {
         </p>
 
         <p
-          className="text-center text-[20px] font-700 text-white break-all leading-snug max-w-full"
+          className="text-center text-[20px] font-700 break-all leading-snug max-w-full"
           style={{ color: '#F2D8A7' }}
         >
           {userEmail || '—'}
         </p>
+      </div>
+
+      <div className="flex-shrink-0 px-5 pb-8 pt-4">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full h-14 rounded-2xl flex items-center justify-center gap-2.5 text-[15px] font-700 text-white/90 active:scale-[0.98] transition-transform bg-gradient-to-r from-red-900/80 to-red-800/80 border border-red-700/50"
+          style={{ boxShadow: '0 4px 20px rgba(127,29,29,0.25)' }}
+        >
+          <LogOut size={18} />
+          Выйти из аккаунта
+        </button>
       </div>
     </div>
   );
