@@ -24,8 +24,7 @@ export function SplashScreen() {
       <motion.img
         src="/final-logo_big-v3.svg"
         alt="Showdown"
-        className="relative z-10 object-contain"
-        style={{ width: 220, height: 220 }}
+        className="relative z-10 object-contain w-3/4 max-w-[330px] h-auto -mt-28"
         initial={{ opacity: 0, scale: 0.75 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.55, ease: [0.34, 1.56, 0.64, 1] }}
