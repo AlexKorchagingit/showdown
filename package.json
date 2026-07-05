@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@twa-dev/sdk": "^8.0.2",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.23.0",

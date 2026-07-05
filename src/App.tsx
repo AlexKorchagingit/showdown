@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
+import { LoginScreen } from './components/LoginScreen';
 import { SplashScreen } from './components/SplashScreen';
 import { HomePage } from './pages/HomePage';
 import { TournamentsPage } from './pages/TournamentsPage';
@@ -13,24 +14,16 @@ import { TournamentProvider } from './context/TournamentContext';
 
 const NAV_HEIGHT = '5rem';
 const LOBBY_PATH = /^\/tournaments\/[^/]+$/;
+const SPLASH_MS = 2000;
 
-function AppLayout() {
+interface AppLayoutProps {
+  userEmail: string;
+  isReady: boolean;
+}
+
+function AppLayout({ userEmail, isReady }: AppLayoutProps) {
   const location = useLocation();
   const isLobby = LOBBY_PATH.test(location.pathname);
-
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    try {
-      WebApp.ready();
-      WebApp.expand();
-      WebApp.setHeaderColor('#110b09');
-      WebApp.setBackgroundColor('#110b09');
-    } catch { /* Outside Telegram */ }
-
-    const timer = setTimeout(() => setIsReady(true), 2200);
-    return () => clearTimeout(timer);
-  }, []);
 
   const contentPaddingBottom = isLobby
     ? 'env(safe-area-inset-bottom, 0px)'
@@ -51,26 +44,66 @@ function AppLayout() {
       >
         <div className="h-full">
           <Routes>
-            <Route path="/"                         element={<HomePage />} />
-            <Route path="/tournaments"              element={<TournamentsPage />} />
-            <Route path="/tournaments/:id"         element={<TournamentDetailRoute />} />
-            <Route path="/rating"                   element={<RatingPage />} />
-            <Route path="/profile"                  element={<ProfilePage />} />
-            <Route path="*"                         element={<Navigate to="/" replace />} />
+            <Route path="/"                element={<HomePage />} />
+            <Route path="/tournaments"     element={<TournamentsPage />} />
+            <Route path="/tournaments/:id" element={<TournamentDetailRoute />} />
+            <Route path="/rating"          element={<RatingPage />} />
+            <Route path="/profile"         element={<ProfilePage userEmail={userEmail} />} />
+            <Route path="*"                element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>
 
-      {!isLobby && <BottomNav />}
+      {!isLobby && isReady && <BottomNav />}
     </div>
   );
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail]             = useState('');
+  const [isReady, setIsReady]                 = useState(false);
+
+  useEffect(() => {
+    try {
+      WebApp.ready();
+      WebApp.expand();
+      WebApp.setHeaderColor('#110b09');
+      WebApp.setBackgroundColor('#110b09');
+    } catch { /* Outside Telegram */ }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setIsReady(false);
+    const timer = setTimeout(() => setIsReady(true), SPLASH_MS);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
+
+  const handleLogin = (email: string) => {
+    setUserEmail(email);
+    setIsAuthenticated(true);
+  };
+
+  const shellClass = 'w-full min-h-screen bg-black flex justify-center';
+
+  if (!isAuthenticated) {
+    return (
+      <div className={shellClass}>
+        <div
+          className="relative w-full max-w-[480px] overflow-hidden shadow-2xl"
+          style={{ height: '100dvh' }}
+        >
+          <LoginScreen onLogin={handleLogin} />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full min-h-screen bg-black flex justify-center">
+    <div className={shellClass}>
       <TournamentProvider>
-        <AppLayout />
+        <AppLayout userEmail={userEmail} isReady={isReady} />
       </TournamentProvider>
     </div>
   );
