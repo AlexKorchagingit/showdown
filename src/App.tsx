@@ -60,9 +60,13 @@ function AppLayout({ userEmail, isReady }: AppLayoutProps) {
 }
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail]             = useState('');
-  const [isReady, setIsReady]                 = useState(false);
+  const [userEmail, setUserEmail] = useState(
+    () => localStorage.getItem('userEmail') || '',
+  );
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => !!localStorage.getItem('userEmail'),
+  );
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -81,6 +85,7 @@ export default function App() {
   }, [isAuthenticated]);
 
   const handleLogin = (email: string) => {
+    localStorage.setItem('userEmail', email);
     setUserEmail(email);
     setIsAuthenticated(true);
   };

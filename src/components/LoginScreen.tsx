@@ -14,13 +14,14 @@ interface Props {
 type Step = 'email' | 'code';
 
 export function LoginScreen({ onLogin }: Props) {
-  const [step, setStep]               = useState<Step>('email');
-  const [email, setEmail]             = useState('');
+  const [step, setStep]                   = useState<Step>('email');
+  const [email, setEmail]                 = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
-  const [isLoading, setIsLoading]     = useState(false);
-  const [timer, setTimer]             = useState(0);
-  const [otp, setOtp]                 = useState(['', '', '', '']);
-  const [otpError, setOtpError]       = useState(false);
+  const [isLoading, setIsLoading]         = useState(false);
+  const [timer, setTimer]                 = useState(0);
+  const [otp, setOtp]                     = useState(['', '', '', '']);
+  const [otpError, setOtpError]           = useState(false);
+  const [isSuccess, setIsSuccess]         = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -42,6 +43,7 @@ export function LoginScreen({ onLogin }: Props) {
       setTimer(nextTimer);
       setOtp(['', '', '', '']);
       setOtpError(false);
+      setIsSuccess(false);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
       console.error(err);
@@ -57,26 +59,25 @@ export function LoginScreen({ onLogin }: Props) {
   };
 
   const handleResend = () => {
-    if (timer > 0 || isLoading) return;
+    if (timer > 0 || isLoading || isSuccess) return;
     sendCode(email, 15);
   };
 
-  // Countdown timer
   useEffect(() => {
     if (timer <= 0) return;
     const id = setInterval(() => setTimer((t) => t - 1), 1000);
     return () => clearInterval(id);
   }, [timer]);
 
-  // Auto-verify OTP when all 4 digits entered
   useEffect(() => {
-    if (step !== 'code') return;
+    if (step !== 'code' || isSuccess) return;
     const entered = otp.join('');
     if (entered.length < 4) return;
 
     if (entered === generatedCode) {
-      onLogin(email.trim());
-      return;
+      setIsSuccess(true);
+      const id = setTimeout(() => onLogin(email.trim()), 1200);
+      return () => clearTimeout(id);
     }
 
     setOtpError(true);
@@ -85,10 +86,10 @@ export function LoginScreen({ onLogin }: Props) {
 
     const id = setTimeout(() => setOtpError(false), 1000);
     return () => clearTimeout(id);
-  }, [otp, generatedCode, step, email, onLogin]);
+  }, [otp, generatedCode, step, email, onLogin, isSuccess]);
 
   const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
+    if (isSuccess || !/^\d?$/.test(value)) return;
 
     const next = [...otp];
     next[index] = value;
@@ -100,6 +101,7 @@ export function LoginScreen({ onLogin }: Props) {
   };
 
   const handleOtpKeyDown = (index: number, key: string) => {
+    if (isSuccess) return;
     if (key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -110,11 +112,14 @@ export function LoginScreen({ onLogin }: Props) {
     : null;
 
   return (
-    <div
-      className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#D99962] via-[#F2D8A7] to-[#D99962] animate-pulse overflow-y-auto"
-    >
-      <div className="w-full max-w-sm px-6 flex flex-col items-center">
-        <img src="/logo-final.svg" alt="Showdown" className="h-16 w-auto mb-4" />
+    <div className="absolute inset-0 relative bg-[#F2D8A7] overflow-hidden overflow-y-auto">
+      {/* Background pulse layer — content stays static */}
+      <div
+        className="absolute inset-0 z-0 bg-gradient-to-br from-[#F2D8A7] via-[#f7e8c6] to-[#D99962] login-bg-pulse"
+      />
+
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-full w-full max-w-sm px-6 mx-auto -mt-32">
+        <img src="/logo-final.svg" alt="Showdown" className="h-32 w-auto mb-4" />
         <h1 className="text-3xl font-black text-[#110b09] mb-8 uppercase tracking-wide">
           Вход
         </h1>
@@ -175,23 +180,24 @@ export function LoginScreen({ onLogin }: Props) {
 
               <div className="flex gap-3 mb-6">
                 {otp.map((digit, i) => (
-                  <motion.input
+                  <input
                     key={i}
                     ref={(el) => { inputRefs.current[i] = el; }}
                     type="text"
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
+                    readOnly={isSuccess}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e.key)}
-                    className={`w-14 h-14 rounded-xl text-2xl text-white font-bold text-center outline-none transition-all duration-300 bg-[#231A16] ${
-                      otpError
-                        ? 'border-2 border-red-500 scale-100'
-                        : 'border border-[#D99962]/50 focus:border-[#D99962]'
+                    className={`w-14 h-14 rounded-xl text-2xl font-bold text-center outline-none bg-[#231A16] transition-colors duration-300 ${
+                      isSuccess
+                        ? 'border-2 border-green-500 text-green-500'
+                        : otpError
+                          ? 'border-2 border-red-500 text-white scale-100'
+                          : 'border border-[#D99962]/50 text-white focus:border-[#D99962]'
                     }`}
-                    initial={false}
-                    animate={digit ? { scale: [0.85, 1.05, 1] } : { scale: 1 }}
-                    transition={{ duration: 0.25 }}
+                    style={{ transitionDelay: isSuccess ? `${i * 150}ms` : '0ms' }}
                   />
                 ))}
               </div>
@@ -199,9 +205,9 @@ export function LoginScreen({ onLogin }: Props) {
               <button
                 type="button"
                 onClick={handleResend}
-                disabled={timer > 0 || isLoading}
+                disabled={timer > 0 || isLoading || isSuccess}
                 className={`text-[13px] transition-colors ${
-                  timer > 0 || isLoading
+                  timer > 0 || isLoading || isSuccess
                     ? 'text-[#8c8c88] cursor-not-allowed'
                     : 'text-[#110b09] font-bold cursor-pointer active:opacity-70'
                 }`}
@@ -214,8 +220,14 @@ export function LoginScreen({ onLogin }: Props) {
 
               <button
                 type="button"
-                onClick={() => { setStep('email'); setOtp(['', '', '', '']); setTimer(0); }}
-                className="mt-6 text-[12px] font-600 text-[#463129] active:opacity-60"
+                onClick={() => {
+                  setStep('email');
+                  setOtp(['', '', '', '']);
+                  setTimer(0);
+                  setIsSuccess(false);
+                }}
+                disabled={isSuccess}
+                className="mt-6 text-[12px] font-600 text-[#463129] active:opacity-60 disabled:opacity-40"
               >
                 ← Изменить email
               </button>
@@ -223,6 +235,16 @@ export function LoginScreen({ onLogin }: Props) {
           )}
         </AnimatePresence>
       </div>
+
+      <style>{`
+        @keyframes loginBgPulse {
+          0%, 100% { opacity: 0.88; }
+          50%       { opacity: 1; }
+        }
+        .login-bg-pulse {
+          animation: loginBgPulse 5s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
