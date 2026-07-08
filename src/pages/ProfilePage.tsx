@@ -1,56 +1,63 @@
-import { LogOut, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Settings } from 'lucide-react';
+import { useProfile } from '../context/ProfileContext';
 
-interface Props {
-  userEmail: string;
-}
+export function ProfilePage() {
+  const navigate = useNavigate();
+  const { nickname, slogan } = useProfile();
 
-function handleLogout() {
-  localStorage.removeItem('userEmail');
-  window.location.reload();
-}
-
-export function ProfilePage({ userEmail }: Props) {
   return (
-    <div className="flex flex-col h-full bg-[#110b09]">
-      <div className="flex-shrink-0 px-5 pt-6 pb-4">
-        <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
-          ПРОФИЛЬ
+    <div className="relative h-full w-full overflow-hidden bg-[#110b09]">
+      <img
+        src="/fon1_mountine.png"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+
+      <div
+        className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 pt-6 pb-3"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 1.5rem)',
+          background: 'linear-gradient(to bottom, rgba(17,11,9,0.55) 0%, transparent 100%)',
+        }}
+      >
+        <h1 className="text-[18px] font-800 text-white tracking-wide truncate pr-4">
+          {nickname}
         </h1>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center px-6">
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
-          style={{
-            background: 'rgba(140,76,39,0.2)',
-            border: '1px solid rgba(217,153,98,0.3)',
-          }}
-        >
-          <Mail size={28} style={{ color: '#D99962' }} />
-        </div>
-
-        <p className="text-[12px] font-600 uppercase tracking-[0.2em] mb-3" style={{ color: '#A39B98' }}>
-          Email
-        </p>
-
-        <p
-          className="text-center text-[20px] font-700 break-all leading-snug max-w-full"
-          style={{ color: '#F2D8A7' }}
-        >
-          {userEmail || '—'}
-        </p>
-      </div>
-
-      <div className="flex-shrink-0 px-5 pb-8 pt-4">
         <button
           type="button"
-          onClick={handleLogout}
-          className="w-full h-14 rounded-2xl flex items-center justify-center gap-2.5 text-[15px] font-700 text-white/90 active:scale-[0.98] transition-transform bg-gradient-to-r from-red-900/80 to-red-800/80 border border-red-700/50"
-          style={{ boxShadow: '0 4px 20px rgba(127,29,29,0.25)' }}
+          onClick={() => navigate('/profile/settings')}
+          className="shrink-0 p-1 active:opacity-60 transition-opacity"
+          aria-label="Настройки"
         >
-          <LogOut size={18} />
-          Выйти из аккаунта
+          <Settings size={24} strokeWidth={2} style={{ color: '#D99962' }} />
         </button>
+      </div>
+
+      <div
+        className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center px-6"
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1.5rem)',
+          background: 'linear-gradient(to top, rgba(17,11,9,0.65) 0%, transparent 70%)',
+        }}
+      >
+        <img
+          src="/cat1_little.png"
+          alt=""
+          className="w-[min(72vw,280px)] h-auto object-contain mb-4"
+          style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.45))' }}
+        />
+        <p
+          className="text-center text-[17px] font-600 italic leading-relaxed max-w-[90%] pb-2"
+          style={{
+            color: '#F2D8A7',
+            fontFamily: 'Montserrat, sans-serif',
+            letterSpacing: '0.02em',
+            textShadow: '0 2px 12px rgba(0,0,0,0.6)',
+          }}
+        >
+          «{slogan}»
+        </p>
       </div>
     </div>
   );

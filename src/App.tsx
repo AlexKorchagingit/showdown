@@ -9,10 +9,12 @@ import { TournamentsPage } from './pages/TournamentsPage';
 import { TournamentDetailRoute } from './pages/TournamentDetailRoute';
 import { RatingPage } from './pages/RatingPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ProfileSettingsPage } from './pages/ProfileSettingsPage';
 import { TournamentProvider } from './context/TournamentContext';
+import { ProfileProvider } from './context/ProfileContext';
 
 const NAV_HEIGHT = '5rem';
-const LOBBY_PATH = /^\/tournaments\/[^/]+$/;
+const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|profile\/settings)$/;
 const SPLASH_MS = 2000;
 
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
@@ -24,9 +26,9 @@ interface AppLayoutProps {
 
 function AppLayout({ userEmail }: AppLayoutProps) {
   const location = useLocation();
-  const isLobby = LOBBY_PATH.test(location.pathname);
+  const hideNav = HIDE_NAV_PATH.test(location.pathname);
 
-  const contentPaddingBottom = isLobby
+  const contentPaddingBottom = hideNav
     ? 'env(safe-area-inset-bottom, 0px)'
     : `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})`;
 
@@ -42,13 +44,14 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/tournaments"     element={<TournamentsPage />} />
             <Route path="/tournaments/:id" element={<TournamentDetailRoute />} />
             <Route path="/rating"          element={<RatingPage />} />
-            <Route path="/profile"         element={<ProfilePage userEmail={userEmail} />} />
+            <Route path="/profile"          element={<ProfilePage />} />
+            <Route path="/profile/settings" element={<ProfileSettingsPage userEmail={userEmail} />} />
             <Route path="*"                element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>
 
-      {!isLobby && <BottomNav />}
+      {!hideNav && <BottomNav />}
     </div>
   );
 }
@@ -113,7 +116,9 @@ export default function App() {
   return (
     <div className={shellClass}>
       <TournamentProvider>
-        <AppLayout userEmail={userEmail} />
+        <ProfileProvider>
+          <AppLayout userEmail={userEmail} />
+        </ProfileProvider>
       </TournamentProvider>
     </div>
   );
