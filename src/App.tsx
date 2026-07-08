@@ -9,12 +9,12 @@ import { TournamentsPage } from './pages/TournamentsPage';
 import { TournamentDetailRoute } from './pages/TournamentDetailRoute';
 import { RatingPage } from './pages/RatingPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { ProfileSettingsPage } from './pages/ProfileSettingsPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { TournamentProvider } from './context/TournamentContext';
 import { ProfileProvider } from './context/ProfileContext';
 
 const NAV_HEIGHT = '5rem';
-const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|profile\/settings)$/;
+const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings)$/;
 const SPLASH_MS = 2000;
 
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
@@ -44,8 +44,8 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/tournaments"     element={<TournamentsPage />} />
             <Route path="/tournaments/:id" element={<TournamentDetailRoute />} />
             <Route path="/rating"          element={<RatingPage />} />
-            <Route path="/profile"          element={<ProfilePage />} />
-            <Route path="/profile/settings" element={<ProfileSettingsPage userEmail={userEmail} />} />
+            <Route path="/profile"   element={<ProfilePage />} />
+            <Route path="/settings"  element={<SettingsPage userEmail={userEmail} />} />
             <Route path="*"                element={<Navigate to="/" replace />} />
           </Routes>
         </div>
