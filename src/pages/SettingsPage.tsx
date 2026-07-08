@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
@@ -14,6 +15,17 @@ function handleLogout() {
 export function SettingsPage({ userEmail }: Props) {
   const navigate = useNavigate();
   const { nickname, birthDate, slogan, updateNickname, updateBirthDate, updateSlogan } = useProfile();
+
+  const [draftNickname, setDraftNickname] = useState(nickname);
+  const [draftBirthDate, setDraftBirthDate] = useState(birthDate);
+  const [draftSlogan, setDraftSlogan] = useState(slogan);
+
+  const handleSave = () => {
+    updateNickname(draftNickname.trim() || nickname);
+    updateBirthDate(draftBirthDate);
+    updateSlogan(draftSlogan.trim() || slogan);
+    navigate('/profile');
+  };
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
@@ -46,11 +58,13 @@ export function SettingsPage({ userEmail }: Props) {
             </label>
             <input
               type="text"
-              value={nickname}
-              onChange={(e) => updateNickname(e.target.value)}
+              value={draftNickname}
+              onChange={(e) => setDraftNickname(e.target.value)}
+              maxLength={17}
               className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors"
               placeholder="Ваш никнейм"
             />
+            <p className="text-[11px] mt-1 text-[#6B6360]">(макс. 17 символов)</p>
           </section>
 
           <section>
@@ -59,8 +73,8 @@ export function SettingsPage({ userEmail }: Props) {
             </label>
             <input
               type="date"
-              value={birthDate}
-              onChange={(e) => updateBirthDate(e.target.value)}
+              value={draftBirthDate}
+              onChange={(e) => setDraftBirthDate(e.target.value)}
               className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors [color-scheme:dark]"
             />
           </section>
@@ -71,13 +85,13 @@ export function SettingsPage({ userEmail }: Props) {
             </label>
             <input
               type="text"
-              value={slogan}
-              onChange={(e) => updateSlogan(e.target.value)}
+              value={draftSlogan}
+              onChange={(e) => setDraftSlogan(e.target.value)}
               maxLength={60}
               className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors"
               placeholder="Ваш слоган (макс. 60 символов)"
             />
-            <p className="text-right text-[11px] mt-1 text-[#6B6360]">{slogan.length}/60</p>
+            <p className="text-right text-[11px] mt-1 text-[#6B6360]">{draftSlogan.length}/60</p>
           </section>
 
           <section>
@@ -91,9 +105,17 @@ export function SettingsPage({ userEmail }: Props) {
               {userEmail || '—'}
             </div>
           </section>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            className="w-full bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white font-bold py-3 rounded-xl active:scale-[0.98] transition-transform"
+          >
+            Сохранить изменения
+          </button>
         </div>
 
-        <div className="mt-12">
+        <div className="mt-10">
           <button
             type="button"
             onClick={handleLogout}

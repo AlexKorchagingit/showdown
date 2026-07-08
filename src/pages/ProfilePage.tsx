@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronDown, Settings } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 
 const STATS = [
-  { label: 'Победы',    value: 5,  size: 'text-4xl' },
-  { label: 'Финалы',    value: 12, size: 'text-3xl' },
-  { label: 'Нокауты',   value: 47, size: 'text-2xl' },
+  { label: 'Победы',     value: 5,  size: 'text-4xl' },
+  { label: 'Финалы',     value: 12, size: 'text-3xl' },
+  { label: 'Нокауты',    value: 47, size: 'text-2xl' },
   { label: 'Кол-во игр', value: 28, size: 'text-xl' },
 ] as const;
 
@@ -24,7 +24,7 @@ function formatBirthDate(iso: string): string {
 export function ProfilePage() {
   const navigate = useNavigate();
   const { nickname, birthDate, slogan } = useProfile();
-  const [expanded, setExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -36,66 +36,67 @@ export function ProfilePage() {
       <img
         src="/cat1_little.png"
         alt=""
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 h-[65%] w-auto object-contain z-0 pointer-events-none"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[78%] w-auto object-contain z-0 pointer-events-none"
       />
 
+      {/* Left-side readability mask — above bg/cat, below stats */}
+      <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[#110b09]/90 via-[#110b09]/50 to-transparent z-[1] pointer-events-none" />
+
       {/* Header card */}
-      <div className="relative z-10 mx-4 mt-6 p-5 rounded-2xl bg-gradient-to-br from-[#463129]/90 to-[#231A16]/90 backdrop-blur-md border border-[#D99962]/30">
+      <div className="relative z-10 mx-4 mt-6 p-5 rounded-2xl bg-gradient-to-br from-[#463129] via-[#231A16]/95 to-[#110b09]/90 backdrop-blur-md border border-[#D99962]/30">
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="absolute top-4 right-4 p-0 active:opacity-60 transition-opacity"
+          className="absolute top-6 right-6 p-0 active:opacity-60 transition-opacity"
           aria-label="Настройки"
         >
-          <Settings size={22} strokeWidth={2} style={{ color: '#D99962' }} />
+          <Settings className="w-8 h-8" strokeWidth={2} style={{ color: '#D99962' }} />
         </button>
 
-        <div className="pr-10">
+        <div className="pr-12">
           <h1 className="text-3xl font-black text-white leading-tight">{nickname}</h1>
           <p className="text-sm text-[#8c8c88] mt-1">{formatBirthDate(birthDate)}</p>
+          <p className="text-sm italic text-[#D99962]/90 mt-2 leading-snug">
+            «{slogan}»
+          </p>
         </div>
 
         <button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => setIsExpanded((v) => !v)}
           className="w-full flex justify-center mt-4 pt-2 active:opacity-60 transition-opacity"
-          aria-expanded={expanded}
+          aria-expanded={isExpanded}
           aria-label="Раскрыть раздел"
         >
           <ChevronDown
             size={22}
-            className={`text-white/40 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+            className={`text-white transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           />
         </button>
 
-        <AnimatePresence initial={false}>
-          {expanded && (
-            <motion.div
-              key="accordion"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-              className="overflow-hidden"
-            />
-          )}
-        </AnimatePresence>
+        <motion.div
+          initial={false}
+          animate={{ height: isExpanded ? 'auto' : 0 }}
+          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          className="overflow-hidden"
+        >
+          <p className="text-sm text-[#A39B98] pt-3 pb-1 text-center">
+            Здесь будет дополнительная информация
+          </p>
+        </motion.div>
       </div>
 
       {/* Left stats */}
       <div className="flex flex-col gap-4 mt-8 ml-4 relative z-10">
         {STATS.map(({ label, value, size }) => (
           <div key={label}>
-            <p className="text-xs text-[#8c8c88] font-600 uppercase tracking-wide">{label}</p>
+            <p className="text-xs text-white font-bold drop-shadow-md uppercase tracking-wide">
+              {label}
+            </p>
             <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{value}</p>
           </div>
         ))}
       </div>
-
-      {/* Slogan */}
-      <p className="absolute bottom-6 left-0 right-0 z-10 font-serif italic text-center text-lg text-white/90 drop-shadow-md px-6 pointer-events-none">
-        «{slogan}»
-      </p>
     </div>
   );
 }
