@@ -5,10 +5,11 @@ import { ChevronDown, Settings } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 
 const STATS = [
-  { label: 'Победы',     value: 5,  size: 'text-4xl' },
-  { label: 'Финалы',     value: 12, size: 'text-3xl' },
-  { label: 'Нокауты',    value: 47, size: 'text-2xl' },
-  { label: 'Кол-во игр', value: 28, size: 'text-xl' },
+  { label: 'Рейтинг',  value: '#12', size: 'text-5xl' },
+  { label: 'Победы',   value: 5,     size: 'text-4xl' },
+  { label: 'Финалы',   value: 12,    size: 'text-3xl' },
+  { label: 'Нокауты',  value: 47,    size: 'text-2xl' },
+  { label: 'Игры',     value: 28,    size: 'text-lg' },
 ] as const;
 
 const GOLD_NUM =
@@ -43,20 +44,20 @@ export function ProfilePage() {
       <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[#110b09]/90 via-[#110b09]/50 to-transparent z-[1] pointer-events-none" />
 
       {/* Header card */}
-      <div className="relative z-10 mx-4 mt-6 p-5 rounded-2xl bg-gradient-to-br from-[#463129] via-[#231A16]/95 to-[#110b09]/90 backdrop-blur-md border border-[#D99962]/30">
+      <div className="relative z-10 mx-4 mt-6 px-5 py-3 rounded-2xl bg-gradient-to-br from-[#69584f]/70 via-[#463129]/80 to-[#231A16]/80 backdrop-blur-md border border-[#D99962]/30">
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="absolute top-6 right-6 p-0 active:opacity-60 transition-opacity"
+          className="absolute top-5 right-5 p-0 active:opacity-60 transition-opacity"
           aria-label="Настройки"
         >
-          <Settings className="w-8 h-8" strokeWidth={2} style={{ color: '#D99962' }} />
+          <Settings className="w-8 h-8 text-[#F2D8A7]" strokeWidth={2} />
         </button>
 
         <div className="pr-12">
           <h1 className="text-3xl font-black text-white leading-tight">{nickname}</h1>
-          <p className="text-sm text-[#8c8c88] mt-1">{formatBirthDate(birthDate)}</p>
-          <p className="text-sm italic text-[#D99962]/90 mt-2 leading-snug">
+          <p className="text-sm text-[#8c8c88] mt-0.5">{formatBirthDate(birthDate)}</p>
+          <p className="text-sm italic text-[#D99962]/90 mt-1 leading-snug">
             «{slogan}»
           </p>
         </div>
@@ -64,7 +65,7 @@ export function ProfilePage() {
         <button
           type="button"
           onClick={() => setIsExpanded((v) => !v)}
-          className="w-full flex justify-center mt-4 pt-2 active:opacity-60 transition-opacity"
+          className="w-full flex justify-center mt-2 pt-1 active:opacity-60 transition-opacity"
           aria-expanded={isExpanded}
           aria-label="Раскрыть раздел"
         >
@@ -80,7 +81,7 @@ export function ProfilePage() {
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           className="overflow-hidden"
         >
-          <p className="text-sm text-[#A39B98] pt-3 pb-1 text-center">
+          <p className="text-sm text-[#A39B98] pt-2 pb-0.5 text-center">
             Здесь будет дополнительная информация
           </p>
         </motion.div>
