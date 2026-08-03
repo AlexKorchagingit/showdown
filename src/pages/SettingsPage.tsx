@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
+import { SLOGAN_PLACEHOLDER } from '../lib/profileStorage';
 
 interface Props {
   userEmail: string;
@@ -25,7 +26,7 @@ export function SettingsPage({ userEmail }: Props) {
   const handleSave = () => {
     updateNickname(draftNickname.trim() || nickname);
     updateBirthDate(draftBirthDate);
-    updateSlogan(draftSlogan.trim() || slogan);
+    updateSlogan(draftSlogan.trim());
     navigate('/profile');
   };
 
@@ -108,7 +109,7 @@ export function SettingsPage({ userEmail }: Props) {
               onChange={(e) => setDraftSlogan(e.target.value)}
               maxLength={60}
               className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors"
-              placeholder="Ваш слоган (макс. 60 символов)"
+              placeholder={SLOGAN_PLACEHOLDER}
             />
             <p className="text-right text-[11px] mt-1 text-[#6B6360]">{draftSlogan.length}/60</p>
           </section>

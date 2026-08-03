@@ -7,6 +7,8 @@ interface TournamentContextValue {
   registrations: Set<string>;
   toggleRegistration: (tournamentId: string) => void;
   isRegistered: (tournamentId: string) => boolean;
+  updateTournament: (tournamentId: string, patch: Partial<Tournament>) => void;
+  addTournament: (tournament: Omit<Tournament, 'id'>) => string;
 }
 
 const TournamentContext = createContext<TournamentContextValue | null>(null);
@@ -48,8 +50,29 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     [registrations]
   );
 
+  const updateTournament = useCallback((tournamentId: string, patch: Partial<Tournament>) => {
+    setTournaments((ts) =>
+      ts.map((t) => (t.id === tournamentId ? { ...t, ...patch } : t))
+    );
+  }, []);
+
+  const addTournament = useCallback((tournament: Omit<Tournament, 'id'>) => {
+    const id = `t-${Date.now()}`;
+    setTournaments((ts) => [...ts, { ...tournament, id }]);
+    return id;
+  }, []);
+
   return (
-    <TournamentContext.Provider value={{ tournaments, registrations, toggleRegistration, isRegistered }}>
+    <TournamentContext.Provider
+      value={{
+        tournaments,
+        registrations,
+        toggleRegistration,
+        isRegistered,
+        updateTournament,
+        addTournament,
+      }}
+    >
       {children}
     </TournamentContext.Provider>
   );

@@ -4,7 +4,7 @@ const KEYS = {
   slogan:    'profile_slogan',
 } as const;
 
-export const DEFAULT_SLOGAN = 'Ставлю вот такую стопку белых фишек';
+export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку белых фишек';
 
 function generateDefaultNickname(): string {
   return `Личность№${Math.floor(Math.random() * 10000)}`;
@@ -24,7 +24,7 @@ export function getBirthDate(): string {
 }
 
 export function getSlogan(): string {
-  return localStorage.getItem(KEYS.slogan) || DEFAULT_SLOGAN;
+  return localStorage.getItem(KEYS.slogan) ?? '';
 }
 
 export function setNickname(value: string) {

@@ -16,9 +16,9 @@ const GOLD_NUM =
   'font-black text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7] drop-shadow-[0_0_8px_rgba(217,153,98,0.8)]';
 
 function formatBirthDate(iso: string): string {
-  if (!iso) return 'Дата не указана';
+  if (!iso) return '';
   const d = new Date(iso + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return 'Дата не указана';
+  if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
@@ -26,6 +26,9 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const { nickname, birthDate, slogan } = useProfile();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const formattedBirthDate = formatBirthDate(birthDate);
+  const trimmedSlogan = slogan.trim();
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -56,10 +59,14 @@ export function ProfilePage() {
 
         <div className="pr-12">
           <h1 className="text-3xl font-black text-white leading-tight">{nickname}</h1>
-          <p className="text-sm text-[#8c8c88] mt-0.5">{formatBirthDate(birthDate)}</p>
-          <p className="text-sm italic text-[#D99962]/90 mt-1 leading-snug">
-            «{slogan}»
-          </p>
+          {formattedBirthDate && (
+            <p className="text-sm text-[#8c8c88] mt-0.5">{formattedBirthDate}</p>
+          )}
+          {trimmedSlogan && (
+            <p className="text-sm italic text-[#D99962]/90 mt-1 leading-snug">
+              «{trimmedSlogan}»
+            </p>
+          )}
         </div>
 
         <button
