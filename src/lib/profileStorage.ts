@@ -4,11 +4,19 @@ const KEYS = {
   slogan:    'profile_slogan',
 } as const;
 
-export const DEFAULT_NICKNAME = 'Alex_King';
 export const DEFAULT_SLOGAN = 'Ставлю вот такую стопку белых фишек';
 
+function generateDefaultNickname(): string {
+  return `Личность№${Math.floor(Math.random() * 10000)}`;
+}
+
 export function getNickname(): string {
-  return localStorage.getItem(KEYS.nickname) || DEFAULT_NICKNAME;
+  const existing = localStorage.getItem(KEYS.nickname);
+  if (existing) return existing;
+
+  const generated = generateDefaultNickname();
+  localStorage.setItem(KEYS.nickname, generated);
+  return generated;
 }
 
 export function getBirthDate(): string {

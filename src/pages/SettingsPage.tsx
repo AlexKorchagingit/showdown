@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
+import { useUser } from '../context/UserContext';
 
 interface Props {
   userEmail: string;
@@ -14,6 +15,7 @@ function handleLogout() {
 
 export function SettingsPage({ userEmail }: Props) {
   const navigate = useNavigate();
+  const { isAdmin } = useUser();
   const { nickname, birthDate, slogan, updateNickname, updateBirthDate, updateSlogan } = useProfile();
 
   const [draftNickname, setDraftNickname] = useState(nickname);
@@ -42,6 +44,23 @@ export function SettingsPage({ userEmail }: Props) {
       >
         <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
       </button>
+
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => navigate('/admin/users')}
+          className="absolute top-4 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
+          style={{
+            background: 'rgba(28,20,16,0.78)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(217,153,98,0.28)',
+          }}
+          aria-label="Админ-панель"
+        >
+          <ShieldCheck size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
+        </button>
+      )}
 
       <div
         className="flex-1 scrollable px-5 pt-20"

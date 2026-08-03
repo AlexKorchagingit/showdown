@@ -10,11 +10,14 @@ import { TournamentDetailRoute } from './pages/TournamentDetailRoute';
 import { RatingPage } from './pages/RatingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AdminUsersScreen } from './pages/admin/AdminUsersScreen';
+import { AdminSectionScreen } from './pages/admin/AdminSectionScreen';
 import { TournamentProvider } from './context/TournamentContext';
 import { ProfileProvider } from './context/ProfileContext';
+import { UserProvider } from './context/UserContext';
 
 const NAV_HEIGHT = '5rem';
-const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings)$/;
+const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|admin\/.+)$/;
 const SPLASH_MS = 2000;
 
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
@@ -40,13 +43,17 @@ function AppLayout({ userEmail }: AppLayoutProps) {
       >
         <div className="h-full">
           <Routes>
-            <Route path="/"                element={<HomePage />} />
-            <Route path="/tournaments"     element={<TournamentsPage />} />
-            <Route path="/tournaments/:id" element={<TournamentDetailRoute />} />
-            <Route path="/rating"          element={<RatingPage />} />
-            <Route path="/profile"   element={<ProfilePage />} />
-            <Route path="/settings"  element={<SettingsPage userEmail={userEmail} />} />
-            <Route path="*"                element={<Navigate to="/" replace />} />
+            <Route path="/"                  element={<HomePage />} />
+            <Route path="/tournaments"       element={<TournamentsPage />} />
+            <Route path="/tournaments/:id"   element={<TournamentDetailRoute />} />
+            <Route path="/rating"            element={<RatingPage />} />
+            <Route path="/profile"           element={<ProfilePage />} />
+            <Route path="/settings"          element={<SettingsPage userEmail={userEmail} />} />
+            <Route path="/admin/users"       element={<AdminUsersScreen />} />
+            <Route path="/admin/tournaments" element={<AdminSectionScreen title="Tournaments" backTo="/profile" />} />
+            <Route path="/admin/blinds"      element={<AdminSectionScreen title="Blinds info" backTo="/profile" />} />
+            <Route path="/admin/finance"     element={<AdminSectionScreen title="Finance" backTo="/profile" />} />
+            <Route path="*"                  element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>
@@ -115,11 +122,13 @@ export default function App() {
 
   return (
     <div className={shellClass}>
-      <TournamentProvider>
-        <ProfileProvider>
-          <AppLayout userEmail={userEmail} />
-        </ProfileProvider>
-      </TournamentProvider>
+      <UserProvider email={userEmail}>
+        <TournamentProvider>
+          <ProfileProvider>
+            <AppLayout userEmail={userEmail} />
+          </ProfileProvider>
+        </TournamentProvider>
+      </UserProvider>
     </div>
   );
 }
