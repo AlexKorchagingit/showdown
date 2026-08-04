@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
-import { CoinBalance } from '../components/CoinBalance';
 
 const STATS = [
   { label: 'Рейтинг',  value: '#12', size: 'text-5xl' },
@@ -25,7 +24,7 @@ function formatBirthDate(iso: string): string {
 
 export function ProfilePage() {
   const navigate = useNavigate();
-  const { nickname, birthDate, slogan, coins, characterImage, backgroundImage } = useProfile();
+  const { nickname, birthDate, slogan, characterImage, backgroundImage } = useProfile();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const formattedBirthDate = formatBirthDate(birthDate);
@@ -41,14 +40,11 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[78%] w-auto object-contain z-0 pointer-events-none"
+        className="absolute bottom-0 left-1/2 -translate-x-[30%] h-[58%] w-auto object-contain z-0 pointer-events-none"
       />
 
-      {/* Left-side readability mask — above bg/character, below stats */}
-      <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[#110b09]/90 via-[#110b09]/50 to-transparent z-[1] pointer-events-none" />
-
       {/* Header card */}
-      <div className="relative z-10 mx-4 mt-6 px-5 py-3 rounded-2xl bg-[#110b09]/80 backdrop-blur-md border border-[#D99962]/20">
+      <div className="relative z-10 mx-4 mt-6 px-5 py-3 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
         <button
           type="button"
           onClick={() => navigate('/settings')}
@@ -95,8 +91,8 @@ export function ProfilePage() {
         </motion.div>
       </div>
 
-      {/* Left stats */}
-      <div className="flex flex-col gap-4 mt-8 ml-4 relative z-10">
+      {/* Left stats — the gradient hugs the numbers instead of the whole screen */}
+      <div className="relative z-10 mt-8 flex w-fit flex-col gap-4 rounded-r-2xl bg-gradient-to-r from-[#110b09]/90 to-transparent p-4 pr-20">
         {STATS.map(({ label, value, size }) => (
           <div key={label}>
             <p className="text-xs text-white font-bold drop-shadow-md uppercase tracking-wide">
@@ -107,12 +103,8 @@ export function ProfilePage() {
         ))}
       </div>
 
-      {/* Coins + shop — below the character */}
+      {/* Shop — below the character */}
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-5 flex flex-col items-center">
-        <div className="w-full flex justify-end mb-2.5">
-          <CoinBalance coins={coins} />
-        </div>
-
         <button
           type="button"
           onClick={() => navigate('/shop')}

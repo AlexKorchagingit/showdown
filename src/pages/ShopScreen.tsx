@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Coins } from 'lucide-react';
+import { ArrowLeft, Gem } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { CoinBalance } from '../components/CoinBalance';
 import { shopItemsOfType, type ShopItem, type ShopItemType } from '../data/shopItems';
@@ -12,26 +12,30 @@ const TAB_LABEL: Record<ShopItemType, string> = {
   bg: 'Фоны',
 };
 
+/** The whole card is the control: owned items get equipped, the rest get bought. */
 function ItemCard({
   item,
   owned,
   equipped,
   affordable,
-  onBuy,
-  onEquip,
+  onSelect,
 }: {
   item: ShopItem;
   owned: boolean;
   equipped: boolean;
   affordable: boolean;
-  onBuy: () => void;
-  onEquip: () => void;
+  onSelect: () => void;
 }) {
+  const locked = !owned && !affordable;
+
   return (
-    <div
-      className={`rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] ${
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={locked}
+      className={`text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${
         equipped ? 'ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.5)]' : ''
-      }`}
+      } ${locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`}
     >
       <div className="aspect-square relative overflow-hidden bg-[#1d0b07]">
         <img
@@ -47,12 +51,9 @@ function ItemCard({
         <p className="text-[13px] font-bold text-white truncate">{item.name}</p>
 
         {!owned ? (
-          <button
-            type="button"
-            onClick={onBuy}
-            disabled={!affordable}
-            className={`w-full h-9 rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-bold transition-all active:scale-[0.97] ${
-              affordable ? 'text-[#0A0908]' : 'cursor-not-allowed bg-[#463129] text-white/40'
+          <span
+            className={`w-full h-9 rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-bold ${
+              affordable ? 'text-[#0A0908]' : 'bg-[#463129] text-white/40'
             }`}
             style={
               affordable
@@ -60,24 +61,20 @@ function ItemCard({
                 : undefined
             }
           >
-            <Coins size={15} strokeWidth={2.4} />
+            <Gem size={15} strokeWidth={2.4} />
             {item.price.toLocaleString('ru-RU')}
-          </button>
+          </span>
         ) : equipped ? (
-          <p className="h-9 flex items-center justify-center text-[13px] font-bold text-[#D99962]">
+          <span className="h-9 flex items-center justify-center text-[13px] font-bold text-[#D99962]">
             Выбрано
-          </p>
+          </span>
         ) : (
-          <button
-            type="button"
-            onClick={onEquip}
-            className="w-full h-9 rounded-xl flex items-center justify-center text-[13px] font-600 text-[#8c8c88] bg-[#1d0b07] border border-white/[0.08] active:scale-[0.97] transition-transform"
-          >
+          <span className="w-full h-9 rounded-xl flex items-center justify-center text-[13px] font-600 text-[#8c8c88] bg-[#1d0b07] border border-white/[0.08]">
             Куплено
-          </button>
+          </span>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -150,17 +147,19 @@ export function ShopScreen() {
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             className="grid grid-cols-2 gap-4 px-4"
           >
-            {items.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                owned={isOwned(item.id)}
-                equipped={isEquipped(item.id)}
-                affordable={coins >= item.price}
-                onBuy={() => buyItem(item.id)}
-                onEquip={() => equipItem(item.id)}
-              />
-            ))}
+            {items.map((item) => {
+              const owned = isOwned(item.id);
+              return (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  owned={owned}
+                  equipped={isEquipped(item.id)}
+                  affordable={coins >= item.price}
+                  onSelect={() => (owned ? equipItem(item.id) : buyItem(item.id))}
+                />
+              );
+            })}
           </motion.div>
         </AnimatePresence>
       </div>

@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -28,18 +29,24 @@ const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { email } = useUser();
-  const [data, setData] = useState<UserData>(() => loadUserData(email));
 
-  const patch = useCallback(
-    (changes: Partial<UserData>) => {
-      setData((prev) => {
-        const next = { ...prev, ...changes };
-        saveUserData(email, next);
-        return next;
-      });
-    },
-    [email],
-  );
+  // The owner email is kept next to the data so a half-finished account switch
+  // can never write one player's profile into another player's record.
+  const [state, setState] = useState(() => ({ email, data: loadUserData(email) }));
+  const data = state.data;
+
+  useEffect(() => {
+    setState((prev) => (prev.email === email ? prev : { email, data: loadUserData(email) }));
+  }, [email]);
+
+  useEffect(() => {
+    if (state.email !== email) return;
+    saveUserData(email, state.data);
+  }, [email, state]);
+
+  const patch = useCallback((changes: Partial<UserData>) => {
+    setState((prev) => ({ ...prev, data: { ...prev.data, ...changes } }));
+  }, []);
 
   const updateNickname = useCallback((value: string) => patch({ nickname: value }), [patch]);
   const updateBirthDate = useCallback((value: string) => patch({ birthDate: value }), [patch]);
