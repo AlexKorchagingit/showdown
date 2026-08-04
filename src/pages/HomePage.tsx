@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle, ExternalLink } from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
+import { asset } from '../lib/assets';
 import { CURRENT_USER_RATING } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
@@ -23,7 +24,7 @@ function Header() {
     >
       <div className="flex items-center gap-3">
         <img
-          src="/logo-final.svg"
+          src={asset("/logo-final.svg")}
           alt="Showdown"
           className="h-16 w-auto object-contain"
           style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }}
@@ -56,7 +57,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
     >
       {/* Background fishka — huge, right-anchored, clipped by overflow-hidden */}
       <img
-        src="/fishka.svg"
+        src={asset("/fishka.svg")}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"

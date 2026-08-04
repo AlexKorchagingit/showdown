@@ -1,3 +1,5 @@
+import { asset } from '../lib/assets';
+
 export type ShopItemType = 'character' | 'bg';
 
 export interface ShopItem {
@@ -12,12 +14,12 @@ export const DEFAULT_CHARACTER_ID = 'char_base';
 export const DEFAULT_BG_ID = 'bg_mountains';
 
 export const SHOP_ITEMS: ShopItem[] = [
-  { id: DEFAULT_CHARACTER_ID, type: 'character', name: 'Базовый',    image: '/char_base.png',      price: 0 },
-  { id: 'char_baron',         type: 'character', name: 'Барон',      image: '/char_baron.png',     price: 1000 },
-  { id: 'char_jester',        type: 'character', name: 'Шут',        image: '/char_jester.png',    price: 2000 },
-  { id: 'char_duchess',       type: 'character', name: 'Герцогиня',  image: '/char_duchess.png',   price: 2500 },
-  { id: DEFAULT_BG_ID,        type: 'bg',        name: 'Горы',       image: '/fon1_mountine.png',  price: 0 },
-  { id: 'bg_bridge',          type: 'bg',        name: 'Мост',       image: '/bg_bridge.png',      price: 1500 },
+  { id: DEFAULT_CHARACTER_ID, type: 'character', name: 'Базовый',    image: asset('/char_base.png'),     price: 0 },
+  { id: 'char_baron',         type: 'character', name: 'Барон',      image: asset('/char_baron.png'),    price: 1000 },
+  { id: 'char_jester',        type: 'character', name: 'Шут',        image: asset('/char_jester.png'),   price: 2000 },
+  { id: 'char_duchess',       type: 'character', name: 'Герцогиня',  image: asset('/char_duchess.png'),  price: 2500 },
+  { id: DEFAULT_BG_ID,        type: 'bg',        name: 'Горы',       image: asset('/fon1_mountine.png'), price: 0 },
+  { id: 'bg_bridge',          type: 'bg',        name: 'Мост',       image: asset('/bg_bridge.png'),     price: 1500 },
 ];
 
 /** Free items are owned from the very first launch. */

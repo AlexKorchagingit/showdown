@@ -3,6 +3,7 @@ import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { useTournaments } from '../context/TournamentContext';
 import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
+import { asset } from '../lib/assets';
 
 interface Props {
   tournament: Tournament;
@@ -26,7 +27,7 @@ function LobbyHero({
     >
       {/* Background fishka */}
       <img
-        src="/fishka.svg"
+        src={asset("/fishka.svg")}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"

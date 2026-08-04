@@ -1,6 +1,7 @@
 import { Clock } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { isTournamentPast } from '../lib/tournamentStatus';
+import { asset } from '../lib/assets';
 
 interface Props {
   tournament: Tournament;
@@ -33,7 +34,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
     >
       {/* Background fishka — same style as Home hero card */}
       <img
-        src="/fishka.svg"
+        src={asset("/fishka.svg")}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"

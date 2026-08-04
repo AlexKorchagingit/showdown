@@ -6,6 +6,7 @@ import { useTournaments } from '../../context/TournamentContext';
 import { TournamentCard } from '../../components/TournamentCard';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { compareByStart, isFinished } from '../../lib/tournamentStatus';
+import { asset } from '../../lib/assets';
 import type { Tournament } from '../../types/tournament';
 
 type Tab = 'all' | 'create';
@@ -57,7 +58,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
 
     const newTournament: Omit<Tournament, 'id'> = {
       title: form.title.trim().toUpperCase(),
-      imageUrl: '/fishka.svg',
+      imageUrl: asset('/fishka.svg'),
       address: CLUB_ADDRESS,
       startDate: form.startDate,
       startTime: form.startTime || '19:00',
