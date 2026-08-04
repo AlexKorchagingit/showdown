@@ -10,6 +10,7 @@ import { TournamentDetailRoute } from './pages/TournamentDetailRoute';
 import { RatingPage } from './pages/RatingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ShopScreen } from './pages/ShopScreen';
 import { AdminUsersScreen } from './pages/admin/AdminUsersScreen';
 import { AdminSectionScreen } from './pages/admin/AdminSectionScreen';
 import { AdminTournamentsScreen } from './pages/admin/AdminTournamentsScreen';
@@ -19,7 +20,7 @@ import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
 
 const NAV_HEIGHT = '5rem';
-const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|admin\/.+)$/;
+const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|admin\/.+)$/;
 const SPLASH_MS = 2000;
 
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
@@ -51,6 +52,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/rating"            element={<RatingPage />} />
             <Route path="/profile"           element={<ProfilePage />} />
             <Route path="/settings"          element={<SettingsPage userEmail={userEmail} />} />
+            <Route path="/shop"              element={<ShopScreen />} />
             <Route path="/admin/users"           element={<AdminUsersScreen />} />
             <Route path="/admin/tournaments"     element={<AdminTournamentsScreen />} />
             <Route path="/admin/tournaments/:id" element={<AdminTournamentEditor />} />

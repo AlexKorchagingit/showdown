@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronDown, Settings } from 'lucide-react';
+import { ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
+import { CoinBalance } from '../components/CoinBalance';
 
 const STATS = [
   { label: 'Рейтинг',  value: '#12', size: 'text-5xl' },
@@ -24,7 +25,7 @@ function formatBirthDate(iso: string): string {
 
 export function ProfilePage() {
   const navigate = useNavigate();
-  const { nickname, birthDate, slogan } = useProfile();
+  const { nickname, birthDate, slogan, coins, characterImage, backgroundImage } = useProfile();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const formattedBirthDate = formatBirthDate(birthDate);
@@ -33,21 +34,21 @@ export function ProfilePage() {
   return (
     <div className="relative w-full h-full overflow-hidden">
       <img
-        src="/fon1_mountine.png"
+        src={backgroundImage}
         alt=""
         className="absolute inset-0 w-full h-full object-cover z-0"
       />
       <img
-        src="/cat1_little.png"
+        src={characterImage}
         alt=""
         className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[78%] w-auto object-contain z-0 pointer-events-none"
       />
 
-      {/* Left-side readability mask — above bg/cat, below stats */}
+      {/* Left-side readability mask — above bg/character, below stats */}
       <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[#110b09]/90 via-[#110b09]/50 to-transparent z-[1] pointer-events-none" />
 
       {/* Header card */}
-      <div className="relative z-10 mx-4 mt-6 px-5 py-3 rounded-2xl bg-gradient-to-br from-[#69584f]/70 via-[#463129]/80 to-[#231A16]/80 backdrop-blur-md border border-[#D99962]/30">
+      <div className="relative z-10 mx-4 mt-6 px-5 py-3 rounded-2xl bg-[#110b09]/80 backdrop-blur-md border border-[#D99962]/20">
         <button
           type="button"
           onClick={() => navigate('/settings')}
@@ -104,6 +105,26 @@ export function ProfilePage() {
             <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Coins + shop — below the character */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-5 flex flex-col items-center">
+        <div className="w-full flex justify-end mb-2.5">
+          <CoinBalance coins={coins} />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/shop')}
+          className="w-full max-w-[260px] h-14 rounded-2xl flex items-center justify-center gap-2.5 text-[15px] font-bold tracking-wide text-[#0A0908] active:scale-[0.97] transition-transform"
+          style={{
+            background: 'linear-gradient(to right, #8C4C27, #D99962)',
+            boxShadow: '0 0 24px rgba(217,153,98,0.32)',
+          }}
+        >
+          <ShoppingCart size={19} strokeWidth={2.4} />
+          МАГАЗИН
+        </button>
       </div>
     </div>
   );

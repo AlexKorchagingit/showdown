@@ -1,47 +1,99 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import {
-  getBirthDate,
-  getNickname,
-  getSlogan,
-  setBirthDate as saveBirthDate,
-  setNickname as saveNickname,
-  setSlogan as saveSlogan,
-} from '../lib/profileStorage';
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useUser } from './UserContext';
+import { findShopItem, resolveImage } from '../data/shopItems';
+import { loadUserData, saveUserData, type UserData } from '../lib/userStorage';
 
-interface ProfileContextValue {
-  nickname: string;
-  birthDate: string;
-  slogan: string;
+interface ProfileContextValue extends UserData {
+  /** Image paths resolved from the equipped item ids. */
+  characterImage: string;
+  backgroundImage: string;
   updateNickname: (value: string) => void;
   updateBirthDate: (value: string) => void;
   updateSlogan: (value: string) => void;
+  isOwned: (itemId: string) => boolean;
+  isEquipped: (itemId: string) => boolean;
+  /** Returns false when the balance is too low or the item is unknown. */
+  buyItem: (itemId: string) => boolean;
+  equipItem: (itemId: string) => void;
 }
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const [nickname, setNicknameState] = useState(getNickname);
-  const [birthDate, setBirthDateState] = useState(getBirthDate);
-  const [slogan, setSloganState] = useState(getSlogan);
+  const { email } = useUser();
+  const [data, setData] = useState<UserData>(() => loadUserData(email));
 
-  const updateNickname = useCallback((value: string) => {
-    saveNickname(value);
-    setNicknameState(value);
-  }, []);
+  const patch = useCallback(
+    (changes: Partial<UserData>) => {
+      setData((prev) => {
+        const next = { ...prev, ...changes };
+        saveUserData(email, next);
+        return next;
+      });
+    },
+    [email],
+  );
 
-  const updateBirthDate = useCallback((value: string) => {
-    saveBirthDate(value);
-    setBirthDateState(value);
-  }, []);
+  const updateNickname = useCallback((value: string) => patch({ nickname: value }), [patch]);
+  const updateBirthDate = useCallback((value: string) => patch({ birthDate: value }), [patch]);
+  const updateSlogan = useCallback((value: string) => patch({ slogan: value }), [patch]);
 
-  const updateSlogan = useCallback((value: string) => {
-    saveSlogan(value);
-    setSloganState(value);
-  }, []);
+  const isOwned = useCallback(
+    (itemId: string) => data.ownedItems.includes(itemId),
+    [data.ownedItems],
+  );
+
+  const isEquipped = useCallback(
+    (itemId: string) => data.equippedChar === itemId || data.equippedBg === itemId,
+    [data.equippedChar, data.equippedBg],
+  );
+
+  const equipItem = useCallback(
+    (itemId: string) => {
+      const item = findShopItem(itemId);
+      if (!item) return;
+      patch(item.type === 'character' ? { equippedChar: itemId } : { equippedBg: itemId });
+    },
+    [patch],
+  );
+
+  const buyItem = useCallback(
+    (itemId: string) => {
+      const item = findShopItem(itemId);
+      if (!item) return false;
+      if (data.ownedItems.includes(itemId)) return true;
+      if (data.coins < item.price) return false;
+
+      patch({
+        coins: data.coins - item.price,
+        ownedItems: [...data.ownedItems, itemId],
+      });
+      return true;
+    },
+    [data.coins, data.ownedItems, patch],
+  );
 
   const value = useMemo(
-    () => ({ nickname, birthDate, slogan, updateNickname, updateBirthDate, updateSlogan }),
-    [nickname, birthDate, slogan, updateNickname, updateBirthDate, updateSlogan],
+    () => ({
+      ...data,
+      characterImage: resolveImage(data.equippedChar, 'character'),
+      backgroundImage: resolveImage(data.equippedBg, 'bg'),
+      updateNickname,
+      updateBirthDate,
+      updateSlogan,
+      isOwned,
+      isEquipped,
+      buyItem,
+      equipItem,
+    }),
+    [data, updateNickname, updateBirthDate, updateSlogan, isOwned, isEquipped, buyItem, equipItem],
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

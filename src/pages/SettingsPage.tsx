@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
-import { SLOGAN_PLACEHOLDER } from '../lib/profileStorage';
+import { SLOGAN_PLACEHOLDER } from '../lib/userStorage';
 
 interface Props {
   userEmail: string;
