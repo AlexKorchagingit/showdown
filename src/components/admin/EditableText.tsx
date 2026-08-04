@@ -20,6 +20,10 @@ interface Props {
 const INPUT_BASE =
   'bg-[#231A16] text-white border border-[#D99962]/40 rounded-xl px-3 py-2 text-[14px] outline-none focus:border-[#D99962] transition-colors';
 
+// Native number spinners steal horizontal room from four/five-digit scores
+const NUMBER_INPUT =
+  '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+
 export function EditableText({
   value,
   onSave,
@@ -81,7 +85,7 @@ export function EditableText({
               if (e.key === 'Enter') commit();
               if (e.key === 'Escape') cancel();
             }}
-            className={`${INPUT_BASE} ${type === 'date' || type === 'time' ? '[color-scheme:dark]' : ''} ${inputClassName}`}
+            className={`${INPUT_BASE} ${type === 'date' || type === 'time' ? '[color-scheme:dark]' : ''} ${type === 'number' ? NUMBER_INPUT : ''} ${inputClassName}`}
           />
         )}
 
