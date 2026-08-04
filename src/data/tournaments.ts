@@ -2,7 +2,7 @@ import type { Tournament } from '../types/tournament';
 import { pickParticipants } from './participants';
 import { asset } from '../lib/assets';
 
-const CLUB_ADDRESS = 'г. Брянск, ул. Покровская, 1';
+const CLUB_ADDRESS = 'г. Брянск, Проспект Ленина, 2';
 
 /**
  * Mock dates are relative to today, so the automatic "upcoming / finished"

@@ -82,7 +82,8 @@ function ItemCard({
   const locked = !owned && !affordable;
   const isBackground = item.type === 'bg';
 
-  const cardClass = `relative text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${
+  // Every card keeps the same portrait rectangle so both tabs line up
+  const cardClass = `relative aspect-[3/4] text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${
     equipped ? 'ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.5)]' : ''
   } ${locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`;
 
@@ -99,7 +100,7 @@ function ItemCard({
   // Backgrounds are shown edge to edge with the control floating on the artwork
   if (isBackground) {
     return (
-      <button type="button" onClick={onSelect} disabled={locked} className={`${cardClass} aspect-square`}>
+      <button type="button" onClick={onSelect} disabled={locked} className={cardClass}>
         <img
           src={item.image}
           alt={item.name}
@@ -111,8 +112,8 @@ function ItemCard({
   }
 
   return (
-    <button type="button" onClick={onSelect} disabled={locked} className={cardClass}>
-      <div className="aspect-square relative overflow-hidden bg-[#1d0b07]">
+    <button type="button" onClick={onSelect} disabled={locked} className={`${cardClass} flex flex-col`}>
+      <div className="flex-1 min-h-0 relative overflow-hidden bg-[#1d0b07]">
         <img
           src={item.image}
           alt={item.name}
@@ -120,7 +121,7 @@ function ItemCard({
         />
       </div>
 
-      <div className="px-3 py-2.5 space-y-2">
+      <div className="shrink-0 px-3 py-2.5 space-y-2">
         <p className="text-[13px] font-bold text-white truncate">{item.name}</p>
         {status}
       </div>

@@ -22,7 +22,7 @@ const FIELD_CLASS =
 const LABEL_CLASS =
   'block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]';
 
-const CLUB_ADDRESS = 'г. Брянск, ул. Покровская, 1';
+const CLUB_ADDRESS = 'г. Брянск, Проспект Ленина, 2';
 
 interface CreateForm {
   title: string;

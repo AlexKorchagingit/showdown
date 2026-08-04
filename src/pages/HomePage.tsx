@@ -203,7 +203,7 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-700 truncate text-white">{CURRENT_USER_RATING.nickname}</p>
         </div>
-        <p className="text-[13px] font-medium shrink-0 text-[#463129]">
+        <p className="text-[13px] font-black shrink-0 text-[#463129]">
           {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}
         </p>
       </div>
@@ -212,47 +212,73 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
 }
 
 // ─── Info grid ────────────────────────────────────────────────────────────────
-function InfoGrid() {
-  const items = [
-    { icon: Phone,         label: 'Поддержка', address: null, link: null },
-    { icon: Info,          label: 'О клубе',   address: null, link: null },
-    { icon: MapPin,        label: 'Адрес',     address: 'ул. Покровская, 1', link: 'Открыть в картах' },
-    { icon: MessageCircle, label: 'Q&A',       address: null, link: null },
+const CLUB_ADDRESS_SHORT = 'Проспект Ленина, 2';
+const CLUB_MAP_URL =
+  'https://yandex.ru/maps/191/bryansk/house/prospekt_lenina_2/Z00YdQJlSkIBQFtpfX5ydH1kYg==/?ll=34.355364%2C53.235208&source=serp_navig&z=19.2';
+
+const TILE_CLASS = 'text-left rounded-2xl p-4 active:brightness-110 transition-all';
+const TILE_STYLE = {
+  background: 'linear-gradient(to right, #231A16, #463129)',
+  border: '1px solid rgba(255,255,255,0.06)',
+} as const;
+
+function TileIcon({ icon: Icon }: { icon: typeof MapPin }) {
+  return (
+    <div
+      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+      style={{ background: 'rgba(140,76,39,0.2)' }}
+    >
+      <Icon size={17} style={{ color: '#D99962' }} />
+    </div>
+  );
+}
+
+function InfoGrid({ onAboutClub }: { onAboutClub: () => void }) {
+  const tiles = [
+    { icon: Phone,         label: 'Поддержка', onClick: undefined },
+    { icon: Info,          label: 'О клубе',   onClick: onAboutClub },
+    { icon: MessageCircle, label: 'Q&A',       onClick: undefined },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      {items.map(({ icon: Icon, label, address, link }) => (
-        <button
-          key={label}
-          className="text-left rounded-2xl p-4 active:brightness-110 transition-all"
-          style={{ background: 'linear-gradient(to right, #231A16, #463129)',
-                   border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          {address ? (
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                   style={{ background: 'rgba(140,76,39,0.2)' }}>
-                <Icon size={17} style={{ color: '#D99962' }} />
-              </div>
-              <div className="flex flex-col gap-0.5 pt-0.5">
-                <p className="text-[15px] font-700 text-white leading-tight">{label}</p>
-                <p className="text-[11px] font-500 leading-snug" style={{ color: '#8c8c88' }}>{address}</p>
-                <div className="flex items-center gap-1 mt-1" style={{ color: '#D99962' }}>
-                  <ExternalLink size={10} />
-                  <span className="text-[11px] font-600">{link}</span>
-                </div>
-              </div>
+      {tiles.slice(0, 2).map(({ icon, label, onClick }) => (
+        <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
+          <div className="flex items-center gap-3">
+            <TileIcon icon={icon} />
+            <p className="text-[15px] font-700 text-white leading-tight">{label}</p>
+          </div>
+        </button>
+      ))}
+
+      <a
+        href={CLUB_MAP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={TILE_CLASS}
+        style={TILE_STYLE}
+      >
+        <div className="flex items-start gap-3">
+          <TileIcon icon={MapPin} />
+          <div className="flex flex-col gap-0.5 pt-0.5">
+            <p className="text-[15px] font-700 text-white leading-tight">Адрес</p>
+            <p className="text-[11px] font-500 leading-snug" style={{ color: '#8c8c88' }}>
+              {CLUB_ADDRESS_SHORT}
+            </p>
+            <div className="flex items-center gap-1 mt-1" style={{ color: '#D99962' }}>
+              <ExternalLink size={10} />
+              <span className="text-[11px] font-600">Открыть в картах</span>
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                   style={{ background: 'rgba(140,76,39,0.2)' }}>
-                <Icon size={17} style={{ color: '#D99962' }} />
-              </div>
-              <p className="text-[15px] font-700 text-white leading-tight">{label}</p>
-            </div>
-          )}
+          </div>
+        </div>
+      </a>
+
+      {tiles.slice(2).map(({ icon, label, onClick }) => (
+        <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
+          <div className="flex items-center gap-3">
+            <TileIcon icon={icon} />
+            <p className="text-[15px] font-700 text-white leading-tight">{label}</p>
+          </div>
         </button>
       ))}
     </div>
@@ -283,7 +309,7 @@ export function HomePage() {
           )}
 
           <RatingSection onNavigate={() => navigate('/rating')} />
-          <InfoGrid />
+          <InfoGrid onAboutClub={() => navigate('/about')} />
         </div>
       </div>
     </div>
