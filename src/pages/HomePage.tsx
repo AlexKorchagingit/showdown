@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle, ExternalLink } from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
+import { compareByStart, isFinished } from '../lib/tournamentStatus';
 import { CURRENT_USER_RATING } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
@@ -262,8 +263,9 @@ export function HomePage() {
   const navigate    = useNavigate();
   const { tournaments } = useTournaments();
 
-  // First upcoming tournament from the single data source
-  const nextTournament = tournaments.find((t) => t.status !== 'finished') ?? tournaments[0];
+  // Soonest tournament that has not started yet, from the single data source
+  const nextTournament =
+    tournaments.filter((t) => !isFinished(t)).sort(compareByStart)[0] ?? tournaments[0];
 
   return (
     <div className="flex flex-col h-full bg-obsidian">

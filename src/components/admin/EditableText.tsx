@@ -12,12 +12,13 @@ interface Props {
   placeholder?: string;
   rows?: number;
   pencilSize?: number;
+  /** Replaces the default `w-full` sizing of the field — pass width/alignment utilities here. */
   inputClassName?: string;
   className?: string;
 }
 
 const INPUT_BASE =
-  'w-full bg-[#231A16] text-white border border-[#D99962]/40 rounded-xl px-3 py-2 text-[14px] outline-none focus:border-[#D99962] transition-colors';
+  'bg-[#231A16] text-white border border-[#D99962]/40 rounded-xl px-3 py-2 text-[14px] outline-none focus:border-[#D99962] transition-colors';
 
 export function EditableText({
   value,
@@ -29,7 +30,7 @@ export function EditableText({
   placeholder,
   rows = 4,
   pencilSize = 14,
-  inputClassName = '',
+  inputClassName = 'w-full',
   className = '',
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);

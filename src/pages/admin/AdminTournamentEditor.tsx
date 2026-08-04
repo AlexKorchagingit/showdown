@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, UserPlus, X,
+  ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, Trash2, UserPlus, X,
 } from 'lucide-react';
-import type { Tournament } from '../../types/tournament';
+import type { Participant, Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
-import { ALL_PARTICIPANTS, type Participant } from '../../data/participants';
 import { mockUsers } from '../../data/mockUsers';
+import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentStatus';
 import { EditableText } from '../../components/admin/EditableText';
+import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 
 const CARD_STYLE = {
   background: '#2A211D',
@@ -145,16 +146,18 @@ function EditableHero({
   );
 }
 
-/* ── Participants editor (finished tournaments only) ───────────────────── */
+/* ── Participants editor ───────────────────────────────────────────────── */
 function ParticipantsEditor({
   participants,
   totalSeats,
+  canAdd,
   onAdd,
   onRemove,
   onRatingChange,
 }: {
   participants: Participant[];
   totalSeats: number;
+  canAdd: boolean;
   onAdd: (nickname: string) => void;
   onRemove: (id: string) => void;
   onRatingChange: (id: string, rating: number) => void;
@@ -163,6 +166,7 @@ function ParticipantsEditor({
 
   const takenNicknames = new Set(participants.map((p) => p.nickname));
   const available = mockUsers.filter((u) => !takenNicknames.has(u.nickname));
+  const ranked = sortByRating(participants);
 
   return (
     <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
@@ -178,13 +182,13 @@ function ParticipantsEditor({
         </span>
       </div>
 
-      {participants.length === 0 ? (
+      {ranked.length === 0 ? (
         <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
           Участники не добавлены
         </p>
       ) : (
         <div>
-          {participants.map((p, idx) => {
+          {ranked.map((p, idx) => {
             const isFinalTable = idx < 9;
 
             return (
@@ -216,17 +220,17 @@ function ParticipantsEditor({
                   {p.nickname}
                 </p>
 
-                {/* Editable rating */}
+                {/* Editable rating — wide enough for five-digit scores */}
                 <EditableText
                   value={String(p.rating)}
                   onSave={(v) => onRatingChange(p.id, Number(v) || 0)}
                   type="number"
-                  className="shrink-0 w-[104px] justify-end"
-                  inputClassName="text-right"
+                  className="shrink-0 justify-end"
+                  inputClassName="w-20 min-w-[80px] text-center px-2"
                   pencilSize={12}
                   renderValue={(v) => (
                     <span
-                      className="text-[12px] font-700 block text-right"
+                      className="text-[12px] font-700 block text-right min-w-[52px]"
                       style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                     >
                       {Number(v).toLocaleString('ru-RU')}
@@ -252,63 +256,65 @@ function ParticipantsEditor({
         </div>
       )}
 
-      {/* Add participant */}
-      <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <button
-          type="button"
-          onClick={() => setPickerOpen((v) => !v)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-700 active:scale-[0.98] transition-transform"
-          style={{
-            background: 'linear-gradient(to right, #2A211D, #463129)',
-            border: '1px solid rgba(217,153,98,0.35)',
-            color: '#D99962',
-          }}
-        >
-          <UserPlus size={16} strokeWidth={2.2} />
-          Добавить участника
-        </button>
+      {/* Add participant — finished tournaments only */}
+      {canAdd && (
+        <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <button
+            type="button"
+            onClick={() => setPickerOpen((v) => !v)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-700 active:scale-[0.98] transition-transform"
+            style={{
+              background: 'linear-gradient(to right, #2A211D, #463129)',
+              border: '1px solid rgba(217,153,98,0.35)',
+              color: '#D99962',
+            }}
+          >
+            <UserPlus size={16} strokeWidth={2.2} />
+            Добавить участника
+          </button>
 
-        <AnimatePresence initial={false}>
-          {pickerOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="pt-3 space-y-2">
-                {available.length === 0 ? (
-                  <p className="text-[12px] font-500 py-2" style={{ color: '#6B6360' }}>
-                    Все пользователи уже добавлены
-                  </p>
-                ) : (
-                  available.map((user) => (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => {
-                        onAdd(user.nickname);
-                        setPickerOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
-                      style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
-                    >
-                      <div className="min-w-0 text-left">
-                        <p className="text-[13px] font-700 text-white truncate">{user.nickname}</p>
-                        <p className="text-[11px] font-500 truncate" style={{ color: '#8c8c88' }}>
-                          {user.email}
-                        </p>
-                      </div>
-                      <Plus size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />
-                    </button>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          <AnimatePresence initial={false}>
+            {pickerOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="pt-3 space-y-2">
+                  {available.length === 0 ? (
+                    <p className="text-[12px] font-500 py-2" style={{ color: '#6B6360' }}>
+                      Все пользователи уже добавлены
+                    </p>
+                  ) : (
+                    available.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => {
+                          onAdd(user.nickname);
+                          setPickerOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
+                        style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
+                      >
+                        <div className="min-w-0 text-left">
+                          <p className="text-[13px] font-700 text-white truncate">{user.nickname}</p>
+                          <p className="text-[11px] font-500 truncate" style={{ color: '#8c8c88' }}>
+                            {user.email}
+                          </p>
+                        </div>
+                        <Plus size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                      </button>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
@@ -316,15 +322,13 @@ function ParticipantsEditor({
 /* ── Editor body ────────────────────────────────────────────────────────── */
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
-  const { updateTournament } = useTournaments();
+  const { updateTournament, deleteTournament } = useTournaments();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>(() =>
-    ALL_PARTICIPANTS.slice(0, tournament.registeredSeats),
-  );
-
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isFinished = tournament.status === 'finished';
+
+  const isFinished = hasFinished(tournament);
+  const occupiedSeats = tournament.participants.length;
 
   // Revoke the temporary object URL when it is replaced or the editor unmounts
   useEffect(() => {
@@ -340,18 +344,28 @@ function Editor({ tournament }: { tournament: Tournament }) {
   };
 
   const addParticipant = (nickname: string) => {
-    setParticipants((prev) => [
-      ...prev,
-      { id: `p-${Date.now()}`, nickname, rating: 0 },
-    ]);
+    patch({
+      participants: [
+        ...tournament.participants,
+        { id: `p-${Date.now()}`, nickname, rating: 0 },
+      ],
+    });
   };
 
   const removeParticipant = (id: string) => {
-    setParticipants((prev) => prev.filter((p) => p.id !== id));
+    patch({ participants: tournament.participants.filter((p) => p.id !== id) });
   };
 
   const changeRating = (id: string, rating: number) => {
-    setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, rating } : p)));
+    patch({
+      participants: tournament.participants.map((p) => (p.id === id ? { ...p, rating } : p)),
+    });
+  };
+
+  const handleDelete = () => {
+    if (!window.confirm('Точно удалить?')) return;
+    deleteTournament(tournament.id);
+    navigate('/admin/tournaments');
   };
 
   return (
@@ -390,7 +404,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
         />
 
         <div className="px-5 pt-4 space-y-5">
-          {/* Seats */}
+          {/* Seats — occupied is always derived from the participant list */}
           <div className="rounded-2xl p-4 space-y-3" style={CARD_STYLE}>
             <h3 className={SECTION_TITLE} style={{ color: '#F2D8A7' }}>
               Места
@@ -413,14 +427,10 @@ function Editor({ tournament }: { tournament: Tournament }) {
                 <p className="text-[11px] font-600 mb-1" style={{ color: '#A39B98' }}>
                   Занято
                 </p>
-                <EditableText
-                  value={String(tournament.registeredSeats)}
-                  onSave={(v) => patch({ registeredSeats: Number(v) || 0 })}
-                  type="number"
-                  renderValue={(v) => (
-                    <span className="text-white font-800 text-[18px]">{v}</span>
-                  )}
-                />
+                <span className="text-white font-800 text-[18px]">{occupiedSeats}</span>
+                <p className="text-[10px] font-500 mt-0.5" style={{ color: '#6B6360' }}>
+                  по списку участников
+                </p>
               </div>
             </div>
           </div>
@@ -469,11 +479,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
                 О турнире
               </h3>
               <EditableText
-                value={tournament.description}
-                onSave={(v) => patch({ description: v })}
+                value={tournament.about}
+                onSave={(v) => patch({ about: v })}
                 multiline
                 rows={6}
-                placeholder="Описание турнира"
+                placeholder="Расскажите об этом турнире"
                 renderValue={(v) => (
                   <p
                     className="text-[13px] font-400 leading-relaxed"
@@ -489,45 +499,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
             <section>
               <h3 className={`${SECTION_TITLE} mb-3`} style={{ color: '#F2D8A7' }}>
-                Особенности
+                Особенности (пунктами)
               </h3>
-              <EditableText
-                value={tournament.features.join('\n')}
-                onSave={(v) =>
-                  patch({
-                    features: v
-                      .split('\n')
-                      .map((line) => line.trim())
-                      .filter(Boolean),
-                  })
-                }
-                multiline
-                rows={7}
-                placeholder="Одна особенность на строку"
-                renderValue={(v) => {
-                  const items = v.split('\n').filter(Boolean);
-                  if (items.length === 0) {
-                    return (
-                      <p className="text-[13px] font-400" style={{ color: '#6B6360' }}>
-                        Особенности не заполнены
-                      </p>
-                    );
-                  }
-                  return (
-                    <ul className="space-y-2">
-                      {items.map((f) => (
-                        <li
-                          key={f}
-                          className="flex items-start gap-2.5 text-[13px] font-400"
-                          style={{ color: '#A39B98' }}
-                        >
-                          <span style={{ color: '#8C4C27', marginTop: 2 }}>•</span>
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  );
-                }}
+              <FeatureListEditor
+                features={tournament.features}
+                onChange={(features) => patch({ features })}
               />
             </section>
 
@@ -550,16 +526,24 @@ function Editor({ tournament }: { tournament: Tournament }) {
             </section>
           </div>
 
-          {/* Participants — finished tournaments only */}
-          {isFinished && (
-            <ParticipantsEditor
-              participants={participants}
-              totalSeats={tournament.totalSeats}
-              onAdd={addParticipant}
-              onRemove={removeParticipant}
-              onRatingChange={changeRating}
-            />
-          )}
+          <ParticipantsEditor
+            participants={tournament.participants}
+            totalSeats={tournament.totalSeats}
+            canAdd={isFinished}
+            onAdd={addParticipant}
+            onRemove={removeParticipant}
+            onRatingChange={changeRating}
+          />
+
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white bg-red-900/80 active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(239,68,68,0.45)' }}
+          >
+            <Trash2 size={17} strokeWidth={2.3} />
+            Удалить турнир
+          </button>
         </div>
       </div>
     </div>

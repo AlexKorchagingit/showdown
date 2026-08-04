@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { TournamentCard } from '../../components/TournamentCard';
+import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
+import { compareByStart, isFinished } from '../../lib/tournamentStatus';
 import type { Tournament } from '../../types/tournament';
 
 type Tab = 'all' | 'create';
@@ -26,9 +28,9 @@ interface CreateForm {
   startDate: string;
   startTime: string;
   totalSeats: string;
-  buyIn: string;
   guarantee: string;
-  description: string;
+  about: string;
+  features: string[];
 }
 
 const EMPTY_FORM: CreateForm = {
@@ -36,9 +38,9 @@ const EMPTY_FORM: CreateForm = {
   startDate: '',
   startTime: '19:00',
   totalSeats: '36',
-  buyIn: '1500',
   guarantee: '20000',
-  description: '',
+  about: '',
+  features: [],
 };
 
 function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }) {
@@ -60,12 +62,10 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       startDate: form.startDate,
       startTime: form.startTime || '19:00',
       totalSeats: Number(form.totalSeats) || 36,
-      registeredSeats: 0,
-      buyIn: Number(form.buyIn) || 0,
       guarantee: Number(form.guarantee) || 0,
-      status: 'upcoming',
-      description: form.description.trim(),
-      features: [],
+      about: form.about.trim(),
+      features: form.features,
+      participants: [],
       lateRegUntil: '22:45',
       blindStructure: 'Плавная',
       stackSize: 50000,
@@ -111,22 +111,13 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
         </section>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <section>
-          <label className={LABEL_CLASS}>Места</label>
+          <label className={LABEL_CLASS}>Всего мест</label>
           <input
             type="number"
             value={form.totalSeats}
             onChange={(e) => set('totalSeats', e.target.value)}
-            className={FIELD_CLASS}
-          />
-        </section>
-        <section>
-          <label className={LABEL_CLASS}>Вход</label>
-          <input
-            type="number"
-            value={form.buyIn}
-            onChange={(e) => set('buyIn', e.target.value)}
             className={FIELD_CLASS}
           />
         </section>
@@ -142,13 +133,21 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       </div>
 
       <section>
-        <label className={LABEL_CLASS}>Описание</label>
+        <label className={LABEL_CLASS}>О турнире</label>
         <textarea
-          value={form.description}
+          value={form.about}
           rows={4}
-          onChange={(e) => set('description', e.target.value)}
-          placeholder="Краткое описание турнира"
+          onChange={(e) => set('about', e.target.value)}
+          placeholder="Расскажите об этом турнире"
           className={`${FIELD_CLASS} resize-none`}
+        />
+      </section>
+
+      <section>
+        <label className={LABEL_CLASS}>Особенности (пунктами)</label>
+        <FeatureListEditor
+          features={form.features}
+          onChange={(features) => set('features', features)}
         />
       </section>
 
@@ -181,6 +180,13 @@ export function AdminTournamentsScreen() {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const [tab, setTab] = useState<Tab>('all');
+
+  // Upcoming first (soonest at the top), finished ones below in reverse order
+  const sortedTournaments = [...tournaments].sort((a, b) => {
+    const aFinished = isFinished(a);
+    if (aFinished !== isFinished(b)) return aFinished ? 1 : -1;
+    return aFinished ? compareByStart(b, a) : compareByStart(a, b);
+  });
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
@@ -240,10 +246,10 @@ export function AdminTournamentsScreen() {
           >
             {tab === 'all' ? (
               <div className="space-y-3">
-                {tournaments.map((tournament) => (
+                {sortedTournaments.map((tournament) => (
                   <div
                     key={tournament.id}
-                    className={tournament.status === 'finished' ? 'opacity-50 grayscale' : ''}
+                    className={isFinished(tournament) ? 'opacity-50 grayscale' : ''}
                   >
                     <TournamentCard
                       tournament={tournament}

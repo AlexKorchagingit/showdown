@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Tournament } from '../types/tournament';
 import { TournamentCard } from '../components/TournamentCard';
 import { useTournaments } from '../context/TournamentContext';
+import { compareByStart, isFinished } from '../lib/tournamentStatus';
 
 type Tab = 'upcoming' | 'finished';
 
@@ -28,9 +29,10 @@ export function TournamentsPage() {
     navigate(`/tournaments/${t.id}`);
   };
 
-  const filtered = tournaments.filter((t) =>
-    activeTab === 'upcoming' ? t.status !== 'finished' : t.status === 'finished'
-  );
+  // Status is derived from the start moment: soonest first, latest finished first.
+  const filtered = tournaments
+    .filter((t) => (activeTab === 'upcoming' ? !isFinished(t) : isFinished(t)))
+    .sort((a, b) => (activeTab === 'upcoming' ? compareByStart(a, b) : compareByStart(b, a)));
 
   return (
     <div className="flex flex-col h-full bg-obsidian">
@@ -98,7 +100,7 @@ export function TournamentsPage() {
                 <div
                   key={tournament.id}
                   style={
-                    tournament.status === 'finished'
+                    isFinished(tournament)
                       ? { opacity: 0.52, filter: 'grayscale(0.35)' }
                       : undefined
                   }

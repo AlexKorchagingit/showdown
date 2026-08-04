@@ -1,5 +1,6 @@
 import { Clock } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
+import { isTournamentPast } from '../lib/tournamentStatus';
 
 interface Props {
   tournament: Tournament;
@@ -7,10 +8,11 @@ interface Props {
 }
 
 export function TournamentCard({ tournament, onClick }: Props) {
-  const { title, startDate, startTime, totalSeats, registeredSeats, status } = tournament;
+  const { title, startDate, startTime, totalSeats, participants } = tournament;
 
-  const seatsLeft  = totalSeats - registeredSeats;
+  const seatsLeft  = Math.max(0, totalSeats - participants.length);
   const isFull     = seatsLeft === 0;
+  const isPast     = isTournamentPast(startDate, startTime);
 
   // "СУББОТА 5 июля" — uppercase weekday, no comma
   const dateObj      = new Date(startDate);
@@ -78,7 +80,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
 
           <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
             {isFull ? 'Мест нет' : `Мест: ${seatsLeft}/${totalSeats}`}
-            {status === 'finished' && ' · Завершён'}
+            {isPast && ' · Завершён'}
           </p>
         </div>
       </div>

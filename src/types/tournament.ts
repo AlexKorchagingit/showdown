@@ -1,4 +1,8 @@
-export type TournamentStatus = 'upcoming' | 'active' | 'finished';
+export interface Participant {
+  id: string;
+  nickname: string;
+  rating: number;
+}
 
 export interface Tournament {
   id: string;
@@ -8,19 +12,13 @@ export interface Tournament {
   startDate: string;
   startTime: string;
   totalSeats: number;
-  registeredSeats: number;
-  buyIn: number;
   guarantee: number;
-  status: TournamentStatus;
-  description: string;
+  about: string;
   features: string[];
+  /** Occupied seats are always derived from this list — never stored separately. */
+  participants: Participant[];
   lateRegUntil: string;
   blindStructure: string;
   stackSize: number;
   levelDuration: string;
-}
-
-export interface TournamentRegistration {
-  tournamentId: string;
-  isRegistered: boolean;
 }

@@ -2,7 +2,7 @@ import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star } from 'lucide-
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { useTournaments } from '../context/TournamentContext';
-import { ALL_PARTICIPANTS } from '../data/participants';
+import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
 
 interface Props {
   tournament: Tournament;
@@ -82,8 +82,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
-  // Show participants up to registeredSeats count (no slice limit)
-  const participants = ALL_PARTICIPANTS.filter((_, i) => i < live.registeredSeats);
+  const tournamentFinished = hasFinished(live);
+  // Best players always on top
+  const participants = sortByRating(live.participants);
+  const occupiedSeats = live.participants.length;
 
   return (
     <>
@@ -119,7 +121,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* Progress — tick-free */}
             <div className="rounded-2xl p-4"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <ProgressBar value={live.registeredSeats} max={live.totalSeats} />
+              <ProgressBar value={occupiedSeats} max={live.totalSeats} />
             </div>
 
             {/* Guarantee */}
@@ -151,7 +153,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   О турнире
                 </h3>
                 <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
-                  {live.description}
+                  {live.about}
                 </p>
               </section>
               <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
@@ -168,7 +170,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </ul>
               </section>
               {/* "Запись" section — hidden for past tournaments */}
-              {live.status !== 'finished' && (
+              {!tournamentFinished && (
                 <>
                   <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
                   <section>
@@ -190,7 +192,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               <div className="flex items-center justify-between px-5 py-4"
                    style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <h3 className="text-[12px] font-700 uppercase tracking-[0.2em]" style={{ color: '#F2D8A7' }}>
-                  Участники ({live.registeredSeats}/{live.totalSeats})
+                  Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
                 <span className="text-[12px] font-600" style={{ color: '#D99962' }}>
                   Рейтинг сезона
@@ -205,7 +207,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               ) : (
                 <div>
                   {participants.map((p, idx) => {
-                    const isFinished   = live.status === 'finished';
+                    const isFinished   = tournamentFinished;
                     const isPodium     = isFinished && idx < 3;   // top-3: wreath + gradient
                     const isFinalTable = isFinished && idx < 9;   // 1-9: gold gradient text
                     const wreathColor  = ['#D99962', '#8c8c88', '#8C4C27'][idx] ?? null;
@@ -316,7 +318,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
         {/* ── CTA: absolute inside 480px column, transparent wrapper ── */}
         <div className="absolute bottom-4 left-0 right-0 px-4 z-50 pointer-events-none bg-transparent">
-          {live.status === 'finished' ? (
+          {tournamentFinished ? (
             /* Finished — 100% opaque solid fill, disabled:opacity-100 overrides Tailwind default */
             <button
               disabled

@@ -43,7 +43,7 @@ export function ProgressBar({ value, max, className = '' }: Props) {
 
       <div className="flex justify-between text-[11px] font-500">
         <span style={{ color: '#6B6360' }}>0</span>
-        <span style={{ color: '#A39B98' }}>Осталось: {max - value}</span>
+        <span style={{ color: '#A39B98' }}>Осталось: {Math.max(0, max - value)}</span>
         <span style={{ color: '#6B6360' }}>{max}</span>
       </div>
     </div>

@@ -126,11 +126,11 @@ export default function App() {
   return (
     <div className={shellClass}>
       <UserProvider email={userEmail}>
-        <TournamentProvider>
-          <ProfileProvider>
+        <ProfileProvider>
+          <TournamentProvider>
             <AppLayout userEmail={userEmail} />
-          </ProfileProvider>
-        </TournamentProvider>
+          </TournamentProvider>
+        </ProfileProvider>
       </UserProvider>
     </div>
   );

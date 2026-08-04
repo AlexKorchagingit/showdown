@@ -1,8 +1,6 @@
-export interface Participant {
-  id:       string;
-  nickname: string;
-  rating:   number;
-}
+import type { Participant } from '../types/tournament';
+
+export type { Participant };
 
 export const ALL_PARTICIPANTS: Participant[] = [
   { id: '1',  nickname: 'Alex_King',     rating: 4200 },
@@ -26,3 +24,8 @@ export const ALL_PARTICIPANTS: Participant[] = [
   { id: '19', nickname: 'GlebS',         rating:  750 },
   { id: '20', nickname: 'MaximN',        rating:  640 },
 ];
+
+/** Independent copies so edits in one tournament never leak into another. */
+export function pickParticipants(count: number): Participant[] {
+  return ALL_PARTICIPANTS.slice(0, count).map((p) => ({ ...p }));
+}
