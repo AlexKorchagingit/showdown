@@ -203,7 +203,7 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-700 truncate text-white">{CURRENT_USER_RATING.nickname}</p>
         </div>
-        <p className="text-[13px] font-black shrink-0 text-[#463129]">
+        <p className="text-[13px] font-black shrink-0 text-black">
           {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}
         </p>
       </div>

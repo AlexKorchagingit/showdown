@@ -17,6 +17,8 @@ import { AdminUsersScreen } from './pages/admin/AdminUsersScreen';
 import { AdminSectionScreen } from './pages/admin/AdminSectionScreen';
 import { AdminTournamentsScreen } from './pages/admin/AdminTournamentsScreen';
 import { AdminTournamentEditor } from './pages/admin/AdminTournamentEditor';
+import { AdminBlindsSettings } from './pages/admin/AdminBlindsSettings';
+import { AdminBlindsTimer } from './pages/admin/AdminBlindsTimer';
 import { TournamentProvider } from './context/TournamentContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
@@ -60,7 +62,9 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/admin/users"           element={<AdminUsersScreen />} />
             <Route path="/admin/tournaments"     element={<AdminTournamentsScreen />} />
             <Route path="/admin/tournaments/:id" element={<AdminTournamentEditor />} />
-            <Route path="/admin/blinds"          element={<AdminSectionScreen title="Blinds info" backTo="/profile" />} />
+            <Route path="/admin/blinds"          element={<Navigate to="/admin/blinds/settings" replace />} />
+            <Route path="/admin/blinds/settings" element={<AdminBlindsSettings />} />
+            <Route path="/admin/blinds/timer"    element={<AdminBlindsTimer />} />
             <Route path="/admin/finance"         element={<AdminSectionScreen title="Finance" backTo="/profile" />} />
             <Route path="*"                  element={<Navigate to="/" replace />} />
           </Routes>

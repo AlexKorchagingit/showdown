@@ -8,7 +8,7 @@ interface Props {
 
 const ITEMS = [
   { label: 'Tournaments', to: '/admin/tournaments' },
-  { label: 'Blinds info', to: '/admin/blinds' },
+  { label: 'Blinds info', to: '/admin/blinds/settings' },
   { label: 'Finance',     to: '/admin/finance' },
 ];
 

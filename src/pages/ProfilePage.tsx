@@ -48,11 +48,11 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute left-[55%] -translate-x-1/2 bottom-[80px] h-[50%] w-auto object-contain z-0 pointer-events-none"
+        className="absolute left-[60%] -translate-x-1/2 bottom-[100px] h-[50%] w-auto object-contain z-0 pointer-events-none"
       />
 
       {/* Header card */}
-      <div className="relative z-10 mx-4 mt-6 px-5 py-3 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
+      <div className="relative z-10 mx-4 mt-2 px-5 py-2 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
         <button
           type="button"
           onClick={() => navigate('/settings')}
@@ -117,8 +117,8 @@ export function ProfilePage() {
       </div>
 
       {/* Left stats — a soft blurred blob backs the numbers, no hard gradient edge */}
-      <div className="relative mt-8 w-fit">
-        <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-[280px] h-[120%] bg-[#231A16]/80 blur-[40px] rounded-full z-0 pointer-events-none" />
+      <div className="relative mt-4 w-fit">
+        <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-[180px] h-[120%] bg-[#231A16]/80 blur-[40px] rounded-full z-0 pointer-events-none" />
 
         <div className="relative z-10 flex flex-col gap-4 pl-4 pr-8">
           {STATS.map(({ label, value, size }) => (

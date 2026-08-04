@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Gem } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { CoinBalance } from '../components/CoinBalance';
+import { RubyInfoModal } from '../components/RubyInfoModal';
 import { shopItemsOfType, type ShopItem, type ShopItemType } from '../data/shopItems';
 
 const TAB_ORDER: ShopItemType[] = ['character', 'bg'];
@@ -133,6 +134,7 @@ export function ShopScreen() {
   const navigate = useNavigate();
   const { coins, isOwned, isEquipped, buyItem, equipItem } = useProfile();
   const [tab, setTab] = useState<ShopItemType>('character');
+  const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
 
   const items = shopItemsOfType(tab);
 
@@ -153,9 +155,14 @@ export function ShopScreen() {
         <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
       </button>
 
-      <div className="absolute top-6 right-4 z-50">
+      <button
+        type="button"
+        onClick={() => setRubyInfoOpen(true)}
+        className="absolute top-6 right-4 z-50 active:scale-95 transition-transform"
+        aria-label="Как заработать рубины"
+      >
         <CoinBalance coins={coins} />
-      </div>
+      </button>
 
       <div className="flex-shrink-0 px-5 pt-20 pb-4 space-y-4">
         <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
@@ -214,6 +221,8 @@ export function ShopScreen() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      <RubyInfoModal open={rubyInfoOpen} onClose={() => setRubyInfoOpen(false)} />
     </div>
   );
 }
