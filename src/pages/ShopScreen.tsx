@@ -12,6 +12,59 @@ const TAB_LABEL: Record<ShopItemType, string> = {
   bg: 'Фоны',
 };
 
+/** Price tag, «Куплено» or «Выбрано» — the same control in both card layouts. */
+function ItemStatus({
+  item,
+  owned,
+  equipped,
+  affordable,
+  overlay,
+}: {
+  item: ShopItem;
+  owned: boolean;
+  equipped: boolean;
+  affordable: boolean;
+  overlay: boolean;
+}) {
+  if (!owned) {
+    return (
+      <span
+        className={`w-full h-9 rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-bold ${
+          affordable ? 'text-[#0A0908]' : 'bg-[#463129] text-white/40'
+        }`}
+        style={
+          affordable ? { background: 'linear-gradient(to right, #8C4C27, #D99962)' } : undefined
+        }
+      >
+        <Gem size={15} strokeWidth={2.4} />
+        {item.price.toLocaleString('ru-RU')}
+      </span>
+    );
+  }
+
+  if (equipped) {
+    return (
+      <span
+        className={`w-full h-9 flex items-center justify-center text-[13px] font-bold text-[#D99962] ${
+          overlay ? 'rounded-xl bg-[#1d0b07]/85 border border-[#D99962]/40' : ''
+        }`}
+      >
+        Выбрано
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`w-full h-9 rounded-xl flex items-center justify-center text-[13px] font-600 text-[#8c8c88] border border-white/[0.08] ${
+        overlay ? 'bg-[#1d0b07]/85' : 'bg-[#1d0b07]'
+      }`}
+    >
+      Куплено
+    </span>
+  );
+}
+
 /** The whole card is the control: owned items get equipped, the rest get bought. */
 function ItemCard({
   item,
@@ -27,52 +80,49 @@ function ItemCard({
   onSelect: () => void;
 }) {
   const locked = !owned && !affordable;
+  const isBackground = item.type === 'bg';
+
+  const cardClass = `relative text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${
+    equipped ? 'ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.5)]' : ''
+  } ${locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`;
+
+  const status = (
+    <ItemStatus
+      item={item}
+      owned={owned}
+      equipped={equipped}
+      affordable={affordable}
+      overlay={isBackground}
+    />
+  );
+
+  // Backgrounds are shown edge to edge with the control floating on the artwork
+  if (isBackground) {
+    return (
+      <button type="button" onClick={onSelect} disabled={locked} className={`${cardClass} aspect-square`}>
+        <img
+          src={item.image}
+          alt={item.name}
+          className="absolute inset-0 w-full h-full object-cover rounded-xl"
+        />
+        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90%] z-10">{status}</span>
+      </button>
+    );
+  }
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={locked}
-      className={`text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${
-        equipped ? 'ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.5)]' : ''
-      } ${locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`}
-    >
+    <button type="button" onClick={onSelect} disabled={locked} className={cardClass}>
       <div className="aspect-square relative overflow-hidden bg-[#1d0b07]">
         <img
           src={item.image}
           alt={item.name}
-          className={`absolute inset-0 w-full h-full ${
-            item.type === 'character' ? 'object-contain p-2' : 'object-cover'
-          }`}
+          className="absolute inset-0 w-full h-full object-contain p-2"
         />
       </div>
 
       <div className="px-3 py-2.5 space-y-2">
         <p className="text-[13px] font-bold text-white truncate">{item.name}</p>
-
-        {!owned ? (
-          <span
-            className={`w-full h-9 rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-bold ${
-              affordable ? 'text-[#0A0908]' : 'bg-[#463129] text-white/40'
-            }`}
-            style={
-              affordable
-                ? { background: 'linear-gradient(to right, #8C4C27, #D99962)' }
-                : undefined
-            }
-          >
-            <Gem size={15} strokeWidth={2.4} />
-            {item.price.toLocaleString('ru-RU')}
-          </span>
-        ) : equipped ? (
-          <span className="h-9 flex items-center justify-center text-[13px] font-bold text-[#D99962]">
-            Выбрано
-          </span>
-        ) : (
-          <span className="w-full h-9 rounded-xl flex items-center justify-center text-[13px] font-600 text-[#8c8c88] bg-[#1d0b07] border border-white/[0.08]">
-            Куплено
-          </span>
-        )}
+        {status}
       </div>
     </button>
   );
@@ -145,7 +195,7 @@ export function ShopScreen() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            className="grid grid-cols-2 gap-4 px-4"
+            className="grid grid-cols-2 gap-4 px-4 mt-6"
           >
             {items.map((item) => {
               const owned = isOwned(item.id);

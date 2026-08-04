@@ -18,15 +18,45 @@ export interface UserData {
   equippedBg: string;
 }
 
-/** Legacy shared keys from before profiles were stored per account. */
-const LEGACY_KEYS = {
+/** Keys used before the record moved to `userData_<email>`. */
+const PREVIOUS_KEY_PREFIX = 'profile_';
+const LEGACY_SHARED_KEYS = {
   nickname: 'profile_nickname',
   birthDate: 'profile_birth_date',
   slogan: 'profile_slogan',
 } as const;
 
-function storageKey(email: string): string {
-  return `profile_${email.trim().toLowerCase()}`;
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function userDataKey(email: string): string {
+  return `userData_${normalizeEmail(email)}`;
+}
+
+/** Storage throws in private browsing modes, where losing data beats crashing. */
+function readKey(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeKey(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function removeKey(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 function generateNickname(): string {
@@ -46,19 +76,43 @@ export function createDefaultUserData(): UserData {
 }
 
 /** Free items must stay owned even if an older record predates them. */
-function normalize(data: UserData): UserData {
-  const ownedItems = [...new Set([...FREE_ITEM_IDS, ...data.ownedItems])];
-  return { ...data, ownedItems };
+function withDefaults(parsed: Partial<UserData>): UserData {
+  const defaults = createDefaultUserData();
+  return {
+    nickname: parsed.nickname || defaults.nickname,
+    birthDate: parsed.birthDate ?? '',
+    slogan: parsed.slogan ?? '',
+    coins: Number.isFinite(parsed.coins) ? Number(parsed.coins) : defaults.coins,
+    ownedItems: [
+      ...new Set([
+        ...FREE_ITEM_IDS,
+        ...(Array.isArray(parsed.ownedItems) ? parsed.ownedItems : []),
+      ]),
+    ],
+    equippedChar: parsed.equippedChar || defaults.equippedChar,
+    equippedBg: parsed.equippedBg || defaults.equippedBg,
+  };
 }
 
-function readLegacyProfile(): Partial<UserData> {
-  const nickname = localStorage.getItem(LEGACY_KEYS.nickname);
-  const birthDate = localStorage.getItem(LEGACY_KEYS.birthDate);
-  const slogan = localStorage.getItem(LEGACY_KEYS.slogan);
+function parseRecord(raw: string | null): Partial<UserData> | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<UserData>;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Profile fields that used to live in shared keys, before records were per account. */
+function takeLegacySharedProfile(): Partial<UserData> {
+  const nickname = readKey(LEGACY_SHARED_KEYS.nickname);
+  const birthDate = readKey(LEGACY_SHARED_KEYS.birthDate);
+  const slogan = readKey(LEGACY_SHARED_KEYS.slogan);
 
   if (nickname === null && birthDate === null && slogan === null) return {};
 
-  Object.values(LEGACY_KEYS).forEach((key) => localStorage.removeItem(key));
+  Object.values(LEGACY_SHARED_KEYS).forEach(removeKey);
 
   return {
     ...(nickname ? { nickname } : {}),
@@ -68,35 +122,21 @@ function readLegacyProfile(): Partial<UserData> {
 }
 
 export function loadUserData(email: string): UserData {
-  const defaults = createDefaultUserData();
-  if (!email) return defaults;
+  if (!email) return createDefaultUserData();
 
-  const raw = localStorage.getItem(storageKey(email));
+  const current = parseRecord(readKey(userDataKey(email)));
+  if (current) return withDefaults(current);
 
-  if (!raw) {
-    const created = normalize({ ...defaults, ...readLegacyProfile() });
-    saveUserData(email, created);
-    return created;
-  }
+  // Nothing under the current key: carry over an older record for this account
+  const previous = parseRecord(readKey(`${PREVIOUS_KEY_PREFIX}${normalizeEmail(email)}`));
+  const restored = withDefaults(previous ?? takeLegacySharedProfile());
 
-  try {
-    const parsed = JSON.parse(raw) as Partial<UserData>;
-    return normalize({
-      nickname: parsed.nickname || defaults.nickname,
-      birthDate: parsed.birthDate ?? '',
-      slogan: parsed.slogan ?? '',
-      coins: Number.isFinite(parsed.coins) ? Number(parsed.coins) : defaults.coins,
-      ownedItems: Array.isArray(parsed.ownedItems) ? parsed.ownedItems : defaults.ownedItems,
-      equippedChar: parsed.equippedChar || defaults.equippedChar,
-      equippedBg: parsed.equippedBg || defaults.equippedBg,
-    });
-  } catch {
-    saveUserData(email, defaults);
-    return defaults;
-  }
+  saveUserData(email, restored);
+  removeKey(`${PREVIOUS_KEY_PREFIX}${normalizeEmail(email)}`);
+  return restored;
 }
 
 export function saveUserData(email: string, data: UserData) {
   if (!email) return;
-  localStorage.setItem(storageKey(email), JSON.stringify(data));
+  writeKey(userDataKey(email), JSON.stringify(data));
 }

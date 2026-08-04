@@ -12,6 +12,12 @@ const STATS = [
   { label: 'Игры',     value: 28,    size: 'text-lg' },
 ] as const;
 
+const EXTRA_STATS = [
+  { label: 'Хедз-ап', value: 0 },
+  { label: 'Топ 3',   value: 0 },
+  { label: 'Топ 9',   value: 0 },
+] as const;
+
 const GOLD_NUM =
   'font-black text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7] drop-shadow-[0_0_8px_rgba(217,153,98,0.8)]';
 
@@ -40,7 +46,7 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-0 left-1/2 -translate-x-[30%] h-[58%] w-auto object-contain z-0 pointer-events-none"
+        className="absolute left-1/2 -translate-x-1/2 bottom-[80px] h-[58%] w-auto object-contain z-0 pointer-events-none"
       />
 
       {/* Header card */}
@@ -57,10 +63,10 @@ export function ProfilePage() {
         <div className="pr-12">
           <h1 className="text-3xl font-black text-white leading-tight">{nickname}</h1>
           {formattedBirthDate && (
-            <p className="text-sm text-[#8c8c88] mt-0.5">{formattedBirthDate}</p>
+            <p className="text-sm text-white/80 italic mt-0.5">{formattedBirthDate}</p>
           )}
           {trimmedSlogan && (
-            <p className="text-sm italic text-[#D99962]/90 mt-1 leading-snug">
+            <p className="text-sm text-white/90 font-bold mt-1 leading-snug">
               «{trimmedSlogan}»
             </p>
           )}
@@ -85,22 +91,39 @@ export function ProfilePage() {
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           className="overflow-hidden"
         >
-          <p className="text-sm text-[#A39B98] pt-2 pb-0.5 text-center">
-            Здесь будет дополнительная информация
-          </p>
+          <div className="flex flex-row justify-between items-center gap-3 pt-2 pb-0.5">
+            <div className="flex flex-col gap-1">
+              {EXTRA_STATS.map(({ label, value }) => (
+                <p key={label} className="text-xs text-[#8c8c88]">
+                  {label}: <span className="font-bold text-[#D99962]">{value}</span>
+                </p>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="shrink-0 bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white text-sm font-bold px-4 py-2 rounded-lg active:scale-95 transition-transform"
+            >
+              Достижения
+            </button>
+          </div>
         </motion.div>
       </div>
 
-      {/* Left stats — the gradient hugs the numbers instead of the whole screen */}
-      <div className="relative z-10 mt-8 flex w-fit flex-col gap-4 rounded-r-2xl bg-gradient-to-r from-[#110b09]/90 to-transparent p-4 pr-20">
-        {STATS.map(({ label, value, size }) => (
-          <div key={label}>
-            <p className="text-xs text-white font-bold drop-shadow-md uppercase tracking-wide">
-              {label}
-            </p>
-            <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{value}</p>
-          </div>
-        ))}
+      {/* Left stats — a soft blurred blob backs the numbers, no hard gradient edge */}
+      <div className="relative mt-8 w-fit">
+        <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-[250px] h-[350px] bg-[#110b09]/90 blur-[40px] rounded-full z-0 pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col gap-4 pl-4 pr-8">
+          {STATS.map(({ label, value, size }) => (
+            <div key={label}>
+              <p className="text-xs text-white font-bold drop-shadow-md uppercase tracking-wide">
+                {label}
+              </p>
+              <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Shop — below the character */}
