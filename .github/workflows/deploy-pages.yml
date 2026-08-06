@@ -25,7 +25,7 @@ jobs:
 
       - run: npm ci
       - run: npm run build:pages
-      - run: cp dist/index.html dist/404.html
+      - run: cp dist/index.html dist/404.html && touch dist/.nojekyll
 
       # Repo Pages source is the legacy `gh-pages` branch (not Actions artifact deploy).
       # The github-pages environment only allows that branch, so we publish here.
@@ -35,3 +35,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           force_orphan: true
+          # Ensure Jekyll is skipped (gh-pages --dotfiles equivalent).
+          enable_jekyll: false
