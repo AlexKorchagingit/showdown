@@ -82,7 +82,11 @@ function withDefaults(parsed: Partial<UserData>): UserData {
     nickname: parsed.nickname || defaults.nickname,
     birthDate: parsed.birthDate ?? '',
     slogan: parsed.slogan ?? '',
-    coins: Number.isFinite(parsed.coins) ? Number(parsed.coins) : defaults.coins,
+    coins: (() => {
+      const value = Number.isFinite(parsed.coins) ? Number(parsed.coins) : defaults.coins;
+      // Migrate accounts that still sit on the old free starting stack.
+      return value === 5000 ? STARTING_COINS : value;
+    })(),
     ownedItems: [
       ...new Set([
         ...FREE_ITEM_IDS,

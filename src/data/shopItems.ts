@@ -32,6 +32,9 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'bg_6',               type: 'bg',        name: 'Фон 6',     image: asset('/backgrounds/bg_6.png'),        price: 2200 },
   { id: 'bg_7',               type: 'bg',        name: 'Фон 7',     image: asset('/backgrounds/bg_7.png'),        price: 2500 },
   { id: 'bg_8',               type: 'bg',        name: 'Фон 8',     image: asset('/backgrounds/bg_8.png'),        price: 2800 },
+  { id: 'bg_9',               type: 'bg',        name: 'Фон 9',     image: asset('/backgrounds/bg_9.png'),        price: 3000 },
+  { id: 'bg_10',              type: 'bg',        name: 'Фон 10',    image: asset('/backgrounds/bg_10.png'),       price: 3200 },
+  { id: 'bg_11',              type: 'bg',        name: 'Фон 11',    image: asset('/backgrounds/bg_11.png'),       price: 3500 },
 ];
 
 /** Free items are owned from the very first launch. */

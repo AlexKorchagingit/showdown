@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { SectionScreen } from '../../components/SectionScreen';
 import { ACHIEVEMENTS, type AchievementProgress } from '../../data/achievements';
 import { mockUsers } from '../../data/mockUsers';
@@ -10,46 +10,41 @@ import {
 
 export function AdminAchievementsEditor() {
   const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
   const user = useMemo(
     () => mockUsers.find((u) => u.id === userId),
     [userId],
   );
 
   const storageKey = user?.email ?? '';
-
   const [draft, setDraft] = useState<Record<string, AchievementProgress>>({});
-  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     if (!storageKey) return;
     setDraft(loadAchievementProgress(storageKey));
-    setSavedFlash(false);
   }, [storageKey]);
 
   if (!user) {
     return <Navigate to="/admin/achievements/users" replace />;
   }
 
+  const commit = (next: Record<string, AchievementProgress>) => {
+    setDraft(next);
+    saveAchievementProgress(storageKey, next);
+  };
+
   const setProgress = (id: string, value: number, max: number) => {
     const clamped = Math.max(0, Math.min(max, Number.isFinite(value) ? value : 0));
-    setDraft((prev) => ({
-      ...prev,
+    commit({
+      ...draft,
       [id]: { progress: clamped },
-    }));
+    });
   };
 
   const setCompleted = (id: string, completed: boolean) => {
-    setDraft((prev) => ({
-      ...prev,
+    commit({
+      ...draft,
       [id]: { completed },
-    }));
-  };
-
-  const handleSave = () => {
-    saveAchievementProgress(storageKey, draft);
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 1600);
+    });
   };
 
   return (
@@ -58,7 +53,7 @@ export function AdminAchievementsEditor() {
         {user.email}
       </p>
 
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3 pb-2">
         {ACHIEVEMENTS.map((achievement) => {
           const state = draft[achievement.id] ?? {};
           const hasTarget = achievement.target !== undefined;
@@ -124,27 +119,6 @@ export function AdminAchievementsEditor() {
           );
         })}
       </div>
-
-      <button
-        type="button"
-        onClick={handleSave}
-        className="w-full h-14 rounded-2xl text-[15px] font-bold tracking-wide text-[#0A0908] active:scale-[0.98] transition-transform"
-        style={{
-          background: 'linear-gradient(to right, #8C4C27, #D99962)',
-          boxShadow: '0 0 24px rgba(217,153,98,0.32)',
-        }}
-      >
-        {savedFlash ? 'Сохранено' : 'Сохранить'}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => navigate('/admin/achievements/users')}
-        className="w-full mt-3 py-3 text-[13px] font-600"
-        style={{ color: '#8c8c88' }}
-      >
-        К списку пользователей
-      </button>
     </SectionScreen>
   );
 }
