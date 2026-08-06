@@ -27,7 +27,7 @@ function LobbyHero({
     >
       {/* Background fishka */}
       <img
-        src={asset("/fishka.svg")}
+        src={asset("/fishka.webp")}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"

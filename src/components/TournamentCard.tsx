@@ -34,7 +34,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
     >
       {/* Background fishka — same style as Home hero card */}
       <img
-        src={asset("/fishka.svg")}
+        src={asset("/fishka.webp")}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"

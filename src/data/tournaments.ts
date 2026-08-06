@@ -20,7 +20,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '1',
     title: 'ROYAL FREEZEOUT',
-    imageUrl: asset('/fishka.svg'),
+    imageUrl: asset('/fishka.webp'),
     address: CLUB_ADDRESS,
     startDate: dayOffset(1),
     startTime: '19:00',
@@ -48,7 +48,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '2',
     title: 'GOLDEN BOUNTY',
-    imageUrl: asset('/fishka.svg'),
+    imageUrl: asset('/fishka.webp'),
     address: CLUB_ADDRESS,
     startDate: dayOffset(2),
     startTime: '15:00',
@@ -75,7 +75,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '3',
     title: 'SATURDAY DEEPSTACK',
-    imageUrl: asset('/fishka.svg'),
+    imageUrl: asset('/fishka.webp'),
     address: CLUB_ADDRESS,
     startDate: dayOffset(4),
     startTime: '17:00',
@@ -101,7 +101,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '4',
     title: 'TURBO CHAMPIONSHIP',
-    imageUrl: asset('/fishka.svg'),
+    imageUrl: asset('/fishka.webp'),
     address: CLUB_ADDRESS,
     startDate: dayOffset(-7),
     startTime: '14:00',
@@ -125,7 +125,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: '5',
     title: 'KINGS CLASSIC',
-    imageUrl: asset('/fishka.svg'),
+    imageUrl: asset('/fishka.webp'),
     address: CLUB_ADDRESS,
     startDate: dayOffset(-12),
     startTime: '19:00',
