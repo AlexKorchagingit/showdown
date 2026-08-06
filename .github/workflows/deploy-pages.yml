@@ -6,27 +6,17 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-
-      # enablement lets the first run create the Pages site itself
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/setup-node@v4
         with:
@@ -37,9 +27,11 @@ jobs:
       - run: npm run build:pages
       - run: cp dist/index.html dist/404.html
 
-      - uses: actions/upload-pages-artifact@v3
+      # Repo Pages source is the legacy `gh-pages` branch (not Actions artifact deploy).
+      # The github-pages environment only allows that branch, so we publish here.
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: dist
-
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true
