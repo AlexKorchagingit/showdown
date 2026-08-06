@@ -76,17 +76,21 @@ export function createDefaultUserData(): UserData {
 }
 
 /** Free items must stay owned even if an older record predates them. */
+function resolveCoins(parsed: Partial<UserData>): number {
+  if (!Number.isFinite(parsed.coins)) return STARTING_COINS;
+  const value = Number(parsed.coins);
+  // Migrate legacy free stacks (and empty/unset-style zeros from broken records).
+  if (value === 5000 || value < 0) return STARTING_COINS;
+  return value;
+}
+
 function withDefaults(parsed: Partial<UserData>): UserData {
   const defaults = createDefaultUserData();
   return {
     nickname: parsed.nickname || defaults.nickname,
     birthDate: parsed.birthDate ?? '',
     slogan: parsed.slogan ?? '',
-    coins: (() => {
-      const value = Number.isFinite(parsed.coins) ? Number(parsed.coins) : defaults.coins;
-      // Migrate accounts that still sit on the old free starting stack.
-      return value === 5000 ? STARTING_COINS : value;
-    })(),
+    coins: resolveCoins(parsed),
     ownedItems: [
       ...new Set([
         ...FREE_ITEM_IDS,
@@ -129,7 +133,16 @@ export function loadUserData(email: string): UserData {
   if (!email) return createDefaultUserData();
 
   const current = parseRecord(readKey(userDataKey(email)));
-  if (current) return withDefaults(current);
+  if (current) {
+    const restored = withDefaults(current);
+    const rawCoins = current.coins;
+    const needsPersist =
+      !Number.isFinite(rawCoins) || Number(rawCoins) === 5000 || Number(rawCoins) < 0;
+    if (needsPersist && restored.coins === STARTING_COINS) {
+      saveUserData(email, restored);
+    }
+    return restored;
+  }
 
   // Nothing under the current key: carry over an older record for this account
   const previous = parseRecord(readKey(`${PREVIOUS_KEY_PREFIX}${normalizeEmail(email)}`));

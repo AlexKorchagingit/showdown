@@ -233,11 +233,17 @@ function TileIcon({ icon: Icon }: { icon: typeof MapPin }) {
   );
 }
 
-function InfoGrid({ onAboutClub }: { onAboutClub: () => void }) {
+function InfoGrid({
+  onAboutClub,
+  onQa,
+}: {
+  onAboutClub: () => void;
+  onQa: () => void;
+}) {
   const tiles = [
     { icon: Phone,         label: 'Поддержка', onClick: undefined },
     { icon: Info,          label: 'О клубе',   onClick: onAboutClub },
-    { icon: MessageCircle, label: 'Q&A',       onClick: undefined },
+    { icon: MessageCircle, label: 'Q&A',       onClick: onQa },
   ];
 
   return (
@@ -309,7 +315,10 @@ export function HomePage() {
           )}
 
           <RatingSection onNavigate={() => navigate('/rating')} />
-          <InfoGrid onAboutClub={() => navigate('/about')} />
+          <InfoGrid
+            onAboutClub={() => navigate('/about')}
+            onQa={() => navigate('/qa')}
+          />
         </div>
       </div>
     </div>

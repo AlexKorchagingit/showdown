@@ -12,6 +12,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ShopScreen } from './pages/ShopScreen';
 import { AboutClubScreen } from './pages/AboutClubScreen';
+import { QnAScreen } from './pages/QnAScreen';
 import { AchievementsScreen } from './pages/AchievementsScreen';
 import { AdminUsersScreen } from './pages/admin/AdminUsersScreen';
 import { AdminSectionScreen } from './pages/admin/AdminSectionScreen';
@@ -26,7 +27,7 @@ import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
 
 const NAV_HEIGHT = '5rem';
-const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|achievements|admin\/.+)$/;
+const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements|admin\/.+)$/;
 const SPLASH_MS = 2000;
 
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
@@ -60,6 +61,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/settings"          element={<SettingsPage userEmail={userEmail} />} />
             <Route path="/shop"              element={<ShopScreen />} />
             <Route path="/about"             element={<AboutClubScreen />} />
+            <Route path="/qa"                element={<QnAScreen />} />
             <Route path="/achievements"      element={<AchievementsScreen />} />
             <Route path="/admin/users"           element={<AdminUsersScreen />} />
             <Route path="/admin/tournaments"     element={<AdminTournamentsScreen />} />

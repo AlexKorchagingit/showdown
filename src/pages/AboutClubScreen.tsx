@@ -160,32 +160,18 @@ function LegalTab() {
 
   return (
     <div>
-      <div
-        className="rounded-2xl p-5 mb-6 relative overflow-hidden border border-white/10"
-        style={{
-          background: 'linear-gradient(160deg, #2A211D 0%, #231A16 45%, #110b09 100%)',
-        }}
-      >
-        <div
-          className="absolute -right-6 -top-8 w-32 h-32 rounded-full opacity-30 pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(217,153,98,0.45), transparent 70%)' }}
-        />
+      <div className="mb-8">
         <p className="text-[11px] font-700 tracking-[0.28em] uppercase text-[#D99962] mb-3">
           Реквизиты
         </p>
         <p className="text-[13px] font-500 text-white/55 mb-1">Индивидуальный предприниматель</p>
-        <p className="text-[18px] font-800 text-white leading-snug mb-4">
+        <p className="text-[18px] font-800 text-white leading-snug mb-3">
           Корчагин Александр Александрович
         </p>
-        <div
-          className="inline-flex items-center rounded-lg px-3 py-2"
-          style={{ background: 'rgba(17,11,9,0.55)', border: '1px solid rgba(217,153,98,0.28)' }}
-        >
-          <span className="text-[12px] font-600 text-white/50 mr-2">ИНН</span>
-          <span className="text-[14px] font-700 text-white tracking-wide tabular-nums">
-            770804408442
-          </span>
-        </div>
+        <p className="text-[14px] font-600 text-white/70 tracking-wide">
+          <span className="text-white/45 font-500 mr-2">ИНН</span>
+          <span className="tabular-nums text-white">770804408442</span>
+        </p>
       </div>
 
       <h2 className="text-[13px] font-800 tracking-[0.22em] uppercase text-[#D99962] mb-3">
