@@ -3,20 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
+import { CURRENT_PLAYER_STATS } from '../data/playerStats';
 
 const STATS = [
-  { label: 'Рейтинг',  value: '#12', size: 'text-5xl' },
-  { label: 'Победы',   value: 5,     size: 'text-4xl' },
-  { label: 'Финалы',   value: 12,    size: 'text-3xl' },
-  { label: 'Нокауты',  value: 47,    size: 'text-2xl' },
-  { label: 'Игры',     value: 28,    size: 'text-lg' },
-] as const;
+  { label: 'Рейтинг',  value: `#${CURRENT_PLAYER_STATS.ratingPlace}`, size: 'text-5xl' },
+  { label: 'Победы',   value: CURRENT_PLAYER_STATS.wins,              size: 'text-4xl' },
+  { label: 'Финалы',   value: CURRENT_PLAYER_STATS.finals,            size: 'text-3xl' },
+  { label: 'Нокауты',  value: CURRENT_PLAYER_STATS.knockouts,         size: 'text-2xl' },
+  { label: 'Игры',     value: CURRENT_PLAYER_STATS.games,             size: 'text-lg' },
+];
 
 const EXTRA_STATS = [
-  { label: 'Хедз-ап', value: 0 },
-  { label: 'Топ 3',   value: 0 },
-  { label: 'Топ 9',   value: 0 },
-] as const;
+  { label: 'Хедз-ап', value: CURRENT_PLAYER_STATS.headsUp },
+  { label: 'Топ 3',   value: CURRENT_PLAYER_STATS.top3 },
+  { label: 'Топ 9',   value: CURRENT_PLAYER_STATS.finals },
+];
 
 const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]';
 
@@ -48,7 +49,7 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute left-[60%] -translate-x-1/2 bottom-[100px] h-[50%] w-auto object-contain z-0 pointer-events-none"
+        className="absolute bottom-[100px] right-0 h-[65%] w-auto max-w-[150%] object-contain object-right-bottom z-0 pointer-events-none"
       />
 
       {/* Header card */}

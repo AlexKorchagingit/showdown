@@ -14,12 +14,18 @@ export const DEFAULT_CHARACTER_ID = 'char_base';
 export const DEFAULT_BG_ID = 'bg_mountains';
 
 export const SHOP_ITEMS: ShopItem[] = [
-  { id: DEFAULT_CHARACTER_ID, type: 'character', name: 'Базовый',    image: asset('/char_base.png'),     price: 0 },
-  { id: 'char_baron',         type: 'character', name: 'Барон',      image: asset('/char_baron.png'),    price: 1000 },
-  { id: 'char_jester',        type: 'character', name: 'Шут',        image: asset('/char_jester.png'),   price: 2000 },
-  { id: 'char_duchess',       type: 'character', name: 'Герцогиня',  image: asset('/char_duchess.png'),  price: 2500 },
-  { id: DEFAULT_BG_ID,        type: 'bg',        name: 'Горы',       image: asset('/fon1_mountine.png'), price: 0 },
-  { id: 'bg_bridge',          type: 'bg',        name: 'Мост',       image: asset('/bg_bridge.png'),     price: 1500 },
+  { id: DEFAULT_CHARACTER_ID, type: 'character', name: 'Базовый',   image: asset('/characters/char_base.png'),    price: 0 },
+  { id: 'char_baron',         type: 'character', name: 'Барон',     image: asset('/characters/char_baron.png'),   price: 1000 },
+  { id: 'char_cowboy',        type: 'character', name: 'Ковбой',    image: asset('/characters/char_cowboy.png'),  price: 1200 },
+  { id: 'char_fortune',       type: 'character', name: 'Гадалка',   image: asset('/characters/char_fortune.png'), price: 1500 },
+  { id: 'char_knight',        type: 'character', name: 'Рыцарь',    image: asset('/characters/char_knight.png'),  price: 1800 },
+  { id: 'char_jester',        type: 'character', name: 'Шут',       image: asset('/characters/char_jester.png'),  price: 2000 },
+  { id: 'char_mage',          type: 'character', name: 'Маг',       image: asset('/characters/char_mage.png'),    price: 2200 },
+  { id: 'char_duchess',       type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 2500 },
+  { id: 'char_villain',       type: 'character', name: 'Злодей',    image: asset('/characters/char_villain.png'), price: 3000 },
+  { id: 'char_king',          type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 4000 },
+  { id: DEFAULT_BG_ID,        type: 'bg',        name: 'Горы',      image: asset('/backgrounds/bg_mountains.png'), price: 0 },
+  { id: 'bg_bridge',          type: 'bg',        name: 'Мост',      image: asset('/backgrounds/bg_bridge.png'),    price: 1500 },
 ];
 
 /** Free items are owned from the very first launch. */
