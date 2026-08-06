@@ -7,9 +7,10 @@ interface Props {
 }
 
 const ITEMS = [
-  { label: 'Tournaments', to: '/admin/tournaments' },
-  { label: 'Blinds info', to: '/admin/blinds/settings' },
-  { label: 'Finance',     to: '/admin/finance' },
+  { label: 'Tournaments',  to: '/admin/tournaments' },
+  { label: 'Blinds info',  to: '/admin/blinds/settings' },
+  { label: 'Finance',      to: '/admin/finance' },
+  { label: 'Achievements', to: '/admin/achievements/users' },
 ];
 
 export function AdminBottomSheet({ open, onClose }: Props) {

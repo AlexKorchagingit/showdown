@@ -11,7 +11,7 @@ export interface ShopItem {
 }
 
 export const DEFAULT_CHARACTER_ID = 'char_base';
-export const DEFAULT_BG_ID = 'bg_mountains';
+export const DEFAULT_BG_ID = 'bg_1';
 
 export const SHOP_ITEMS: ShopItem[] = [
   { id: DEFAULT_CHARACTER_ID, type: 'character', name: 'Базовый',   image: asset('/characters/char_base.png'),    price: 0 },
@@ -24,8 +24,14 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'char_duchess',       type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 2500 },
   { id: 'char_villain',       type: 'character', name: 'Злодей',    image: asset('/characters/char_villain.png'), price: 3000 },
   { id: 'char_king',          type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 4000 },
-  { id: DEFAULT_BG_ID,        type: 'bg',        name: 'Горы',      image: asset('/backgrounds/bg_mountains.png'), price: 0 },
-  { id: 'bg_bridge',          type: 'bg',        name: 'Мост',      image: asset('/backgrounds/bg_bridge.png'),    price: 1500 },
+  { id: 'bg_1',               type: 'bg',        name: 'Фон 1',     image: asset('/backgrounds/bg_1.png'),        price: 0 },
+  { id: 'bg_2',               type: 'bg',        name: 'Фон 2',     image: asset('/backgrounds/bg_2.png'),        price: 1200 },
+  { id: 'bg_3',               type: 'bg',        name: 'Фон 3',     image: asset('/backgrounds/bg_3.png'),        price: 1500 },
+  { id: 'bg_4',               type: 'bg',        name: 'Фон 4',     image: asset('/backgrounds/bg_4.png'),        price: 1800 },
+  { id: 'bg_5',               type: 'bg',        name: 'Фон 5',     image: asset('/backgrounds/bg_5.png'),        price: 2000 },
+  { id: 'bg_6',               type: 'bg',        name: 'Фон 6',     image: asset('/backgrounds/bg_6.png'),        price: 2200 },
+  { id: 'bg_7',               type: 'bg',        name: 'Фон 7',     image: asset('/backgrounds/bg_7.png'),        price: 2500 },
+  { id: 'bg_8',               type: 'bg',        name: 'Фон 8',     image: asset('/backgrounds/bg_8.png'),        price: 2800 },
 ];
 
 /** Free items are owned from the very first launch. */

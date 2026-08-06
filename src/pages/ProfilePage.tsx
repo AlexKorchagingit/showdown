@@ -49,7 +49,7 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-[100px] right-0 h-[65%] w-auto max-w-[150%] object-contain object-right-bottom z-0 pointer-events-none"
+        className="absolute bottom-[90px] right-0 h-[60%] w-auto object-contain object-right-bottom z-0 pointer-events-none"
       />
 
       {/* Header card */}

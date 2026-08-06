@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Award,
   Bomb,
@@ -13,7 +14,6 @@ import {
   Skull,
   Sparkles,
   Spade,
-  Star,
   Swords,
   Target,
   Timer,
@@ -23,13 +23,17 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { SectionScreen } from '../components/SectionScreen';
+import { useUser } from '../context/UserContext';
 import {
-  ACHIEVEMENTS,
   isAchievementDone,
   type Achievement,
   type AchievementIcon,
-  type AchievementTier,
 } from '../data/achievements';
+import {
+  loadAchievementProgress,
+  resolveAchievements,
+  sortAchievements,
+} from '../lib/achievementStorage';
 
 const ICONS: Record<AchievementIcon, LucideIcon> = {
   fish: Fish,
@@ -54,76 +58,53 @@ const ICONS: Record<AchievementIcon, LucideIcon> = {
   giantslayer: Bomb,
 };
 
-const TIER_COLOR: Record<AchievementTier, { icon: string; bg: string; border: string }> = {
-  gold:   { icon: '#F2D8A7', bg: 'rgba(217,153,98,0.16)',  border: 'rgba(217,153,98,0.45)' },
-  silver: { icon: '#C9CBD1', bg: 'rgba(201,203,209,0.12)', border: 'rgba(201,203,209,0.32)' },
-  ruby:   { icon: '#E0596B', bg: 'rgba(224,89,107,0.14)',  border: 'rgba(224,89,107,0.4)' },
-};
-
 function AchievementCard({ achievement }: { achievement: Achievement }) {
   const Icon = ICONS[achievement.icon];
-  const tier = TIER_COLOR[achievement.tier];
   const done = isAchievementDone(achievement);
-
-  const hasProgress = achievement.target !== undefined && !done;
-  const progress = achievement.progress ?? 0;
   const target = achievement.target ?? 0;
+  const progress = achievement.progress ?? 0;
+  const hasProgressBar = target > 0;
   const percent = target > 0 ? Math.min(100, (progress / target) * 100) : 0;
 
   return (
     <div
-      className={`bg-[#231A16] rounded-xl p-4 flex flex-row gap-4 items-center mb-3 ${
-        done ? '' : 'opacity-90'
-      }`}
-      style={{ border: `1px solid ${done ? tier.border : 'rgba(255,255,255,0.06)'}` }}
+      className={[
+        'relative aspect-square bg-[#231A16] rounded-xl border border-white/5 p-3',
+        'flex flex-col justify-center items-center text-center overflow-hidden',
+        hasProgressBar ? 'pr-6' : '',
+        done
+          ? 'ring-2 ring-[#D99962] shadow-[0_0_20px_rgba(217,153,98,0.4)] bg-gradient-to-br from-[#463129] to-[#231A16]'
+          : '',
+      ].join(' ')}
     >
-      <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-        style={{ background: tier.bg, border: `1px solid ${tier.border}` }}
-      >
-        <Icon size={22} strokeWidth={2.1} style={{ color: done ? tier.icon : '#6B6360' }} />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-bold text-white leading-tight">{achievement.title}</p>
-        <p className="text-[12px] font-400 leading-snug mt-0.5" style={{ color: '#8c8c88' }}>
-          {achievement.description}
-        </p>
-      </div>
-
-      {done ? (
-        <div className="shrink-0 flex flex-col items-center gap-1 w-[72px]">
-          <Trophy size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-          <span className="text-[10px] font-700 uppercase tracking-wide" style={{ color: '#D99962' }}>
-            Получено
-          </span>
-        </div>
-      ) : hasProgress ? (
-        <div className="shrink-0 w-[72px]">
-          <div className="h-1.5 rounded-full overflow-hidden bg-white/10">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${percent}%`,
-                background: 'linear-gradient(to right, #8C4C27, #D99962)',
-              }}
-            />
-          </div>
-          <p className="text-[11px] font-600 text-center mt-1.5 tabular-nums" style={{ color: '#A39B98' }}>
-            {progress} / {target}
-          </p>
-        </div>
-      ) : (
-        <div className="shrink-0 w-[72px] flex justify-center">
-          <Star size={20} strokeWidth={2} style={{ color: '#463129' }} />
+      {hasProgressBar && (
+        <div className="absolute right-2 top-3 bottom-3 w-2 bg-black/60 rounded-full overflow-hidden">
+          <div
+            className="absolute bottom-0 w-full bg-gradient-to-t from-[#8C4C27] to-[#F2D8A7] transition-all"
+            style={{ height: `${percent}%` }}
+          />
         </div>
       )}
+
+      <Icon
+        className="w-14 h-14 text-[#D99962] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-2"
+        strokeWidth={1.8}
+      />
+      <p className="text-sm font-bold text-white mb-1 leading-tight">{achievement.title}</p>
+      <p className="text-[10px] text-white/60 leading-tight">{achievement.description}</p>
     </div>
   );
 }
 
 export function AchievementsScreen() {
-  const done = ACHIEVEMENTS.filter(isAchievementDone).length;
+  const { email } = useUser();
+
+  const achievements = useMemo(() => {
+    const progress = loadAchievementProgress(email);
+    return sortAchievements(resolveAchievements(progress));
+  }, [email]);
+
+  const done = achievements.filter(isAchievementDone).length;
 
   return (
     <SectionScreen title="Достижения" backTo="/profile">
@@ -132,12 +113,14 @@ export function AchievementsScreen() {
         <span className="font-bold" style={{ color: '#D99962' }}>
           {done}
         </span>{' '}
-        из {ACHIEVEMENTS.length}
+        из {achievements.length}
       </p>
 
-      {ACHIEVEMENTS.map((achievement) => (
-        <AchievementCard key={achievement.id} achievement={achievement} />
-      ))}
+      <div className="-mx-5 grid grid-cols-2 gap-4 px-4">
+        {achievements.map((achievement) => (
+          <AchievementCard key={achievement.id} achievement={achievement} />
+        ))}
+      </div>
     </SectionScreen>
   );
 }

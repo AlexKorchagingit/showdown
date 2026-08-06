@@ -37,6 +37,12 @@ export interface Achievement {
   completed?: boolean;
 }
 
+/** Per-user override saved in localStorage by the admin editor. */
+export interface AchievementProgress {
+  progress?: number;
+  completed?: boolean;
+}
+
 /** Progress never exceeds the goal, so a finished counter reads "10 / 10". */
 function capped(value: number, target: number): number {
   return Math.min(value, target);

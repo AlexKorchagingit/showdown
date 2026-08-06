@@ -6,7 +6,7 @@ import {
 
 export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку белых фишек';
 
-export const STARTING_COINS = 5000;
+export const STARTING_COINS = 30000;
 
 export interface UserData {
   nickname: string;
