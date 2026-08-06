@@ -1,9 +1,10 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { useTournaments } from '../context/TournamentContext';
 import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
 import { asset } from '../lib/assets';
+import { CLUB_ADDRESS } from '../lib/clubAddress';
 
 interface Props {
   tournament: Tournament;
@@ -67,6 +68,10 @@ function LobbyHero({
           <span className="opacity-30">·</span>
           <Clock size={12} style={{ color: '#c8a38e' }} />
           {startTime}
+        </div>
+        <div className="flex items-center gap-2 text-[11px] mt-1.5" style={{ color: '#8c8c88' }}>
+          <MapPin size={11} style={{ color: '#c8a38e' }} />
+          <span>{CLUB_ADDRESS}</span>
         </div>
       </div>
     </div>

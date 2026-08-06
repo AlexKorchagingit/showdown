@@ -5,6 +5,7 @@ import { createContext, useContext, useId, type ReactNode } from 'react';
 interface Props {
   id: string;
   className?: string;
+  completed?: boolean;
 }
 
 interface SpTheme {
@@ -543,7 +544,7 @@ const BY_ID: Record<string, () => ReactNode> = {
   'giant-slayer': IconGiantSlayer,
 };
 
-export function SteampunkAchievementIcon({ id, className = '' }: Props) {
+export function SteampunkAchievementIcon({ id, className = '', completed = false }: Props) {
   const rawId = useId().replace(/:/g, '');
   const theme: SpTheme = {
     id: (name) => `${rawId}-${name}`,
@@ -551,11 +552,15 @@ export function SteampunkAchievementIcon({ id, className = '' }: Props) {
   };
   const render = BY_ID[id] ?? IconWelcome;
 
+  const stateClass = completed
+    ? 'text-[#F2D8A7] drop-shadow-[0_0_5px_#D99962] scale-110 transition-transform'
+    : 'text-[#8C4C27]/50 opacity-80';
+
   return (
     <SpCtx.Provider value={theme}>
       <svg
         viewBox="0 0 64 64"
-        className={`drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${className}`}
+        className={`${stateClass} ${completed ? '' : 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'} ${className}`}
         aria-hidden
       >
         <Defs uid={rawId} />

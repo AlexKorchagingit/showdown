@@ -6,7 +6,7 @@ import {
 
 export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку белых фишек';
 
-export const STARTING_COINS = 30000;
+export const STARTING_COINS = 50000;
 
 export interface UserData {
   nickname: string;
@@ -77,10 +77,9 @@ export function createDefaultUserData(): UserData {
 
 /** Free items must stay owned even if an older record predates them. */
 function resolveCoins(parsed: Partial<UserData>): number {
-  if (!Number.isFinite(parsed.coins)) return STARTING_COINS;
+  if (!Number.isFinite(parsed.coins) || !parsed.coins) return STARTING_COINS;
   const value = Number(parsed.coins);
-  // Migrate legacy free stacks (and empty/unset-style zeros from broken records).
-  if (value === 5000 || value < 0) return STARTING_COINS;
+  if (value < STARTING_COINS) return STARTING_COINS;
   return value;
 }
 
@@ -137,7 +136,7 @@ export function loadUserData(email: string): UserData {
     const restored = withDefaults(current);
     const rawCoins = current.coins;
     const needsPersist =
-      !Number.isFinite(rawCoins) || Number(rawCoins) === 5000 || Number(rawCoins) < 0;
+      !Number.isFinite(rawCoins) || !rawCoins || Number(rawCoins) < STARTING_COINS;
     if (needsPersist && restored.coins === STARTING_COINS) {
       saveUserData(email, restored);
     }

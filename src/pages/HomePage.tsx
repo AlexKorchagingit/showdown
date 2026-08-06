@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle, ExternalLink } from 'lucide-react';
+import { ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle, ExternalLink, Send } from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
 import { asset } from '../lib/assets';
+import { CLUB_ADDRESS } from '../lib/clubAddress';
 import { CURRENT_USER_RATING } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
@@ -14,6 +15,8 @@ const PODIUM = [
   { rank: 1, name: 'Александр К.', points: 4200, glowColor: '#D99962' },
   { rank: 3, name: 'Михаил С.',    points: 3610, glowColor: '#8C4C27' },
 ];
+
+const TELEGRAM_URL = 'https://t.me/showdown_bryansk';
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 function Header() {
@@ -33,6 +36,21 @@ function Header() {
           Showdown
         </span>
       </div>
+
+      <a
+        href={TELEGRAM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Telegram канал Showdown"
+        className="w-11 h-11 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+        style={{
+          background: 'rgba(28,20,16,0.78)',
+          border: '1px solid rgba(217,153,98,0.35)',
+          boxShadow: '0 0 14px rgba(217,153,98,0.18)',
+        }}
+      >
+        <Send size={18} strokeWidth={2.2} style={{ color: '#D99962' }} />
+      </a>
     </header>
   );
 }
@@ -103,7 +121,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           </div>
           <div className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
             <MapPin size={12} style={{ color: '#c8a38e' }} />
-            <span className="truncate">{tournament.address}</span>
+            <span className="truncate">{CLUB_ADDRESS}</span>
           </div>
         </div>
 
@@ -203,7 +221,7 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-700 truncate text-white">{CURRENT_USER_RATING.nickname}</p>
         </div>
-        <p className="text-[13px] font-normal shrink-0 text-black">
+        <p className="text-[13px] font-bold tracking-wide shrink-0 text-black">
           {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}
         </p>
       </div>
