@@ -32,6 +32,15 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Reusable gradient text */
   .gold-text {
     background: linear-gradient(to right, #D99962, #F2D8A7);
