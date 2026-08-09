@@ -54,12 +54,12 @@ function EditableHero({
       className="relative overflow-hidden rounded-2xl mx-4 mt-4"
       style={{ minHeight: 180, background: '#1d0b07' }}
     >
-      <div className="absolute inset-0 z-0 overflow-hidden border-0 shadow-none ring-0 divide-x-0 bg-transparent">
+      <div className="absolute inset-0 z-0 overflow-hidden bg-transparent border-0 shadow-none ring-0 outline-none">
         <img
           src={heroImage}
           alt=""
           aria-hidden
-          className={`absolute pointer-events-none select-none border-0 shadow-none ring-0 outline-none ${
+          className={`absolute pointer-events-none select-none bg-transparent border-0 shadow-none ring-0 outline-none ${
             isCustomPhoto
               ? 'inset-0 w-full h-full object-cover'
               : 'top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto max-w-none object-right object-contain origin-right scale-75'
@@ -71,8 +71,9 @@ function EditableHero({
                   border: 'none',
                   outline: 'none',
                   boxShadow: 'none',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
-                  maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+                  background: 'transparent',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent, black)',
+                  maskImage: 'linear-gradient(to right, transparent, black)',
                 }
               : {
                   opacity: 0.8,
@@ -80,12 +81,13 @@ function EditableHero({
                   border: 'none',
                   outline: 'none',
                   boxShadow: 'none',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
-                  maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+                  background: 'transparent',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent, black)',
+                  maskImage: 'linear-gradient(to right, transparent, black)',
                 }
           }
         />
-        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 to-transparent" />
       </div>
 
       {/* Photo edit button */}

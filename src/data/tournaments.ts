@@ -9,7 +9,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     title: 'Grand Opening',
     imageUrl: asset('/tournaments/glass.jpg'),
     address: CLUB_ADDRESS,
-    startDate: '2026-08-05',
+    startDate: '2026-08-22',
     startTime: '17:00',
     totalSeats: 36,
     guarantee: 20000,
@@ -27,7 +27,6 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Плавная',
     stackSize: 30000,
     levelDuration: '20 мин',
-    resultsEntered: false,
   },
   {
     id: 'freeroll',
