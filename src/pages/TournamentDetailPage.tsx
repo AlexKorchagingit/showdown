@@ -25,26 +25,28 @@ function LobbyHero({
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl mx-4 mt-4"
-      style={{ height: 160, background: '#1d0b07' }}
+      className="relative overflow-hidden rounded-2xl mx-4 mt-4 border-0 shadow-none ring-0"
+      style={{ height: 200, background: '#1d0b07' }}
     >
-      {/* Background tournament art — smaller, glued to the right edge */}
-      <img
-        src={imageUrl}
-        alt=""
-        aria-hidden
-        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75 border-0 outline-none ring-0"
-        style={{
-          opacity: 0.85,
-          filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
-          border: 'none',
-          outline: 'none',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-          maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-        }}
-      />
-
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
+      {/* Art layer: no border / ring / shadow seam */}
+      <div className="absolute inset-0 z-0 overflow-hidden border-0 shadow-none ring-0 divide-x-0 bg-transparent">
+        <img
+          src={imageUrl}
+          alt=""
+          aria-hidden
+          className="absolute top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-75 border-0 shadow-none ring-0 outline-none"
+          style={{
+            opacity: 0.85,
+            filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
+            border: 'none',
+            outline: 'none',
+            boxShadow: 'none',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+          }}
+        />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
+      </div>
 
       {/* Title + date/time — bottom-left */}
       <div className="absolute bottom-4 left-5 z-20" style={{ width: '72%' }}>
@@ -124,37 +126,35 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           />
 
           <div className="px-5 pt-4 space-y-5">
+            {/* Guarantee — full width, compact vertically, pulled up toward hero */}
+            <div
+              className="relative w-full flex items-center gap-3 rounded-xl overflow-hidden px-4 py-1.5 -mt-4"
+              style={{ border: '1px solid rgba(242,216,167,0.32)' }}
+            >
+              <div
+                className="absolute inset-0 opacity-[0.12] pointer-events-none"
+                style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+              />
+              <div
+                className="relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+              >
+                <Star size={15} fill="currentColor" style={{ color: '#0A0908' }} />
+              </div>
+              <div className="relative">
+                <p className="text-[10px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
+                  Гарантия очков
+                </p>
+                <p className="text-white font-900 text-base tracking-wide leading-tight">
+                  {live.guarantee.toLocaleString('ru-RU')}
+                </p>
+              </div>
+            </div>
+
             {/* Progress — tick-free */}
             <div className="rounded-2xl p-4"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
               <ProgressBar value={occupiedSeats} max={live.totalSeats} />
-            </div>
-
-            {/* Guarantee — compact chip */}
-            <div className="flex justify-center">
-              <div
-                className="relative inline-flex items-center gap-2.5 rounded-xl overflow-hidden px-3 py-1.5 w-max"
-                style={{ border: '1px solid rgba(242,216,167,0.32)' }}
-              >
-                <div
-                  className="absolute inset-0 opacity-[0.12] pointer-events-none"
-                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
-                />
-                <div
-                  className="relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
-                >
-                  <Star size={14} fill="currentColor" style={{ color: '#0A0908' }} />
-                </div>
-                <div className="relative">
-                  <p className="text-[9px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
-                    Гарантия очков
-                  </p>
-                  <p className="text-white font-900 text-sm tracking-wide leading-tight">
-                    {live.guarantee.toLocaleString('ru-RU')}
-                  </p>
-                </div>
-              </div>
             </div>
 
             {/* Info block */}

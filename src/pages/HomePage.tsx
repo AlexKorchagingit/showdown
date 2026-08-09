@@ -205,23 +205,25 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         minHeight: 168,
       }}
     >
-      {/* Background tournament art — smaller, glued to the right edge */}
-      <img
-        src={tournament.imageUrl}
-        alt=""
-        aria-hidden
-        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75 border-0 outline-none ring-0"
-        style={{
-          opacity: 0.85,
-          filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
-          border: 'none',
-          outline: 'none',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-          maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-        }}
-      />
-
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
+      {/* Background tournament art — no border/ring/shadow seam */}
+      <div className="absolute inset-0 z-0 overflow-hidden border-0 shadow-none ring-0 divide-x-0 bg-transparent">
+        <img
+          src={tournament.imageUrl}
+          alt=""
+          aria-hidden
+          className="absolute top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-75 border-0 shadow-none ring-0 outline-none"
+          style={{
+            opacity: 0.85,
+            filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
+            border: 'none',
+            outline: 'none',
+            boxShadow: 'none',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+          }}
+        />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
+      </div>
 
       {/* Text content — over gradient */}
       <div className="relative z-20 flex flex-col gap-3 px-5 py-5" style={{ width: '68%' }}>

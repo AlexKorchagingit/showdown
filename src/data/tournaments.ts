@@ -6,7 +6,7 @@ import { CLUB_ADDRESS } from '../lib/clubAddress';
 export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'opening',
-    title: 'Opening',
+    title: 'Grand Opening',
     imageUrl: asset('/tournaments/glass.jpg'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-05',

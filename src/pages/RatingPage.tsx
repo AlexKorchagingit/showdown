@@ -226,19 +226,16 @@ export function RatingPage() {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-600 uppercase tracking-wider shrink-0" style={{ color: '#69584f' }}>
-            Показатель
-          </p>
-          <div className="flex items-center justify-end gap-2 min-w-0">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-start mr-auto min-w-0">
             <ColumnSelector active={activeColumn} onChange={setActiveColumn} />
-            <span
-              className="shrink-0 text-[10px] font-800 uppercase tracking-wider"
-              style={{ color: '#D99962' }}
-            >
-              Рейтинг
-            </span>
           </div>
+          <span
+            className="shrink-0 text-[10px] font-800 uppercase tracking-wider"
+            style={{ color: '#D99962' }}
+          >
+            Рейтинг
+          </span>
         </div>
       </div>
 

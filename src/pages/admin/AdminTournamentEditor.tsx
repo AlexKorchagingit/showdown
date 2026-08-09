@@ -54,36 +54,39 @@ function EditableHero({
       className="relative overflow-hidden rounded-2xl mx-4 mt-4"
       style={{ minHeight: 180, background: '#1d0b07' }}
     >
-      <img
-        src={heroImage}
-        alt=""
-        aria-hidden
-        className={`absolute z-0 pointer-events-none select-none border-0 outline-none ring-0 ${
-          isCustomPhoto
-            ? 'inset-0 w-full h-full object-cover'
-            : 'top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto object-right object-contain origin-right scale-75'
-        }`}
-        style={
-          isCustomPhoto
-            ? {
-                opacity: 0.65,
-                border: 'none',
-                outline: 'none',
-                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-                maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-              }
-            : {
-                opacity: 0.8,
-                filter: 'brightness(1.15) contrast(1.08) saturate(1.1)',
-                border: 'none',
-                outline: 'none',
-                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-                maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
-              }
-        }
-      />
-
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
+      <div className="absolute inset-0 z-0 overflow-hidden border-0 shadow-none ring-0 divide-x-0 bg-transparent">
+        <img
+          src={heroImage}
+          alt=""
+          aria-hidden
+          className={`absolute pointer-events-none select-none border-0 shadow-none ring-0 outline-none ${
+            isCustomPhoto
+              ? 'inset-0 w-full h-full object-cover'
+              : 'top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto max-w-none object-right object-contain origin-right scale-75'
+          }`}
+          style={
+            isCustomPhoto
+              ? {
+                  opacity: 0.65,
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+                  maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+                }
+              : {
+                  opacity: 0.8,
+                  filter: 'brightness(1.12) contrast(1.06) saturate(1.08)',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+                  maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 28%, black 55%)',
+                }
+          }
+        />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
+      </div>
 
       {/* Photo edit button */}
       <button
