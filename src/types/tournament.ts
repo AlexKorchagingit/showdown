@@ -2,6 +2,8 @@ export interface Participant {
   id: string;
   nickname: string;
   rating: number;
+  /** Finishing place (1 = winner). Set when tournament results are entered. */
+  place?: number;
 }
 
 export interface Tournament {
@@ -21,4 +23,6 @@ export interface Tournament {
   blindStructure: string;
   stackSize: number;
   levelDuration: string;
+  /** True after admin has submitted finishing places / rating awards. */
+  resultsEntered?: boolean;
 }

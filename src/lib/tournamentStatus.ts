@@ -41,3 +41,12 @@ export function compareByStart(
 export function sortByRating<T extends { rating: number }>(participants: T[]): T[] {
   return [...participants].sort((a, b) => b.rating - a.rating);
 }
+
+/** Finished events that still need places / rating awards from admin. */
+export function needsResults(tournament: Tournament): boolean {
+  return (
+    isFinished(tournament) &&
+    tournament.participants.length > 0 &&
+    !tournament.resultsEntered
+  );
+}

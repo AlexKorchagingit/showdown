@@ -48,7 +48,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
         }}
       />
 
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/75 to-transparent" />
+      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
 
       <div
         className="relative z-20 flex flex-col justify-between px-5 py-4"

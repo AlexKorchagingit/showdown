@@ -5,16 +5,17 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { TournamentCard } from '../../components/TournamentCard';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
-import { compareByStart, isFinished } from '../../lib/tournamentStatus';
+import { compareByStart, isFinished, needsResults } from '../../lib/tournamentStatus';
 import { asset } from '../../lib/assets';
 import type { Tournament } from '../../types/tournament';
 
-type Tab = 'all' | 'create';
+type Tab = 'all' | 'create' | 'results';
 
-const TAB_ORDER: Tab[] = ['all', 'create'];
+const TAB_ORDER: Tab[] = ['all', 'create', 'results'];
 const TAB_LABEL: Record<Tab, string> = {
-  all: 'Все турниры',
-  create: 'Создать турнир',
+  all: 'Все',
+  create: 'Создать',
+  results: 'Итоги',
 };
 
 const FIELD_CLASS =
@@ -189,6 +190,10 @@ export function AdminTournamentsScreen() {
     return aFinished ? compareByStart(b, a) : compareByStart(a, b);
   });
 
+  const pendingResults = tournaments
+    .filter(needsResults)
+    .sort((a, b) => compareByStart(b, a));
+
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
       <button
@@ -216,7 +221,7 @@ export function AdminTournamentsScreen() {
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className="relative flex-1 py-2.5 text-[13px] font-600 rounded-lg transition-colors duration-200"
+              className="relative flex-1 py-2.5 text-[12px] font-600 rounded-lg transition-colors duration-200"
               style={{ color: tab === t ? '#0A0908' : '#6B6360' }}
             >
               {tab === t && (
@@ -259,11 +264,32 @@ export function AdminTournamentsScreen() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : tab === 'create' ? (
               <div className="px-1">
                 <CreateTournamentForm
                   onCreated={(id) => navigate(`/admin/tournaments/${id}`)}
                 />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingResults.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-2">
+                    <p className="text-[13px] font-500" style={{ color: '#6B6360' }}>
+                      Нет турниров без итогов
+                    </p>
+                    <p className="text-[11px] text-center px-6" style={{ color: '#69584f' }}>
+                      Здесь появятся завершённые турниры, у которых ещё не распределены места
+                    </p>
+                  </div>
+                ) : (
+                  pendingResults.map((tournament) => (
+                    <TournamentCard
+                      key={tournament.id}
+                      tournament={tournament}
+                      onClick={(t) => navigate(`/admin/tournaments/${t.id}/results`)}
+                    />
+                  ))
+                )}
               </div>
             )}
           </motion.div>

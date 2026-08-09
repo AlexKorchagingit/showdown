@@ -65,7 +65,7 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-[70px] left-[55%] h-[48%] w-auto object-contain object-bottom z-0 pointer-events-none"
+        className="absolute bottom-[40px] left-[45%] h-[52%] w-auto object-contain object-bottom z-0 pointer-events-none"
       />
 
       {/* Header card */}
@@ -79,10 +79,12 @@ export function ProfilePage() {
           <Settings className="w-7 h-7 text-[#F2D8A7]" strokeWidth={2} />
         </button>
 
-        <div className="pr-10">
+        <div className="pr-10 min-w-0">
           <h1 className={`text-2xl font-black leading-tight ${GOLD_TEXT}`}>{nickname}</h1>
           {trimmedSlogan && (
-            <p className={`text-xs italic mt-1 leading-snug ${GOLD_TEXT}`}>
+            <p
+              className={`text-xs italic mt-1 leading-snug text-wrap break-words whitespace-normal line-clamp-2 ${GOLD_TEXT}`}
+            >
               «{trimmedSlogan}»
             </p>
           )}
@@ -133,7 +135,7 @@ export function ProfilePage() {
       {/* Left stats */}
       {sideStats.length > 0 && (
         <div className="relative mt-4 w-fit">
-          <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-[130px] h-[120%] bg-[#231A16]/80 blur-[30px] rounded-full z-0 pointer-events-none" />
+          <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-[160px] h-[150%] bg-[#231A16]/80 blur-[30px] rounded-full z-0 pointer-events-none" />
 
           <div className="relative z-10 flex flex-col gap-3 pl-4 pr-8">
             {sideStats.map(({ label, display, size }) => (
@@ -149,7 +151,7 @@ export function ProfilePage() {
       )}
 
       {/* Shop */}
-      <div className="absolute bottom-6 left-0 right-0 z-10 px-4 flex flex-col items-center">
+      <div className="absolute bottom-2 left-0 right-0 z-10 px-4 flex flex-col items-center">
         <button
           type="button"
           onClick={() => navigate('/shop')}

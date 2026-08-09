@@ -45,7 +45,7 @@ function LobbyHero({
         }}
       />
 
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/75 to-transparent" />
+      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
 
       {/* Title + date/time — bottom-left */}
       <div className="absolute bottom-4 left-5 z-20" style={{ width: '72%' }}>

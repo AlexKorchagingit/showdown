@@ -57,23 +57,23 @@ function ModalShell({
   return (
     <AnimatePresence>
       {open && (
-        <>
-          <motion.div
-            key="modal-overlay"
-            className="absolute inset-0 z-50 bg-black/80"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
+        <motion.div
+          key="modal-root"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
           <motion.div
             key="modal-card"
-            className="absolute z-[60] left-4 right-4 top-1/2 -translate-y-1/2 rounded-2xl p-5 bg-[#231A16] border border-[#D99962]/30"
+            className="w-full max-w-[400px] rounded-2xl p-5 bg-[#231A16] border border-[#D99962]/30"
             style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.55)' }}
             initial={{ opacity: 0, y: 16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[16px] font-800 text-white tracking-wide">{title}</h2>
@@ -89,7 +89,7 @@ function ModalShell({
             </div>
             {children}
           </motion.div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   );
@@ -171,7 +171,7 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         type="button"
         onClick={onOpenSocials}
         aria-label="Мы в соцсетях"
-        className="relative flex items-center -space-x-4 pr-1 active:scale-95 transition-transform"
+        className="relative flex items-center -space-x-6 pr-1 active:scale-95 transition-transform"
       >
         <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500/20 border border-[#110b09] z-[1]">
           <Send size={15} strokeWidth={2.2} className="text-[#60A5FA]" />
@@ -223,7 +223,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         }}
       />
 
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/75 to-transparent" />
+      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-35% to-transparent" />
 
       {/* Text content — over gradient */}
       <div className="relative z-20 flex flex-col gap-3 px-5 py-5" style={{ width: '68%' }}>
@@ -403,7 +403,7 @@ function InfoGrid({
         <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
           <div className="flex items-center gap-3">
             <TileIcon icon={icon} />
-            <p className="text-sm font-700 text-white leading-tight">{label}</p>
+            <p className="text-[10px] font-700 text-white leading-tight">{label}</p>
           </div>
         </button>
       ))}
@@ -419,7 +419,7 @@ function InfoGrid({
           <div className="flex items-start gap-3">
             <TileIcon icon={MapPin} />
             <div className="flex flex-col gap-0.5 pt-0.5 min-w-0">
-              <p className="text-sm font-700 text-white leading-tight">Адрес</p>
+              <p className="text-[10px] font-700 text-white leading-tight">Адрес</p>
               <p className="text-[11px] font-500 leading-snug" style={{ color: '#8c8c88' }}>
                 {CLUB_ADDRESS_SHORT}
               </p>
@@ -436,7 +436,7 @@ function InfoGrid({
         <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
           <div className="flex items-center gap-3">
             <TileIcon icon={icon} />
-            <p className="text-sm font-700 text-white leading-tight">{label}</p>
+            <p className="text-[10px] font-700 text-white leading-tight">{label}</p>
           </div>
         </button>
       ))}
@@ -482,6 +482,9 @@ export function HomePage() {
         onClose={() => setIsSupportOpen(false)}
         title="Поддержка"
       >
+        <p className="text-xs text-[#8c8c88] mb-4 text-center">
+          Делитесь своими пожеланиями/вопросами здесь:
+        </p>
         <div className="space-y-2.5">
           <SocialLinkRow
             href="mailto:showdown_br@mail.ru"
