@@ -34,10 +34,10 @@ function LobbyHero({
         aria-hidden
         className="absolute z-0 w-auto pointer-events-none select-none"
         style={{
-          height: '145%',
-          right: '-10%',
+          height: '115%',
+          right: '-8%',
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: 'translateY(-50%) scale(0.9)',
           opacity: 0.8,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
@@ -58,12 +58,15 @@ function LobbyHero({
         >
           {title}
         </h1>
-        <div className="flex items-center gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-          <Calendar size={11} style={{ color: '#c8a38e' }} />
-          <span className="capitalize">{formattedDate}</span>
-          <span className="opacity-30">·</span>
-          <Clock size={11} style={{ color: '#c8a38e' }} />
-          {startTime}
+        <div className="flex flex-col gap-1 text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+          <div className="flex items-center gap-2">
+            <Calendar size={11} style={{ color: '#c8a38e' }} />
+            <span className="capitalize">{formattedDate}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock size={11} style={{ color: '#c8a38e' }} />
+            {startTime}
+          </div>
         </div>
         <div className="flex items-center gap-2 text-[10px] mt-1" style={{ color: '#8c8c88' }}>
           <MapPin size={10} style={{ color: '#c8a38e' }} />

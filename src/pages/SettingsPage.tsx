@@ -17,15 +17,13 @@ function handleLogout() {
 export function SettingsPage({ userEmail }: Props) {
   const navigate = useNavigate();
   const { isAdmin } = useUser();
-  const { nickname, birthDate, slogan, updateNickname, updateBirthDate, updateSlogan } = useProfile();
+  const { nickname, slogan, updateNickname, updateSlogan } = useProfile();
 
   const [draftNickname, setDraftNickname] = useState(nickname);
-  const [draftBirthDate, setDraftBirthDate] = useState(birthDate);
   const [draftSlogan, setDraftSlogan] = useState(slogan);
 
   const handleSave = () => {
     updateNickname(draftNickname.trim() || nickname);
-    updateBirthDate(draftBirthDate);
     updateSlogan(draftSlogan.trim());
     navigate('/profile');
   };
@@ -85,18 +83,6 @@ export function SettingsPage({ userEmail }: Props) {
               placeholder="Ваш никнейм"
             />
             <p className="text-[11px] mt-1 text-[#6B6360]">(макс. 17 символов)</p>
-          </section>
-
-          <section>
-            <label className="block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]">
-              Дата рождения
-            </label>
-            <input
-              type="date"
-              value={draftBirthDate}
-              onChange={(e) => setDraftBirthDate(e.target.value)}
-              className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors [color-scheme:dark]"
-            />
           </section>
 
           <section>

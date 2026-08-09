@@ -259,6 +259,18 @@ export function RatingPage() {
               </div>
             ) : (
               <div className="px-4 space-y-2 pt-1">
+                <div className="flex items-center px-4 pb-0.5" aria-hidden>
+                  <span className="w-7 shrink-0" />
+                  <span className="w-8 shrink-0" />
+                  <div className="flex-1 min-w-0 pl-2" />
+                  <span className="w-12 shrink-0" />
+                  <span
+                    className="w-14 shrink-0 text-right text-[10px] font-800 uppercase tracking-wider"
+                    style={{ color: '#D99962' }}
+                  >
+                    Рейтинг
+                  </span>
+                </div>
                 {players.map((p, idx) => (
                   <PlayerRow
                     key={p.id}

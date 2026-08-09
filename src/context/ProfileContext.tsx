@@ -16,7 +16,6 @@ interface ProfileContextValue extends UserData {
   characterImage: string;
   backgroundImage: string;
   updateNickname: (value: string) => void;
-  updateBirthDate: (value: string) => void;
   updateSlogan: (value: string) => void;
   isOwned: (itemId: string) => boolean;
   isEquipped: (itemId: string) => boolean;
@@ -50,7 +49,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   );
 
   const updateNickname = useCallback((value: string) => patch({ nickname: value }), [patch]);
-  const updateBirthDate = useCallback((value: string) => patch({ birthDate: value }), [patch]);
   const updateSlogan = useCallback((value: string) => patch({ slogan: value }), [patch]);
 
   const isOwned = useCallback(
@@ -94,14 +92,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       characterImage: resolveImage(data.equippedChar, 'character'),
       backgroundImage: resolveImage(data.equippedBg, 'bg'),
       updateNickname,
-      updateBirthDate,
       updateSlogan,
       isOwned,
       isEquipped,
       buyItem,
       equipItem,
     }),
-    [data, updateNickname, updateBirthDate, updateSlogan, isOwned, isEquipped, buyItem, equipItem],
+    [data, updateNickname, updateSlogan, isOwned, isEquipped, buyItem, equipItem],
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

@@ -34,19 +34,11 @@ const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962]
 const GOLD_NUM =
   `font-black ${GOLD_TEXT} drop-shadow-[0_0_8px_rgba(217,153,98,0.8)]`;
 
-function formatBirthDate(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
 export function ProfilePage() {
   const navigate = useNavigate();
-  const { nickname, birthDate, slogan, characterImage, backgroundImage } = useProfile();
+  const { nickname, slogan, characterImage, backgroundImage } = useProfile();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const formattedBirthDate = formatBirthDate(birthDate);
   const trimmedSlogan = slogan.trim();
 
   const sideStats = useMemo(
@@ -73,11 +65,11 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-[90px] right-0 h-[45%] w-auto object-contain object-right-bottom z-0 pointer-events-none"
+        className="absolute bottom-[70px] left-[55%] h-[48%] w-auto object-contain object-bottom z-0 pointer-events-none"
       />
 
       {/* Header card */}
-      <div className="relative z-10 mx-4 mt-2 px-4 py-2 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
+      <div className="relative z-10 mx-4 mt-2 px-4 pt-2 pb-1 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
         <button
           type="button"
           onClick={() => navigate('/settings')}
@@ -89,11 +81,8 @@ export function ProfilePage() {
 
         <div className="pr-10">
           <h1 className={`text-2xl font-black leading-tight ${GOLD_TEXT}`}>{nickname}</h1>
-          {formattedBirthDate && (
-            <p className="text-xs text-white/80 italic mt-0.5">{formattedBirthDate}</p>
-          )}
           {trimmedSlogan && (
-            <p className={`text-xs italic mt-1.5 leading-snug ${GOLD_TEXT}`}>
+            <p className={`text-xs italic mt-1 leading-snug ${GOLD_TEXT}`}>
               «{trimmedSlogan}»
             </p>
           )}
@@ -102,7 +91,7 @@ export function ProfilePage() {
         <button
           type="button"
           onClick={() => setIsExpanded((v) => !v)}
-          className="w-full flex justify-center mt-1.5 pt-0.5 active:opacity-60 transition-opacity"
+          className="w-full flex justify-center mt-0.5 active:opacity-60 transition-opacity"
           aria-expanded={isExpanded}
           aria-label="Раскрыть раздел"
         >
@@ -118,7 +107,7 @@ export function ProfilePage() {
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           className="overflow-hidden"
         >
-          <div className="flex flex-row justify-between items-center mt-3 pt-3 border-t border-white/10 gap-3">
+          <div className="flex flex-row justify-between items-center mt-2 pt-3 border-t border-white/10 gap-3 pb-1">
             <div className="flex flex-row gap-4">
               {extraStats.map(({ label, value }) => (
                 <div key={label} className="flex flex-col items-center">
@@ -144,7 +133,7 @@ export function ProfilePage() {
       {/* Left stats */}
       {sideStats.length > 0 && (
         <div className="relative mt-4 w-fit">
-          <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-[100px] h-[120%] bg-[#231A16]/80 blur-[30px] rounded-full z-0 pointer-events-none" />
+          <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-[130px] h-[120%] bg-[#231A16]/80 blur-[30px] rounded-full z-0 pointer-events-none" />
 
           <div className="relative z-10 flex flex-col gap-3 pl-4 pr-8">
             {sideStats.map(({ label, display, size }) => (
@@ -160,7 +149,7 @@ export function ProfilePage() {
       )}
 
       {/* Shop */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-5 flex flex-col items-center">
+      <div className="absolute bottom-6 left-0 right-0 z-10 px-4 flex flex-col items-center">
         <button
           type="button"
           onClick={() => navigate('/shop')}

@@ -171,10 +171,10 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         type="button"
         onClick={onOpenSocials}
         aria-label="Мы в соцсетях"
-        className="relative flex items-center -space-x-2 pr-1 active:scale-95 transition-transform"
+        className="relative flex items-center -space-x-4 pr-1 active:scale-95 transition-transform"
       >
         <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500/20 border border-[#110b09] z-[1]">
-          <MessageCircle size={15} strokeWidth={2.2} className="text-[#60A5FA]" />
+          <Send size={15} strokeWidth={2.2} className="text-[#60A5FA]" />
         </span>
         <span className="w-9 h-9 rounded-full flex items-center justify-center bg-pink-500/20 border border-[#110b09] z-[2]">
           <InstagramIcon size={15} className="text-[#F472B6]" />
@@ -202,7 +202,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         background: '#1d0b07',
         border: '1px solid rgba(255,255,255,0.07)',
         boxShadow: '0 4px 28px rgba(0,0,0,0.55)',
-        minHeight: 200,
+        minHeight: 168,
       }}
     >
       {/* Background tournament art — right-aligned, left edge faded (no hard seam) */}
@@ -212,10 +212,10 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         aria-hidden
         className="absolute z-0 w-auto pointer-events-none select-none"
         style={{
-          height: '145%',
-          right: '-10%',
+          height: '115%',
+          right: '-8%',
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: 'translateY(-50%) scale(0.9)',
           opacity: 0.8,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
@@ -226,36 +226,39 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
       <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/75 to-transparent" />
 
       {/* Text content — over gradient */}
-      <div className="relative z-20 flex flex-col gap-4 px-6 py-7" style={{ width: '68%' }}>
+      <div className="relative z-20 flex flex-col gap-3 px-5 py-5" style={{ width: '68%' }}>
         <div>
           <p
-            className="text-xs font-bold tracking-widest uppercase mb-2"
+            className="text-[10px] font-bold tracking-widest uppercase mb-1.5"
             style={{ color: '#D99962' }}
           >
             Ближайший турнир
           </p>
-          <h2 className="text-3xl font-black text-white uppercase leading-tight" style={{ letterSpacing: '0.04em' }}>
+          <h2 className="text-2xl font-black text-white uppercase leading-tight" style={{ letterSpacing: '0.04em' }}>
             {tournament.title}
           </h2>
         </div>
 
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-[13px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            <Calendar size={13} style={{ color: '#c8a38e' }} />
-            {dateStr}
-            <span className="opacity-40">·</span>
-            <Clock size={13} style={{ color: '#c8a38e' }} />
-            {tournament.startTime}
+          <div className="flex flex-col gap-1 text-[12px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            <div className="flex items-center gap-2">
+              <Calendar size={12} style={{ color: '#c8a38e' }} />
+              {dateStr}
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock size={12} style={{ color: '#c8a38e' }} />
+              {tournament.startTime}
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            <MapPin size={12} style={{ color: '#c8a38e' }} />
+          <div className="flex items-center gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            <MapPin size={11} style={{ color: '#c8a38e' }} />
             <span className="truncate">{CLUB_ADDRESS}</span>
           </div>
         </div>
 
         <button
           onClick={(e) => { e.stopPropagation(); onPress(); }}
-          className="self-start px-6 py-2.5 rounded-xl text-[14px] font-700 active:scale-95 transition-transform"
+          className="self-start px-5 py-2 rounded-xl text-[13px] font-700 active:scale-95 transition-transform"
           style={{
             background: 'linear-gradient(to right, #8C4C27, #D99962)',
             boxShadow: '0 0 16px rgba(217,153,98,0.28)',
@@ -400,7 +403,7 @@ function InfoGrid({
         <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
           <div className="flex items-center gap-3">
             <TileIcon icon={icon} />
-            <p className="text-[15px] font-700 text-white leading-tight">{label}</p>
+            <p className="text-sm font-700 text-white leading-tight">{label}</p>
           </div>
         </button>
       ))}
@@ -412,17 +415,19 @@ function InfoGrid({
         className={TILE_CLASS}
         style={TILE_STYLE}
       >
-        <div className="flex items-start gap-3">
-          <TileIcon icon={MapPin} />
-          <div className="flex flex-col gap-0.5 pt-0.5">
-            <p className="text-[15px] font-700 text-white leading-tight">Адрес</p>
-            <p className="text-[11px] font-500 leading-snug" style={{ color: '#8c8c88' }}>
-              {CLUB_ADDRESS_SHORT}
-            </p>
-            <div className="flex items-center gap-1 mt-1" style={{ color: '#D99962' }}>
-              <ExternalLink size={10} />
-              <span className="text-[11px] font-600">Открыть в картах</span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-start gap-3">
+            <TileIcon icon={MapPin} />
+            <div className="flex flex-col gap-0.5 pt-0.5 min-w-0">
+              <p className="text-sm font-700 text-white leading-tight">Адрес</p>
+              <p className="text-[11px] font-500 leading-snug" style={{ color: '#8c8c88' }}>
+                {CLUB_ADDRESS_SHORT}
+              </p>
             </div>
+          </div>
+          <div className="flex items-center gap-1" style={{ color: '#D99962' }}>
+            <ExternalLink size={10} />
+            <span className="text-[11px] font-600">Открыть в картах</span>
           </div>
         </div>
       </a>
@@ -431,7 +436,7 @@ function InfoGrid({
         <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
           <div className="flex items-center gap-3">
             <TileIcon icon={icon} />
-            <p className="text-[15px] font-700 text-white leading-tight">{label}</p>
+            <p className="text-sm font-700 text-white leading-tight">{label}</p>
           </div>
         </button>
       ))}
@@ -525,7 +530,7 @@ export function HomePage() {
           />
           <SocialLinkRow
             href={TELEGRAM_URL}
-            icon={<MessageCircle size={18} className="text-[#60A5FA]" />}
+            icon={<Send size={18} className="text-[#60A5FA]" />}
             label="Telegram"
             subtitle="@showdownbryansk"
           />

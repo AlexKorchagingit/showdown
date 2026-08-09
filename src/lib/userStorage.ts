@@ -10,7 +10,6 @@ export const STARTING_COINS = 50000;
 
 export interface UserData {
   nickname: string;
-  birthDate: string;
   slogan: string;
   coins: number;
   ownedItems: string[];
@@ -66,7 +65,6 @@ function generateNickname(): string {
 export function createDefaultUserData(): UserData {
   return {
     nickname: generateNickname(),
-    birthDate: '',
     slogan: '',
     coins: STARTING_COINS,
     ownedItems: [...FREE_ITEM_IDS],
@@ -87,7 +85,6 @@ function withDefaults(parsed: Partial<UserData>): UserData {
   const defaults = createDefaultUserData();
   return {
     nickname: parsed.nickname || defaults.nickname,
-    birthDate: parsed.birthDate ?? '',
     slogan: parsed.slogan ?? '',
     coins: resolveCoins(parsed),
     ownedItems: [
@@ -123,7 +120,6 @@ function takeLegacySharedProfile(): Partial<UserData> {
 
   return {
     ...(nickname ? { nickname } : {}),
-    ...(birthDate ? { birthDate } : {}),
     ...(slogan ? { slogan } : {}),
   };
 }

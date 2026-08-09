@@ -37,10 +37,10 @@ export function TournamentCard({ tournament, onClick }: Props) {
         aria-hidden
         className="absolute z-0 w-auto pointer-events-none select-none"
         style={{
-          height: '145%',
-          right: '-10%',
+          height: '115%',
+          right: '-8%',
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: 'translateY(-50%) scale(0.9)',
           opacity: 0.8,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
@@ -62,12 +62,15 @@ export function TournamentCard({ tournament, onClick }: Props) {
         </h3>
 
         <div className="space-y-1 mt-3">
-          <div className="flex items-center gap-1.5 text-[12px] flex-wrap">
-            <span className="font-700" style={{ color: '#D99962' }}>{weekdayUpper}</span>
-            <span style={{ color: 'rgba(255,255,255,0.8)' }}>{dayMonth}</span>
-            <span className="opacity-30 text-white mx-0.5">·</span>
-            <Clock size={11} style={{ color: '#c8a38e' }} />
-            <span style={{ color: 'rgba(255,255,255,0.8)' }}>{startTime}</span>
+          <div className="flex flex-col gap-1 text-[12px]">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-700" style={{ color: '#D99962' }}>{weekdayUpper}</span>
+              <span style={{ color: 'rgba(255,255,255,0.8)' }}>{dayMonth}</span>
+            </div>
+            <div className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.8)' }}>
+              <Clock size={11} style={{ color: '#c8a38e' }} />
+              <span>{startTime}</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 text-[11px]" style={{ color: '#8c8c88' }}>

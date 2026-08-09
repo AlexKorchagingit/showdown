@@ -69,10 +69,10 @@ function EditableHero({
                 maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
               }
             : {
-                height: '145%',
-                right: '-10%',
+                height: '115%',
+                right: '-8%',
                 top: '50%',
-                transform: 'translateY(-50%)',
+                transform: 'translateY(-50%) scale(0.9)',
                 opacity: 0.75,
                 filter: 'brightness(1.15) contrast(1.08) saturate(1.1)',
                 WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
