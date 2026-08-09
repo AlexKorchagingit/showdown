@@ -15,7 +15,6 @@ import { AboutClubScreen } from './pages/AboutClubScreen';
 import { QnAScreen } from './pages/QnAScreen';
 import { AchievementsScreen } from './pages/AchievementsScreen';
 import { AdminUsersScreen } from './pages/admin/AdminUsersScreen';
-import { AdminSectionScreen } from './pages/admin/AdminSectionScreen';
 import { AdminTournamentsScreen } from './pages/admin/AdminTournamentsScreen';
 import { AdminTournamentEditor } from './pages/admin/AdminTournamentEditor';
 import { AdminTournamentResults } from './pages/admin/AdminTournamentResults';
@@ -23,7 +22,10 @@ import { AdminBlindsSettings } from './pages/admin/AdminBlindsSettings';
 import { AdminBlindsTimer } from './pages/admin/AdminBlindsTimer';
 import { AdminAchievementsUsers } from './pages/admin/AdminAchievementsUsers';
 import { AdminAchievementsEditor } from './pages/admin/AdminAchievementsEditor';
+import { AdminFinanceScreen } from './pages/admin/AdminFinanceScreen';
+import { AdminTournamentFinance } from './pages/admin/AdminTournamentFinance';
 import { TournamentProvider } from './context/TournamentContext';
+import { FinanceProvider } from './context/FinanceContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
 
@@ -71,7 +73,8 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/admin/blinds"          element={<Navigate to="/admin/blinds/settings" replace />} />
             <Route path="/admin/blinds/settings" element={<AdminBlindsSettings />} />
             <Route path="/admin/blinds/timer"    element={<AdminBlindsTimer />} />
-            <Route path="/admin/finance"         element={<AdminSectionScreen title="Finance" backTo="/profile" />} />
+            <Route path="/admin/finance"         element={<AdminFinanceScreen />} />
+            <Route path="/admin/finance/tournaments/:id" element={<AdminTournamentFinance />} />
             <Route path="/admin/achievements/users"      element={<AdminAchievementsUsers />} />
             <Route path="/admin/achievements/edit/:userId" element={<AdminAchievementsEditor />} />
             <Route path="*"                  element={<Navigate to="/" replace />} />
@@ -146,7 +149,9 @@ export default function App() {
       <UserProvider email={userEmail}>
         <ProfileProvider>
           <TournamentProvider>
-            <AppLayout userEmail={userEmail} />
+            <FinanceProvider>
+              <AppLayout userEmail={userEmail} />
+            </FinanceProvider>
           </TournamentProvider>
         </ProfileProvider>
       </UserProvider>
