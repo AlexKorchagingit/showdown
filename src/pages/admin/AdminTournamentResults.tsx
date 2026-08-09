@@ -187,13 +187,13 @@ export function AdminTournamentResults() {
 
         <section className="mb-4">
           <label className="block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]">
-            Секретный комментарий админа
+            Комментарии по турниру
           </label>
           <textarea
             value={secretComment}
             onChange={(e) => setSecretComment(e.target.value)}
             rows={4}
-            placeholder="Виден только администраторам"
+            placeholder="Комментарии по турниру"
             className={`${FIELD} resize-none break-words whitespace-pre-wrap`}
           />
           <p className="text-[10px] mt-1.5" style={{ color: '#6B6360' }}>

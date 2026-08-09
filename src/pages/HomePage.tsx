@@ -210,10 +210,12 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         src={tournament.imageUrl}
         alt=""
         aria-hidden
-        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75"
+        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75 border-0 outline-none ring-0"
         style={{
           opacity: 0.85,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
+          border: 'none',
+          outline: 'none',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
           maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
         }}
@@ -246,9 +248,9 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
               {tournament.startTime}
             </div>
           </div>
-          <div className="flex items-center gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            <MapPin size={11} style={{ color: '#c8a38e' }} />
-            <span className="truncate">{CLUB_ADDRESS}</span>
+          <div className="flex items-start gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            <MapPin size={11} className="shrink-0 mt-0.5" style={{ color: '#c8a38e' }} />
+            <span className="whitespace-normal break-words text-wrap">{CLUB_ADDRESS}</span>
           </div>
         </div>
 
@@ -399,7 +401,7 @@ function InfoGrid({
       <button type="button" onClick={onAboutClub} className={TILE_CLASS} style={TILE_STYLE}>
         <div className="flex items-center gap-3">
           <TileIcon icon={Info} />
-          <p className="text-lg font-700 text-white leading-tight">О клубе</p>
+          <p className="text-sm font-700 text-white leading-tight">О клубе</p>
         </div>
       </button>
 
@@ -414,7 +416,7 @@ function InfoGrid({
           <div className="flex items-start gap-3">
             <TileIcon icon={MapPin} />
             <div className="flex flex-col gap-0.5 pt-0.5 min-w-0">
-              <p className="text-lg font-700 text-white leading-tight">Адрес</p>
+              <p className="text-sm font-700 text-white leading-tight">Адрес</p>
               <p className="text-[11px] font-500 leading-snug" style={{ color: '#8c8c88' }}>
                 {CLUB_ADDRESS_SHORT}
               </p>
@@ -430,7 +432,7 @@ function InfoGrid({
       <button type="button" onClick={onQa} className={TILE_CLASS} style={TILE_STYLE}>
         <div className="flex items-center gap-3">
           <TileIcon icon={MessageCircle} />
-          <p className="text-lg font-700 text-white leading-tight">Q&A</p>
+          <p className="text-sm font-700 text-white leading-tight">Q&A</p>
         </div>
       </button>
     </div>

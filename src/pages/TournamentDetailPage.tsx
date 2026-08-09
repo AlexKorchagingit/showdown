@@ -26,17 +26,19 @@ function LobbyHero({
   return (
     <div
       className="relative overflow-hidden rounded-2xl mx-4 mt-4"
-      style={{ height: 200, background: '#1d0b07' }}
+      style={{ height: 160, background: '#1d0b07' }}
     >
       {/* Background tournament art — smaller, glued to the right edge */}
       <img
         src={imageUrl}
         alt=""
         aria-hidden
-        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75"
+        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75 border-0 outline-none ring-0"
         style={{
           opacity: 0.85,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
+          border: 'none',
+          outline: 'none',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
           maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
         }}
@@ -65,9 +67,9 @@ function LobbyHero({
             {startTime}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] mt-1" style={{ color: '#8c8c88' }}>
-          <MapPin size={10} style={{ color: '#c8a38e' }} />
-          <span>{CLUB_ADDRESS}</span>
+        <div className="flex items-start gap-2 text-[10px] mt-1" style={{ color: '#8c8c88' }}>
+          <MapPin size={10} className="shrink-0 mt-0.5" style={{ color: '#c8a38e' }} />
+          <span className="whitespace-normal break-words text-wrap">{CLUB_ADDRESS}</span>
         </div>
       </div>
     </div>
@@ -128,21 +130,27 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               <ProgressBar value={occupiedSeats} max={live.totalSeats} />
             </div>
 
-            {/* Guarantee */}
-            <div className="relative rounded-2xl overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.12]"
-                   style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }} />
-              <div className="relative flex items-center gap-4 px-5 py-4 rounded-2xl"
-                   style={{ border: '1px solid rgba(242,216,167,0.32)' }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                     style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}>
-                  <Star size={20} fill="currentColor" style={{ color: '#0A0908' }} />
+            {/* Guarantee — compact chip */}
+            <div className="flex justify-center">
+              <div
+                className="relative inline-flex items-center gap-2.5 rounded-xl overflow-hidden px-3 py-1.5 w-max"
+                style={{ border: '1px solid rgba(242,216,167,0.32)' }}
+              >
+                <div
+                  className="absolute inset-0 opacity-[0.12] pointer-events-none"
+                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                />
+                <div
+                  className="relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                >
+                  <Star size={14} fill="currentColor" style={{ color: '#0A0908' }} />
                 </div>
-                <div>
-                  <p className="text-[11px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
+                <div className="relative">
+                  <p className="text-[9px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
                     Гарантия очков
                   </p>
-                  <p className="text-white font-900 text-[24px] tracking-wide leading-tight">
+                  <p className="text-white font-900 text-sm tracking-wide leading-tight">
                     {live.guarantee.toLocaleString('ru-RU')}
                   </p>
                 </div>
@@ -331,7 +339,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
                 <section>
                   <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-2" style={{ color: '#D99962' }}>
-                    Секретный комментарий
+                    Комментарии по турниру
                   </p>
                   <p className="text-[13px] font-400 leading-relaxed whitespace-pre-wrap break-words" style={{ color: '#A39B98' }}>
                     {live.adminSecretComment?.trim()

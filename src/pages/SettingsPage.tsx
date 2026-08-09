@@ -110,8 +110,8 @@ export function SettingsPage({ userEmail }: Props) {
               value={draftSlogan}
               onChange={(e) => setDraftSlogan(e.target.value)}
               maxLength={60}
-              rows={3}
-              className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors resize-none break-words whitespace-pre-wrap"
+              rows={2}
+              className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors whitespace-pre-wrap break-words resize-none"
               placeholder={SLOGAN_PLACEHOLDER}
             />
             <p className="text-right text-[11px] mt-1 text-[#6B6360]">{draftSlogan.length}/60</p>

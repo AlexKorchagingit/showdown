@@ -52,13 +52,13 @@ function EditableHero({
   return (
     <div
       className="relative overflow-hidden rounded-2xl mx-4 mt-4"
-      style={{ minHeight: 240, background: '#1d0b07' }}
+      style={{ minHeight: 180, background: '#1d0b07' }}
     >
       <img
         src={heroImage}
         alt=""
         aria-hidden
-        className={`absolute z-0 pointer-events-none select-none ${
+        className={`absolute z-0 pointer-events-none select-none border-0 outline-none ring-0 ${
           isCustomPhoto
             ? 'inset-0 w-full h-full object-cover'
             : 'top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto object-right object-contain origin-right scale-75'
@@ -67,12 +67,16 @@ function EditableHero({
           isCustomPhoto
             ? {
                 opacity: 0.65,
+                border: 'none',
+                outline: 'none',
                 WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
                 maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
               }
             : {
                 opacity: 0.8,
                 filter: 'brightness(1.15) contrast(1.08) saturate(1.1)',
+                border: 'none',
+                outline: 'none',
                 WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
                 maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
               }

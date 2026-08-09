@@ -35,10 +35,12 @@ export function TournamentCard({ tournament, onClick }: Props) {
         src={tournament.imageUrl}
         alt=""
         aria-hidden
-        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75"
+        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75 border-0 outline-none ring-0"
         style={{
           opacity: 0.85,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
+          border: 'none',
+          outline: 'none',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
           maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
         }}
@@ -69,9 +71,9 @@ export function TournamentCard({ tournament, onClick }: Props) {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px]" style={{ color: '#8c8c88' }}>
-            <MapPin size={11} style={{ color: '#c8a38e' }} />
-            <span className="truncate">{CLUB_ADDRESS}</span>
+          <div className="flex items-start gap-1.5 text-[11px]" style={{ color: '#8c8c88' }}>
+            <MapPin size={11} className="shrink-0 mt-0.5" style={{ color: '#c8a38e' }} />
+            <span className="whitespace-normal break-words text-wrap">{CLUB_ADDRESS}</span>
           </div>
 
           <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
