@@ -3,7 +3,6 @@ import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { useTournaments } from '../context/TournamentContext';
 import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
-import { asset } from '../lib/assets';
 import { CLUB_ADDRESS } from '../lib/clubAddress';
 
 interface Props {
@@ -16,19 +15,21 @@ function LobbyHero({
   title,
   formattedDate,
   startTime,
+  imageUrl,
 }: {
   title: string;
   formattedDate: string;
   startTime: string;
+  imageUrl: string;
 }) {
   return (
     <div
       className="relative overflow-hidden rounded-2xl mx-4 mt-4"
       style={{ height: 240, background: '#1d0b07' }}
     >
-      {/* Background fishka */}
+      {/* Background tournament art */}
       <img
-        src={asset("/fishka.webp")}
+        src={imageUrl}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"
@@ -36,8 +37,8 @@ function LobbyHero({
           height: '160%',
           right: '-20%',
           top: '-30%',
-          opacity: 0.55,
-          filter: 'brightness(1.5) contrast(1.4) saturate(1.2)',
+          opacity: 0.7,
+          filter: 'brightness(1.15) contrast(1.1) saturate(1.05)',
         }}
       />
 
@@ -121,6 +122,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             title={live.title}
             formattedDate={formattedDate}
             startTime={live.startTime}
+            imageUrl={live.imageUrl}
           />
 
           <div className="px-5 pt-4 space-y-5">
@@ -175,16 +177,15 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   ))}
                 </ul>
               </section>
-              {/* "Запись" section — hidden for past tournaments */}
               {!tournamentFinished && (
                 <>
                   <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
                   <section>
                     <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
-                      Запись
+                      Запись на турнир
                     </h3>
-                    <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
-                      Если вы записались, но не можете прийти — отмените запись заранее, чтобы не занимать место.
+                    <p className="italic text-[#8c8c88] text-sm p-4 bg-[#231A16] rounded-xl leading-relaxed">
+                      Если вы записались, но не можете прийти — пожалуйста, отмените запись заранее, чтобы не занимать место.
                     </p>
                   </section>
                 </>

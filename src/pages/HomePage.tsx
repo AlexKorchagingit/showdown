@@ -73,9 +73,9 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         minHeight: 200,
       }}
     >
-      {/* Background fishka — huge, right-anchored, clipped by overflow-hidden */}
+      {/* Background tournament art */}
       <img
-        src={asset("/fishka.webp")}
+        src={tournament.imageUrl}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"
@@ -83,8 +83,8 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           height: '160%',
           right: '-20%',
           top: '-30%',
-          opacity: 0.55,
-          filter: 'brightness(1.5) contrast(1.4) saturate(1.2)',
+          opacity: 0.7,
+          filter: 'brightness(1.15) contrast(1.1) saturate(1.05)',
         }}
       />
 

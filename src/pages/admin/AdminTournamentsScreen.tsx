@@ -58,7 +58,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
 
     const newTournament: Omit<Tournament, 'id'> = {
       title: form.title.trim().toUpperCase(),
-      imageUrl: asset('/fishka.webp'),
+      imageUrl: asset('/tournaments/ticket.png'),
       address: CLUB_ADDRESS,
       startDate: form.startDate,
       startTime: form.startTime || '19:00',

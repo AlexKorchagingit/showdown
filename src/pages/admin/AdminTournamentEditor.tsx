@@ -322,7 +322,7 @@ function ParticipantsEditor({
 /* ── Editor body ────────────────────────────────────────────────────────── */
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
-  const { updateTournament, deleteTournament } = useTournaments();
+  const { updateTournament, deleteTournament, addTournament } = useTournaments();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -366,6 +366,17 @@ function Editor({ tournament }: { tournament: Tournament }) {
     if (!window.confirm('Точно удалить?')) return;
     deleteTournament(tournament.id);
     navigate('/admin/tournaments');
+  };
+
+  const handleCopy = () => {
+    const { id: _id, ...rest } = tournament;
+    const newId = addTournament({
+      ...rest,
+      title: `${tournament.title} Copy`,
+      participants: tournament.participants.map((p) => ({ ...p, id: `p-${Date.now()}-${p.id}` })),
+      features: [...tournament.features],
+    });
+    navigate(`/admin/tournaments/${newId}`);
   };
 
   return (
@@ -534,6 +545,15 @@ function Editor({ tournament }: { tournament: Tournament }) {
             onRemove={removeParticipant}
             onRatingChange={changeRating}
           />
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white bg-[#463129] active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid #D99962' }}
+          >
+            Скопировать турнир
+          </button>
 
           <button
             type="button"

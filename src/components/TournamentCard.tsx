@@ -1,7 +1,6 @@
 import { Clock, MapPin } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { isTournamentPast } from '../lib/tournamentStatus';
-import { asset } from '../lib/assets';
 import { CLUB_ADDRESS } from '../lib/clubAddress';
 
 interface Props {
@@ -33,7 +32,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
       }}
     >
       <img
-        src={asset("/fishka.webp")}
+        src={tournament.imageUrl}
         alt=""
         aria-hidden
         className="absolute w-auto z-0 pointer-events-none select-none"
@@ -41,8 +40,8 @@ export function TournamentCard({ tournament, onClick }: Props) {
           height: '160%',
           right: '-20%',
           top: '-30%',
-          opacity: 0.55,
-          filter: 'brightness(1.5) contrast(1.4) saturate(1.2)',
+          opacity: 0.7,
+          filter: 'brightness(1.15) contrast(1.1) saturate(1.05)',
         }}
       />
 
