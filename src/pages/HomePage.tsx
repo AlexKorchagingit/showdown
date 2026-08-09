@@ -1,5 +1,10 @@
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle, ExternalLink, Send } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle,
+  ExternalLink, Mail, X, Send,
+} from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
 import { asset } from '../lib/assets';
@@ -9,7 +14,6 @@ import type { Tournament } from '../types/tournament';
 
 // ─── Mock state ───────────────────────────────────────────────────────────────
 
-// Podium order: [2nd, 1st, 3rd]
 const PODIUM = [
   { rank: 2, name: 'Дмитрий В.',   points: 3850, glowColor: '#8c8c88' },
   { rank: 1, name: 'Александр К.', points: 4200, glowColor: '#D99962' },
@@ -18,8 +22,134 @@ const PODIUM = [
 
 const TELEGRAM_URL = 'https://t.me/showdown_bryansk';
 
+function InstagramIcon({ size = 15, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function ModalShell({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="modal-overlay"
+            className="absolute inset-0 z-50 bg-black/80"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+          <motion.div
+            key="modal-card"
+            className="absolute z-[60] left-4 right-4 top-1/2 -translate-y-1/2 rounded-2xl p-5 bg-[#231A16] border border-[#D99962]/30"
+            style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.55)' }}
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.96 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[16px] font-800 text-white tracking-wide">{title}</h2>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Закрыть"
+                className="w-9 h-9 rounded-full flex items-center justify-center active:opacity-70"
+                style={{ background: 'rgba(17,11,9,0.7)', border: '1px solid rgba(217,153,98,0.3)' }}
+              >
+                <X size={18} className="text-[#D99962]" />
+              </button>
+            </div>
+            {children}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function SocialLinkRow({
+  href,
+  icon,
+  label,
+  subtitle,
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  subtitle?: string;
+}) {
+  const isLink = href && href !== '#';
+  const className =
+    'w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-left active:scale-[0.99] transition-transform';
+  const style = {
+    background: 'linear-gradient(to right, #1A1210, #2A211D)',
+    border: '1px solid rgba(217,153,98,0.22)',
+  } as const;
+
+  const content = (
+    <>
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: 'rgba(217,153,98,0.12)', border: '1px solid rgba(217,153,98,0.3)' }}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[14px] font-700 text-white truncate">{label}</p>
+        {subtitle && (
+          <p className="text-[12px] font-500 truncate" style={{ color: '#D99962' }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  if (isLink) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className} style={style}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <div className={className} style={{ ...style, opacity: 0.72 }}>
+      {content}
+    </div>
+  );
+}
+
 // ─── Header ───────────────────────────────────────────────────────────────────
-function Header() {
+function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
   return (
     <header
       className="flex-shrink-0 flex items-center justify-between px-5 py-2"
@@ -37,20 +167,22 @@ function Header() {
         </span>
       </div>
 
-      <a
-        href={TELEGRAM_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Telegram канал Showdown"
-        className="w-11 h-11 rounded-full flex items-center justify-center active:scale-95 transition-transform"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          border: '1px solid rgba(217,153,98,0.35)',
-          boxShadow: '0 0 14px rgba(217,153,98,0.18)',
-        }}
+      <button
+        type="button"
+        onClick={onOpenSocials}
+        aria-label="Мы в соцсетях"
+        className="relative flex items-center -space-x-2 pr-1 active:scale-95 transition-transform"
       >
-        <Send size={18} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </a>
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500/20 border border-[#110b09] z-[1]">
+          <MessageCircle size={15} strokeWidth={2.2} className="text-[#60A5FA]" />
+        </span>
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-pink-500/20 border border-[#110b09] z-[2]">
+          <InstagramIcon size={15} className="text-[#F472B6]" />
+        </span>
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-600/20 border border-[#110b09] z-10 text-[10px] font-bold text-[#93C5FD]">
+          VK
+        </span>
+      </button>
     </header>
   );
 }
@@ -254,12 +386,14 @@ function TileIcon({ icon: Icon }: { icon: typeof MapPin }) {
 function InfoGrid({
   onAboutClub,
   onQa,
+  onSupport,
 }: {
   onAboutClub: () => void;
   onQa: () => void;
+  onSupport: () => void;
 }) {
   const tiles = [
-    { icon: Phone,         label: 'Поддержка', onClick: undefined },
+    { icon: Phone,         label: 'Поддержка', onClick: onSupport },
     { icon: Info,          label: 'О клубе',   onClick: onAboutClub },
     { icon: MessageCircle, label: 'Q&A',       onClick: onQa },
   ];
@@ -311,16 +445,17 @@ function InfoGrid({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function HomePage() {
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
   const { tournaments } = useTournaments();
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isSocialsOpen, setIsSocialsOpen] = useState(false);
 
-  // Soonest tournament that has not started yet, from the single data source
   const nextTournament =
     tournaments.filter((t) => !isFinished(t)).sort(compareByStart)[0] ?? tournaments[0];
 
   return (
     <div className="flex flex-col h-full bg-obsidian">
-      <Header />
+      <Header onOpenSocials={() => setIsSocialsOpen(true)} />
       <div className="flex-1 scrollable" style={{ paddingBottom: '0.5rem' }}>
         <div className="px-5 pt-5 space-y-6">
           {nextTournament && (
@@ -336,9 +471,70 @@ export function HomePage() {
           <InfoGrid
             onAboutClub={() => navigate('/about')}
             onQa={() => navigate('/qa')}
+            onSupport={() => setIsSupportOpen(true)}
           />
         </div>
       </div>
+
+      <ModalShell
+        open={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        title="Поддержка"
+      >
+        <div className="space-y-2.5">
+          <SocialLinkRow
+            href="mailto:showdown_br@mail.ru"
+            icon={<Mail size={18} className="text-[#D99962]" />}
+            label="Почта"
+            subtitle="showdown_br@mail.ru"
+          />
+          <SocialLinkRow
+            href={TELEGRAM_URL}
+            icon={<Send size={18} className="text-[#D99962]" />}
+            label="Telegram"
+            subtitle="@showdownbryansk"
+          />
+          <SocialLinkRow
+            href="https://vk.ru/idbananablue"
+            icon={<span className="text-[11px] font-800 text-[#D99962]">VK</span>}
+            label="VK (Админ)"
+            subtitle="vk.ru/idbananablue"
+          />
+          <SocialLinkRow
+            href="https://vk.ru/tri3flee"
+            icon={<span className="text-[11px] font-800 text-[#D99962]">VK</span>}
+            label="VK (Админ 2)"
+            subtitle="vk.ru/tri3flee"
+          />
+        </div>
+      </ModalShell>
+
+      <ModalShell
+        open={isSocialsOpen}
+        onClose={() => setIsSocialsOpen(false)}
+        title="Мы в..."
+      >
+        <div className="space-y-2.5">
+          <SocialLinkRow
+            href="#"
+            icon={<span className="text-[11px] font-800 text-[#93C5FD]">VK</span>}
+            label="ВКонтакте"
+            subtitle="Скоро"
+          />
+          <SocialLinkRow
+            href="#"
+            icon={<InstagramIcon size={18} className="text-[#F472B6]" />}
+            label="Instagram"
+            subtitle="Скоро"
+          />
+          <SocialLinkRow
+            href={TELEGRAM_URL}
+            icon={<MessageCircle size={18} className="text-[#60A5FA]" />}
+            label="Telegram"
+            subtitle="@showdownbryansk"
+          />
+        </div>
+      </ModalShell>
     </div>
   );
 }

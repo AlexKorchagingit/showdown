@@ -1,24 +1,23 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crosshair, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { RatingPlayer } from '../types/player';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL } from '../types/player';
 
 type RatingTab = 'general' | 'seasonal';
+type MetricColumn = 'tournaments' | 'wins' | 'knockouts';
 
 const MONTHS = [
   'Январь','Февраль','Март','Апрель','Май','Июнь',
   'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
 ];
 
-// Glow colour per rank
 const TOP3_GLOW: Record<number, string> = {
   1: '#D99962',
   2: '#8c8c88',
   3: '#8C4C27',
 };
 
-// Rank number colour: metallic for top-3, white for 4+
 const rankTextColor = (rank: number): string => {
   if (rank === 1) return '#F2D8A7';
   if (rank === 2) return '#A39B98';
@@ -26,44 +25,68 @@ const rankTextColor = (rank: number): string => {
   return '#ffffff';
 };
 
-// ─── Column header ────────────────────────────────────────────────────────────
-function TableHeader() {
+function metricValue(player: RatingPlayer, column: MetricColumn): number {
+  if (column === 'tournaments') return player.played;
+  if (column === 'wins') return player.won;
+  return player.knockouts;
+}
+
+function ColumnSelector({
+  active,
+  onChange,
+}: {
+  active: MetricColumn;
+  onChange: (column: MetricColumn) => void;
+}) {
+  const options: { id: MetricColumn; label: ReactNode; aria: string }[] = [
+    { id: 'tournaments', label: 'Турниры', aria: 'Турниры' },
+    { id: 'wins', label: <Trophy size={14} strokeWidth={2.3} />, aria: 'Победы' },
+    { id: 'knockouts', label: <Crosshair size={14} strokeWidth={2.3} />, aria: 'Нокауты' },
+  ];
+
   return (
     <div
-      className="flex items-center px-4 py-2 text-[10px] font-600 uppercase tracking-wider"
-      style={{ color: '#69584f' }}
+      className="flex items-center gap-1 p-1 rounded-xl ml-auto"
+      style={{ background: '#1E1612', border: '1px solid rgba(255,255,255,0.06)' }}
+      role="tablist"
+      aria-label="Показатель таблицы"
     >
-      {/* rank */}
-      <span className="w-7 shrink-0 text-center">#</span>
-      {/* avatar spacer */}
-      <span className="w-8 shrink-0" />
-      {/* nickname */}
-      <span className="flex-1 min-w-0 pl-2">Никнейм</span>
-      {/* Турниры (played) — extra right margin to visually separate */}
-      {/* Турниры — wider to push Победы rightward */}
-      <span className="w-16 shrink-0 text-center">Турниры</span>
-      {/* Победы — Trophy icon, extra left pad for visual gap */}
-      <span className="w-12 shrink-0 flex items-center justify-center">
-        <Trophy size={11} />
-      </span>
-      {/* Нокауты — Crosshair icon */}
-      <span className="w-9 shrink-0 flex items-center justify-center">
-        <Crosshair size={11} />
-      </span>
-      {/* Рейтинг */}
-      <span className="w-14 shrink-0 text-right">Рейтинг</span>
+      {options.map(({ id, label, aria }) => {
+        const isActive = active === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-label={aria}
+            aria-selected={isActive}
+            onClick={() => onChange(id)}
+            className={`h-8 px-3 rounded-lg text-[11px] font-700 transition-colors flex items-center justify-center ${
+              isActive ? 'bg-[#D99962] text-[#110b09]' : 'text-[#8c8c88]'
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-// ─── Player row card ──────────────────────────────────────────────────────────
-function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
-  const isTop3     = rank <= 3;
-  const glowColor  = isTop3 ? TOP3_GLOW[rank] : null;
+function PlayerRow({
+  player,
+  rank,
+  activeColumn,
+}: {
+  player: RatingPlayer;
+  rank: number;
+  activeColumn: MetricColumn;
+}) {
+  const isTop3 = rank <= 3;
+  const glowColor = isTop3 ? TOP3_GLOW[rank] : null;
 
   return (
     <div className="relative">
-      {/* Glow ring for top-3 — pulsates independently */}
       {isTop3 && (
         <div
           className="absolute inset-0 rounded-2xl animate-pulse pointer-events-none"
@@ -71,7 +94,6 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
         />
       )}
 
-      {/* Row card */}
       <div
         className="relative z-10 flex items-center px-4 py-3 rounded-2xl"
         style={{
@@ -81,7 +103,6 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
             : '1px solid rgba(255,255,255,0.05)',
         }}
       >
-        {/* Rank — all large + bold */}
         <span
           className="w-7 shrink-0 text-center font-800 leading-none"
           style={{ fontSize: 18, color: rankTextColor(rank) }}
@@ -89,7 +110,6 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
           {rank}
         </span>
 
-        {/* Avatar */}
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
           style={{
@@ -100,32 +120,14 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
           {player.initial}
         </div>
 
-        {/* Nickname — white for ALL ranks (glow only on top-3 card) */}
         <div className="flex-1 min-w-0 pl-2">
-          <p className="text-[13px] font-600 truncate text-white">
-            {player.nickname}
-          </p>
+          <p className="text-[13px] font-600 truncate text-white">{player.nickname}</p>
         </div>
 
-        {/* Турниры (played) */}
-        <span
-          className="w-16 shrink-0 text-center text-[12px] font-500"
-          style={{ color: '#A39B98' }}
-        >
-          {player.played}
+        <span className="w-12 shrink-0 text-center text-[13px] font-600" style={{ color: '#A39B98' }}>
+          {metricValue(player, activeColumn)}
         </span>
 
-        {/* Победы (won) — aligned with w-12 header */}
-        <span className="w-12 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
-          {player.won}
-        </span>
-
-        {/* Нокауты (knockouts) */}
-        <span className="w-9 shrink-0 text-center text-[12px] font-500" style={{ color: '#A39B98' }}>
-          {player.knockouts}
-        </span>
-
-        {/* Рейтинг — most prominent */}
         <span
           className="w-14 shrink-0 text-right text-[13px] font-800"
           style={{ color: '#F2D8A7' }}
@@ -137,11 +139,11 @@ function PlayerRow({ player, rank }: { player: RatingPlayer; rank: number }) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
 export function RatingPage() {
-  const [activeTab, setActiveTab]         = useState<RatingTab>('general');
+  const [activeTab, setActiveTab] = useState<RatingTab>('general');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const directionRef                      = useRef<number>(1);
+  const [activeColumn, setActiveColumn] = useState<MetricColumn>('tournaments');
+  const directionRef = useRef<number>(1);
 
   const handleTabChange = (tab: RatingTab) => {
     if (tab === activeTab) return;
@@ -165,7 +167,6 @@ export function RatingPage() {
           РЕЙТИНГ
         </h1>
 
-        {/* Tab switcher */}
         <div className="relative flex rounded-xl p-1" style={{ background: '#1E1612' }}>
           {(['general', 'seasonal'] as RatingTab[]).map((tab) => (
             <button
@@ -189,7 +190,6 @@ export function RatingPage() {
           ))}
         </div>
 
-        {/* Month navigator */}
         <AnimatePresence initial={false}>
           {activeTab === 'seasonal' && (
             <motion.div
@@ -225,18 +225,24 @@ export function RatingPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="flex items-center gap-3">
+          <p className="text-[11px] font-600 uppercase tracking-wider" style={{ color: '#69584f' }}>
+            Показатель
+          </p>
+          <ColumnSelector active={activeColumn} onChange={setActiveColumn} />
+        </div>
       </div>
 
-      {/* Leaderboard */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait" initial={false} custom={directionRef.current}>
           <motion.div
             key={activeTab + (activeTab === 'seasonal' ? `-${selectedMonth}` : '')}
             custom={directionRef.current}
             variants={{
-              enter:  (d: number) => ({ opacity: 0, x: d * 24 }),
+              enter: (d: number) => ({ opacity: 0, x: d * 24 }),
               center: { opacity: 1, x: 0 },
-              exit:   (d: number) => ({ opacity: 0, x: d * -24 }),
+              exit: (d: number) => ({ opacity: 0, x: d * -24 }),
             }}
             initial="enter"
             animate="center"
@@ -252,20 +258,15 @@ export function RatingPage() {
                 </p>
               </div>
             ) : (
-              <div className="px-4">
-                {/* Sticky header — full-width, -mx-4 px-4 cancels parent padding */}
-                <div
-                  className="sticky top-0 z-20 border-b border-white/5 -mx-4 px-4"
-                  style={{ background: '#110b09' }}
-                >
-                  <TableHeader />
-                </div>
-                {/* Player cards */}
-                <div className="space-y-2 pt-2">
-                  {players.map((p, idx) => (
-                    <PlayerRow key={p.id} player={p} rank={idx + 1} />
-                  ))}
-                </div>
+              <div className="px-4 space-y-2 pt-1">
+                {players.map((p, idx) => (
+                  <PlayerRow
+                    key={p.id}
+                    player={p}
+                    rank={idx + 1}
+                    activeColumn={activeColumn}
+                  />
+                ))}
               </div>
             )}
           </motion.div>

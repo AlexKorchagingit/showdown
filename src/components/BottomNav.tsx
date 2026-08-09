@@ -31,9 +31,8 @@ export function BottomNav() {
         className="absolute bottom-0 left-0 right-0 z-50 px-4"
         style={{ paddingBottom: 'max(calc(env(safe-area-inset-bottom, 0px) + 8px), 12px)' }}
       >
-        {/* Floating pill */}
         <div
-          className="flex items-stretch h-[58px] rounded-full overflow-hidden"
+          className="flex justify-between items-center w-full px-2 h-[58px] rounded-full overflow-hidden"
           style={{
             background: 'rgba(25, 18, 14, 0.94)',
             backdropFilter: 'blur(20px)',
@@ -48,17 +47,21 @@ export function BottomNav() {
               to={to}
               end={to === '/'}
               onClick={to === '/profile' ? handleProfileClick : undefined}
-              className="flex-1 relative flex items-center justify-center"
+              className={({ isActive }) =>
+                [
+                  'relative flex items-center justify-center h-full',
+                  isActive ? 'flex-shrink-0 px-5' : 'shrink min-w-[50px] flex-1',
+                ].join(' ')
+              }
             >
               {({ isActive }) => (
                 <>
-                  {/* Animated bubble */}
                   {isActive && (
                     <motion.div
                       layoutId="nav-bubble"
                       className="absolute rounded-full pointer-events-none"
                       style={{
-                        inset: '6px 4px',
+                        inset: '6px 2px',
                         background:
                           'linear-gradient(135deg, rgba(140,76,39,0.4) 0%, rgba(217,153,98,0.16) 100%)',
                         border: '1px solid rgba(200,163,142,0.22)',
@@ -67,13 +70,9 @@ export function BottomNav() {
                     />
                   )}
 
-                  {/*
-                    Active:   flex-row  → icon on left, label on right
-                    Inactive: just icon centred
-                  */}
                   <motion.div
                     layout
-                    className="relative z-10 flex items-center justify-center gap-2"
+                    className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap"
                   >
                     <motion.div
                       animate={{ scale: isActive ? 1.18 : 1 }}
@@ -92,7 +91,6 @@ export function BottomNav() {
                       />
                     </motion.div>
 
-                    {/* Label — ONLY for active tab, to the RIGHT of icon */}
                     <AnimatePresence initial={false}>
                       {isActive && (
                         <motion.span
