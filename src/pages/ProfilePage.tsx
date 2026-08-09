@@ -1,22 +1,32 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { CURRENT_PLAYER_STATS } from '../data/playerStats';
 
-const STATS = [
-  { label: 'Рейтинг',  value: `#${CURRENT_PLAYER_STATS.ratingPlace}`, size: 'text-5xl' },
-  { label: 'Победы',   value: CURRENT_PLAYER_STATS.wins,              size: 'text-4xl' },
-  { label: 'Финалы',   value: CURRENT_PLAYER_STATS.finals,            size: 'text-3xl' },
-  { label: 'Нокауты',  value: CURRENT_PLAYER_STATS.knockouts,         size: 'text-2xl' },
-  { label: 'Игры',     value: CURRENT_PLAYER_STATS.games,             size: 'text-lg' },
+const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
+
+const SIDE_STATS_SOURCE = [
+  {
+    label: 'Рейтинг',
+    numeric: CURRENT_PLAYER_STATS.ratingPlace,
+    display: `#${CURRENT_PLAYER_STATS.ratingPlace}`,
+  },
+  { label: 'Победы', numeric: CURRENT_PLAYER_STATS.wins, display: String(CURRENT_PLAYER_STATS.wins) },
+  { label: 'Финалы', numeric: CURRENT_PLAYER_STATS.finals, display: String(CURRENT_PLAYER_STATS.finals) },
+  {
+    label: 'Нокауты',
+    numeric: CURRENT_PLAYER_STATS.knockouts,
+    display: String(CURRENT_PLAYER_STATS.knockouts),
+  },
+  { label: 'Игры', numeric: CURRENT_PLAYER_STATS.games, display: String(CURRENT_PLAYER_STATS.games) },
 ];
 
-const EXTRA_STATS = [
+const EXTRA_STATS_SOURCE = [
   { label: 'Хедз-ап', value: CURRENT_PLAYER_STATS.headsUp },
-  { label: 'Топ 3',   value: CURRENT_PLAYER_STATS.top3 },
-  { label: 'Топ 9',   value: CURRENT_PLAYER_STATS.finals },
+  { label: 'Топ 3', value: CURRENT_PLAYER_STATS.top3 },
+  { label: 'Топ 9', value: CURRENT_PLAYER_STATS.finals },
 ];
 
 const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]';
@@ -39,6 +49,20 @@ export function ProfilePage() {
   const formattedBirthDate = formatBirthDate(birthDate);
   const trimmedSlogan = slogan.trim();
 
+  const sideStats = useMemo(
+    () =>
+      SIDE_STATS_SOURCE.filter((stat) => stat.numeric > 0).map((stat, index) => ({
+        ...stat,
+        size: SIDE_STAT_SIZES[Math.min(index, SIDE_STAT_SIZES.length - 1)],
+      })),
+    [],
+  );
+
+  const extraStats = useMemo(
+    () => EXTRA_STATS_SOURCE.filter((stat) => stat.value > 0),
+    [],
+  );
+
   return (
     <div className="relative w-full h-full overflow-hidden">
       <img
@@ -49,27 +73,27 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-[90px] right-0 h-[60%] w-auto object-contain object-right-bottom z-0 pointer-events-none"
+        className="absolute bottom-[90px] right-0 h-[45%] w-auto object-contain object-right-bottom z-0 pointer-events-none"
       />
 
       {/* Header card */}
-      <div className="relative z-10 mx-4 mt-2 px-5 py-2 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
+      <div className="relative z-10 mx-4 mt-2 px-4 py-2 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="absolute top-5 right-5 p-0 active:opacity-60 transition-opacity"
+          className="absolute top-3 right-3 p-0 active:opacity-60 transition-opacity"
           aria-label="Настройки"
         >
-          <Settings className="w-8 h-8 text-[#F2D8A7]" strokeWidth={2} />
+          <Settings className="w-7 h-7 text-[#F2D8A7]" strokeWidth={2} />
         </button>
 
-        <div className="pr-12">
-          <h1 className={`text-3xl font-black leading-tight ${GOLD_TEXT}`}>{nickname}</h1>
+        <div className="pr-10">
+          <h1 className={`text-2xl font-black leading-tight ${GOLD_TEXT}`}>{nickname}</h1>
           {formattedBirthDate && (
-            <p className="text-sm text-white/80 italic mt-0.5">{formattedBirthDate}</p>
+            <p className="text-xs text-white/80 italic mt-0.5">{formattedBirthDate}</p>
           )}
           {trimmedSlogan && (
-            <p className={`text-sm italic mt-2 leading-snug ${GOLD_TEXT}`}>
+            <p className={`text-xs italic mt-1.5 leading-snug ${GOLD_TEXT}`}>
               «{trimmedSlogan}»
             </p>
           )}
@@ -78,12 +102,12 @@ export function ProfilePage() {
         <button
           type="button"
           onClick={() => setIsExpanded((v) => !v)}
-          className="w-full flex justify-center mt-2 pt-1 active:opacity-60 transition-opacity"
+          className="w-full flex justify-center mt-1.5 pt-0.5 active:opacity-60 transition-opacity"
           aria-expanded={isExpanded}
           aria-label="Раскрыть раздел"
         >
           <ChevronDown
-            size={22}
+            size={20}
             className={`text-white transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           />
         </button>
@@ -94,9 +118,9 @@ export function ProfilePage() {
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           className="overflow-hidden"
         >
-          <div className="flex flex-row justify-between items-center mt-4 pt-4 border-t border-white/10">
+          <div className="flex flex-row justify-between items-center mt-3 pt-3 border-t border-white/10 gap-3">
             <div className="flex flex-row gap-4">
-              {EXTRA_STATS.map(({ label, value }) => (
+              {extraStats.map(({ label, value }) => (
                 <div key={label} className="flex flex-col items-center">
                   <span className="text-lg font-bold text-[#D99962] leading-none">{value}</span>
                   <span className="text-white/60 text-[10px] uppercase mt-1 whitespace-nowrap">
@@ -117,34 +141,36 @@ export function ProfilePage() {
         </motion.div>
       </div>
 
-      {/* Left stats — a soft blurred blob backs the numbers, no hard gradient edge */}
-      <div className="relative mt-4 w-fit">
-        <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-[180px] h-[120%] bg-[#231A16]/80 blur-[40px] rounded-full z-0 pointer-events-none" />
+      {/* Left stats */}
+      {sideStats.length > 0 && (
+        <div className="relative mt-4 w-fit">
+          <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-[100px] h-[120%] bg-[#231A16]/80 blur-[30px] rounded-full z-0 pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col gap-4 pl-4 pr-8">
-          {STATS.map(({ label, value, size }) => (
-            <div key={label}>
-              <p className="text-xs text-white font-bold drop-shadow-md uppercase tracking-wide">
-                {label}
-              </p>
-              <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{value}</p>
-            </div>
-          ))}
+          <div className="relative z-10 flex flex-col gap-3 pl-4 pr-8">
+            {sideStats.map(({ label, display, size }) => (
+              <div key={label}>
+                <p className="text-[10px] text-white font-bold drop-shadow-md uppercase tracking-wide">
+                  {label}
+                </p>
+                <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{display}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Shop — below the character */}
+      {/* Shop */}
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-5 flex flex-col items-center">
         <button
           type="button"
           onClick={() => navigate('/shop')}
-          className="w-full max-w-[260px] h-14 rounded-2xl flex items-center justify-center gap-2.5 text-[15px] font-bold tracking-wide text-[#0A0908] active:scale-[0.97] transition-transform"
+          className="w-full max-w-[200px] h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-bold tracking-wide text-[#0A0908] py-2 px-4 active:scale-[0.97] transition-transform"
           style={{
             background: 'linear-gradient(to right, #8C4C27, #D99962)',
-            boxShadow: '0 0 24px rgba(217,153,98,0.32)',
+            boxShadow: '0 0 18px rgba(217,153,98,0.28)',
           }}
         >
-          <ShoppingCart size={19} strokeWidth={2.4} />
+          <ShoppingCart size={16} strokeWidth={2.4} />
           МАГАЗИН
         </button>
       </div>

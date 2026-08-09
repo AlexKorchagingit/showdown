@@ -7,9 +7,19 @@ import {
 import type { Participant, Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
 import { mockUsers } from '../../data/mockUsers';
+import { ALL_PARTICIPANTS } from '../../data/participants';
 import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentStatus';
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
+import { CURRENT_USER_RATING } from '../../types/player';
+
+/** Season rating from the global player pool (read-only in lobby admin). */
+function resolveSeasonRating(nickname: string): number {
+  const fromPool = ALL_PARTICIPANTS.find((p) => p.nickname === nickname);
+  if (fromPool) return fromPool.rating;
+  if (nickname === CURRENT_USER_RATING.nickname) return CURRENT_USER_RATING.points;
+  return 0;
+}
 
 const CARD_STYLE = {
   background: '#2A211D',
@@ -153,20 +163,20 @@ function ParticipantsEditor({
   canAdd,
   onAdd,
   onRemove,
-  onRatingChange,
 }: {
   participants: Participant[];
   totalSeats: number;
   canAdd: boolean;
   onAdd: (nickname: string) => void;
   onRemove: (id: string) => void;
-  onRatingChange: (id: string, rating: number) => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const takenNicknames = new Set(participants.map((p) => p.nickname));
   const available = mockUsers.filter((u) => !takenNicknames.has(u.nickname));
-  const ranked = sortByRating(participants);
+  const ranked = sortByRating(
+    participants.map((p) => ({ ...p, rating: resolveSeasonRating(p.nickname) })),
+  );
 
   return (
     <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
@@ -220,23 +230,12 @@ function ParticipantsEditor({
                   {p.nickname}
                 </p>
 
-                {/* Editable rating — wide enough for five-digit scores */}
-                <EditableText
-                  value={String(p.rating)}
-                  onSave={(v) => onRatingChange(p.id, Number(v) || 0)}
-                  type="number"
-                  className="shrink-0 justify-end"
-                  inputClassName="w-20 min-w-[80px] text-center px-2"
-                  pencilSize={12}
-                  renderValue={(v) => (
-                    <span
-                      className="text-[12px] font-700 block text-right min-w-[52px]"
-                      style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
-                    >
-                      {Number(v).toLocaleString('ru-RU')}
-                    </span>
-                  )}
-                />
+                <span
+                  className="text-[12px] font-700 block text-right min-w-[52px] shrink-0"
+                  style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
+                >
+                  {p.rating.toLocaleString('ru-RU')}
+                </span>
 
                 <button
                   type="button"
@@ -347,19 +346,13 @@ function Editor({ tournament }: { tournament: Tournament }) {
     patch({
       participants: [
         ...tournament.participants,
-        { id: `p-${Date.now()}`, nickname, rating: 0 },
+        { id: `p-${Date.now()}`, nickname, rating: resolveSeasonRating(nickname) },
       ],
     });
   };
 
   const removeParticipant = (id: string) => {
     patch({ participants: tournament.participants.filter((p) => p.id !== id) });
-  };
-
-  const changeRating = (id: string, rating: number) => {
-    patch({
-      participants: tournament.participants.map((p) => (p.id === id ? { ...p, rating } : p)),
-    });
   };
 
   const handleDelete = () => {
@@ -543,7 +536,6 @@ function Editor({ tournament }: { tournament: Tournament }) {
             canAdd={isFinished}
             onAdd={addParticipant}
             onRemove={removeParticipant}
-            onRatingChange={changeRating}
           />
 
           <button

@@ -25,7 +25,7 @@ function LobbyHero({
   return (
     <div
       className="relative overflow-hidden rounded-2xl mx-4 mt-4"
-      style={{ height: 240, background: '#1d0b07' }}
+      style={{ height: 200, background: '#1d0b07' }}
     >
       {/* Background tournament art */}
       <img
@@ -52,26 +52,25 @@ function LobbyHero({
       />
 
       {/* Title + date/time — bottom-left */}
-      <div className="absolute bottom-5 left-6 z-20" style={{ width: '72%' }}>
-        <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: '#D99962' }}>
+      <div className="absolute bottom-4 left-5 z-20" style={{ width: '72%' }}>
+        <p className="text-[10px] font-bold tracking-widest uppercase mb-0.5" style={{ color: '#D99962' }}>
           Лобби турнира
         </p>
         <h1
-          className="text-2xl font-black text-white uppercase leading-tight mb-2"
+          className="text-xl font-black text-white uppercase leading-tight mb-1.5"
           style={{ letterSpacing: '0.04em' }}
         >
           {title}
         </h1>
-        {/* Date + time inside hero */}
-        <div className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-          <Calendar size={12} style={{ color: '#c8a38e' }} />
+        <div className="flex items-center gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+          <Calendar size={11} style={{ color: '#c8a38e' }} />
           <span className="capitalize">{formattedDate}</span>
           <span className="opacity-30">·</span>
-          <Clock size={12} style={{ color: '#c8a38e' }} />
+          <Clock size={11} style={{ color: '#c8a38e' }} />
           {startTime}
         </div>
-        <div className="flex items-center gap-2 text-[11px] mt-1.5" style={{ color: '#8c8c88' }}>
-          <MapPin size={11} style={{ color: '#c8a38e' }} />
+        <div className="flex items-center gap-2 text-[10px] mt-1" style={{ color: '#8c8c88' }}>
+          <MapPin size={10} style={{ color: '#c8a38e' }} />
           <span>{CLUB_ADDRESS}</span>
         </div>
       </div>
