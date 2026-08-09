@@ -7,7 +7,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'opening',
     title: 'Grand Opening',
-    imageUrl: asset('/tournaments/glass.jpg'),
+    imageUrl: asset('/tournaments/glass.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-22',
     startTime: '17:00',
@@ -31,7 +31,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'freeroll',
     title: 'Freeroll',
-    imageUrl: asset('/tournaments/ticket.jpg'),
+    imageUrl: asset('/tournaments/ticket.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-24',
     startTime: '19:00',
@@ -56,7 +56,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'triple-life',
     title: 'Triple Life',
-    imageUrl: asset('/tournaments/hearts.jpg'),
+    imageUrl: asset('/tournaments/hearts.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-25',
     startTime: '19:00',
@@ -79,7 +79,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'phoenix',
     title: 'Phoenix',
-    imageUrl: asset('/tournaments/phoenix.jpg'),
+    imageUrl: asset('/tournaments/phoenix.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-26',
     startTime: '19:00',
@@ -102,7 +102,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'freezeout',
     title: 'Freezeout',
-    imageUrl: asset('/tournaments/chip_frozen.jpg'),
+    imageUrl: asset('/tournaments/chip_frozen.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-27',
     startTime: '19:00',
@@ -126,7 +126,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'chill-out',
     title: 'Chill out',
-    imageUrl: asset('/tournaments/crown.jpg'),
+    imageUrl: asset('/tournaments/crown.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-28',
     startTime: '19:00',
@@ -150,7 +150,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'bounty-hunter',
     title: 'Bounty Hunter',
-    imageUrl: asset('/tournaments/skull.jpg'),
+    imageUrl: asset('/tournaments/skull.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-29',
     startTime: '17:00',
@@ -174,7 +174,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
   {
     id: 'deepstack',
     title: 'Deepstack',
-    imageUrl: asset('/tournaments/helmet.jpg'),
+    imageUrl: asset('/tournaments/helmet.webp'),
     address: CLUB_ADDRESS,
     startDate: '2026-08-30',
     startTime: '17:00',
