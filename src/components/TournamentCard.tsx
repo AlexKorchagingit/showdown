@@ -35,23 +35,20 @@ export function TournamentCard({ tournament, onClick }: Props) {
         src={tournament.imageUrl}
         alt=""
         aria-hidden
-        className="absolute w-auto z-0 pointer-events-none select-none"
+        className="absolute z-0 w-auto pointer-events-none select-none"
         style={{
-          height: '160%',
-          right: '-20%',
-          top: '-30%',
-          opacity: 0.7,
-          filter: 'brightness(1.15) contrast(1.1) saturate(1.05)',
+          height: '145%',
+          right: '-10%',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          opacity: 0.8,
+          filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
         }}
       />
 
-      <div
-        className="absolute inset-0 z-10 pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(to right, #1d0b07 0%, rgba(29,11,7,0.6) 55%, transparent 100%)',
-        }}
-      />
+      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/75 to-transparent" />
 
       <div
         className="relative z-20 flex flex-col justify-between px-5 py-4"

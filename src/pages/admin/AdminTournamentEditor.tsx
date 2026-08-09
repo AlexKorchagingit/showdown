@@ -63,24 +63,25 @@ function EditableHero({
         }`}
         style={
           isCustomPhoto
-            ? { opacity: 0.65 }
+            ? {
+                opacity: 0.65,
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
+                maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
+              }
             : {
-                height: '160%',
-                right: '-20%',
-                top: '-30%',
-                opacity: 0.55,
-                filter: 'brightness(1.5) contrast(1.4) saturate(1.2)',
+                height: '145%',
+                right: '-10%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                opacity: 0.75,
+                filter: 'brightness(1.15) contrast(1.08) saturate(1.1)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
+                maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
               }
         }
       />
 
-      <div
-        className="absolute inset-0 z-10 pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(to right, #1d0b07 0%, rgba(29,11,7,0.72) 55%, rgba(29,11,7,0.25) 100%)',
-        }}
-      />
+      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 to-transparent" />
 
       {/* Photo edit button */}
       <button
