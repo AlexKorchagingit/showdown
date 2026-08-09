@@ -2,6 +2,7 @@ import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin } from 
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { useTournaments } from '../context/TournamentContext';
+import { useUser } from '../context/UserContext';
 import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
 import { CLUB_ADDRESS } from '../lib/clubAddress';
 
@@ -27,18 +28,14 @@ function LobbyHero({
       className="relative overflow-hidden rounded-2xl mx-4 mt-4"
       style={{ height: 200, background: '#1d0b07' }}
     >
-      {/* Background tournament art — right-aligned, left edge faded (no hard seam) */}
+      {/* Background tournament art — smaller, glued to the right edge */}
       <img
         src={imageUrl}
         alt=""
         aria-hidden
-        className="absolute z-0 w-auto pointer-events-none select-none"
+        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75"
         style={{
-          height: '115%',
-          right: '-8%',
-          top: '50%',
-          transform: 'translateY(-50%) scale(0.9)',
-          opacity: 0.8,
+          opacity: 0.85,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
           maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
@@ -79,6 +76,7 @@ function LobbyHero({
 
 export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { isRegistered, toggleRegistration, tournaments } = useTournaments();
+  const { isAdmin } = useUser();
 
   const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
   const registered = isRegistered(live.id);
@@ -318,6 +316,62 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </div>
               )}
             </div>
+
+            {isAdmin && live.resultsEntered && (
+              <div
+                className="rounded-2xl p-5 space-y-4"
+                style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
+              >
+                <h3
+                  className="text-[12px] font-700 uppercase tracking-[0.2em]"
+                  style={{ color: '#F2D8A7' }}
+                >
+                  Служебная информация
+                </h3>
+
+                <section>
+                  <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-2" style={{ color: '#D99962' }}>
+                    Секретный комментарий
+                  </p>
+                  <p className="text-[13px] font-400 leading-relaxed whitespace-pre-wrap break-words" style={{ color: '#A39B98' }}>
+                    {live.adminSecretComment?.trim()
+                      ? live.adminSecretComment
+                      : 'Комментарий не указан'}
+                  </p>
+                </section>
+
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+
+                <section>
+                  <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-3" style={{ color: '#D99962' }}>
+                    Персонал
+                  </p>
+                  {(live.staff ?? []).length === 0 ? (
+                    <p className="text-[13px]" style={{ color: '#6B6360' }}>Данные не заполнены</p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {(live.staff ?? []).map((row) => (
+                        <div
+                          key={row.role}
+                          className="flex items-start justify-between gap-3 rounded-xl px-3 py-2.5"
+                          style={{ background: 'rgba(17,11,9,0.55)' }}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-700 text-white">{row.role}</p>
+                            <p className="text-[12px] truncate" style={{ color: '#A39B98' }}>
+                              {row.name || '—'}
+                            </p>
+                          </div>
+                          <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
+                            {row.hours}ч {String(row.minutes).padStart(2, '0')}м
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            )}
           </div>
         </div>{/* end scrollable */}
 

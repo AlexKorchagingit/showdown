@@ -59,7 +59,9 @@ function EditableHero({
         alt=""
         aria-hidden
         className={`absolute z-0 pointer-events-none select-none ${
-          isCustomPhoto ? 'inset-0 w-full h-full object-cover' : 'w-auto'
+          isCustomPhoto
+            ? 'inset-0 w-full h-full object-cover'
+            : 'top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto object-right object-contain origin-right scale-75'
         }`}
         style={
           isCustomPhoto
@@ -69,11 +71,7 @@ function EditableHero({
                 maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
               }
             : {
-                height: '115%',
-                right: '-8%',
-                top: '50%',
-                transform: 'translateY(-50%) scale(0.9)',
-                opacity: 0.75,
+                opacity: 0.8,
                 filter: 'brightness(1.15) contrast(1.08) saturate(1.1)',
                 WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
                 maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',

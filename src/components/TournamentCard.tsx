@@ -35,13 +35,9 @@ export function TournamentCard({ tournament, onClick }: Props) {
         src={tournament.imageUrl}
         alt=""
         aria-hidden
-        className="absolute z-0 w-auto pointer-events-none select-none"
+        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75"
         style={{
-          height: '115%',
-          right: '-8%',
-          top: '50%',
-          transform: 'translateY(-50%) scale(0.9)',
-          opacity: 0.8,
+          opacity: 0.85,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
           maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',

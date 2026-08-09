@@ -46,7 +46,7 @@ function ColumnSelector({
 
   return (
     <div
-      className="flex items-center gap-1 p-1 rounded-xl ml-auto"
+      className="flex items-center gap-2 p-1 rounded-xl"
       style={{ background: '#1E1612', border: '1px solid rgba(255,255,255,0.06)' }}
       role="tablist"
       aria-label="Показатель таблицы"
@@ -226,17 +226,19 @@ export function RatingPage() {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3">
           <p className="text-[11px] font-600 uppercase tracking-wider shrink-0" style={{ color: '#69584f' }}>
             Показатель
           </p>
-          <ColumnSelector active={activeColumn} onChange={setActiveColumn} />
-          <span
-            className="ml-auto shrink-0 text-[10px] font-800 uppercase tracking-wider"
-            style={{ color: '#D99962' }}
-          >
-            Рейтинг
-          </span>
+          <div className="flex items-center justify-end gap-2 min-w-0">
+            <ColumnSelector active={activeColumn} onChange={setActiveColumn} />
+            <span
+              className="shrink-0 text-[10px] font-800 uppercase tracking-wider"
+              style={{ color: '#D99962' }}
+            >
+              Рейтинг
+            </span>
+          </div>
         </div>
       </div>
 

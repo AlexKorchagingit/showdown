@@ -173,13 +173,13 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         aria-label="Мы в соцсетях"
         className="relative flex items-center -space-x-6 pr-1 active:scale-95 transition-transform"
       >
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500/20 border border-[#110b09] z-[1]">
-          <Send size={15} strokeWidth={2.2} className="text-[#60A5FA]" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#1D4ED8] border-[3px] border-[#110b09] z-[1]">
+          <Send size={15} strokeWidth={2.2} className="text-white" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-pink-500/20 border border-[#110b09] z-[2]">
-          <InstagramIcon size={15} className="text-[#F472B6]" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#DB2777] border-[3px] border-[#110b09] z-[2]">
+          <InstagramIcon size={15} className="text-white" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-600/20 border border-[#110b09] z-10 text-[10px] font-bold text-[#93C5FD]">
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2563EB] border-[3px] border-[#110b09] z-10 text-[10px] font-bold text-white">
           VK
         </span>
       </button>
@@ -205,18 +205,14 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         minHeight: 168,
       }}
     >
-      {/* Background tournament art — right-aligned, left edge faded (no hard seam) */}
+      {/* Background tournament art — smaller, glued to the right edge */}
       <img
         src={tournament.imageUrl}
         alt=""
         aria-hidden
-        className="absolute z-0 w-auto pointer-events-none select-none"
+        className="absolute top-1/2 -translate-y-1/2 right-0 z-0 h-[120%] w-auto object-right object-contain pointer-events-none select-none origin-right scale-75"
         style={{
-          height: '115%',
-          right: '-8%',
-          top: '50%',
-          transform: 'translateY(-50%) scale(0.9)',
-          opacity: 0.8,
+          opacity: 0.85,
           filter: 'brightness(1.1) contrast(1.05) saturate(1.05)',
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
           maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
@@ -391,22 +387,21 @@ function InfoGrid({
   onQa: () => void;
   onSupport: () => void;
 }) {
-  const tiles = [
-    { icon: Phone,         label: 'Поддержка', onClick: onSupport },
-    { icon: Info,          label: 'О клубе',   onClick: onAboutClub },
-    { icon: MessageCircle, label: 'Q&A',       onClick: onQa },
-  ];
-
   return (
     <div className="grid grid-cols-2 gap-3">
-      {tiles.slice(0, 2).map(({ icon, label, onClick }) => (
-        <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
-          <div className="flex items-center gap-3">
-            <TileIcon icon={icon} />
-            <p className="text-[10px] font-700 text-white leading-tight">{label}</p>
-          </div>
-        </button>
-      ))}
+      <button type="button" onClick={onSupport} className={TILE_CLASS} style={TILE_STYLE}>
+        <div className="flex items-center gap-3">
+          <TileIcon icon={Phone} />
+          <p className="text-xs font-700 text-white leading-tight">Поддержка</p>
+        </div>
+      </button>
+
+      <button type="button" onClick={onAboutClub} className={TILE_CLASS} style={TILE_STYLE}>
+        <div className="flex items-center gap-3">
+          <TileIcon icon={Info} />
+          <p className="text-lg font-700 text-white leading-tight">О клубе</p>
+        </div>
+      </button>
 
       <a
         href={CLUB_MAP_URL}
@@ -419,7 +414,7 @@ function InfoGrid({
           <div className="flex items-start gap-3">
             <TileIcon icon={MapPin} />
             <div className="flex flex-col gap-0.5 pt-0.5 min-w-0">
-              <p className="text-[10px] font-700 text-white leading-tight">Адрес</p>
+              <p className="text-lg font-700 text-white leading-tight">Адрес</p>
               <p className="text-[11px] font-500 leading-snug" style={{ color: '#8c8c88' }}>
                 {CLUB_ADDRESS_SHORT}
               </p>
@@ -432,14 +427,12 @@ function InfoGrid({
         </div>
       </a>
 
-      {tiles.slice(2).map(({ icon, label, onClick }) => (
-        <button key={label} onClick={onClick} className={TILE_CLASS} style={TILE_STYLE}>
-          <div className="flex items-center gap-3">
-            <TileIcon icon={icon} />
-            <p className="text-[10px] font-700 text-white leading-tight">{label}</p>
-          </div>
-        </button>
-      ))}
+      <button type="button" onClick={onQa} className={TILE_CLASS} style={TILE_STYLE}>
+        <div className="flex items-center gap-3">
+          <TileIcon icon={MessageCircle} />
+          <p className="text-lg font-700 text-white leading-tight">Q&A</p>
+        </div>
+      </button>
     </div>
   );
 }

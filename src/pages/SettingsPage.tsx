@@ -106,12 +106,12 @@ export function SettingsPage({ userEmail }: Props) {
             <label className="block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]">
               Слоган
             </label>
-            <input
-              type="text"
+            <textarea
               value={draftSlogan}
               onChange={(e) => setDraftSlogan(e.target.value)}
               maxLength={60}
-              className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors"
+              rows={3}
+              className="w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 outline-none focus:border-[#D99962]/60 transition-colors resize-none break-words whitespace-pre-wrap"
               placeholder={SLOGAN_PLACEHOLDER}
             />
             <p className="text-right text-[11px] mt-1 text-[#6B6360]">{draftSlogan.length}/60</p>

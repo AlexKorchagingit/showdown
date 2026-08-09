@@ -6,6 +6,24 @@ export interface Participant {
   place?: number;
 }
 
+export interface TournamentStaffMember {
+  role: string;
+  name: string;
+  hours: number;
+  minutes: number;
+}
+
+export const DEFAULT_STAFF_ROLES = ['Админ', 'Дилер 1', 'Дилер 2', 'Дилер 3'] as const;
+
+export function createEmptyStaff(): TournamentStaffMember[] {
+  return DEFAULT_STAFF_ROLES.map((role) => ({
+    role,
+    name: '',
+    hours: 0,
+    minutes: 0,
+  }));
+}
+
 export interface Tournament {
   id: string;
   title: string;
@@ -25,4 +43,8 @@ export interface Tournament {
   levelDuration: string;
   /** True after admin has submitted finishing places / rating awards. */
   resultsEntered?: boolean;
+  /** Admin-only note filled when closing the tournament. */
+  adminSecretComment?: string;
+  /** Dealers / admin hours logged at close. */
+  staff?: TournamentStaffMember[];
 }

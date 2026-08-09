@@ -65,7 +65,7 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-[40px] left-[45%] h-[52%] w-auto object-contain object-bottom z-0 pointer-events-none"
+        className="absolute bottom-[75px] left-[38%] h-[68%] w-auto object-contain object-bottom z-0 pointer-events-none"
       />
 
       {/* Header card */}

@@ -3,6 +3,13 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Trophy } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { ratingPointsForPlace, payoutShareForPlace } from '../../data/prizeStructure';
+import {
+  createEmptyStaff,
+  type TournamentStaffMember,
+} from '../../types/tournament';
+
+const FIELD =
+  'w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#D99962]/60 transition-colors';
 
 export function AdminTournamentResults() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +26,10 @@ export function AdminTournamentResults() {
   }, [tournament]);
 
   const [places, setPlaces] = useState<Record<string, number | ''>>(initialPlaces);
+  const [secretComment, setSecretComment] = useState(tournament?.adminSecretComment ?? '');
+  const [staff, setStaff] = useState<TournamentStaffMember[]>(
+    () => tournament?.staff?.length ? tournament.staff.map((s) => ({ ...s })) : createEmptyStaff(),
+  );
 
   if (!tournament) return <Navigate to="/admin/tournaments" replace />;
   if (tournament.resultsEntered) {
@@ -30,6 +41,10 @@ export function AdminTournamentResults() {
       ...prev,
       [participantId]: value === '' ? '' : Number(value),
     }));
+  };
+
+  const patchStaff = (index: number, patch: Partial<TournamentStaffMember>) => {
+    setStaff((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
   const usedPlaces = new Set(
@@ -60,6 +75,13 @@ export function AdminTournamentResults() {
     updateTournament(tournament.id, {
       participants: nextParticipants,
       resultsEntered: true,
+      adminSecretComment: secretComment.trim(),
+      staff: staff.map((row) => ({
+        ...row,
+        name: row.name.trim(),
+        hours: Math.max(0, Number(row.hours) || 0),
+        minutes: Math.min(59, Math.max(0, Number(row.minutes) || 0)),
+      })),
     });
     navigate('/admin/tournaments');
   };
@@ -101,7 +123,7 @@ export function AdminTournamentResults() {
         className="flex-1 scrollable px-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6rem)' }}
       >
-        <div className="rounded-2xl overflow-hidden" style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="rounded-2xl overflow-hidden mb-4" style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
           {tournament.participants.map((p, idx) => {
             const place = places[p.id];
             const bonus =
@@ -158,10 +180,77 @@ export function AdminTournamentResults() {
         </div>
 
         {!uniqueOk && tournament.participants.length > 0 && (
-          <p className="text-center text-[11px] mt-3" style={{ color: '#6B6360' }}>
+          <p className="text-center text-[11px] mb-4" style={{ color: '#6B6360' }}>
             Назначьте уникальное место каждому участнику
           </p>
         )}
+
+        <section className="mb-4">
+          <label className="block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]">
+            Секретный комментарий админа
+          </label>
+          <textarea
+            value={secretComment}
+            onChange={(e) => setSecretComment(e.target.value)}
+            rows={4}
+            placeholder="Виден только администраторам"
+            className={`${FIELD} resize-none break-words whitespace-pre-wrap`}
+          />
+          <p className="text-[10px] mt-1.5" style={{ color: '#6B6360' }}>
+            Этот текст увидят только админы в лобби турнира
+          </p>
+        </section>
+
+        <section className="mb-2">
+          <h3 className="text-[11px] font-700 uppercase tracking-[0.18em] mb-3 text-[#D99962]">
+            Персонал (Дилеры и Админ)
+          </h3>
+          <div className="space-y-3">
+            {staff.map((row, index) => (
+              <div
+                key={row.role}
+                className="rounded-2xl p-3 space-y-2"
+                style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <p className="text-[12px] font-700 text-white">{row.role}</p>
+                <input
+                  type="text"
+                  value={row.name}
+                  onChange={(e) => patchStaff(index, { name: e.target.value })}
+                  placeholder="Имя / Ник"
+                  className={FIELD}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-600 mb-1" style={{ color: '#8c8c88' }}>
+                      Часы
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.hours}
+                      onChange={(e) => patchStaff(index, { hours: Number(e.target.value) })}
+                      className={`${FIELD} [color-scheme:dark]`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-600 mb-1" style={{ color: '#8c8c88' }}>
+                      Минуты
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={row.minutes}
+                      onChange={(e) => patchStaff(index, { minutes: Number(e.target.value) })}
+                      className={`${FIELD} [color-scheme:dark]`}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
       <div
