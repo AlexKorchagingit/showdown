@@ -126,10 +126,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             imageUrl={live.imageUrl}
           />
 
-          <div className="px-5 pt-4 space-y-5">
-            {/* Guarantee — full width, compact vertically, spaced below hero */}
+          <div className="px-5 pt-5 space-y-5">
+            {/* Guarantee — full width; top gap matches space-y to progress below */}
             <div
-              className="relative w-full flex items-center gap-3 rounded-xl overflow-hidden px-4 py-1.5 mt-4"
+              className="relative w-full flex items-center gap-3 rounded-xl overflow-hidden px-4 py-1.5"
               style={{ border: '1px solid rgba(242,216,167,0.32)' }}
             >
               <div
