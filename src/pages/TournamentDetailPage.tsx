@@ -46,7 +46,7 @@ function LobbyHero({
             maskImage: 'linear-gradient(to right, transparent, black)',
           }}
         />
-        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 to-transparent" />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-40% to-transparent to-75%" />
       </div>
 
       {/* Title + date/time — bottom-left */}
