@@ -23,7 +23,7 @@ export function SplashScreen() {
       />
 
       <motion.img
-        src={asset("/final-logo_big-v3.webp")}
+        src={asset("/final_big.webp")}
         alt="Showdown"
         className="relative z-10 object-contain w-3/4 max-w-[330px] h-auto -mt-28"
         initial={{ opacity: 0, scale: 0.75 }}
