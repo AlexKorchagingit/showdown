@@ -62,7 +62,7 @@ function EditableHero({
           className={`absolute pointer-events-none select-none bg-transparent border-0 shadow-none ring-0 outline-none ${
             isCustomPhoto
               ? 'inset-0 w-full h-full object-cover'
-              : 'top-1/2 -translate-y-1/2 right-[-5%] h-[130%] w-auto max-w-none object-right object-contain origin-right scale-100'
+              : 'top-1/2 -translate-y-1/2 right-[-5%] h-[120%] w-auto max-w-none object-right object-contain origin-right scale-75'
           }`}
           style={
             isCustomPhoto
@@ -72,8 +72,8 @@ function EditableHero({
                   outline: 'none',
                   boxShadow: 'none',
                   background: 'transparent',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent, black)',
-                  maskImage: 'linear-gradient(to right, transparent, black)',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 45%)',
+                  maskImage: 'linear-gradient(to right, transparent, black 45%)',
                 }
               : {
                   opacity: 0.8,
@@ -82,12 +82,18 @@ function EditableHero({
                   outline: 'none',
                   boxShadow: 'none',
                   background: 'transparent',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent, black)',
-                  maskImage: 'linear-gradient(to right, transparent, black)',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 45%)',
+                  maskImage: 'linear-gradient(to right, transparent, black 45%)',
                 }
           }
         />
-        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] from-[30%] via-[#1d0b07]/60 via-[50%] to-transparent" />
+        <div
+          className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
+          style={{
+            background:
+              'linear-gradient(to right, #1d0b07 0%, #1d0b07 28%, rgba(29,11,7,0.55) 42%, transparent 55%)',
+          }}
+        />
       </div>
 
       {/* Photo edit button */}
