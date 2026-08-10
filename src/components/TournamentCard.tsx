@@ -37,7 +37,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
           src={tournament.imageUrl}
           alt=""
           aria-hidden
-          className="absolute top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-75 bg-transparent border-0 shadow-none ring-0 outline-none"
+          className="absolute top-1/2 -translate-y-1/2 right-[-5%] h-[130%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-100 bg-transparent border-0 shadow-none ring-0 outline-none"
           style={{
             opacity: 0.85,
             filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
@@ -49,7 +49,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
             maskImage: 'linear-gradient(to right, transparent, black)',
           }}
         />
-        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-40% to-transparent to-75%" />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] from-40% via-[#1d0b07]/60 via-60% to-transparent" />
       </div>
 
       <div

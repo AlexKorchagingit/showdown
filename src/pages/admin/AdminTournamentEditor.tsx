@@ -62,7 +62,7 @@ function EditableHero({
           className={`absolute pointer-events-none select-none bg-transparent border-0 shadow-none ring-0 outline-none ${
             isCustomPhoto
               ? 'inset-0 w-full h-full object-cover'
-              : 'top-1/2 -translate-y-1/2 right-0 h-[120%] w-auto max-w-none object-right object-contain origin-right scale-75'
+              : 'top-1/2 -translate-y-1/2 right-[-5%] h-[130%] w-auto max-w-none object-right object-contain origin-right scale-100'
           }`}
           style={
             isCustomPhoto
@@ -87,7 +87,7 @@ function EditableHero({
                 }
           }
         />
-        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] via-[#1d0b07]/80 via-40% to-transparent to-75%" />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] from-40% via-[#1d0b07]/60 via-60% to-transparent" />
       </div>
 
       {/* Photo edit button */}
