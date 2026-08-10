@@ -211,7 +211,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           src={tournament.imageUrl}
           alt=""
           aria-hidden
-          className="absolute top-1/2 -translate-y-1/2 right-[-5%] h-[130%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-100 bg-transparent border-0 shadow-none ring-0 outline-none"
+          className="absolute top-1/2 -translate-y-1/2 right-[-5%] h-[120%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-75 bg-transparent border-0 shadow-none ring-0 outline-none"
           style={{
             opacity: 0.85,
             filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
@@ -219,11 +219,17 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
             outline: 'none',
             boxShadow: 'none',
             background: 'transparent',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black)',
-            maskImage: 'linear-gradient(to right, transparent, black)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent, black 45%)',
+            maskImage: 'linear-gradient(to right, transparent, black 45%)',
           }}
         />
-        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] from-[30%] via-[#1d0b07]/60 via-[50%] to-transparent" />
+        <div
+          className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
+          style={{
+            background:
+              'linear-gradient(to right, #1d0b07 0%, #1d0b07 28%, rgba(29,11,7,0.55) 42%, transparent 55%)',
+          }}
+        />
       </div>
 
       {/* Text content — over gradient */}
