@@ -4,7 +4,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { useTournaments } from '../context/TournamentContext';
 import { useUser } from '../context/UserContext';
 import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
-import { CLUB_ADDRESS } from '../lib/clubAddress';
+import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 
 interface Props {
   tournament: Tournament;
@@ -72,7 +72,11 @@ function LobbyHero({
         </div>
         <div className="flex items-start gap-2 text-[10px] mt-1" style={{ color: '#8c8c88' }}>
           <MapPin size={10} className="shrink-0 mt-0.5" style={{ color: '#c8a38e' }} />
-          <span className="whitespace-normal break-words text-wrap">{CLUB_ADDRESS}</span>
+          <span className="whitespace-normal break-words text-wrap">
+            {CLUB_ADDRESS_CITY}
+            <br />
+            {CLUB_ADDRESS_STREET}
+          </span>
         </div>
       </div>
     </div>

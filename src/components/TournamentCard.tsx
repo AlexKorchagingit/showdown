@@ -1,7 +1,7 @@
 import { Clock, MapPin } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { isTournamentPast } from '../lib/tournamentStatus';
-import { CLUB_ADDRESS } from '../lib/clubAddress';
+import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 
 interface Props {
   tournament: Tournament;
@@ -77,7 +77,11 @@ export function TournamentCard({ tournament, onClick }: Props) {
 
           <div className="flex items-start gap-1.5 text-[11px]" style={{ color: '#8c8c88' }}>
             <MapPin size={11} className="shrink-0 mt-0.5" style={{ color: '#c8a38e' }} />
-            <span className="whitespace-normal break-words text-wrap">{CLUB_ADDRESS}</span>
+            <span className="whitespace-normal break-words text-wrap">
+              {CLUB_ADDRESS_CITY}
+              <br />
+              {CLUB_ADDRESS_STREET}
+            </span>
           </div>
 
           <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
