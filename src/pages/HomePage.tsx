@@ -8,7 +8,7 @@ import {
 import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
 import { asset } from '../lib/assets';
-import { CLUB_ADDRESS } from '../lib/clubAddress';
+import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { CURRENT_USER_RATING } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
@@ -253,7 +253,11 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           </div>
           <div className="flex items-start gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
             <MapPin size={11} className="shrink-0 mt-0.5" style={{ color: '#c8a38e' }} />
-            <span className="whitespace-normal break-words text-wrap">{CLUB_ADDRESS}</span>
+            <span className="whitespace-normal break-words text-wrap">
+              {CLUB_ADDRESS_CITY}
+              <br />
+              {CLUB_ADDRESS_STREET}
+            </span>
           </div>
         </div>
 
