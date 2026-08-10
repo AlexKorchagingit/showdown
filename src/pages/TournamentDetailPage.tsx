@@ -126,36 +126,38 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             imageUrl={live.imageUrl}
           />
 
-          <div className="px-5 pt-5 space-y-5">
-            {/* Guarantee — full width; top gap matches space-y to progress below */}
-            <div
-              className="relative w-full flex items-center gap-3 rounded-xl overflow-hidden px-4 py-1.5"
-              style={{ border: '1px solid rgba(242,216,167,0.32)' }}
-            >
+          <div className="px-5 pt-3 space-y-5">
+            <div className="space-y-3">
+              {/* Guarantee — full width; compact gaps to hero and progress */}
               <div
-                className="absolute inset-0 opacity-[0.12] pointer-events-none"
-                style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
-              />
-              <div
-                className="relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                className="relative w-full flex items-center gap-3 rounded-xl overflow-hidden px-4 py-1.5"
+                style={{ border: '1px solid rgba(242,216,167,0.32)' }}
               >
-                <Star size={15} fill="currentColor" style={{ color: '#0A0908' }} />
+                <div
+                  className="absolute inset-0 opacity-[0.12] pointer-events-none"
+                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                />
+                <div
+                  className="relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                >
+                  <Star size={15} fill="currentColor" style={{ color: '#0A0908' }} />
+                </div>
+                <div className="relative">
+                  <p className="text-[10px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
+                    Гарантия очков
+                  </p>
+                  <p className="text-white font-900 text-base tracking-wide leading-tight">
+                    {live.guarantee.toLocaleString('ru-RU')}
+                  </p>
+                </div>
               </div>
-              <div className="relative">
-                <p className="text-[10px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
-                  Гарантия очков
-                </p>
-                <p className="text-white font-900 text-base tracking-wide leading-tight">
-                  {live.guarantee.toLocaleString('ru-RU')}
-                </p>
-              </div>
-            </div>
 
-            {/* Progress — tick-free */}
-            <div className="rounded-2xl p-4"
-                 style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <ProgressBar value={occupiedSeats} max={live.totalSeats} />
+              {/* Progress — tick-free */}
+              <div className="rounded-2xl p-4"
+                   style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <ProgressBar value={occupiedSeats} max={live.totalSeats} />
+              </div>
             </div>
 
             {/* Info block */}
