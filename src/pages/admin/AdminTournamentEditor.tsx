@@ -87,7 +87,7 @@ function EditableHero({
                 }
           }
         />
-        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] from-40% via-[#1d0b07]/60 via-60% to-transparent" />
+        <div className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0 bg-gradient-to-r from-[#1d0b07] from-[30%] via-[#1d0b07]/60 via-[50%] to-transparent" />
       </div>
 
       {/* Photo edit button */}
