@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { TournamentCard } from '../../components/TournamentCard';
+import { CompactHeader } from '../../components/CompactHeader';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { compareByStart, isFinished } from '../../lib/tournamentStatus';
 import { asset } from '../../lib/assets';
@@ -192,47 +193,33 @@ export function AdminTournamentsScreen() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <button
-        type="button"
-        onClick={() => navigate('/profile')}
-        className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(217,153,98,0.28)',
-        }}
-      >
-        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </button>
-
-      <div className="flex-shrink-0 px-5 pt-20 pb-4 space-y-4">
-        <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
-          Tournaments
-        </h1>
-
-        <div className="relative flex rounded-xl p-1" style={{ background: '#1E1612' }}>
-          {TAB_ORDER.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className="relative flex-1 py-2.5 text-[12px] font-600 rounded-lg transition-colors duration-200"
-              style={{ color: tab === t ? '#0A0908' : '#6B6360' }}
-            >
-              {tab === t && (
-                <motion.span
-                  layoutId="admin-tour-tab"
-                  className="absolute inset-0 rounded-lg"
-                  style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.38 }}
-                />
-              )}
-              <span className="relative z-10">{TAB_LABEL[t]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <CompactHeader
+        title="Tournaments"
+        backTo="/profile"
+        right={
+          <div className="relative flex rounded-lg p-0.5 min-w-0" style={{ background: '#1E1612' }}>
+            {TAB_ORDER.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className="relative px-3 py-1.5 text-[11px] font-700 rounded-md transition-colors duration-200"
+                style={{ color: tab === t ? '#0A0908' : '#6B6360' }}
+              >
+                {tab === t && (
+                  <motion.span
+                    layoutId="admin-tour-tab"
+                    className="absolute inset-0 rounded-md"
+                    style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.38 }}
+                  />
+                )}
+                <span className="relative z-10">{TAB_LABEL[t]}</span>
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       <div
         className="flex-1 scrollable px-4"

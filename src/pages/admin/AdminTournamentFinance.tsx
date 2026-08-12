@@ -127,12 +127,12 @@ export function AdminTournamentFinance() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <div className="flex-shrink-0 px-3 pt-4 pb-3 space-y-3">
+      <div className="flex-shrink-0 px-3 pt-2 pb-2 space-y-2">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate('/admin/finance')}
-            className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
             style={{
               background: 'rgba(28,20,16,0.78)',
               border: '1px solid rgba(217,153,98,0.28)',
@@ -148,7 +148,7 @@ export function AdminTournamentFinance() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск…"
-            className="flex-1 min-w-0 h-11 rounded-xl px-3 text-[13px] text-white outline-none"
+            className="flex-1 min-w-0 h-10 rounded-xl px-3 text-[13px] text-white outline-none"
             style={{
               background: '#231A16',
               border: '1px solid rgba(217,153,98,0.35)',

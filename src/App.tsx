@@ -27,6 +27,7 @@ import { TournamentProvider } from './context/TournamentContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
+import { BlindsProvider } from './context/BlindsContext';
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|profile\/[^/]+|settings|shop|about|qa|achievements|admin\/.+)$/;
@@ -149,7 +150,9 @@ export default function App() {
         <ProfileProvider>
           <TournamentProvider>
             <FinanceProvider>
-              <AppLayout userEmail={userEmail} />
+              <BlindsProvider>
+                <AppLayout userEmail={userEmail} />
+              </BlindsProvider>
             </FinanceProvider>
           </TournamentProvider>
         </ProfileProvider>

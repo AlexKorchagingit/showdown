@@ -52,7 +52,7 @@ function EditableHero({
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl mx-4 mt-4"
+      className="relative overflow-hidden rounded-2xl mx-4 mt-2"
       style={{ minHeight: 180, background: '#1d0b07' }}
     >
       <div className="absolute inset-0 z-0 overflow-hidden bg-transparent border-0 shadow-none ring-0 outline-none">
@@ -394,7 +394,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
       <button
         type="button"
         onClick={() => navigate('/admin/tournaments')}
-        className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
+        className="absolute top-2 left-2 z-50 w-10 h-10 rounded-full flex items-center justify-center"
         style={{
           background: 'rgba(28,20,16,0.78)',
           backdropFilter: 'blur(12px)',
@@ -402,7 +402,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
           border: '1px solid rgba(217,153,98,0.28)',
         }}
       >
-        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
+        <ArrowLeft size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
       </button>
 
       <input

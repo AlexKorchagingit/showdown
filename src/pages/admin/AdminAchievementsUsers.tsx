@@ -8,7 +8,7 @@ export function AdminAchievementsUsers() {
 
   return (
     <SectionScreen title="Achievements" backTo="/profile">
-      <p className="text-center text-[12px] font-500 mb-6" style={{ color: '#6B6360' }}>
+      <p className="text-[12px] font-500 mb-3" style={{ color: '#6B6360' }}>
         Выберите пользователя, чтобы выдать или править достижения
       </p>
 

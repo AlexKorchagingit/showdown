@@ -49,7 +49,7 @@ export function AdminAchievementsEditor() {
 
   return (
     <SectionScreen title={user.nickname} backTo="/admin/achievements/users">
-      <p className="text-center text-[12px] font-500 mb-5" style={{ color: '#6B6360' }}>
+      <p className="text-[12px] font-500 mb-3" style={{ color: '#6B6360' }}>
         {user.email}
       </p>
 

@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { mockUsers as initialUsers, type MockUser } from '../../data/mockUsers';
 import { ADMIN_EMAIL } from '../../context/UserContext';
+import { CompactHeader } from '../../components/CompactHeader';
 
 export function AdminUsersScreen() {
-  const navigate = useNavigate();
   const [users, setUsers] = useState<MockUser[]>(initialUsers);
 
   const toggleAdmin = (id: string) => {
@@ -20,28 +19,13 @@ export function AdminUsersScreen() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <button
-        type="button"
-        onClick={() => navigate('/settings')}
-        className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(217,153,98,0.28)',
-        }}
-      >
-        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </button>
+      <CompactHeader title="Пользователи" backTo="/settings" />
 
       <div
-        className="flex-1 scrollable px-5 pt-20"
+        className="flex-1 scrollable px-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
-        <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase mb-2">
-          Пользователи
-        </h1>
-        <p className="text-center text-[12px] font-500 mb-8" style={{ color: '#6B6360' }}>
+        <p className="text-[12px] font-500 mb-3 px-1" style={{ color: '#6B6360' }}>
           Отметьте, кто должен получить права администратора
         </p>
 

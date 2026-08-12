@@ -8,12 +8,32 @@ import {
   sortAchievements,
 } from '../lib/achievementStorage';
 
+const DEFAULT_ART = '5.25rem';
+const BIGGER_ART = '5.9rem';
+const EXTRA_ART = '6.5rem';
+
+/** Slightly larger badge art for selected achievements. */
+const ART_SIZE: Record<string, string> = {
+  paparazzi: '6.15rem',
+  crucian: BIGGER_ART,
+  punctual: BIGGER_ART,
+  fish: BIGGER_ART,
+  welcome: BIGGER_ART,
+  shark: BIGGER_ART,
+  predator: EXTRA_ART,
+  'giant-slayer': EXTRA_ART,
+  friend: BIGGER_ART,
+  'four-kings': EXTRA_ART,
+  'the-best': BIGGER_ART,
+};
+
 function AchievementCard({ achievement }: { achievement: Achievement }) {
   const done = isAchievementDone(achievement);
   const target = achievement.target ?? 0;
   const progress = achievement.progress ?? 0;
   const hasProgressBar = target > 0;
   const percent = target > 0 ? Math.min(100, (progress / target) * 100) : 0;
+  const artSize = ART_SIZE[achievement.id] ?? DEFAULT_ART;
 
   return (
     <div
@@ -38,15 +58,20 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         </div>
       )}
 
-      <img
-        src={achievement.imageUrl}
-        alt=""
-        aria-hidden
-        className={[
-          'relative z-10 w-10 h-10 object-contain shrink-0 mb-1',
-          done ? '' : 'opacity-55 grayscale-[0.35]',
-        ].join(' ')}
-      />
+      <div
+        className="relative z-10 flex items-center justify-center shrink-0 mb-1"
+        style={{ width: artSize, height: artSize }}
+      >
+        <img
+          src={achievement.imageUrl}
+          alt=""
+          aria-hidden
+          className={[
+            'relative z-10 w-full h-full object-contain',
+            done ? '' : 'opacity-55 grayscale-[0.35]',
+          ].join(' ')}
+        />
+      </div>
       <div className="relative z-10 w-full min-h-0 px-0.5">
         <p
           className={[
@@ -79,15 +104,12 @@ export function AchievementsScreen() {
       title="Достижения"
       backTo="/profile"
       contentPaddingBottom="calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+      right={
+        <span className="text-[11px] font-700 shrink-0" style={{ color: '#D99962' }}>
+          {done}/{achievements.length}
+        </span>
+      }
     >
-      <p className="text-center text-[12px] font-600 mb-4" style={{ color: '#8c8c88' }}>
-        Получено{' '}
-        <span className="font-bold" style={{ color: '#D99962' }}>
-          {done}
-        </span>{' '}
-        из {achievements.length}
-      </p>
-
       <div className="-mx-5 grid grid-cols-2 gap-6 px-4 pb-32">
         {achievements.map((achievement) => (
           <AchievementCard key={achievement.id} achievement={achievement} />
