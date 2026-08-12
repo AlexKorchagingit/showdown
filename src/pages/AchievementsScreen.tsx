@@ -10,6 +10,7 @@ import {
 
 const DEFAULT_ART = '5.25rem';
 const BIGGER_ART = '5.9rem';
+const EXTRA_ART = '6.5rem';
 
 /** Slightly larger badge art for selected achievements. */
 const ART_SIZE: Record<string, string> = {
@@ -19,10 +20,10 @@ const ART_SIZE: Record<string, string> = {
   fish: BIGGER_ART,
   welcome: BIGGER_ART,
   shark: BIGGER_ART,
-  predator: BIGGER_ART,
-  'giant-slayer': BIGGER_ART,
+  predator: EXTRA_ART,
+  'giant-slayer': EXTRA_ART,
   friend: BIGGER_ART,
-  'four-kings': BIGGER_ART,
+  'four-kings': EXTRA_ART,
   'the-best': BIGGER_ART,
 };
 
@@ -35,7 +36,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
   const artSize = ART_SIZE[achievement.id] ?? DEFAULT_ART;
   const tightText = achievement.id === 'headhunter' || achievement.id === 'paparazzi';
   const singleLineTitle = achievement.id === 'paparazzi';
-  const liftTitle = achievement.id === 'headhunter';
+  const liftTitle = achievement.id === 'headhunter' || achievement.id === 'paparazzi';
 
   return (
     <div
@@ -68,13 +69,24 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         style={{ width: artSize, height: artSize }}
       >
         {done && (
-          <span
-            className="absolute inset-[-6%] rounded-full blur-lg animate-ach-glow pointer-events-none"
-            style={{
-              background:
-                'radial-gradient(circle, rgba(217,153,98,0.38) 0%, rgba(217,153,98,0.14) 48%, transparent 72%)',
-            }}
-          />
+          <>
+            <div
+              className="absolute rounded-full animate-pulse pointer-events-none"
+              style={{
+                inset: '-8px',
+                background:
+                  'radial-gradient(circle, rgba(217,153,98,0.28) 0%, rgba(217,153,98,0.08) 45%, transparent 70%)',
+              }}
+            />
+            <div
+              className="absolute rounded-full animate-pulse pointer-events-none"
+              style={{
+                inset: '-4px',
+                border: '2px solid #D99962',
+                boxShadow: '0 0 8px #D99962',
+              }}
+            />
+          </>
         )}
         <img
           src={achievement.imageUrl}
@@ -82,7 +94,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
           aria-hidden
           className={[
             'relative z-10 w-full h-full object-contain',
-            done ? 'drop-shadow-[0_0_4px_rgba(217,153,98,0.45)]' : 'opacity-55 grayscale-[0.35]',
+            done ? 'drop-shadow-[0_0_6px_rgba(217,153,98,0.55)]' : 'opacity-55 grayscale-[0.35]',
           ].join(' ')}
         />
       </div>
