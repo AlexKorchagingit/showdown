@@ -9,7 +9,7 @@ interface Props {
 const ITEMS = [
   { label: 'Tournaments',  to: '/admin/tournaments' },
   { label: 'Blinds info',  to: '/admin/blinds/settings' },
-  { label: 'Finance',      to: '/admin/finance' },
+  { label: 'Finance & Results', to: '/admin/finance' },
   { label: 'Achievements', to: '/admin/achievements/users' },
 ];
 

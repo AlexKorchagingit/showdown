@@ -376,8 +376,15 @@ function Editor({ tournament }: { tournament: Tournament }) {
     const newId = addTournament({
       ...rest,
       title: `${tournament.title} Copy`,
-      participants: tournament.participants.map((p) => ({ ...p, id: `p-${Date.now()}-${p.id}` })),
+      participants: tournament.participants.map((p) => ({
+        ...p,
+        id: `p-${Date.now()}-${p.id}`,
+        place: undefined,
+      })),
       features: [...tournament.features],
+      isClosed: false,
+      dealers: undefined,
+      resultsEntered: false,
     });
     navigate(`/admin/tournaments/${newId}`);
   };

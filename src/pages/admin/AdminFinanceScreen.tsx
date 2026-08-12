@@ -17,7 +17,7 @@ const TAB_LABEL: Record<Tab, string> = {
 
 export function AdminFinanceScreen() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('cashier');
+  const [tab, setTab] = useState<Tab>('tournaments');
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
@@ -38,29 +38,29 @@ export function AdminFinanceScreen() {
 
       <div className="flex-shrink-0 px-5 pt-20 pb-4 space-y-4">
         <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
-          Финансы
+          Finance & Results
         </h1>
 
         <div className="relative flex rounded-xl p-1" style={{ background: '#1E1612' }}>
-          {TAB_ORDER.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className="relative flex-1 py-2.5 text-[11px] font-700 rounded-lg transition-colors duration-200"
-              style={{ color: tab === t ? '#0A0908' : '#6B6360' }}
-            >
-              {tab === t && (
-                <motion.span
-                  layoutId="admin-finance-tab"
-                  className="absolute inset-0 rounded-lg"
-                  style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.38 }}
-                />
-              )}
-              <span className="relative z-10">{TAB_LABEL[t]}</span>
-            </button>
-          ))}
+          {TAB_ORDER.map((t) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`relative flex-1 py-2.5 text-[11px] rounded-lg transition-colors duration-200 ${
+                  active ? 'font-bold text-black' : 'font-600'
+                }`}
+                style={{
+                  background: active ? '#D99962' : 'transparent',
+                  color: active ? '#000000' : '#6B6360',
+                }}
+              >
+                {TAB_LABEL[t]}
+              </button>
+            );
+          })}
         </div>
       </div>
 

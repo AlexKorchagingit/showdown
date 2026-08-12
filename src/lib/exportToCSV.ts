@@ -22,6 +22,7 @@ export function exportToCSV(
     'amount',
     'status',
     'comment',
+    'Комментарий / Причина',
     'isDealer',
     'dealerHours',
   ];
@@ -37,6 +38,7 @@ export function exportToCSV(
       tx.amount,
       tx.status,
       tx.comment,
+      tx.type === 'ticket' ? tx.comment : '',
       tx.isDealer,
       tx.dealerHours,
     ]

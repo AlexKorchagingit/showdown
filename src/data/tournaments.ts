@@ -2,6 +2,7 @@ import type { Tournament } from '../types/tournament';
 import { pickParticipants } from './participants';
 import { asset } from '../lib/assets';
 import { CLUB_ADDRESS } from '../lib/clubAddress';
+import { applyPlaceToParticipant } from './prizeStructure';
 
 export const MOCK_TOURNAMENTS: Tournament[] = [
   {
@@ -27,6 +28,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Плавная',
     stackSize: 30000,
     levelDuration: '20 мин',
+    isClosed: false,
   },
   {
     id: 'freeroll',
@@ -52,6 +54,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Классическая',
     stackSize: 30000,
     levelDuration: '20 мин',
+    isClosed: false,
   },
   {
     id: 'triple-life',
@@ -75,6 +78,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Классическая',
     stackSize: 30000,
     levelDuration: '20 мин',
+    isClosed: false,
   },
   {
     id: 'phoenix',
@@ -98,6 +102,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Классическая',
     stackSize: 30000,
     levelDuration: '20 мин',
+    isClosed: false,
   },
   {
     id: 'freezeout',
@@ -122,6 +127,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Плавная',
     stackSize: 30000,
     levelDuration: '20 мин',
+    isClosed: false,
   },
   {
     id: 'chill-out',
@@ -141,11 +147,24 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
       'Классическая структура турнира',
       'Поздняя регистрация до 22:00',
     ],
-    participants: pickParticipants(20),
+    participants: (() => {
+      const list = pickParticipants(20);
+      // Last five are already eliminated (places 16–20) so the missing-places warning shows.
+      return list.map((p, index) => {
+        if (index < 15) return p;
+        return applyPlaceToParticipant(p, index + 1, 10000);
+      });
+    })(),
     lateRegUntil: '22:00',
     blindStructure: 'Классическая',
     stackSize: 30000,
     levelDuration: '20 мин',
+    isClosed: true,
+    dealers: [
+      { name: 'DmitriyVP', hours: 4, minutes: 30 },
+      { name: 'MikhailS', hours: 3, minutes: 0 },
+      { name: 'AndreyPP', hours: 2, minutes: 15 },
+    ],
   },
   {
     id: 'bounty-hunter',
@@ -170,6 +189,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Плавная',
     stackSize: 30000,
     levelDuration: '20 мин',
+    isClosed: false,
   },
   {
     id: 'deepstack',
@@ -193,5 +213,6 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Плавная',
     stackSize: 50000,
     levelDuration: '20 мин',
+    isClosed: false,
   },
 ];

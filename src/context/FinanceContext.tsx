@@ -29,6 +29,7 @@ interface FinanceContextValue {
   ) => void;
   addTicket: (tournamentId: string, userId: string, comment: string) => void;
   markPaid: (transactionIds: string[]) => void;
+  removeTransaction: (transactionId: string) => void;
   markPlayerPaid: (tournamentId: string, userId: string) => void;
   unpaidForPlayer: (tournamentId: string, userId: string) => Transaction[];
   unpaidTotalForPlayer: (tournamentId: string, userId: string) => number;
@@ -123,6 +124,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const removeTransaction = useCallback((transactionId: string) => {
+    setTransactions((prev) => prev.filter((tx) => tx.id !== transactionId));
+  }, []);
+
   const unpaidForPlayer = useCallback(
     (tournamentId: string, userId: string) =>
       transactions.filter(
@@ -156,6 +161,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addCharge,
       addTicket,
       markPaid,
+      removeTransaction,
       markPlayerPaid,
       unpaidForPlayer,
       unpaidTotalForPlayer,
@@ -167,6 +173,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addCharge,
       addTicket,
       markPaid,
+      removeTransaction,
       markPlayerPaid,
       unpaidForPlayer,
       unpaidTotalForPlayer,

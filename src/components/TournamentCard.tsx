@@ -1,6 +1,6 @@
 import { Clock, MapPin } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
-import { isTournamentPast } from '../lib/tournamentStatus';
+import { isFinished } from '../lib/tournamentStatus';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 
@@ -14,7 +14,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
 
   const seatsLeft  = Math.max(0, totalSeats - participants.length);
   const isFull     = seatsLeft === 0;
-  const isPast     = isTournamentPast(startDate, startTime);
+  const isPast     = isFinished(tournament);
 
   const dateObj      = new Date(startDate);
   const weekday      = dateObj.toLocaleDateString('ru-RU', { weekday: 'long' });

@@ -13,6 +13,12 @@ export interface TournamentStaffMember {
   minutes: number;
 }
 
+export interface TournamentDealer {
+  name: string;
+  hours: number;
+  minutes: number;
+}
+
 export const DEFAULT_STAFF_ROLES = ['Админ', 'Дилер 1', 'Дилер 2', 'Дилер 3'] as const;
 
 export function createEmptyStaff(): TournamentStaffMember[] {
@@ -41,10 +47,14 @@ export interface Tournament {
   blindStructure: string;
   stackSize: number;
   levelDuration: string;
+  /** Past / finished only when an admin has closed the tournament. */
+  isClosed: boolean;
   /** True after admin has submitted finishing places / rating awards. */
   resultsEntered?: boolean;
   /** Admin-only note filled when closing the tournament. */
   adminSecretComment?: string;
   /** Dealers / admin hours logged at close. */
   staff?: TournamentStaffMember[];
+  /** Dealers who worked the event (shown in a closed lobby). */
+  dealers?: TournamentDealer[];
 }

@@ -17,7 +17,6 @@ import { AchievementsScreen } from './pages/AchievementsScreen';
 import { AdminUsersScreen } from './pages/admin/AdminUsersScreen';
 import { AdminTournamentsScreen } from './pages/admin/AdminTournamentsScreen';
 import { AdminTournamentEditor } from './pages/admin/AdminTournamentEditor';
-import { AdminTournamentResults } from './pages/admin/AdminTournamentResults';
 import { AdminBlindsSettings } from './pages/admin/AdminBlindsSettings';
 import { AdminBlindsTimer } from './pages/admin/AdminBlindsTimer';
 import { AdminAchievementsUsers } from './pages/admin/AdminAchievementsUsers';
@@ -68,7 +67,6 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/achievements"      element={<AchievementsScreen />} />
             <Route path="/admin/users"           element={<AdminUsersScreen />} />
             <Route path="/admin/tournaments"     element={<AdminTournamentsScreen />} />
-            <Route path="/admin/tournaments/:id/results" element={<AdminTournamentResults />} />
             <Route path="/admin/tournaments/:id" element={<AdminTournamentEditor />} />
             <Route path="/admin/blinds"          element={<Navigate to="/admin/blinds/settings" replace />} />
             <Route path="/admin/blinds/settings" element={<AdminBlindsSettings />} />

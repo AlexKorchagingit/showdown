@@ -1,9 +1,15 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { useTournaments } from '../context/TournamentContext';
 import { useUser } from '../context/UserContext';
-import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
+import {
+  isFinished as hasFinished,
+  sortByRating,
+  sortByPlace,
+  hasMissingPlaces,
+} from '../lib/tournamentStatus';
+import { ratingPointsForPlace, swapParticipantPlaces } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 
@@ -89,7 +95,7 @@ function LobbyHero({
 }
 
 export function TournamentDetailPage({ tournament, onBack }: Props) {
-  const { isRegistered, toggleRegistration, tournaments } = useTournaments();
+  const { isRegistered, toggleRegistration, tournaments, updateTournament } = useTournaments();
   const { isAdmin } = useUser();
 
   const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
@@ -100,9 +106,23 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   });
 
   const tournamentFinished = hasFinished(live);
-  // Best players always on top
-  const participants = sortByRating(live.participants);
+  const participants = tournamentFinished
+    ? sortByPlace(live.participants)
+    : sortByRating(live.participants);
   const occupiedSeats = live.participants.length;
+  const missingPlaces = tournamentFinished && hasMissingPlaces(live);
+  const dealers = (live.dealers ?? []).filter((d) => d.name.trim());
+
+  const movePlace = (index: number, direction: -1 | 1) => {
+    const neighbor = index + direction;
+    if (neighbor < 0 || neighbor >= participants.length) return;
+    const current = participants[index];
+    const other = participants[neighbor];
+    if (typeof current.place !== 'number' || typeof other.place !== 'number') return;
+    updateTournament(live.id, {
+      participants: swapParticipantPlaces(live.participants, current.id, other.id, live.guarantee),
+    });
+  };
 
   return (
     <>
@@ -135,6 +155,19 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             imageUrl={live.imageUrl}
             tournamentId={live.id}
           />
+
+          {missingPlaces && (
+            <div
+              className="mx-4 mt-3 rounded-xl px-4 py-3 text-[12px] font-800 leading-snug text-center"
+              style={{
+                background: 'linear-gradient(to right, #7f1d1d, #ef4444)',
+                color: '#fff',
+                boxShadow: '0 0 18px rgba(239,68,68,0.35)',
+              }}
+            >
+              Внимание: Не всем участникам проставлены места! Результаты не окончательные.
+            </div>
+          )}
 
           <div className="px-5 pt-3 space-y-5">
             <div className="space-y-3">
@@ -219,7 +252,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
                 <span className="text-[12px] font-600" style={{ color: '#D99962' }}>
-                  Рейтинг сезона
+                  {tournamentFinished ? 'Место / очки' : 'Рейтинг сезона'}
                 </span>
               </div>
 
@@ -231,52 +264,54 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               ) : (
                 <div>
                   {participants.map((p, idx) => {
-                    const isFinished   = tournamentFinished;
-                    const isPodium     = isFinished && idx < 3;   // top-3: wreath + gradient
-                    const isFinalTable = isFinished && idx < 9;   // 1-9: gold gradient text
-                    const wreathColor  = ['#D99962', '#8c8c88', '#8C4C27'][idx] ?? null;
+                    const isClosedRow  = tournamentFinished;
+                    const placeNum     = p.place ?? (isClosedRow ? null : idx + 1);
+                    const isPodium     = isClosedRow && p.place != null && p.place <= 3;
+                    const isFinalTable = isClosedRow && p.place != null && p.place <= 9;
+                    const wreathColor  = p.place != null
+                      ? ['#D99962', '#8c8c88', '#8C4C27'][p.place - 1] ?? null
+                      : null;
+                    const award = p.place != null
+                      ? ratingPointsForPlace(p.place, live.guarantee)
+                      : 0;
+                    const canMoveUp = isAdmin && isClosedRow
+                      && typeof p.place === 'number'
+                      && idx > 0
+                      && typeof participants[idx - 1]?.place === 'number';
+                    const canMoveDown = isAdmin && isClosedRow
+                      && typeof p.place === 'number'
+                      && idx < participants.length - 1
+                      && typeof participants[idx + 1]?.place === 'number';
 
                     return (
                       <div key={p.id}>
-                        {/* "Финальный стол" header + thick top border */}
-                        {isFinished && idx === 0 && (
+                        {isClosedRow && idx === 0 && participants.some((row) => (row.place ?? 99) <= 9) && (
                           <>
                             <div className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
                                  style={{ color: '#D99962' }}>
                               🏆 Финальный стол
                             </div>
-                            {/* Thick gold border above final table */}
                             <div style={{ height: 2, background: 'rgba(217,153,98,0.35)', margin: '0 16px 4px' }} />
                           </>
                         )}
 
-                        {/* Thick border AFTER 9th place */}
-                        {isFinished && idx === 8 && participants.length > 9 && (
-                          <div>
-                            {/* Row rendered below, then border after */}
-                          </div>
-                        )}
-
-                        {/* Row */}
                         <div
                           className="flex items-center gap-3.5 px-5 py-3"
                           style={{
-                            borderTop: idx > 0 && !(isFinished && idx === 0)
+                            borderTop: idx > 0 && !(isClosedRow && idx === 0)
                               ? '1px solid rgba(255,255,255,0.05)'
                               : 'none',
                           }}
                         >
-                          {/* Rank */}
                           <span
                             className="text-[11px] font-700 w-5 text-right shrink-0"
                             style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                           >
-                            {idx + 1}
+                            {placeNum ?? '—'}
                           </span>
 
-                          {/* Avatar — wreath for top-3 */}
                           <div className="relative shrink-0">
-                            {isPodium && (
+                            {isPodium && wreathColor && (
                               <div
                                 className="absolute rounded-full pointer-events-none animate-pulse"
                                 style={{
@@ -299,7 +334,6 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                             </div>
                           </div>
 
-                          {/* Nickname */}
                           <div className="flex-1 min-w-0">
                             <p
                               className="text-[13px] font-600 truncate"
@@ -311,24 +345,47 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                                       WebkitTextFillColor: 'transparent',
                                       backgroundClip: 'text',
                                     }
-                                  : { color: '#ffffff' }   /* places 10+: white */
+                                  : { color: '#ffffff' }
                               }
                             >
                               {p.nickname}
                             </p>
                           </div>
 
-                          {/* Rating */}
                           <p
                             className="text-[12px] font-700 shrink-0"
                             style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                           >
-                            {p.rating.toLocaleString('ru-RU')}
+                            {isClosedRow
+                              ? (p.place != null ? `+${award.toLocaleString('ru-RU')}` : '—')
+                              : p.rating.toLocaleString('ru-RU')}
                           </p>
+
+                          {isAdmin && isClosedRow && (
+                            <div className="flex flex-col shrink-0 -my-1">
+                              <button
+                                type="button"
+                                disabled={!canMoveUp}
+                                onClick={() => movePlace(idx, -1)}
+                                className="w-7 h-6 flex items-center justify-center disabled:opacity-25"
+                                aria-label="Выше"
+                              >
+                                <ChevronUp size={16} style={{ color: '#D99962' }} />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!canMoveDown}
+                                onClick={() => movePlace(idx, 1)}
+                                className="w-7 h-6 flex items-center justify-center disabled:opacity-25"
+                                aria-label="Ниже"
+                              >
+                                <ChevronDown size={16} style={{ color: '#D99962' }} />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Thick gold border AFTER 9th place */}
-                        {isFinished && idx === 8 && participants.length > 9 && (
+                        {isClosedRow && p.place === 9 && participants.some((row) => (row.place ?? 0) > 9) && (
                           <div style={{ height: 2, background: 'rgba(217,153,98,0.35)', margin: '4px 16px' }} />
                         )}
                       </div>
@@ -337,6 +394,40 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </div>
               )}
             </div>
+
+            {tournamentFinished && (
+              <div
+                className="rounded-2xl p-5 space-y-3"
+                style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
+              >
+                <h3
+                  className="text-[12px] font-700 uppercase tracking-[0.2em]"
+                  style={{ color: '#F2D8A7' }}
+                >
+                  Персонал турнира
+                </h3>
+                {dealers.length === 0 ? (
+                  <p className="text-[13px]" style={{ color: '#6B6360' }}>
+                    Данные о дилерах не заполнены
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {dealers.map((row) => (
+                      <div
+                        key={`${row.name}-${row.hours}-${row.minutes}`}
+                        className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
+                        style={{ background: 'rgba(17,11,9,0.55)' }}
+                      >
+                        <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
+                        <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
+                          {row.hours} ч {row.minutes} мин
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {isAdmin && live.resultsEntered && (
               <div
