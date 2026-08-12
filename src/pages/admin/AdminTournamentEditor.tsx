@@ -12,6 +12,7 @@ import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentSta
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { CURRENT_USER_RATING } from '../../types/player';
+import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
 
 /** Season rating from the global player pool (read-only in lobby admin). */
 function resolveSeasonRating(nickname: string): number {
@@ -62,7 +63,7 @@ function EditableHero({
           className={`absolute pointer-events-none select-none bg-transparent border-0 shadow-none ring-0 outline-none ${
             isCustomPhoto
               ? 'inset-0 w-full h-full object-cover'
-              : 'top-1/2 -translate-y-1/2 right-[-5%] h-[120%] w-auto max-w-none object-right object-contain origin-right scale-75'
+              : tournamentArtClassName(tournament.id)
           }`}
           style={
             isCustomPhoto
@@ -72,8 +73,7 @@ function EditableHero({
                   outline: 'none',
                   boxShadow: 'none',
                   background: 'transparent',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 45%)',
-                  maskImage: 'linear-gradient(to right, transparent, black 45%)',
+                  ...TOURNAMENT_ART_MASK,
                 }
               : {
                   opacity: 0.8,
@@ -82,17 +82,13 @@ function EditableHero({
                   outline: 'none',
                   boxShadow: 'none',
                   background: 'transparent',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 45%)',
-                  maskImage: 'linear-gradient(to right, transparent, black 45%)',
+                  ...TOURNAMENT_ART_MASK,
                 }
           }
         />
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
-          style={{
-            background:
-              'linear-gradient(to right, #1d0b07 0%, #1d0b07 28%, rgba(29,11,7,0.55) 42%, transparent 55%)',
-          }}
+          style={TOURNAMENT_ART_FADE}
         />
       </div>
 

@@ -12,6 +12,21 @@ export interface ShopItem {
 
 export const DEFAULT_CHARACTER_ID = 'char_base';
 export const DEFAULT_BG_ID = 'bg_1';
+export const DEFAULT_CHARACTER_LEFT = '18%';
+
+/** Profile portrait offset — some arts sit too far left in the frame. */
+export const CHARACTER_PROFILE_LEFT: Record<string, string> = {
+  char_cowboy: '22%',
+  char_fortune: '22%',
+  char_knight: '22%',
+  char_jester: '22%',
+  char_mage: '22%',
+  char_villain: '22%',
+};
+
+export function characterProfileLeft(id: string): string {
+  return CHARACTER_PROFILE_LEFT[id] ?? DEFAULT_CHARACTER_LEFT;
+}
 
 export const SHOP_ITEMS: ShopItem[] = [
   { id: DEFAULT_CHARACTER_ID, type: 'character', name: 'Базовый',   image: asset('/characters/char_base.png'),    price: 0 },

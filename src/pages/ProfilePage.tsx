@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { CURRENT_PLAYER_STATS } from '../data/playerStats';
+import { characterProfileLeft } from '../data/shopItems';
 
 const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
 
@@ -36,7 +37,7 @@ const GOLD_NUM =
 
 export function ProfilePage() {
   const navigate = useNavigate();
-  const { nickname, slogan, characterImage, backgroundImage } = useProfile();
+  const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const trimmedSlogan = slogan.trim();
@@ -65,7 +66,8 @@ export function ProfilePage() {
       <img
         src={characterImage}
         alt=""
-        className="absolute bottom-[60px] left-[18%] h-[57%] w-auto object-contain object-bottom z-0 pointer-events-none"
+        className="absolute bottom-[60px] h-[57%] w-auto object-contain object-bottom z-0 pointer-events-none"
+        style={{ left: characterProfileLeft(equippedChar) }}
       />
 
       {/* Header card */}

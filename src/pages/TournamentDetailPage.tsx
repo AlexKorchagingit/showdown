@@ -5,6 +5,7 @@ import { useTournaments } from '../context/TournamentContext';
 import { useUser } from '../context/UserContext';
 import { isFinished as hasFinished, sortByRating } from '../lib/tournamentStatus';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
+import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 
 interface Props {
   tournament: Tournament;
@@ -17,11 +18,13 @@ function LobbyHero({
   formattedDate,
   startTime,
   imageUrl,
+  tournamentId,
 }: {
   title: string;
   formattedDate: string;
   startTime: string;
   imageUrl: string;
+  tournamentId: string;
 }) {
   return (
     <div
@@ -34,7 +37,7 @@ function LobbyHero({
           src={imageUrl}
           alt=""
           aria-hidden
-          className="absolute top-1/2 -translate-y-1/2 right-[-5%] h-[120%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-75 bg-transparent border-0 shadow-none ring-0 outline-none"
+          className={tournamentArtClassName(tournamentId)}
           style={{
             opacity: 0.85,
             filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
@@ -42,16 +45,12 @@ function LobbyHero({
             outline: 'none',
             boxShadow: 'none',
             background: 'transparent',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black 45%)',
-            maskImage: 'linear-gradient(to right, transparent, black 45%)',
+            ...TOURNAMENT_ART_MASK,
           }}
         />
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
-          style={{
-            background:
-              'linear-gradient(to right, #1d0b07 0%, #1d0b07 28%, rgba(29,11,7,0.55) 42%, transparent 55%)',
-          }}
+          style={TOURNAMENT_ART_FADE}
         />
       </div>
 
@@ -134,6 +133,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             formattedDate={formattedDate}
             startTime={live.startTime}
             imageUrl={live.imageUrl}
+            tournamentId={live.id}
           />
 
           <div className="px-5 pt-3 space-y-5">

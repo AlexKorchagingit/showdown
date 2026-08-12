@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { SectionScreen } from '../components/SectionScreen';
-import { SteampunkAchievementIcon } from '../components/SteampunkAchievementIcon';
 import { useUser } from '../context/UserContext';
 import { isAchievementDone, type Achievement } from '../data/achievements';
 import {
@@ -39,10 +38,16 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         </div>
       )}
 
-      <SteampunkAchievementIcon
-        id={achievement.id}
-        completed={done}
-        className="w-10 h-10 mb-1 shrink-0 relative z-10"
+      <img
+        src={achievement.imageUrl}
+        alt=""
+        aria-hidden
+        className={[
+          'w-12 h-12 mb-1 shrink-0 relative z-10 object-contain',
+          done
+            ? 'drop-shadow-[0_0_6px_#D99962] scale-110'
+            : 'opacity-55 grayscale-[0.35]',
+        ].join(' ')}
       />
       <p className="relative z-10 text-[10px] font-bold text-white mb-0.5 leading-tight px-0.5">
         {achievement.title}

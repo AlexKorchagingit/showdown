@@ -64,10 +64,20 @@ export function AdminAchievementsEditor() {
               className="rounded-2xl px-4 py-3.5"
               style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
             >
-              <p className="text-white font-700 text-[14px] leading-tight">{achievement.title}</p>
-              <p className="text-[11px] font-500 mt-0.5 mb-3" style={{ color: '#8c8c88' }}>
-                {achievement.description}
-              </p>
+              <div className="flex items-start gap-3">
+                <img
+                  src={achievement.imageUrl}
+                  alt=""
+                  aria-hidden
+                  className="w-10 h-10 shrink-0 object-contain mt-0.5"
+                />
+                <div className="min-w-0">
+                  <p className="text-white font-700 text-[14px] leading-tight">{achievement.title}</p>
+                  <p className="text-[11px] font-500 mt-0.5 mb-3" style={{ color: '#8c8c88' }}>
+                    {achievement.description}
+                  </p>
+                </div>
+              </div>
 
               {hasTarget ? (
                 <label className="flex items-center justify-between gap-3">

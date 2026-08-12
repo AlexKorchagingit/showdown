@@ -9,6 +9,7 @@ import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
 import { asset } from '../lib/assets';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
+import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { CURRENT_USER_RATING } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
@@ -211,7 +212,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           src={tournament.imageUrl}
           alt=""
           aria-hidden
-          className="absolute top-1/2 -translate-y-1/2 right-[-5%] h-[120%] w-auto max-w-none object-right object-contain pointer-events-none select-none origin-right scale-75 bg-transparent border-0 shadow-none ring-0 outline-none"
+          className={tournamentArtClassName(tournament.id)}
           style={{
             opacity: 0.85,
             filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
@@ -219,16 +220,12 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
             outline: 'none',
             boxShadow: 'none',
             background: 'transparent',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, black 45%)',
-            maskImage: 'linear-gradient(to right, transparent, black 45%)',
+            ...TOURNAMENT_ART_MASK,
           }}
         />
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
-          style={{
-            background:
-              'linear-gradient(to right, #1d0b07 0%, #1d0b07 28%, rgba(29,11,7,0.55) 42%, transparent 55%)',
-          }}
+          style={TOURNAMENT_ART_FADE}
         />
       </div>
 
@@ -528,10 +525,10 @@ export function HomePage() {
       >
         <div className="space-y-2.5">
           <SocialLinkRow
-            href="#"
+            href="https://vk.ru/im/channels/-240795522"
             icon={<span className="text-[11px] font-800 text-[#93C5FD]">VK</span>}
             label="ВКонтакте"
-            subtitle="Скоро"
+            subtitle="vk.ru/im/channels/-240795522"
           />
           <SocialLinkRow
             href="#"
