@@ -43,12 +43,12 @@ export default {
       },
       keyframes: {
         achGlow: {
-          '0%, 100%': { opacity: '0.28', transform: 'scale(0.72)' },
-          '50%': { opacity: '0.95', transform: 'scale(1.22)' },
+          '0%, 100%': { opacity: '0.18', transform: 'scale(0.9)' },
+          '50%': { opacity: '0.42', transform: 'scale(1.06)' },
         },
       },
       animation: {
-        'ach-glow': 'achGlow 2.2s ease-in-out infinite',
+        'ach-glow': 'achGlow 2.8s ease-in-out infinite',
       },
     },
   },

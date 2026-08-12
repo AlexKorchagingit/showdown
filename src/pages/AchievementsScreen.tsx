@@ -8,12 +8,34 @@ import {
   sortAchievements,
 } from '../lib/achievementStorage';
 
+const DEFAULT_ART = '5.25rem';
+const BIGGER_ART = '5.9rem';
+
+/** Slightly larger badge art for selected achievements. */
+const ART_SIZE: Record<string, string> = {
+  paparazzi: '6.15rem',
+  crucian: BIGGER_ART,
+  punctual: BIGGER_ART,
+  fish: BIGGER_ART,
+  welcome: BIGGER_ART,
+  shark: BIGGER_ART,
+  predator: BIGGER_ART,
+  'giant-slayer': BIGGER_ART,
+  friend: BIGGER_ART,
+  'four-kings': BIGGER_ART,
+  'the-best': BIGGER_ART,
+};
+
 function AchievementCard({ achievement }: { achievement: Achievement }) {
   const done = isAchievementDone(achievement);
   const target = achievement.target ?? 0;
   const progress = achievement.progress ?? 0;
   const hasProgressBar = target > 0;
   const percent = target > 0 ? Math.min(100, (progress / target) * 100) : 0;
+  const artSize = ART_SIZE[achievement.id] ?? DEFAULT_ART;
+  const tightText = achievement.id === 'headhunter' || achievement.id === 'paparazzi';
+  const singleLineTitle = achievement.id === 'paparazzi';
+  const liftTitle = achievement.id === 'headhunter';
 
   return (
     <div
@@ -38,13 +60,19 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         </div>
       )}
 
-      <div className="relative z-10 mb-1 flex items-center justify-center w-[5.25rem] h-[5.25rem] shrink-0">
+      <div
+        className={[
+          'relative z-10 flex items-center justify-center shrink-0',
+          liftTitle ? 'mb-0' : 'mb-1',
+        ].join(' ')}
+        style={{ width: artSize, height: artSize }}
+      >
         {done && (
           <span
-            className="absolute inset-[-12%] rounded-full blur-md animate-ach-glow pointer-events-none"
+            className="absolute inset-[-6%] rounded-full blur-lg animate-ach-glow pointer-events-none"
             style={{
               background:
-                'radial-gradient(circle, rgba(242,216,167,0.95) 0%, rgba(217,153,98,0.7) 45%, rgba(140,76,39,0) 72%)',
+                'radial-gradient(circle, rgba(217,153,98,0.38) 0%, rgba(217,153,98,0.14) 48%, transparent 72%)',
             }}
           />
         )}
@@ -54,19 +82,26 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
           aria-hidden
           className={[
             'relative z-10 w-full h-full object-contain',
-            done ? 'drop-shadow-[0_0_8px_#D99962]' : 'opacity-55 grayscale-[0.35]',
+            done ? 'drop-shadow-[0_0_4px_rgba(217,153,98,0.45)]' : 'opacity-55 grayscale-[0.35]',
           ].join(' ')}
         />
       </div>
       <p
         className={[
-          'relative z-10 text-[11px] font-black mb-0.5 leading-tight px-0.5',
+          'relative z-10 font-black leading-tight px-0.5',
           'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]',
+          singleLineTitle ? 'text-[10px] whitespace-nowrap mb-0.5' : 'text-[11px] mb-0.5',
+          liftTitle ? '-mt-1 mb-0' : '',
         ].join(' ')}
       >
         {achievement.title}
       </p>
-      <p className="relative z-10 text-[8px] text-white/55 leading-tight px-0.5 line-clamp-3">
+      <p
+        className={[
+          'relative z-10 text-white/55 leading-tight px-0.5 overflow-hidden',
+          tightText ? 'text-[7.5px] line-clamp-2' : 'text-[8px] line-clamp-3',
+        ].join(' ')}
+      >
         {achievement.description}
       </p>
     </div>

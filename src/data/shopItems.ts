@@ -20,7 +20,7 @@ export const CHARACTER_PROFILE_LEFT: Record<string, string> = {
   char_fortune: '26%',
   char_knight: '22%',
   char_jester: '26%',
-  char_mage: '26%',
+  char_mage: '30%',
   char_villain: '26%',
 };
 
