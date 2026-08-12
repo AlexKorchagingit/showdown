@@ -7,9 +7,9 @@ const DEFAULT_FIT = 'right-[-5%] h-[120%] scale-75';
 const FIT_BY_ID: Record<string, string> = {
   opening: 'right-[-5%] h-[132%] scale-[0.86]',
   'triple-life': 'right-[-12%] h-[120%] scale-75',
-  phoenix: 'right-[3%] h-[132%] scale-[0.86]',
-  freezeout: 'right-[3%] h-[132%] scale-[0.86]',
-  'bounty-hunter': 'right-[3%] h-[132%] scale-[0.86]',
+  phoenix: 'right-[-3%] h-[132%] scale-[0.86]',
+  freezeout: 'right-[-3%] h-[132%] scale-[0.86]',
+  'bounty-hunter': 'right-[-3%] h-[132%] scale-[0.86]',
 };
 
 export function tournamentArtClassName(id: string): string {

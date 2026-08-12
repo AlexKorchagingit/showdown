@@ -41,6 +41,15 @@ export default {
         'card':  '0 2px 20px rgba(0,0,0,0.5)',
         'glow':  '0 0 30px rgba(242,216,167,0.2)',
       },
+      keyframes: {
+        achGlow: {
+          '0%, 100%': { opacity: '0.28', transform: 'scale(0.72)' },
+          '50%': { opacity: '0.95', transform: 'scale(1.22)' },
+        },
+      },
+      animation: {
+        'ach-glow': 'achGlow 2.2s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

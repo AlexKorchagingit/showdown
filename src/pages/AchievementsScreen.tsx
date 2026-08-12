@@ -38,18 +38,32 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         </div>
       )}
 
-      <img
-        src={achievement.imageUrl}
-        alt=""
-        aria-hidden
+      <div className="relative z-10 mb-1 flex items-center justify-center w-[5.25rem] h-[5.25rem] shrink-0">
+        {done && (
+          <span
+            className="absolute inset-[-12%] rounded-full blur-md animate-ach-glow pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(circle, rgba(242,216,167,0.95) 0%, rgba(217,153,98,0.7) 45%, rgba(140,76,39,0) 72%)',
+            }}
+          />
+        )}
+        <img
+          src={achievement.imageUrl}
+          alt=""
+          aria-hidden
+          className={[
+            'relative z-10 w-full h-full object-contain',
+            done ? 'drop-shadow-[0_0_8px_#D99962]' : 'opacity-55 grayscale-[0.35]',
+          ].join(' ')}
+        />
+      </div>
+      <p
         className={[
-          'w-12 h-12 mb-1 shrink-0 relative z-10 object-contain',
-          done
-            ? 'drop-shadow-[0_0_6px_#D99962] scale-110'
-            : 'opacity-55 grayscale-[0.35]',
+          'relative z-10 text-[11px] font-black mb-0.5 leading-tight px-0.5',
+          'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]',
         ].join(' ')}
-      />
-      <p className="relative z-10 text-[10px] font-bold text-white mb-0.5 leading-tight px-0.5">
+      >
         {achievement.title}
       </p>
       <p className="relative z-10 text-[8px] text-white/55 leading-tight px-0.5 line-clamp-3">
