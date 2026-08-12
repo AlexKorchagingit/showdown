@@ -1,7 +1,9 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
+import { PlayerNameLink } from '../components/PlayerNameLink';
 import { useTournaments } from '../context/TournamentContext';
+import { useFinance } from '../context/FinanceContext';
 import { useUser } from '../context/UserContext';
 import {
   isFinished as hasFinished,
@@ -9,7 +11,7 @@ import {
   sortByPlace,
   hasMissingPlaces,
 } from '../lib/tournamentStatus';
-import { ratingPointsForPlace, swapParticipantPlaces } from '../data/prizeStructure';
+import { ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 
@@ -94,8 +96,17 @@ function LobbyHero({
   );
 }
 
+function formatDealerHours(hours: number, minutes = 0): string {
+  if (minutes > 0) return `${hours} ч ${minutes} мин`;
+  const whole = Math.floor(hours);
+  const mins = Math.round((hours - whole) * 60);
+  if (mins === 0) return `${hours} ч`;
+  return `${whole} ч ${mins} мин`;
+}
+
 export function TournamentDetailPage({ tournament, onBack }: Props) {
-  const { isRegistered, toggleRegistration, tournaments, updateTournament } = useTournaments();
+  const { isRegistered, toggleRegistration, tournaments } = useTournaments();
+  const { getDealerHours } = useFinance();
   const { isAdmin } = useUser();
 
   const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
@@ -111,18 +122,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     : sortByRating(live.participants);
   const occupiedSeats = live.participants.length;
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
-  const dealers = (live.dealers ?? []).filter((d) => d.name.trim());
-
-  const movePlace = (index: number, direction: -1 | 1) => {
-    const neighbor = index + direction;
-    if (neighbor < 0 || neighbor >= participants.length) return;
-    const current = participants[index];
-    const other = participants[neighbor];
-    if (typeof current.place !== 'number' || typeof other.place !== 'number') return;
-    updateTournament(live.id, {
-      participants: swapParticipantPlaces(live.participants, current.id, other.id, live.guarantee),
-    });
-  };
+  const playingDealers = live.participants
+    .map((p) => ({ name: p.nickname, hours: getDealerHours(live.id, p.id) }))
+    .filter((row) => row.hours > 0);
+  const nonPlayingDealers = (live.dealers ?? []).filter((d) => d.name.trim());
+  const hasDealers = playingDealers.length > 0 || nonPlayingDealers.length > 0;
 
   return (
     <>
@@ -274,14 +278,6 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     const award = p.place != null
                       ? ratingPointsForPlace(p.place, live.guarantee)
                       : 0;
-                    const canMoveUp = isAdmin && isClosedRow
-                      && typeof p.place === 'number'
-                      && idx > 0
-                      && typeof participants[idx - 1]?.place === 'number';
-                    const canMoveDown = isAdmin && isClosedRow
-                      && typeof p.place === 'number'
-                      && idx < participants.length - 1
-                      && typeof participants[idx + 1]?.place === 'number';
 
                     return (
                       <div key={p.id}>
@@ -335,8 +331,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <p
-                              className="text-[13px] font-600 truncate"
+                            <PlayerNameLink
+                              id={p.id}
+                              nickname={p.nickname}
+                              className="text-[13px] font-600 truncate block"
                               style={
                                 isFinalTable
                                   ? {
@@ -347,9 +345,12 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                                     }
                                   : { color: '#ffffff' }
                               }
-                            >
-                              {p.nickname}
-                            </p>
+                            />
+                            {isAdmin && p.comment?.trim() && (
+                              <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: '#f87171' }}>
+                                {p.comment}
+                              </p>
+                            )}
                           </div>
 
                           <p
@@ -361,28 +362,6 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                               : p.rating.toLocaleString('ru-RU')}
                           </p>
 
-                          {isAdmin && isClosedRow && (
-                            <div className="flex flex-col shrink-0 -my-1">
-                              <button
-                                type="button"
-                                disabled={!canMoveUp}
-                                onClick={() => movePlace(idx, -1)}
-                                className="w-7 h-6 flex items-center justify-center disabled:opacity-25"
-                                aria-label="Выше"
-                              >
-                                <ChevronUp size={16} style={{ color: '#D99962' }} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={!canMoveDown}
-                                onClick={() => movePlace(idx, 1)}
-                                className="w-7 h-6 flex items-center justify-center disabled:opacity-25"
-                                aria-label="Ниже"
-                              >
-                                <ChevronDown size={16} style={{ color: '#D99962' }} />
-                              </button>
-                            </div>
-                          )}
                         </div>
 
                         {isClosedRow && p.place === 9 && participants.some((row) => (row.place ?? 0) > 9) && (
@@ -404,23 +383,45 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   className="text-[12px] font-700 uppercase tracking-[0.2em]"
                   style={{ color: '#F2D8A7' }}
                 >
-                  Персонал турнира
+                  Дилеры
                 </h3>
-                {dealers.length === 0 ? (
+                {!hasDealers ? (
                   <p className="text-[13px]" style={{ color: '#6B6360' }}>
                     Данные о дилерах не заполнены
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {dealers.map((row) => (
+                    {playingDealers.map((row) => (
                       <div
-                        key={`${row.name}-${row.hours}-${row.minutes}`}
+                        key={`playing-${row.name}`}
                         className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
                         style={{ background: 'rgba(17,11,9,0.55)' }}
                       >
-                        <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
+                          <p className="text-[10px] font-600 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
+                            Играющий
+                          </p>
+                        </div>
                         <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
-                          {row.hours} ч {row.minutes} мин
+                          {formatDealerHours(row.hours)}
+                        </p>
+                      </div>
+                    ))}
+                    {nonPlayingDealers.map((row) => (
+                      <div
+                        key={`staff-${row.name}-${row.hours}-${row.minutes}`}
+                        className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
+                        style={{ background: 'rgba(17,11,9,0.55)' }}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
+                          <p className="text-[10px] font-600 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
+                            Неиграющий
+                          </p>
+                        </div>
+                        <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
+                          {formatDealerHours(row.hours, row.minutes)}
                         </p>
                       </div>
                     ))}

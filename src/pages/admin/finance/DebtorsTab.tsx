@@ -1,12 +1,8 @@
 import { Check } from 'lucide-react';
 import { useFinance } from '../../../context/FinanceContext';
 import { useTournaments } from '../../../context/TournamentContext';
-import { ALL_PARTICIPANTS } from '../../../data/participants';
+import { playerNickname } from '../../../lib/playerName';
 import { TRANSACTION_TYPE_LABEL } from '../../../types/finance';
-
-function playerName(userId: string): string {
-  return ALL_PARTICIPANTS.find((p) => p.id === userId)?.nickname ?? userId;
-}
 
 export function DebtorsTab() {
   const { transactions, markPaid } = useFinance();
@@ -42,7 +38,7 @@ export function DebtorsTab() {
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[15px] font-700 text-white truncate">{playerName(tx.userId)}</p>
+              <p className="text-[15px] font-700 text-white truncate">{playerNickname(tx.userId)}</p>
               <p className="text-[12px] mt-0.5" style={{ color: '#D99962' }}>
                 {tournamentTitle(tx.tournamentId)}
               </p>

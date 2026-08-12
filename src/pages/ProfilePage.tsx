@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronDown, Settings, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { CURRENT_PLAYER_STATS } from '../data/playerStats';
-import { characterProfileLeft } from '../data/shopItems';
+import { characterProfileLeft, DEFAULT_CHARACTER_ID, DEFAULT_BG_ID, resolveImage } from '../data/shopItems';
+import { resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 
 const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
 
@@ -37,52 +38,103 @@ const GOLD_NUM =
 
 export function ProfilePage() {
   const navigate = useNavigate();
+  const { playerId } = useParams<{ playerId?: string }>();
+  const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const trimmedSlogan = slogan.trim();
+  const readOnly = Boolean(playerId);
+  const state = (location.state ?? null) as Partial<PublicProfileStats> | null;
+  const publicProfile = readOnly && playerId ? resolvePublicProfile(playerId, state) : null;
 
-  const sideStats = useMemo(
-    () =>
-      SIDE_STATS_SOURCE.filter((stat) => stat.numeric > 0).map((stat, index) => ({
+  const displayNickname = publicProfile?.nickname ?? nickname;
+  const displayCharacter = readOnly
+    ? resolveImage(DEFAULT_CHARACTER_ID, 'character')
+    : characterImage;
+  const displayBackground = readOnly ? resolveImage(DEFAULT_BG_ID, 'bg') : backgroundImage;
+  const displayCharId = readOnly ? DEFAULT_CHARACTER_ID : equippedChar;
+
+  const trimmedSlogan = readOnly ? '' : slogan.trim();
+
+  const sideStats = useMemo(() => {
+    if (!readOnly || !publicProfile) {
+      return SIDE_STATS_SOURCE.filter((stat) => stat.numeric > 0).map((stat, index) => ({
         ...stat,
         size: SIDE_STAT_SIZES[Math.min(index, SIDE_STAT_SIZES.length - 1)],
-      })),
-    [],
-  );
+      }));
+    }
+
+    const rows: { label: string; display: string }[] = [];
+    if (publicProfile.points != null && publicProfile.points > 0) {
+      rows.push({ label: 'Рейтинг', display: publicProfile.points.toLocaleString('ru-RU') });
+    }
+    if (publicProfile.won != null && publicProfile.won > 0) {
+      rows.push({ label: 'Победы', display: String(publicProfile.won) });
+    }
+    if (publicProfile.knockouts != null && publicProfile.knockouts > 0) {
+      rows.push({ label: 'Нокауты', display: String(publicProfile.knockouts) });
+    }
+    if (publicProfile.played != null && publicProfile.played > 0) {
+      rows.push({ label: 'Игры', display: String(publicProfile.played) });
+    }
+
+    return rows.map((stat, index) => ({
+      ...stat,
+      size: SIDE_STAT_SIZES[Math.min(index, SIDE_STAT_SIZES.length - 1)],
+    }));
+  }, [readOnly, publicProfile]);
 
   const extraStats = useMemo(
-    () => EXTRA_STATS_SOURCE.filter((stat) => stat.value > 0),
-    [],
+    () => (readOnly ? [] : EXTRA_STATS_SOURCE.filter((stat) => stat.value > 0)),
+    [readOnly],
   );
 
   return (
     <div className="relative w-full h-full overflow-hidden">
       <img
-        src={backgroundImage}
+        src={displayBackground}
         alt=""
         className="absolute inset-0 w-full h-full object-cover z-0"
       />
       <img
-        src={characterImage}
+        src={displayCharacter}
         alt=""
         className="absolute bottom-[60px] h-[57%] w-auto object-contain object-bottom z-0 pointer-events-none"
-        style={{ left: characterProfileLeft(equippedChar) }}
+        style={{ left: characterProfileLeft(displayCharId) }}
       />
+
+      {readOnly && (
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
+          style={{
+            background: 'rgba(28,20,16,0.78)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(217,153,98,0.28)',
+          }}
+          aria-label="Назад"
+        >
+          <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
+        </button>
+      )}
 
       {/* Header card */}
       <div className="relative z-10 mx-4 mt-2 px-4 pt-2 pb-1 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
-        <button
-          type="button"
-          onClick={() => navigate('/settings')}
-          className="absolute top-3 right-3 p-0 active:opacity-60 transition-opacity"
-          aria-label="Настройки"
-        >
-          <Settings className="w-7 h-7 text-[#F2D8A7]" strokeWidth={2} />
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => navigate('/settings')}
+            className="absolute top-3 right-3 p-0 active:opacity-60 transition-opacity"
+            aria-label="Настройки"
+          >
+            <Settings className="w-7 h-7 text-[#F2D8A7]" strokeWidth={2} />
+          </button>
+        )}
 
-        <div className="pr-10 min-w-0">
-          <h1 className={`text-2xl font-black leading-tight ${GOLD_TEXT}`}>{nickname}</h1>
+        <div className={readOnly ? 'min-w-0' : 'pr-10 min-w-0'}>
+          <h1 className={`text-2xl font-black leading-tight ${GOLD_TEXT}`}>{displayNickname}</h1>
           {trimmedSlogan && (
             <p
               className={`text-xs italic mt-1 leading-snug text-wrap break-words whitespace-normal line-clamp-2 ${GOLD_TEXT}`}
@@ -92,46 +144,50 @@ export function ProfilePage() {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsExpanded((v) => !v)}
-          className="w-full flex justify-center mt-0.5 active:opacity-60 transition-opacity"
-          aria-expanded={isExpanded}
-          aria-label="Раскрыть раздел"
-        >
-          <ChevronDown
-            size={20}
-            className={`text-white transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-          />
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((v) => !v)}
+            className="w-full flex justify-center mt-0.5 active:opacity-60 transition-opacity"
+            aria-expanded={isExpanded}
+            aria-label="Раскрыть раздел"
+          >
+            <ChevronDown
+              size={20}
+              className={`text-white transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+        )}
 
-        <motion.div
-          initial={false}
-          animate={{ height: isExpanded ? 'auto' : 0 }}
-          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-          className="overflow-hidden"
-        >
-          <div className="flex flex-row justify-between items-center mt-2 pt-3 border-t border-white/10 gap-3 pb-1">
-            <div className="flex flex-row gap-4">
-              {extraStats.map(({ label, value }) => (
-                <div key={label} className="flex flex-col items-center">
-                  <span className="text-lg font-bold text-[#D99962] leading-none">{value}</span>
-                  <span className="text-white/60 text-[10px] uppercase mt-1 whitespace-nowrap">
-                    {label}
-                  </span>
-                </div>
-              ))}
+        {!readOnly && (
+          <motion.div
+            initial={false}
+            animate={{ height: isExpanded ? 'auto' : 0 }}
+            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-row justify-between items-center mt-2 pt-3 border-t border-white/10 gap-3 pb-1">
+              <div className="flex flex-row gap-4">
+                {extraStats.map(({ label, value }) => (
+                  <div key={label} className="flex flex-col items-center">
+                    <span className="text-lg font-bold text-[#D99962] leading-none">{value}</span>
+                    <span className="text-white/60 text-[10px] uppercase mt-1 whitespace-nowrap">
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate('/achievements')}
+                className="shrink-0 bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white text-sm font-bold px-4 py-2 rounded-lg active:scale-95 transition-transform"
+              >
+                Достижения
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/achievements')}
-              className="shrink-0 bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white text-sm font-bold px-4 py-2 rounded-lg active:scale-95 transition-transform"
-            >
-              Достижения
-            </button>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
       </div>
 
       {/* Left stats */}
@@ -152,21 +208,23 @@ export function ProfilePage() {
         </div>
       )}
 
-      {/* Shop */}
-      <div className="absolute bottom-2 left-0 right-0 z-10 px-4 flex flex-col items-center">
-        <button
-          type="button"
-          onClick={() => navigate('/shop')}
-          className="w-full max-w-[200px] h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-bold tracking-wide text-[#0A0908] py-2 px-4 active:scale-[0.97] transition-transform"
-          style={{
-            background: 'linear-gradient(to right, #8C4C27, #D99962)',
-            boxShadow: '0 0 18px rgba(217,153,98,0.28)',
-          }}
-        >
-          <ShoppingCart size={16} strokeWidth={2.4} />
-          МАГАЗИН
-        </button>
-      </div>
+      {/* Shop — own profile only */}
+      {!readOnly && (
+        <div className="absolute bottom-2 left-0 right-0 z-10 px-4 flex flex-col items-center">
+          <button
+            type="button"
+            onClick={() => navigate('/shop')}
+            className="w-full max-w-[200px] h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-bold tracking-wide text-[#0A0908] py-2 px-4 active:scale-[0.97] transition-transform"
+            style={{
+              background: 'linear-gradient(to right, #8C4C27, #D99962)',
+              boxShadow: '0 0 18px rgba(217,153,98,0.28)',
+            }}
+          >
+            <ShoppingCart size={16} strokeWidth={2.4} />
+            МАГАЗИН
+          </button>
+        </div>
+      )}
     </div>
   );
 }

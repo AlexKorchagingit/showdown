@@ -29,7 +29,7 @@ import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
 
 const NAV_HEIGHT = '5rem';
-const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements|admin\/.+)$/;
+const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|profile\/[^/]+|settings|shop|about|qa|achievements|admin\/.+)$/;
 const SPLASH_MS = 2000;
 
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
@@ -60,6 +60,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/tournaments/:id"   element={<TournamentDetailRoute />} />
             <Route path="/rating"            element={<RatingPage />} />
             <Route path="/profile"           element={<ProfilePage />} />
+            <Route path="/profile/:playerId" element={<ProfilePage />} />
             <Route path="/settings"          element={<SettingsPage userEmail={userEmail} />} />
             <Route path="/shop"              element={<ShopScreen />} />
             <Route path="/about"             element={<AboutClubScreen />} />

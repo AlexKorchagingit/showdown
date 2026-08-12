@@ -1,12 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, MessageSquare, Minus, Plus, X } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
-import { DEFAULT_ENTRY_FEE, TRANSACTION_TYPE_LABEL } from '../../types/finance';
+import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
-import { applyPlaceToParticipant } from '../../data/prizeStructure';
-import { nextEliminatedPlace, sortFinancePlayers } from '../../lib/tournamentStatus';
+import { applyPlaceToParticipant, swapParticipantPlaces } from '../../data/prizeStructure';
+import {
+  canCloseTournament,
+  nextEliminatedPlace,
+  sortByPlace,
+  sortFinancePlayers,
+} from '../../lib/tournamentStatus';
+import { PlayerNameLink } from '../../components/PlayerNameLink';
+import type { TournamentDealer } from '../../types/tournament';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
@@ -29,8 +36,9 @@ export function AdminTournamentFinance() {
     removeTransaction,
   } = useFinance();
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [dealerName, setDealerName] = useState('');
+  const [dealerHours, setDealerHours] = useState('');
 
   const tournament = tournaments.find((t) => t.id === id);
 
@@ -40,10 +48,16 @@ export function AdminTournamentFinance() {
     const list = q
       ? tournament.participants.filter((p) => p.nickname.toLowerCase().includes(q))
       : tournament.participants;
-    return sortFinancePlayers(list);
+    return sortFinancePlayers(list, tournament.isClosed);
   }, [tournament, query]);
 
   if (!tournament) return <Navigate to="/admin/finance" replace />;
+
+  const placedOrdered = sortByPlace(
+    tournament.participants.filter((p) => typeof p.place === 'number'),
+  );
+  const canClose = canCloseTournament(tournament.participants);
+  const nonPlayingDealers = tournament.dealers ?? [];
 
   const handleTicket = (userId: string, nickname: string) => {
     const reason = window.prompt(`Причина выдачи билета для ${nickname}?`, '');
@@ -52,7 +66,7 @@ export function AdminTournamentFinance() {
   };
 
   const closeTournament = () => {
-    if (tournament.isClosed) return;
+    if (tournament.isClosed || !canClose) return;
     if (!window.confirm('Закрыть турнир? Он станет прошедшим, запись будет недоступна.')) return;
     updateTournament(tournament.id, { isClosed: true });
   };
@@ -67,50 +81,83 @@ export function AdminTournamentFinance() {
     });
   };
 
+  const movePlace = (playerId: string, direction: -1 | 1) => {
+    const idx = placedOrdered.findIndex((p) => p.id === playerId);
+    const neighbor = placedOrdered[idx + direction];
+    if (idx < 0 || !neighbor) return;
+    updateTournament(tournament.id, {
+      participants: swapParticipantPlaces(
+        tournament.participants,
+        playerId,
+        neighbor.id,
+        tournament.guarantee,
+      ),
+    });
+  };
+
+  const setPlayerComment = (playerId: string, nickname: string, current?: string) => {
+    const next = window.prompt(`Комментарий к игроку ${nickname}`, current ?? '');
+    if (next === null) return;
+    updateTournament(tournament.id, {
+      participants: tournament.participants.map((p) =>
+        p.id === playerId ? { ...p, comment: next.trim() } : p,
+      ),
+    });
+  };
+
+  const addNonPlayingDealer = () => {
+    const name = dealerName.trim();
+    const hoursRaw = Number(dealerHours.replace(',', '.'));
+    if (!name || !Number.isFinite(hoursRaw) || hoursRaw <= 0) return;
+    const hours = Math.floor(hoursRaw);
+    const minutes = Math.round((hoursRaw - hours) * 60);
+    const row: TournamentDealer = { name, hours, minutes };
+    updateTournament(tournament.id, {
+      dealers: [...nonPlayingDealers, row],
+    });
+    setDealerName('');
+    setDealerHours('');
+  };
+
+  const removeNonPlayingDealer = (index: number) => {
+    updateTournament(tournament.id, {
+      dealers: nonPlayingDealers.filter((_, i) => i !== index),
+    });
+  };
+
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <button
-        type="button"
-        onClick={() => navigate('/admin/finance')}
-        className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(217,153,98,0.28)',
-        }}
-        aria-label="Назад"
-      >
-        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </button>
+      <div className="flex-shrink-0 px-3 pt-4 pb-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/finance')}
+            className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+            style={{
+              background: 'rgba(28,20,16,0.78)',
+              border: '1px solid rgba(217,153,98,0.28)',
+            }}
+            aria-label="Назад"
+          >
+            <ArrowLeft size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
+          </button>
+          <h1 className="shrink-0 text-[12px] font-800 tracking-[0.14em] text-white uppercase">
+            Касса турнира
+          </h1>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск…"
+            className="flex-1 min-w-0 h-11 rounded-xl px-3 text-[13px] text-white outline-none"
+            style={{
+              background: '#231A16',
+              border: '1px solid rgba(217,153,98,0.35)',
+            }}
+          />
+        </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          setSearchOpen((open) => !open);
-          if (searchOpen) setQuery('');
-        }}
-        className="absolute top-4 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(217,153,98,0.28)',
-        }}
-        aria-label="Поиск"
-      >
-        <Search size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </button>
-
-      <div className="flex-shrink-0 px-5 pt-20 pb-3 space-y-3">
-        <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase mb-1">
-          Касса турнира
-        </h1>
         <p className="text-center text-[13px] font-600 uppercase tracking-wide" style={{ color: '#D99962' }}>
           {tournament.title}
-        </p>
-        <p className="text-center text-[11px]" style={{ color: '#8c8c88' }}>
-          Стандартная сумма: {DEFAULT_ENTRY_FEE.toLocaleString('ru-RU')} ₽
         </p>
 
         {tournament.isClosed ? (
@@ -127,30 +174,17 @@ export function AdminTournamentFinance() {
         ) : (
           <button
             type="button"
+            disabled={!canClose}
             onClick={closeTournament}
-            className="w-full py-3.5 rounded-xl text-[14px] font-800 tracking-wide active:scale-[0.98] transition-transform"
+            className="w-full py-3.5 rounded-xl text-[14px] font-800 tracking-wide active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100 disabled:cursor-not-allowed"
             style={{
               background: 'linear-gradient(to right, #7f1d1d, #ef4444)',
               color: '#fff',
-              boxShadow: '0 0 18px rgba(239,68,68,0.28)',
+              boxShadow: canClose ? '0 0 18px rgba(239,68,68,0.28)' : 'none',
             }}
           >
             ЗАКРЫТЬ ТУРНИР
           </button>
-        )}
-
-        {searchOpen && (
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по нику…"
-            className="w-full rounded-xl px-4 py-3 text-[14px] text-white outline-none"
-            style={{
-              background: '#231A16',
-              border: '1px solid rgba(217,153,98,0.35)',
-            }}
-          />
         )}
       </div>
 
@@ -170,6 +204,9 @@ export function AdminTournamentFinance() {
               const hours = getDealerHours(tournament.id, player.id);
               const hasDebt = unpaid.length > 0;
               const eliminated = typeof player.place === 'number';
+              const placedIdx = placedOrdered.findIndex((p) => p.id === player.id);
+              const canMoveUp = eliminated && placedIdx > 0;
+              const canMoveDown = eliminated && placedIdx >= 0 && placedIdx < placedOrdered.length - 1;
 
               return (
                 <div
@@ -191,7 +228,11 @@ export function AdminTournamentFinance() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-[14px] font-700 text-white truncate">{player.nickname}</p>
+                        <PlayerNameLink
+                          id={player.id}
+                          nickname={player.nickname}
+                          className="text-[14px] font-700 text-white truncate"
+                        />
                         {hasDebt && (
                           <span
                             className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -205,7 +246,46 @@ export function AdminTournamentFinance() {
                           {player.place}-е место
                         </p>
                       )}
+                      {player.comment?.trim() && (
+                        <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: '#A39B98' }}>
+                          {player.comment}
+                        </p>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setPlayerComment(player.id, player.nickname, player.comment)}
+                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        background: 'rgba(217,153,98,0.12)',
+                        border: '1px solid rgba(217,153,98,0.35)',
+                      }}
+                      aria-label="Комментарий к игроку"
+                    >
+                      <MessageSquare size={16} style={{ color: '#D99962' }} />
+                    </button>
+                    {eliminated && (
+                      <div className="flex flex-col shrink-0 -my-1">
+                        <button
+                          type="button"
+                          disabled={!canMoveUp}
+                          onClick={() => movePlace(player.id, -1)}
+                          className="w-7 h-6 flex items-center justify-center disabled:opacity-25"
+                          aria-label="Выше"
+                        >
+                          <ChevronUp size={16} style={{ color: '#D99962' }} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canMoveDown}
+                          onClick={() => movePlace(player.id, 1)}
+                          className="w-7 h-6 flex items-center justify-center disabled:opacity-25"
+                          aria-label="Ниже"
+                        >
+                          <ChevronDown size={16} style={{ color: '#D99962' }} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {unpaid.length > 0 && (
@@ -309,7 +389,7 @@ export function AdminTournamentFinance() {
                         }}
                         aria-label="Плюс полчаса"
                       >
-                        <Plus size={14} style={{ color: '#A39B98' }} />
+                        <Plus size={14} style={{ color: '#D99962' }} />
                       </button>
                     </div>
                   </div>
@@ -332,6 +412,76 @@ export function AdminTournamentFinance() {
             })}
           </div>
         )}
+
+        <div
+          className="mt-6 rounded-2xl p-4 space-y-3"
+          style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
+        >
+          <h3 className="text-[12px] font-700 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
+            Добавить неиграющего дилера
+          </h3>
+
+          {nonPlayingDealers.length > 0 && (
+            <div className="space-y-2">
+              {nonPlayingDealers.map((row, index) => (
+                <div
+                  key={`${row.name}-${index}`}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2"
+                  style={{ background: 'rgba(17,11,9,0.55)' }}
+                >
+                  <p className="flex-1 min-w-0 text-[13px] font-700 text-white truncate">{row.name}</p>
+                  <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
+                    {row.hours} ч {row.minutes} мин
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeNonPlayingDealer(index)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    aria-label={`Удалить ${row.name}`}
+                  >
+                    <X size={14} style={{ color: '#A39B98' }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              value={dealerName}
+              onChange={(e) => setDealerName(e.target.value)}
+              placeholder="Имя"
+              className="flex-1 min-w-0 h-11 rounded-xl px-3 text-[13px] text-white outline-none"
+              style={{
+                background: '#231A16',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            />
+            <input
+              value={dealerHours}
+              onChange={(e) => setDealerHours(e.target.value)}
+              placeholder="Часы"
+              inputMode="decimal"
+              className="w-20 h-11 rounded-xl px-3 text-[13px] text-white outline-none text-center"
+              style={{
+                background: '#231A16',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            />
+            <button
+              type="button"
+              onClick={addNonPlayingDealer}
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                color: '#0A0908',
+              }}
+              aria-label="Добавить дилера"
+            >
+              <Plus size={18} strokeWidth={2.6} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

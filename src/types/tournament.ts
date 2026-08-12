@@ -4,6 +4,8 @@ export interface Participant {
   rating: number;
   /** Finishing place (1 = winner). Set when tournament results are entered. */
   place?: number;
+  /** Admin note from tournament cashier, shown in a closed lobby. */
+  comment?: string;
 }
 
 export interface TournamentStaffMember {

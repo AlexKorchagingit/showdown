@@ -1,8 +1,8 @@
 import { useState, useRef, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crosshair, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { RatingPlayer } from '../types/player';
-import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL } from '../types/player';
+import { PlayerNameLink } from '../components/PlayerNameLink';
+import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL, type RatingPlayer } from '../types/player';
 
 type RatingTab = 'general' | 'seasonal';
 type MetricColumn = 'tournaments' | 'wins' | 'knockouts';
@@ -121,7 +121,17 @@ function PlayerRow({
         </div>
 
         <div className="flex-1 min-w-0 pl-2">
-          <p className="text-[13px] font-600 truncate text-white">{player.nickname}</p>
+          <PlayerNameLink
+            id={player.id}
+            nickname={player.nickname}
+            className="text-[13px] font-600 truncate text-white block"
+            stats={{
+              points: player.points,
+              played: player.played,
+              won: player.won,
+              knockouts: player.knockouts,
+            }}
+          />
         </div>
 
         <span className="w-12 shrink-0 text-center text-[13px] font-600" style={{ color: '#A39B98' }}>

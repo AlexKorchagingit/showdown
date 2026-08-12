@@ -6,10 +6,11 @@ interface Props {
   title: string;
   backTo: string;
   children?: ReactNode;
+  contentPaddingBottom?: string;
 }
 
 /** Full-screen shell with a back button and a centered title. */
-export function SectionScreen({ title, backTo, children }: Props) {
+export function SectionScreen({ title, backTo, children, contentPaddingBottom }: Props) {
   const navigate = useNavigate();
 
   return (
@@ -37,7 +38,10 @@ export function SectionScreen({ title, backTo, children }: Props) {
 
       <div
         className="flex-1 scrollable px-5"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+        style={{
+          paddingBottom:
+            contentPaddingBottom ?? 'calc(env(safe-area-inset-bottom, 0px) + 2rem)',
+        }}
       >
         {children ?? (
           <p className="text-center text-[13px] font-500 pt-8" style={{ color: '#6B6360' }}>

@@ -25,7 +25,6 @@ interface FinanceContextValue {
     tournamentId: string,
     userId: string,
     type: Exclude<TransactionType, 'ticket'>,
-    amount?: number,
   ) => void;
   addTicket: (tournamentId: string, userId: string, comment: string) => void;
   markPaid: (transactionIds: string[]) => void;
@@ -77,7 +76,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       tournamentId: string,
       userId: string,
       type: Exclude<TransactionType, 'ticket'>,
-      amount = DEFAULT_ENTRY_FEE,
     ) => {
       const hours = dealerHoursMap[dealerKey(tournamentId, userId)] ?? 0;
       const tx: Transaction = {
@@ -86,7 +84,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         tournamentId,
         userId,
         type,
-        amount,
+        amount: DEFAULT_ENTRY_FEE,
         status: 'unpaid',
         comment: '',
         isDealer: hours > 0,

@@ -75,13 +75,21 @@ export function sortByPlace<T extends { place?: number }>(participants: T[]): T[
   });
 }
 
-/** Active players first; eliminated (has place) sink to the bottom, worst place last. */
-export function sortFinancePlayers<T extends { place?: number }>(participants: T[]): T[] {
-  return [...participants].sort((a, b) => {
-    const aOut = typeof a.place === 'number';
-    const bOut = typeof b.place === 'number';
-    if (aOut !== bOut) return aOut ? 1 : -1;
-    if (aOut && bOut) return (b.place ?? 0) - (a.place ?? 0);
-    return 0;
-  });
+/** Open events: A–Z by nickname. Closed events: finishing place 1…N. */
+export function sortFinancePlayers<T extends { place?: number; nickname: string }>(
+  participants: T[],
+  closed: boolean,
+): T[] {
+  if (closed) return sortByPlace(participants);
+  return [...participants].sort((a, b) =>
+    a.nickname.localeCompare(b.nickname, 'ru', { sensitivity: 'base' }),
+  );
+}
+
+/** True when the field can be closed: N−1 eliminated (winner left) or every seat has a place. */
+export function canCloseTournament(participants: Participant[]): boolean {
+  const total = participants.length;
+  if (total === 0) return true;
+  const placed = participants.filter((p) => typeof p.place === 'number' && p.place >= 1).length;
+  return placed >= total - 1;
 }

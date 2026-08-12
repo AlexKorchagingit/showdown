@@ -151,8 +151,10 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
       const list = pickParticipants(20);
       // Last five are already eliminated (places 16–20) so the missing-places warning shows.
       return list.map((p, index) => {
-        if (index < 15) return p;
-        return applyPlaceToParticipant(p, index + 1, 10000);
+        const placed = index < 15 ? p : applyPlaceToParticipant(p, index + 1, 10000);
+        if (p.id === '16') return { ...placed, comment: 'Спорный нокаут на баббле' };
+        if (p.id === '18') return { ...placed, comment: 'Ушёл без расчёта' };
+        return placed;
       });
     })(),
     lateRegUntil: '22:00',
@@ -161,9 +163,8 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     levelDuration: '20 мин',
     isClosed: true,
     dealers: [
-      { name: 'DmitriyVP', hours: 4, minutes: 30 },
-      { name: 'MikhailS', hours: 3, minutes: 0 },
-      { name: 'AndreyPP', hours: 2, minutes: 15 },
+      { name: 'Игорь', hours: 5, minutes: 0 },
+      { name: 'Павел С.', hours: 3, minutes: 30 },
     ],
   },
   {

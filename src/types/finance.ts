@@ -21,5 +21,5 @@ export const TRANSACTION_TYPE_LABEL: Record<TransactionType, string> = {
   ticket: 'Билет',
 };
 
-/** Default cash amount for buy-in / rebuy / addon charges. */
-export const DEFAULT_ENTRY_FEE = 1500;
+/** Fixed cash amount for buy-in / rebuy / addon charges. */
+export const DEFAULT_ENTRY_FEE = 1000;
