@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react';
 import {
@@ -15,6 +16,11 @@ import {
   type BlindLevel,
   type BlindStructure,
 } from '../data/blindStructures';
+import {
+  playLevelUp,
+  playWarningTriple,
+  unlockBlindsAudio,
+} from '../lib/blindsAudio';
 
 interface BlindsState {
   structures: BlindStructure[];
@@ -22,6 +28,10 @@ interface BlindsState {
   levelIndex: number;
   secondsLeft: number;
   isRunning: boolean;
+  linkedTournamentId: string | null;
+  avgStackOverride: number | null;
+  chipleaderId: string | null;
+  levelUpNonce: number;
 }
 
 type BlindsAction =
@@ -31,7 +41,10 @@ type BlindsAction =
   | { type: 'setRunning'; value: boolean }
   | { type: 'restart' }
   | { type: 'skip'; delta: -1 | 1 }
-  | { type: 'tick'; elapsed: number };
+  | { type: 'tick'; elapsed: number }
+  | { type: 'linkTournament'; tournamentId: string | null }
+  | { type: 'setAvgStack'; value: number | null }
+  | { type: 'setChipleader'; userId: string | null };
 
 function findStructure(state: BlindsState, id: string | null): BlindStructure | undefined {
   if (!id) return undefined;
@@ -121,13 +134,26 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
         left += durationSeconds(structure.levels[index], structure.levelDuration);
       }
 
+      const leveledUp = index > state.levelIndex;
+
       return {
         ...state,
         secondsLeft: left,
         levelIndex: index,
         isRunning: running,
+        levelUpNonce: leveledUp ? state.levelUpNonce + 1 : state.levelUpNonce,
       };
     }
+    case 'linkTournament':
+      return {
+        ...state,
+        linkedTournamentId: action.tournamentId,
+        chipleaderId: action.tournamentId === state.linkedTournamentId ? state.chipleaderId : null,
+      };
+    case 'setAvgStack':
+      return { ...state, avgStackOverride: action.value };
+    case 'setChipleader':
+      return { ...state, chipleaderId: action.userId };
     default:
       return state;
   }
@@ -147,6 +173,12 @@ interface BlindsContextValue {
   setRunning: (value: boolean) => void;
   restartLevel: () => void;
   skipLevel: (delta: -1 | 1) => void;
+  linkedTournamentId: string | null;
+  avgStackOverride: number | null;
+  chipleaderId: string | null;
+  setLinkedTournament: (tournamentId: string | null) => void;
+  setAvgStackOverride: (value: number | null) => void;
+  setChipleader: (userId: string | null) => void;
 }
 
 const BlindsContext = createContext<BlindsContextValue | null>(null);
@@ -158,7 +190,13 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     levelIndex: 0,
     secondsLeft: 20 * 60,
     isRunning: false,
+    linkedTournamentId: null,
+    avgStackOverride: null,
+    chipleaderId: null,
+    levelUpNonce: 0,
   }));
+
+  const prevSecondsRef = useRef(0);
 
   useEffect(() => {
     if (!state.isRunning) return;
@@ -173,6 +211,20 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
 
     return () => window.clearInterval(id);
   }, [state.isRunning]);
+
+  useEffect(() => {
+    if (state.levelUpNonce === 0) return;
+    playLevelUp();
+  }, [state.levelUpNonce]);
+
+  useEffect(() => {
+    const prev = prevSecondsRef.current;
+    prevSecondsRef.current = state.secondsLeft;
+    if (!state.isRunning) return;
+    if (prev > 3 && state.secondsLeft <= 3 && state.secondsLeft > 0) {
+      playWarningTriple();
+    }
+  }, [state.isRunning, state.secondsLeft]);
 
   const addStructure = useCallback((structure: BlindStructure) => {
     addBlindStructure(structure);
@@ -199,6 +251,11 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     if (structureId) dispatch({ type: 'ensure', structureId });
   }, []);
 
+  const setRunning = useCallback((value: boolean) => {
+    if (value) unlockBlindsAudio();
+    dispatch({ type: 'setRunning', value });
+  }, []);
+
   const value = useMemo<BlindsContextValue>(
     () => ({
       structures: state.structures,
@@ -211,11 +268,17 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       updateStructure,
       updateLevels,
       ensureTimer,
-      setRunning: (value) => dispatch({ type: 'setRunning', value }),
+      setRunning,
       restartLevel: () => dispatch({ type: 'restart' }),
       skipLevel: (delta) => dispatch({ type: 'skip', delta }),
+      linkedTournamentId: state.linkedTournamentId,
+      avgStackOverride: state.avgStackOverride,
+      chipleaderId: state.chipleaderId,
+      setLinkedTournament: (tournamentId) => dispatch({ type: 'linkTournament', tournamentId }),
+      setAvgStackOverride: (value) => dispatch({ type: 'setAvgStack', value }),
+      setChipleader: (userId) => dispatch({ type: 'setChipleader', userId }),
     }),
-    [state, addStructure, updateStructure, updateLevels, ensureTimer],
+    [state, addStructure, updateStructure, updateLevels, ensureTimer, setRunning],
   );
 
   return <BlindsContext.Provider value={value}>{children}</BlindsContext.Provider>;

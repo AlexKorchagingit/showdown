@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronRight, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
+import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { useBlinds } from '../../context/BlindsContext';
 import {
   buildLevels,
@@ -289,6 +290,7 @@ export function AdminBlindsSettings() {
               Таймер идёт. Изменения предстоящих уровней подхватятся сразу.
             </p>
           )}
+          <TimerSessionFields />
           <LevelEditor
             structure={editing}
             onChange={(levels) => updateLevels(editing.id, levels)}
@@ -306,6 +308,7 @@ export function AdminBlindsSettings() {
         className="flex-1 scrollable px-3"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
+        <TimerSessionFields />
         <div className="space-y-2">
           {structures.map((structure) => (
             <div

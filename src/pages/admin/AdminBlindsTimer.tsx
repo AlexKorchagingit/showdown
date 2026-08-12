@@ -2,13 +2,23 @@ import { useEffect } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Pause, Play, RotateCcw, Settings, SkipBack, SkipForward } from 'lucide-react';
 import { useBlinds } from '../../context/BlindsContext';
+import { useProfile } from '../../context/ProfileContext';
+import { useTournaments } from '../../context/TournamentContext';
 import { durationSeconds, formatBlinds } from '../../data/blindStructures';
+import { asset } from '../../lib/assets';
+import { characterImageForPlayer } from '../../lib/playerCharacter';
+import {
+  autoAvgStack,
+  remainingPlayers,
+  tournamentPlayerCounts,
+} from '../../lib/tournamentStats';
 
 const SETTINGS_ROUTE = '/admin/blinds/settings';
 const CIRCLE_SIZE = 320;
 const STROKE = 5;
 const RADIUS = (CIRCLE_SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]';
 
 function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.ceil(totalSeconds));
@@ -44,6 +54,8 @@ function ControlButton({
 export function AdminBlindsTimer() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { equippedChar } = useProfile();
+  const { tournaments } = useTournaments();
   const {
     structures,
     activeStructure,
@@ -54,6 +66,11 @@ export function AdminBlindsTimer() {
     setRunning,
     restartLevel,
     skipLevel,
+    linkedTournamentId,
+    setLinkedTournament,
+    avgStackOverride,
+    chipleaderId,
+    setChipleader,
   } = useBlinds();
 
   const requestedId = searchParams.get('structure') ?? structures[0]?.id ?? null;
@@ -62,7 +79,26 @@ export function AdminBlindsTimer() {
     ensureTimer(requestedId);
   }, [requestedId, ensureTimer]);
 
+  useEffect(() => {
+    if (linkedTournamentId) return;
+    const fallback = tournaments.find((t) => !t.isClosed && t.participants.length > 0) ?? tournaments[0];
+    if (fallback) setLinkedTournament(fallback.id);
+  }, [linkedTournamentId, tournaments, setLinkedTournament]);
+
   const structure = activeStructure ?? structures.find((s) => s.id === requestedId);
+  const tournament = tournaments.find((t) => t.id === linkedTournamentId);
+  const { remaining, registered } = tournamentPlayerCounts(tournament);
+  const avgStack = avgStackOverride ?? autoAvgStack(tournament);
+  const seated = remainingPlayers(tournament);
+  const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
+
+  useEffect(() => {
+    if (!chipleaderId || !tournament) return;
+    const stillSeated = tournament.participants.some(
+      (p) => p.id === chipleaderId && typeof p.place !== 'number',
+    );
+    if (!stillSeated) setChipleader(null);
+  }, [chipleaderId, tournament, setChipleader]);
 
   if (!structure) return <Navigate to={SETTINGS_ROUTE} replace />;
 
@@ -75,9 +111,31 @@ export function AdminBlindsTimer() {
   return (
     <div className="fixed inset-0 z-[100] bg-[#0A0908]">
       <div className="flex flex-col md:flex-row w-full h-full text-white">
-        <div className="w-full md:w-1/4 bg-[#110b09]/50 p-4 md:p-6 border-b md:border-b-0 md:border-r border-white/10">
+        <div className="w-full md:w-1/4 bg-[#110b09]/50 p-4 md:p-6 border-b md:border-b-0 md:border-r border-white/10 overflow-y-auto">
           <h2
             className="text-[12px] font-800 uppercase tracking-[0.2em] mb-3"
+            style={{ color: '#D99962' }}
+          >
+            Информация о турнире
+          </h2>
+          <p className="text-[15px] font-700 text-white leading-snug">
+            Осталось игроков:{' '}
+            <span style={{ color: '#F2D8A7' }}>
+              {remaining} / {registered}
+            </span>
+          </p>
+          <p className="text-[15px] font-700 text-white mt-2 leading-snug">
+            Средний стек (Avg Stack):{' '}
+            <span style={{ color: '#F2D8A7' }}>{avgStack.toLocaleString('ru-RU')}</span>
+          </p>
+          {tournament && (
+            <p className="text-[11px] font-500 mt-2" style={{ color: '#8c8c88' }}>
+              {tournament.title}
+            </p>
+          )}
+
+          <h2
+            className="text-[12px] font-800 uppercase tracking-[0.2em] mt-6 mb-3"
             style={{ color: '#D99962' }}
           >
             Гарантия очков
@@ -120,7 +178,7 @@ export function AdminBlindsTimer() {
             {formatBlinds(currentLevel)}
           </p>
 
-          <div className="relative my-3 w-[min(78vw,20rem)] md:w-[min(70vw,28rem)] aspect-square">
+          <div className="relative my-3 w-[min(78vw,20rem)] md:w-[min(56vw,26rem)] aspect-square">
             <svg
               viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
               className="w-full h-full -rotate-90"
@@ -147,7 +205,7 @@ export function AdminBlindsTimer() {
                 style={{ transition: 'stroke-dashoffset 0.25s linear' }}
               />
             </svg>
-            <p className="absolute inset-0 flex items-center justify-center text-[16vw] md:text-[7rem] font-black leading-none tabular-nums">
+            <p className="absolute inset-0 flex items-center justify-center text-[16vw] md:text-[6.5rem] font-black leading-none tabular-nums">
               {formatClock(secondsLeft)}
             </p>
           </div>
@@ -195,6 +253,34 @@ export function AdminBlindsTimer() {
               <Settings size={22} strokeWidth={2.2} />
             </ControlButton>
           </div>
+        </div>
+
+        <div className="w-full md:w-1/4 bg-[#110b09]/50 p-4 md:p-6 border-t md:border-t-0 md:border-l border-white/10 relative overflow-hidden min-h-[220px] md:min-h-0">
+          {chipleader ? (
+            <>
+              <h2
+                className={`relative z-10 text-[13px] font-900 uppercase tracking-[0.28em] drop-shadow-[0_0_10px_rgba(217,153,98,0.65)] ${GOLD_TEXT}`}
+              >
+                Chipleader
+              </h2>
+              <p className="relative z-10 text-2xl md:text-3xl font-black text-white mt-2 leading-tight">
+                {chipleader.nickname}
+              </p>
+              <img
+                src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
+                alt=""
+                className="absolute inset-x-0 bottom-0 h-[82%] w-full object-contain object-bottom pointer-events-none select-none"
+              />
+            </>
+          ) : (
+            <div className="h-full min-h-[180px] flex flex-col items-center justify-center">
+              <img
+                src={asset('/SD.png')}
+                alt="Showdown"
+                className="max-h-40 w-auto object-contain opacity-80"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
