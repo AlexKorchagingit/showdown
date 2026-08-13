@@ -14,6 +14,7 @@ import {
 import { ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
+import { formatTxDateTime } from '../lib/transactionDisplay';
 
 interface Props {
   tournament: Tournament;
@@ -419,6 +420,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                           <p className="text-[10px] font-600 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
                             Неиграющий
                           </p>
+                          {row.loggedAt ? (
+                            <p className="text-[10px] font-600 mt-0.5" style={{ color: '#8c8c88' }}>
+                              {formatTxDateTime(row.loggedAt)}
+                            </p>
+                          ) : null}
                         </div>
                         <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
                           {formatDealerHours(row.hours, row.minutes)}

@@ -163,8 +163,8 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     levelDuration: '20 мин',
     isClosed: true,
     dealers: [
-      { name: 'Игорь', hours: 5, minutes: 0 },
-      { name: 'Павел С.', hours: 3, minutes: 30 },
+      { name: 'Игорь', hours: 5, minutes: 0, loggedAt: '2026-08-12T23:10:00' },
+      { name: 'Павел С.', hours: 3, minutes: 30, loggedAt: '2026-08-12T23:12:00' },
     ],
   },
   {

@@ -21,5 +21,10 @@ export const TRANSACTION_TYPE_LABEL: Record<TransactionType, string> = {
   ticket: 'Билет',
 };
 
+export const TRANSACTION_STATUS_LABEL: Record<TransactionStatus, string> = {
+  paid: 'Оплачено',
+  unpaid: 'Не оплачено',
+};
+
 /** Fixed cash amount for buy-in / rebuy / addon charges. */
 export const DEFAULT_ENTRY_FEE = 1000;

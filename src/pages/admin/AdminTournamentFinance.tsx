@@ -7,11 +7,11 @@ import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
 import { applyPlaceToParticipant, swapParticipantPlaces } from '../../data/prizeStructure';
 import {
-  canCloseTournament,
   nextEliminatedPlace,
   sortByPlace,
   sortFinancePlayers,
 } from '../../lib/tournamentStatus';
+import { formatTxDateTime } from '../../lib/transactionDisplay';
 import { PlayerNameLink } from '../../components/PlayerNameLink';
 import type { TournamentDealer } from '../../types/tournament';
 
@@ -26,6 +26,7 @@ export function AdminTournamentFinance() {
   const navigate = useNavigate();
   const { tournaments, updateTournament } = useTournaments();
   const {
+    transactions,
     addCharge,
     addTicket,
     getDealerHours,
@@ -56,7 +57,8 @@ export function AdminTournamentFinance() {
   const placedOrdered = sortByPlace(
     tournament.participants.filter((p) => typeof p.place === 'number'),
   );
-  const canClose = canCloseTournament(tournament.participants);
+  const remainingInPlay = tournament.participants.filter((p) => typeof p.place !== 'number').length;
+  const closeBlocked = remainingInPlay > 1;
   const nonPlayingDealers = tournament.dealers ?? [];
 
   const handleTicket = (userId: string, nickname: string) => {
@@ -66,7 +68,11 @@ export function AdminTournamentFinance() {
   };
 
   const closeTournament = () => {
-    if (tournament.isClosed || !canClose) return;
+    if (tournament.isClosed) return;
+    if (closeBlocked) {
+      window.alert('Не все участники вылетели!');
+      return;
+    }
     if (!window.confirm('Закрыть турнир? Он станет прошедшим, запись будет недоступна.')) return;
     updateTournament(tournament.id, { isClosed: true });
   };
@@ -111,7 +117,7 @@ export function AdminTournamentFinance() {
     if (!name || !Number.isFinite(hoursRaw) || hoursRaw <= 0) return;
     const hours = Math.floor(hoursRaw);
     const minutes = Math.round((hoursRaw - hours) * 60);
-    const row: TournamentDealer = { name, hours, minutes };
+    const row: TournamentDealer = { name, hours, minutes, loggedAt: new Date().toISOString() };
     updateTournament(tournament.id, {
       dealers: [...nonPlayingDealers, row],
     });
@@ -174,13 +180,15 @@ export function AdminTournamentFinance() {
         ) : (
           <button
             type="button"
-            disabled={!canClose}
+            aria-disabled={closeBlocked}
             onClick={closeTournament}
-            className="w-full py-3.5 rounded-xl text-[14px] font-800 tracking-wide active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100 disabled:cursor-not-allowed"
+            className={`w-full py-3.5 rounded-xl text-[14px] font-800 tracking-wide transition-transform ${
+              closeBlocked ? 'opacity-40 cursor-not-allowed' : 'active:scale-[0.98]'
+            }`}
             style={{
               background: 'linear-gradient(to right, #7f1d1d, #ef4444)',
               color: '#fff',
-              boxShadow: canClose ? '0 0 18px rgba(239,68,68,0.28)' : 'none',
+              boxShadow: closeBlocked ? 'none' : '0 0 18px rgba(239,68,68,0.28)',
             }}
           >
             ЗАКРЫТЬ ТУРНИР
@@ -201,6 +209,12 @@ export function AdminTournamentFinance() {
             {filtered.map((player) => {
               const unpaid = unpaidForPlayer(tournament.id, player.id);
               const unpaidTotal = unpaidTotalForPlayer(tournament.id, player.id);
+              const tickets = transactions.filter(
+                (tx) =>
+                  tx.tournamentId === tournament.id &&
+                  tx.userId === player.id &&
+                  tx.type === 'ticket',
+              );
               const hours = getDealerHours(tournament.id, player.id);
               const hasDebt = unpaid.length > 0;
               const eliminated = typeof player.place === 'number';
@@ -288,7 +302,7 @@ export function AdminTournamentFinance() {
                     )}
                   </div>
 
-                  {unpaid.length > 0 && (
+                  {(unpaid.length > 0 || tickets.length > 0) && (
                     <div className="flex flex-wrap gap-1.5">
                       {unpaid.map((tx) => (
                         <span
@@ -306,6 +320,28 @@ export function AdminTournamentFinance() {
                             onClick={() => removeTransaction(tx.id)}
                             className="w-5 h-5 rounded flex items-center justify-center"
                             aria-label={`Отменить ${TRANSACTION_TYPE_LABEL[tx.type]}`}
+                          >
+                            <X size={12} strokeWidth={2.6} />
+                          </button>
+                        </span>
+                      ))}
+                      {tickets.map((tx) => (
+                        <span
+                          key={tx.id}
+                          className="inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700"
+                          style={{
+                            background: 'rgba(34,197,94,0.12)',
+                            border: '1px solid rgba(34,197,94,0.35)',
+                            color: '#86efac',
+                          }}
+                          title={tx.comment || 'Билет'}
+                        >
+                          Билет
+                          <button
+                            type="button"
+                            onClick={() => removeTransaction(tx.id)}
+                            className="w-5 h-5 rounded flex items-center justify-center"
+                            aria-label="Аннулировать билет"
                           >
                             <X size={12} strokeWidth={2.6} />
                           </button>
@@ -398,11 +434,7 @@ export function AdminTournamentFinance() {
                     <button
                       type="button"
                       onClick={() => markPlayerPaid(tournament.id, player.id)}
-                      className="w-full py-3 rounded-xl text-[13px] font-800 active:scale-[0.98] transition-transform"
-                      style={{
-                        background: 'linear-gradient(to right, #7f1d1d, #ef4444)',
-                        color: '#fff',
-                      }}
+                      className="w-full py-3 rounded-xl text-[13px] font-800 text-white bg-red-600 active:scale-[0.98] transition-transform"
                     >
                       Оплатить {unpaidTotal.toLocaleString('ru-RU')} руб
                     </button>
@@ -429,7 +461,14 @@ export function AdminTournamentFinance() {
                   className="flex items-center gap-2 rounded-xl px-3 py-2"
                   style={{ background: 'rgba(17,11,9,0.55)' }}
                 >
-                  <p className="flex-1 min-w-0 text-[13px] font-700 text-white truncate">{row.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
+                    {row.loggedAt ? (
+                      <p className="text-[10px] font-600 mt-0.5" style={{ color: '#8c8c88' }}>
+                        {formatTxDateTime(row.loggedAt)}
+                      </p>
+                    ) : null}
+                  </div>
                   <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
                     {row.hours} ч {row.minutes} мин
                   </p>

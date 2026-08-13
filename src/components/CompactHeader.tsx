@@ -3,23 +3,33 @@ import { ArrowLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface Props {
-  title: string;
+  title: ReactNode;
   backTo?: string;
   onBack?: () => void;
   right?: ReactNode;
   children?: ReactNode;
+  centerTitle?: boolean;
+  className?: string;
 }
 
 const BACK_BTN =
   'w-10 h-10 rounded-full flex items-center justify-center shrink-0';
 
 /** Compact one-row header: back + title (+ optional right slot / tabs). */
-export function CompactHeader({ title, backTo, onBack, right, children }: Props) {
+export function CompactHeader({
+  title,
+  backTo,
+  onBack,
+  right,
+  children,
+  centerTitle = false,
+  className,
+}: Props) {
   const navigate = useNavigate();
 
   return (
-    <div className="flex-shrink-0 px-3 py-2 space-y-2">
-      <div className="flex items-center gap-2">
+    <div className={`flex-shrink-0 px-3 space-y-2 ${className ?? 'py-2'}`}>
+      <div className={`relative flex items-center gap-2 ${centerTitle ? 'justify-between' : ''}`}>
         <button
           type="button"
           onClick={() => {
@@ -35,10 +45,16 @@ export function CompactHeader({ title, backTo, onBack, right, children }: Props)
         >
           <ArrowLeft size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
         </button>
-        <h1 className="flex-1 min-w-0 text-[14px] font-800 tracking-[0.16em] text-white uppercase truncate">
+        <h1
+          className={
+            centerTitle
+              ? 'absolute left-1/2 -translate-x-1/2 text-[15px] font-800 tracking-[0.18em] text-white uppercase pointer-events-none text-center leading-tight'
+              : 'flex-1 min-w-0 text-[13px] font-800 tracking-[0.12em] text-white uppercase leading-tight'
+          }
+        >
           {title}
         </h1>
-        {right}
+        {right ? <div className={centerTitle ? 'ml-auto shrink-0' : 'shrink-0'}>{right}</div> : null}
       </div>
       {children}
     </div>

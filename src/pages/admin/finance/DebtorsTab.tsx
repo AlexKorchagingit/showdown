@@ -2,7 +2,8 @@ import { Check } from 'lucide-react';
 import { useFinance } from '../../../context/FinanceContext';
 import { useTournaments } from '../../../context/TournamentContext';
 import { playerNickname } from '../../../lib/playerName';
-import { TRANSACTION_TYPE_LABEL } from '../../../types/finance';
+import { formatTxDate, formatTxTime } from '../../../lib/transactionDisplay';
+import { TRANSACTION_STATUS_LABEL, TRANSACTION_TYPE_LABEL } from '../../../types/finance';
 
 export function DebtorsTab() {
   const { transactions, markPaid } = useFinance();
@@ -43,9 +44,14 @@ export function DebtorsTab() {
                 {tournamentTitle(tx.tournamentId)}
               </p>
               <p className="text-[12px] mt-1" style={{ color: '#A39B98' }}>
-                {TRANSACTION_TYPE_LABEL[tx.type]}
-                {tx.comment ? ` · ${tx.comment}` : ''}
+                {formatTxDate(tx.date)} · {formatTxTime(tx.date)} · {TRANSACTION_TYPE_LABEL[tx.type]} ·{' '}
+                {TRANSACTION_STATUS_LABEL[tx.status]}
               </p>
+              {tx.comment.trim() ? (
+                <p className="text-[12px] mt-1" style={{ color: '#c8a38e' }}>
+                  {tx.comment}
+                </p>
+              ) : null}
             </div>
             <p className="text-[16px] font-900 shrink-0" style={{ color: '#f87171' }}>
               {tx.amount.toLocaleString('ru-RU')} ₽

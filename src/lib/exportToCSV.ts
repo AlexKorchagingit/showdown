@@ -1,5 +1,6 @@
 import type { Transaction } from '../types/finance';
-import { TRANSACTION_TYPE_LABEL } from '../types/finance';
+import { TRANSACTION_STATUS_LABEL, TRANSACTION_TYPE_LABEL } from '../types/finance';
+import { formatTxDate, formatTxTime } from './transactionDisplay';
 
 function csvEscape(value: string | number | boolean): string {
   const raw = String(value ?? '');
@@ -7,46 +8,35 @@ function csvEscape(value: string | number | boolean): string {
   return raw;
 }
 
+export interface ExportToCSVResolvers {
+  tournamentTitle: (tournamentId: string) => string;
+  playerName: (userId: string) => string;
+}
+
 /** Download the current ledger as a CSV file in the browser. */
 export function exportToCSV(
   transactions: Transaction[],
+  resolvers: ExportToCSVResolvers,
   filename = `showdown-finance-${new Date().toISOString().slice(0, 10)}.csv`,
 ) {
-  const headers = [
-    'id',
-    'date',
-    'tournamentId',
-    'userId',
-    'type',
-    'typeLabel',
-    'amount',
-    'status',
-    'comment',
-    'Комментарий / Причина',
-    'isDealer',
-    'dealerHours',
-  ];
+  const headers = ['Дата', 'Время', 'Турнир', 'Игрок', 'Тип', 'Сумма', 'Статус', 'Комментарий'];
 
   const rows = transactions.map((tx) =>
     [
-      tx.id,
-      tx.date,
-      tx.tournamentId,
-      tx.userId,
-      tx.type,
+      formatTxDate(tx.date),
+      formatTxTime(tx.date),
+      resolvers.tournamentTitle(tx.tournamentId),
+      resolvers.playerName(tx.userId),
       TRANSACTION_TYPE_LABEL[tx.type],
       tx.amount,
-      tx.status,
+      TRANSACTION_STATUS_LABEL[tx.status],
       tx.comment,
-      tx.type === 'ticket' ? tx.comment : '',
-      tx.isDealer,
-      tx.dealerHours,
     ]
       .map(csvEscape)
       .join(','),
   );
 
-  const blob = new Blob([[headers.join(','), ...rows].join('\n')], {
+  const blob = new Blob([`\uFEFF${[headers.join(','), ...rows].join('\n')}`], {
     type: 'text/csv;charset=utf-8;',
   });
   const url = URL.createObjectURL(blob);

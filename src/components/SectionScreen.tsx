@@ -7,6 +7,8 @@ interface Props {
   children?: ReactNode;
   contentPaddingBottom?: string;
   right?: ReactNode;
+  centerTitle?: boolean;
+  headerClassName?: string;
 }
 
 /** Full-screen shell with a compact back + title row. */
@@ -16,10 +18,18 @@ export function SectionScreen({
   children,
   contentPaddingBottom,
   right,
+  centerTitle,
+  headerClassName,
 }: Props) {
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <CompactHeader title={title} backTo={backTo} right={right} />
+      <CompactHeader
+        title={title}
+        backTo={backTo}
+        right={right}
+        centerTitle={centerTitle}
+        className={headerClassName}
+      />
 
       <div
         className="flex-1 scrollable px-5"

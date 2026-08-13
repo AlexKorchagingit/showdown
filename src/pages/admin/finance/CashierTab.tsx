@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Download, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Download, X } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -11,10 +11,16 @@ import {
   YAxis,
 } from 'recharts';
 import { useFinance } from '../../../context/FinanceContext';
+import { useTournaments } from '../../../context/TournamentContext';
 import { exportToCSV } from '../../../lib/exportToCSV';
 import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
 import { playerNickname } from '../../../lib/playerName';
-import { TRANSACTION_TYPE_LABEL } from '../../../types/finance';
+import { formatTxDate, formatTxTime } from '../../../lib/transactionDisplay';
+import {
+  TRANSACTION_STATUS_LABEL,
+  TRANSACTION_TYPE_LABEL,
+  type Transaction,
+} from '../../../types/finance';
 import { DebtorsTab } from './DebtorsTab';
 
 const PERIODS: { id: FinancePeriod; label: string }[] = [
@@ -23,18 +29,33 @@ const PERIODS: { id: FinancePeriod; label: string }[] = [
   { id: 'month', label: 'Месяц' },
 ];
 
+type SheetKind = 'revenue' | 'expected' | 'tickets';
+
+const SHEET_TITLE: Record<SheetKind, string> = {
+  revenue: 'Оплаченные транзакции',
+  expected: 'Долги',
+  tickets: 'Выданные билеты',
+};
+
 function formatRub(value: number): string {
   return `${value.toLocaleString('ru-RU')} ₽`;
 }
 
+function newestFirst(a: Transaction, b: Transaction): number {
+  return new Date(b.date).getTime() - new Date(a.date).getTime();
+}
+
 export function CashierTab() {
   const { transactions } = useFinance();
-  const [period, setPeriod] = useState<FinancePeriod>('week');
+  const { tournaments } = useTournaments();
+  const [period, setPeriod] = useState<FinancePeriod>('today');
   const [showDebtors, setShowDebtors] = useState(false);
-  const [showRevenue, setShowRevenue] = useState(false);
+  const [sheet, setSheet] = useState<SheetKind | null>(null);
+
+  const tournamentTitle = (id: string) => tournaments.find((t) => t.id === id)?.title ?? id;
 
   const filtered = useMemo(
-    () => transactions.filter((tx) => isInPeriod(tx.date, period)),
+    () => transactions.filter((tx) => isInPeriod(tx.date, period)).slice().sort(newestFirst),
     [transactions, period],
   );
 
@@ -43,11 +64,18 @@ export function CashierTab() {
     [filtered],
   );
 
+  const allUnpaid = useMemo(
+    () => transactions.filter((tx) => tx.status === 'unpaid').slice().sort(newestFirst),
+    [transactions],
+  );
+
+  const tickets = useMemo(
+    () => filtered.filter((tx) => tx.type === 'ticket'),
+    [filtered],
+  );
+
   const revenue = paid.reduce((sum, tx) => sum + tx.amount, 0);
-  const expected = filtered
-    .filter((tx) => tx.status === 'unpaid')
-    .reduce((sum, tx) => sum + tx.amount, 0);
-  const tickets = filtered.filter((tx) => tx.type === 'ticket').length;
+  const expected = allUnpaid.reduce((sum, tx) => sum + tx.amount, 0);
 
   const chartData = useMemo(
     () =>
@@ -59,6 +87,14 @@ export function CashierTab() {
       })),
     [paid, period],
   );
+
+  const sheetItems = sheet === 'revenue' ? paid : sheet === 'expected' ? allUnpaid : tickets;
+  const emptyCopy =
+    sheet === 'revenue'
+      ? 'Нет оплаченных транзакций за период'
+      : sheet === 'expected'
+        ? 'Долгов нет'
+        : 'Нет выданных билетов за период';
 
   if (showDebtors) {
     return (
@@ -113,11 +149,15 @@ export function CashierTab() {
       </button>
 
       <div className="grid grid-cols-1 gap-3">
-        <button type="button" onClick={() => setShowRevenue(true)} className="text-left">
-          <MetricCard label="Выручка" value={formatRub(revenue)} accent="#F2D8A7" clickable />
+        <button type="button" onClick={() => setSheet('revenue')} className="text-left">
+          <MetricCard label="Выручка" value={formatRub(revenue)} accent="#F2D8A7" />
         </button>
-        <MetricCard label="Ожидается" value={formatRub(expected)} accent="#f87171" />
-        <MetricCard label="Выдано билетов" value={String(tickets)} accent="#D99962" />
+        <button type="button" onClick={() => setSheet('expected')} className="text-left">
+          <MetricCard label="Ожидается" value={formatRub(expected)} accent="#f87171" />
+        </button>
+        <button type="button" onClick={() => setSheet('tickets')} className="text-left">
+          <MetricCard label="Билеты" value={String(tickets.length)} accent="#D99962" />
+        </button>
       </div>
 
       <div
@@ -173,9 +213,35 @@ export function CashierTab() {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <p className="text-[11px] font-700 uppercase tracking-[0.16em]" style={{ color: '#8c8c88' }}>
+          Операции за период
+        </p>
+        {filtered.length === 0 ? (
+          <p className="text-center text-[13px] py-6" style={{ color: '#6B6360' }}>
+            Нет операций за выбранный период
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((tx) => (
+              <TransactionCard
+                key={tx.id}
+                tx={tx}
+                tournamentTitle={tournamentTitle(tx.tournamentId)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
       <button
         type="button"
-        onClick={() => exportToCSV(filtered)}
+        onClick={() =>
+          exportToCSV(filtered, {
+            tournamentTitle,
+            playerName: playerNickname,
+          })
+        }
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-700 text-[#0A0908] active:scale-[0.98] transition-transform"
         style={{
           background: 'linear-gradient(to right, #8C4C27, #D99962)',
@@ -186,64 +252,52 @@ export function CashierTab() {
         Экспорт в Excel (CSV)
       </button>
 
-      {showRevenue &&
+      {sheet &&
         createPortal(
-        <div className="fixed inset-0 z-[80] flex items-end justify-center">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/60"
-            aria-label="Закрыть"
-            onClick={() => setShowRevenue(false)}
-          />
-          <div
-            className="relative w-full max-w-[480px] max-h-[75vh] rounded-t-3xl px-4 pt-4 pb-8 overflow-y-auto"
-            style={{ background: '#1A1411', border: '1px solid rgba(217,153,98,0.28)' }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-800 uppercase tracking-wide text-white">
-                Оплаченные транзакции
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowRevenue(false)}
-                className="w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.06)' }}
-                aria-label="Закрыть"
-              >
-                <X size={16} style={{ color: '#A39B98' }} />
-              </button>
-            </div>
-            {paid.length === 0 ? (
-              <p className="text-center text-[13px] py-8" style={{ color: '#6B6360' }}>
-                Нет оплаченных транзакций за период
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {paid.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between gap-3 rounded-xl px-3 py-3"
-                    style={{ background: '#2A211D' }}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-700 text-white truncate">
-                        {playerNickname(tx.userId)}
-                      </p>
-                      <p className="text-[11px]" style={{ color: '#A39B98' }}>
-                        {TRANSACTION_TYPE_LABEL[tx.type]}
-                      </p>
-                    </div>
-                    <p className="text-[14px] font-800 shrink-0" style={{ color: '#F2D8A7' }}>
-                      {formatRub(tx.amount)}
-                    </p>
-                  </div>
-                ))}
+          <div className="fixed inset-0 z-[80] flex items-end justify-center">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/60"
+              aria-label="Закрыть"
+              onClick={() => setSheet(null)}
+            />
+            <div
+              className="relative w-full max-w-[480px] max-h-[75vh] rounded-t-3xl px-4 pt-4 pb-8 overflow-y-auto"
+              style={{ background: '#1A1411', border: '1px solid rgba(217,153,98,0.28)' }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[15px] font-800 uppercase tracking-wide text-white">
+                  {SHEET_TITLE[sheet]}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setSheet(null)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                  aria-label="Закрыть"
+                >
+                  <X size={16} style={{ color: '#A39B98' }} />
+                </button>
               </div>
-            )}
-          </div>
-        </div>,
-        document.body,
-      )}
+              {sheetItems.length === 0 ? (
+                <p className="text-center text-[13px] py-8" style={{ color: '#6B6360' }}>
+                  {emptyCopy}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {sheetItems.map((tx) => (
+                    <TransactionCard
+                      key={tx.id}
+                      tx={tx}
+                      tournamentTitle={tournamentTitle(tx.tournamentId)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -252,24 +306,64 @@ function MetricCard({
   label,
   value,
   accent,
-  clickable,
 }: {
   label: string;
   value: string;
   accent: string;
-  clickable?: boolean;
 }) {
   return (
     <div
-      className={`rounded-2xl px-5 py-4 ${clickable ? 'active:scale-[0.99] transition-transform' : ''}`}
+      className="rounded-2xl px-5 py-4 flex items-center justify-between gap-3 active:scale-[0.99] transition-transform"
       style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <p className="text-[11px] font-700 uppercase tracking-[0.16em]" style={{ color: '#8c8c88' }}>
-        {label}
+      <div className="min-w-0">
+        <p className="text-[11px] font-700 uppercase tracking-[0.16em]" style={{ color: '#8c8c88' }}>
+          {label}
+        </p>
+        <p className="text-[28px] font-900 tracking-wide mt-1 leading-none" style={{ color: accent }}>
+          {value}
+        </p>
+      </div>
+      <ChevronRight size={22} strokeWidth={2.2} className="shrink-0 opacity-50" style={{ color: '#F2D8A7' }} />
+    </div>
+  );
+}
+
+function TransactionCard({
+  tx,
+  tournamentTitle,
+}: {
+  tx: Transaction;
+  tournamentTitle: string;
+}) {
+  const amountColor = tx.status === 'unpaid' ? '#f87171' : '#F2D8A7';
+
+  return (
+    <div className="rounded-xl px-3 py-3 space-y-1.5" style={{ background: '#2A211D' }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[13px] font-700 text-white truncate">{playerNickname(tx.userId)}</p>
+          <p className="text-[12px] mt-0.5 truncate" style={{ color: '#D99962' }}>
+            {tournamentTitle}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[13px] font-800" style={{ color: amountColor }}>
+            {TRANSACTION_TYPE_LABEL[tx.type]} · {formatRub(tx.amount)}
+          </p>
+          <p className="text-[10px] font-600 mt-0.5 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
+            {TRANSACTION_STATUS_LABEL[tx.status]}
+          </p>
+        </div>
+      </div>
+      <p className="text-[11px]" style={{ color: '#A39B98' }}>
+        {formatTxDate(tx.date)} · {formatTxTime(tx.date)}
       </p>
-      <p className="text-[28px] font-900 tracking-wide mt-1 leading-none" style={{ color: accent }}>
-        {value}
-      </p>
+      {tx.comment.trim() ? (
+        <p className="text-[11px] leading-snug" style={{ color: '#c8a38e' }}>
+          {tx.comment}
+        </p>
+      ) : null}
     </div>
   );
 }

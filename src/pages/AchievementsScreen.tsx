@@ -72,7 +72,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
           ].join(' ')}
         />
       </div>
-      <div className="relative z-10 w-full min-h-0 px-0.5">
+      <div className="relative z-10 w-full min-h-0 px-0.5 overflow-hidden">
         <p
           className={[
             'font-black leading-tight text-[10px] line-clamp-2',
@@ -81,7 +81,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         >
           {achievement.title}
         </p>
-        <p className="text-white/55 leading-tight text-[10px] line-clamp-2 mt-0.5">
+        <p className="overflow-hidden text-white/55 text-ellipsis line-clamp-3 text-[9px] leading-tight mt-0.5">
           {achievement.description}
         </p>
       </div>
@@ -103,9 +103,11 @@ export function AchievementsScreen() {
     <SectionScreen
       title="Достижения"
       backTo="/profile"
+      centerTitle
+      headerClassName="py-5"
       contentPaddingBottom="calc(env(safe-area-inset-bottom, 0px) + 8rem)"
       right={
-        <span className="text-[11px] font-700 shrink-0" style={{ color: '#D99962' }}>
+        <span className="text-lg font-bold text-[#D99962] tabular-nums">
           {done}/{achievements.length}
         </span>
       }

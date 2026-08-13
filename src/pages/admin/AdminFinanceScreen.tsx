@@ -18,7 +18,12 @@ export function AdminFinanceScreen() {
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
       <CompactHeader
-        title="Finance & Results"
+        title={
+          <span className="flex flex-col">
+            Finance
+            <span className="tracking-[0.08em]">& Results</span>
+          </span>
+        }
         backTo="/profile"
         right={
           <div className="flex rounded-lg p-0.5" style={{ background: '#1E1612' }}>

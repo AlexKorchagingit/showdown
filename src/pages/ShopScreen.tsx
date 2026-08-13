@@ -140,35 +140,35 @@ export function ShopScreen() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <button
-        type="button"
-        onClick={() => navigate('/profile')}
-        className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(217,153,98,0.28)',
-        }}
-        aria-label="Назад"
-      >
-        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </button>
+      <div className="relative flex-shrink-0 flex items-center justify-between px-3 py-3">
+        <button
+          type="button"
+          onClick={() => navigate('/profile')}
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 z-10"
+          style={{
+            background: 'rgba(28,20,16,0.78)',
+            border: '1px solid rgba(217,153,98,0.28)',
+          }}
+          aria-label="Назад"
+        >
+          <ArrowLeft size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
+        </button>
 
-      <button
-        type="button"
-        onClick={() => setRubyInfoOpen(true)}
-        className="absolute top-6 right-4 z-50 active:scale-95 transition-transform"
-        aria-label="Как заработать рубины"
-      >
-        <CoinBalance coins={coins} />
-      </button>
-
-      <div className="flex-shrink-0 px-5 pt-20 pb-4 space-y-4">
-        <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
+        <h1 className="absolute left-1/2 -translate-x-1/2 text-[15px] font-800 tracking-[0.22em] text-white uppercase pointer-events-none">
           Магазин
         </h1>
 
+        <button
+          type="button"
+          onClick={() => setRubyInfoOpen(true)}
+          className="shrink-0 z-10 active:scale-95 transition-transform"
+          aria-label="Как заработать рубины"
+        >
+          <CoinBalance coins={coins} compact />
+        </button>
+      </div>
+
+      <div className="flex-shrink-0 px-5 pb-3">
         <div className="relative flex rounded-xl p-1" style={{ background: '#1E1612' }}>
           {TAB_ORDER.map((t) => (
             <button
@@ -203,7 +203,7 @@ export function ShopScreen() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            className="grid grid-cols-2 gap-4 px-4 mt-6"
+            className="grid grid-cols-2 gap-4 px-4 mt-3"
           >
             {items.map((item) => {
               const owned = isOwned(item.id);
