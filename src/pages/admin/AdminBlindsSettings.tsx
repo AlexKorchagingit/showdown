@@ -389,7 +389,7 @@ export function AdminBlindsSettings() {
               Таймер идёт. Изменения предстоящих уровней подхватятся сразу.
             </p>
           )}
-          <TimerSessionFields />
+          <TimerSessionFields structureName={editing.name} />
           <LevelEditor
             structure={editing}
             onChange={(levels) => updateLevels(editing.id, levels)}
@@ -407,7 +407,7 @@ export function AdminBlindsSettings() {
         className="flex-1 scrollable px-3"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
-        <TimerSessionFields />
+        <TimerSessionFields structureName={structures.find((s) => s.id === activeStructureId)?.name} />
         <div className="space-y-2">
           {structures.map((structure) => (
             <div

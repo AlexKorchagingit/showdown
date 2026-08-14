@@ -87,6 +87,7 @@ export function AdminBlindsTimer() {
     setRunning,
     restartLevel,
     skipLevel,
+    adjustSeconds,
     linkedTournamentId,
     setLinkedTournament,
     avgStackOverride,
@@ -108,12 +109,6 @@ export function AdminBlindsTimer() {
   }, [requestedId, ensureTimer]);
 
   useEffect(() => {
-    if (linkedTournamentId) return;
-    const fallback = tournaments.find((t) => !t.isClosed && t.participants.length > 0) ?? tournaments[0];
-    if (fallback) setLinkedTournament(fallback.id);
-  }, [linkedTournamentId, tournaments, setLinkedTournament]);
-
-  useEffect(() => {
     const sync = () => setFullscreen(isAppFullscreen());
     document.addEventListener('fullscreenchange', sync);
     document.addEventListener('webkitfullscreenchange', sync);
@@ -129,7 +124,14 @@ export function AdminBlindsTimer() {
   const avgStack = avgStackOverride ?? autoAvgStack(tournament);
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
-  const eventTitle = tournament?.title ?? structure?.name ?? '';
+  const eventTitle = structure?.name ?? '';
+
+  useEffect(() => {
+    if (!structure) return;
+    const match = tournaments.find((t) => t.title === structure.name);
+    const nextId = match?.id ?? null;
+    if (nextId !== linkedTournamentId) setLinkedTournament(nextId);
+  }, [structure, tournaments, linkedTournamentId, setLinkedTournament]);
 
   const timeToNextBreak = useMemo(
     () =>
@@ -180,75 +182,84 @@ export function AdminBlindsTimer() {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#0A0908] text-white">
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
-        <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
-          <ArrowLeft size={22} strokeWidth={2.2} />
-        </ControlButton>
-        <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
-          <Settings size={22} strokeWidth={2.2} />
-        </ControlButton>
-      </div>
-
       <div className="flex w-full h-full">
-        <div className="w-1/3 min-w-[140px] max-w-[420px] flex flex-col px-5 pt-20 pb-6 overflow-y-auto">
-          <p className="text-[13px] md:text-[15px] font-900 uppercase tracking-[0.22em]" style={{ color: '#D99962' }}>
+        <div className="w-[40%] min-w-[240px] max-w-[560px] flex flex-col px-5 pt-8 pb-28 overflow-y-auto">
+          <p className="text-lg md:text-xl font-900 uppercase tracking-[0.18em]" style={{ color: '#D99962' }}>
             Гарантия очков
           </p>
-          <p className="text-4xl md:text-5xl font-black mt-2 leading-none" style={{ color: '#F2D8A7' }}>
+          <p className="text-5xl md:text-6xl font-black mt-2 leading-none" style={{ color: '#F2D8A7' }}>
             {structure.guarantee.toLocaleString('ru-RU')}
           </p>
-          <p className="text-[12px] font-600 mt-3" style={{ color: '#8c8c88' }}>
-            Осталось: {remaining} / {registered} · Avg {avgStack.toLocaleString('ru-RU')}
-          </p>
 
-          <div className="mt-5 space-y-2">
-            {structure.payouts.map(({ place, share }) => (
-              <div key={place} className="flex items-baseline gap-2">
-                <span className="text-[13px] font-600 text-white/60">{place} место</span>
-                <span className="text-[15px] font-bold" style={{ color: '#D99962' }}>
-                  {share}%
-                </span>
-                <span className="text-[12px] font-500 text-white/40">
-                  {Math.round((structure.guarantee * share) / 100).toLocaleString('ru-RU')}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-auto pt-8">
-            {chipleader ? (
-              <div className="relative">
-                <p
-                  className={`relative z-10 text-[13px] font-900 uppercase tracking-[0.28em] drop-shadow-[0_0_10px_rgba(217,153,98,0.65)] ${GOLD_TEXT}`}
-                >
-                  Chipleader
-                </p>
-                <p className="relative z-10 text-xl md:text-2xl font-black text-white mt-1 leading-tight">
-                  {chipleader.nickname}
-                </p>
-                <div className="relative mt-3 w-fit">
-                  <div className="absolute inset-0 bg-[#D99962]/20 blur-[30px] -z-10 rounded-full" />
-                  <img
-                    src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
-                    alt=""
-                    className="relative z-10 h-40 w-auto object-contain pointer-events-none select-none"
-                  />
+          <div className="mt-6 flex flex-col xl:flex-row gap-6 xl:gap-8">
+            <div className="flex-1 space-y-2.5 min-w-0">
+              {structure.payouts.map(({ place, share }) => (
+                <div key={place} className="flex items-baseline gap-2">
+                  <span className="text-base md:text-lg font-700 text-white/70">{place} место</span>
+                  <span className="text-lg md:text-xl font-black" style={{ color: '#D99962' }}>
+                    {share}%
+                  </span>
+                  <span className="text-sm md:text-base font-600 text-white/45">
+                    {Math.round((structure.guarantee * share) / 100).toLocaleString('ru-RU')}
+                  </span>
                 </div>
-              </div>
-            ) : (
-              <p className="text-[12px] font-600 uppercase tracking-wide" style={{ color: '#6B6360' }}>
-                Чиплидер не выбран
+              ))}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] md:text-sm font-800 uppercase tracking-[0.16em]" style={{ color: '#D99962' }}>
+                Осталось игроков
               </p>
-            )}
+              <p className="text-3xl md:text-5xl font-black text-white mt-1 leading-none tabular-nums">
+                {remaining}
+                <span className="text-xl md:text-2xl font-700 text-white/45"> / {registered}</span>
+              </p>
+              <p
+                className="text-[12px] md:text-sm font-800 uppercase tracking-[0.16em] mt-4"
+                style={{ color: '#D99962' }}
+              >
+                Средний стек
+              </p>
+              <p className="text-3xl md:text-5xl font-black mt-1 leading-none tabular-nums" style={{ color: '#F2D8A7' }}>
+                {avgStack.toLocaleString('ru-RU')}
+              </p>
+
+              <div className="mt-6">
+                {chipleader ? (
+                  <div className="relative">
+                    <p
+                      className={`relative z-10 text-sm md:text-base font-900 uppercase tracking-[0.28em] drop-shadow-[0_0_10px_rgba(217,153,98,0.65)] ${GOLD_TEXT}`}
+                    >
+                      Chipleader
+                    </p>
+                    <p className="relative z-10 text-2xl md:text-3xl font-black text-white mt-1 leading-tight">
+                      {chipleader.nickname}
+                    </p>
+                    <div className="relative mt-3 w-fit">
+                      <div className="absolute inset-0 bg-[#D99962]/20 blur-[30px] -z-10 rounded-full" />
+                      <img
+                        src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
+                        alt=""
+                        className="relative z-10 h-48 md:h-56 w-auto object-contain pointer-events-none select-none"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm font-600 uppercase tracking-wide" style={{ color: '#6B6360' }}>
+                    Чиплидер не выбран
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col items-center justify-center relative px-3 py-6">
+        <div className="flex-1 min-w-0 flex flex-col items-center justify-center relative px-3 py-6 pb-28">
           <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em]" style={{ color: '#D99962' }}>
             Showdown
           </p>
           <h1
-            className={`text-3xl md:text-5xl font-black uppercase tracking-wide text-center mt-1 leading-tight ${GOLD_TEXT}`}
+            className={`text-2xl md:text-3xl font-black uppercase tracking-wide text-center mt-1 leading-tight ${GOLD_TEXT}`}
           >
             {eventTitle}
           </h1>
@@ -256,7 +267,7 @@ export function AdminBlindsTimer() {
           <div className="relative my-4 w-[min(86vw,28rem)] md:w-[min(48vw,32rem)] aspect-square">
             <svg
               viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
-              className="w-full h-full -rotate-90"
+              className="w-full h-full -rotate-90 pointer-events-none"
               aria-hidden
             >
               <circle
@@ -280,77 +291,59 @@ export function AdminBlindsTimer() {
                 style={{ transition: 'stroke-dashoffset 0.25s linear' }}
               />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8">
-              <p className="text-lg md:text-2xl font-black uppercase tracking-[0.18em]" style={{ color: '#D99962' }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 pointer-events-none">
+              <p className="text-2xl md:text-4xl font-black uppercase tracking-[0.18em]" style={{ color: '#D99962' }}>
                 {isBreak
                   ? currentLevel?.isLateRegEnd
                     ? 'Конец реги'
                     : 'Break'
                   : `Level ${levelNumber}`}
               </p>
-              <p className="text-2xl md:text-4xl font-black text-white mt-1 leading-none">{blindsLabel}</p>
-              <p className="text-base md:text-xl font-700 mt-1" style={{ color: '#F2D8A7' }}>
+              <p className="text-4xl md:text-6xl font-black text-white mt-1 leading-none">{blindsLabel}</p>
+              <p className="text-xl md:text-3xl font-700 mt-1" style={{ color: '#F2D8A7' }}>
                 {anteLabel}
               </p>
-              <p className="text-[3.2rem] md:text-[5.5rem] font-black leading-none tabular-nums mt-2">
+              <p className="text-[4.5rem] md:text-[7rem] font-black leading-none tabular-nums mt-2">
                 {formatClock(secondsLeft)}
               </p>
             </div>
+            <button
+              type="button"
+              className="absolute left-0 top-0 z-10 h-full w-1/2 cursor-pointer bg-transparent"
+              aria-label="Минус одна минута"
+              onClick={() => adjustSeconds(-60)}
+            />
+            <button
+              type="button"
+              className="absolute right-0 top-0 z-10 h-full w-1/2 cursor-pointer bg-transparent"
+              aria-label="Плюс одна минута"
+              onClick={() => adjustSeconds(60)}
+            />
           </div>
 
-          <p className="text-[13px] md:text-[15px] font-500 text-white/40">
+          <p className="text-xl md:text-2xl font-bold text-white/70">
             Next Blinds: {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
           </p>
-
-          <div className="mt-6 flex items-center gap-3">
-            <ControlButton
-              label="Предыдущий уровень"
-              onClick={() => skipLevel(-1)}
-              disabled={levelIndex <= 0}
-            >
-              <SkipBack size={22} strokeWidth={2.2} />
-            </ControlButton>
-            <ControlButton
-              label={isRunning ? 'Пауза' : 'Запустить'}
-              onClick={() => setRunning(!isRunning)}
-            >
-              {isRunning ? (
-                <Pause size={22} strokeWidth={2.2} fill="currentColor" />
-              ) : (
-                <Play size={22} strokeWidth={2.2} fill="currentColor" />
-              )}
-            </ControlButton>
-            <ControlButton
-              label="Следующий уровень"
-              onClick={() => skipLevel(1)}
-              disabled={levelIndex >= structure.levels.length - 1}
-            >
-              <SkipForward size={22} strokeWidth={2.2} />
-            </ControlButton>
-            <ControlButton label="Повторить уровень" onClick={restartLevel}>
-              <RotateCcw size={22} strokeWidth={2.2} />
-            </ControlButton>
-          </div>
         </div>
 
-        <div className="w-40 md:w-56 shrink-0 pt-5 pr-4 flex flex-col items-end gap-4">
+        <div className="w-44 md:w-60 shrink-0 pt-5 pr-4 pb-28 flex flex-col items-end gap-4">
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="max-h-16 md:max-h-20 w-auto object-contain opacity-85"
+            className="h-20 md:h-28 w-auto object-contain opacity-90"
           />
           <div className="w-full text-right space-y-2">
             {timeToNextBreak != null && (
-              <p className="text-[11px] md:text-[13px] font-700 leading-snug text-white/80">
+              <p className="text-[12px] md:text-[14px] font-700 leading-snug text-white/80">
                 Перерыв через:{' '}
                 <span className="tabular-nums font-black text-white">{formatEta(timeToNextBreak)}</span>
               </p>
             )}
             {lateRegClosed ? (
-              <p className="text-[11px] md:text-[13px] font-800 text-red-500">Регистрация закрыта</p>
+              <p className="text-[12px] md:text-[14px] font-bold text-red-500">Регистрация закрыта</p>
             ) : timeToLateRegEnd != null ? (
-              <p className="text-[11px] md:text-[13px] font-700 leading-snug text-white/80">
-                Поздняя рега: еще{' '}
+              <p className="text-[12px] md:text-[14px] font-700 leading-snug text-white/80">
+                Поздняя регистрация: до{' '}
                 <span className="tabular-nums font-black text-white">{formatEta(timeToLateRegEnd)}</span>
               </p>
             ) : null}
@@ -358,7 +351,37 @@ export function AdminBlindsTimer() {
         </div>
       </div>
 
-      <div className="absolute bottom-5 right-5 z-30">
+      <div className="absolute bottom-5 right-5 z-30 flex items-center gap-2">
+        <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
+          <ArrowLeft size={22} strokeWidth={2.2} />
+        </ControlButton>
+        <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
+          <Settings size={22} strokeWidth={2.2} />
+        </ControlButton>
+        <ControlButton
+          label="Предыдущий уровень"
+          onClick={() => skipLevel(-1)}
+          disabled={levelIndex <= 0}
+        >
+          <SkipBack size={22} strokeWidth={2.2} />
+        </ControlButton>
+        <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={() => setRunning(!isRunning)}>
+          {isRunning ? (
+            <Pause size={22} strokeWidth={2.2} fill="currentColor" />
+          ) : (
+            <Play size={22} strokeWidth={2.2} fill="currentColor" />
+          )}
+        </ControlButton>
+        <ControlButton
+          label="Следующий уровень"
+          onClick={() => skipLevel(1)}
+          disabled={levelIndex >= structure.levels.length - 1}
+        >
+          <SkipForward size={22} strokeWidth={2.2} />
+        </ControlButton>
+        <ControlButton label="Повторить уровень" onClick={restartLevel}>
+          <RotateCcw size={22} strokeWidth={2.2} />
+        </ControlButton>
         <ControlButton
           label={fullscreen ? 'Выйти из полноэкранного режима' : 'Полный экран'}
           onClick={() => {
@@ -398,7 +421,7 @@ export function AdminBlindsTimer() {
                   <X size={16} style={{ color: '#A39B98' }} />
                 </button>
               </div>
-              <TimerSessionFields />
+              <TimerSessionFields structureName={structure.name} />
             </div>
           </div>,
           document.body,

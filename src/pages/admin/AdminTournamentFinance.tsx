@@ -280,7 +280,7 @@ export function AdminTournamentFinance() {
               return (
                 <div
                   key={player.id}
-                  className={`rounded-2xl p-4 space-y-3 ${eliminated ? 'opacity-50 grayscale' : ''}`}
+                  className="rounded-2xl p-4 space-y-3"
                   style={{
                     background: '#2A211D',
                     border: hasDebt
@@ -288,6 +288,7 @@ export function AdminTournamentFinance() {
                       : '1px solid rgba(255,255,255,0.06)',
                   }}
                 >
+                  <div className={`space-y-3 ${eliminated ? 'opacity-50 grayscale' : ''}`}>
                   <div className="flex items-center gap-2.5">
                     <div
                       className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
@@ -500,12 +501,13 @@ export function AdminTournamentFinance() {
                       {formatTxDateTime(dealerLoggedAt)}
                     </p>
                   ) : null}
+                  </div>
 
                   {hasDebt && unpaidTotal > 0 && (
                     <button
                       type="button"
                       onClick={() => markPlayerPaid(tournament.id, player.id)}
-                      className="w-full py-3 rounded-xl text-[13px] font-800 text-white bg-red-600 active:scale-[0.98] transition-transform"
+                      className="w-full py-3 rounded-xl text-[13px] bg-red-600 text-white font-bold active:scale-[0.98] transition-transform"
                     >
                       Оплатить {unpaidTotal.toLocaleString('ru-RU')} руб
                     </button>

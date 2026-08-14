@@ -41,6 +41,7 @@ type BlindsAction =
   | { type: 'setRunning'; value: boolean }
   | { type: 'restart' }
   | { type: 'skip'; delta: -1 | 1 }
+  | { type: 'adjust'; delta: number }
   | { type: 'tick'; elapsed: number }
   | { type: 'linkTournament'; tournamentId: string | null }
   | { type: 'setAvgStack'; value: number | null }
@@ -99,6 +100,8 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
       return { ...state, isRunning: action.value };
     case 'restart':
       return { ...state, secondsLeft: fullDuration(state), isRunning: false };
+    case 'adjust':
+      return { ...state, secondsLeft: Math.max(0, state.secondsLeft + action.delta) };
     case 'skip': {
       const structure = findStructure(state, state.activeStructureId);
       if (!structure) return state;
@@ -173,6 +176,7 @@ interface BlindsContextValue {
   setRunning: (value: boolean) => void;
   restartLevel: () => void;
   skipLevel: (delta: -1 | 1) => void;
+  adjustSeconds: (delta: number) => void;
   linkedTournamentId: string | null;
   avgStackOverride: number | null;
   chipleaderId: string | null;
@@ -271,6 +275,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       setRunning,
       restartLevel: () => dispatch({ type: 'restart' }),
       skipLevel: (delta) => dispatch({ type: 'skip', delta }),
+      adjustSeconds: (delta) => dispatch({ type: 'adjust', delta }),
       linkedTournamentId: state.linkedTournamentId,
       avgStackOverride: state.avgStackOverride,
       chipleaderId: state.chipleaderId,

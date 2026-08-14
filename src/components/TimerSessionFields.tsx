@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useBlinds } from '../context/BlindsContext';
 import { useTournaments } from '../context/TournamentContext';
 import { autoAvgStack, remainingPlayers } from '../lib/tournamentStats';
@@ -7,17 +8,27 @@ const FIELD_CLASS =
 const LABEL_CLASS =
   'block text-[10px] font-700 uppercase tracking-[0.16em] mb-1 text-[#D99962]';
 
-/** Tournament link, manual avg stack and chipleader — shared by blinds settings. */
-export function TimerSessionFields() {
+/** Avg stack and chipleader — tournament name is locked to the selected structure. */
+export function TimerSessionFields({ structureName }: { structureName?: string }) {
   const { tournaments } = useTournaments();
   const {
-    linkedTournamentId,
+    activeStructure,
     avgStackOverride,
     chipleaderId,
+    linkedTournamentId,
     setLinkedTournament,
     setAvgStackOverride,
     setChipleader,
   } = useBlinds();
+
+  const name = activeStructure?.name ?? structureName ?? '';
+
+  useEffect(() => {
+    if (!name) return;
+    const match = tournaments.find((t) => t.title === name);
+    const nextId = match?.id ?? null;
+    if (nextId !== linkedTournamentId) setLinkedTournament(nextId);
+  }, [name, tournaments, linkedTournamentId, setLinkedTournament]);
 
   const tournament = tournaments.find((t) => t.id === linkedTournamentId);
   const remaining = remainingPlayers(tournament);
@@ -29,24 +40,13 @@ export function TimerSessionFields() {
       style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
     >
       <p className="text-[11px] font-800 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
-        Сессия таймера
+        Сессия текущего таймера
       </p>
 
-      <label className="block">
+      <div>
         <span className={LABEL_CLASS}>Турнир</span>
-        <select
-          value={linkedTournamentId ?? ''}
-          onChange={(e) => setLinkedTournament(e.target.value || null)}
-          className={FIELD_CLASS}
-        >
-          <option value="">Не выбран</option>
-          {tournaments.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.title}
-            </option>
-          ))}
-        </select>
-      </label>
+        <p className="text-[14px] font-bold text-white">{name || '—'}</p>
+      </div>
 
       <label className="block">
         <span className={LABEL_CLASS}>Средний стек (ручной ввод)</span>
