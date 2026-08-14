@@ -90,7 +90,11 @@ export function AdminBlindsTimer() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
 
-  const requestedId = searchParams.get('structure') ?? structures[0]?.id ?? null;
+  const requestedId =
+    searchParams.get('structure') ??
+    structures.find((s) => s.name === tournaments.find((t) => t.id === linkedTournamentId)?.title)?.id ??
+    structures[0]?.id ??
+    null;
 
   useEffect(() => {
     ensureTimer(requestedId);
@@ -132,15 +136,19 @@ export function AdminBlindsTimer() {
 
   const currentLevel = structure.levels[levelIndex];
   const nextLevel = structure.levels[levelIndex + 1];
-  const levelSeconds = durationSeconds(currentLevel, structure.levelDuration);
-  const remainingRatio = Math.min(1, Math.max(0, secondsLeft / levelSeconds));
+  const levelSeconds = durationSeconds(currentLevel, currentLevel?.durationMinutes ?? structure.levelDuration);
+  const remainingRatio = Math.min(1, Math.max(0, secondsLeft / Math.max(1, levelSeconds)));
   const dashOffset = CIRCUMFERENCE * (1 - remainingRatio);
+  const isBreak = currentLevel?.isBreak === true;
   const levelNumber = currentLevel?.level ?? levelIndex + 1;
-  const blindsLabel = currentLevel
-    ? `${currentLevel.smallBlind.toLocaleString('ru-RU')} / ${currentLevel.bigBlind.toLocaleString('ru-RU')}`
-    : '—';
-  const anteLabel =
-    currentLevel && currentLevel.ante > 0
+  const blindsLabel = isBreak
+    ? 'Перерыв'
+    : currentLevel
+      ? `${currentLevel.smallBlind.toLocaleString('ru-RU')} / ${currentLevel.bigBlind.toLocaleString('ru-RU')}`
+      : '—';
+  const anteLabel = isBreak
+    ? `${currentLevel?.durationMinutes ?? 20} мин`
+    : currentLevel && currentLevel.ante > 0
       ? `Ante ${currentLevel.ante.toLocaleString('ru-RU')}`
       : 'Ante —';
 
@@ -248,7 +256,7 @@ export function AdminBlindsTimer() {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8">
               <p className="text-lg md:text-2xl font-black uppercase tracking-[0.18em]" style={{ color: '#D99962' }}>
-                Level {levelNumber}
+                {isBreak ? 'Break' : `Level ${levelNumber}`}
               </p>
               <p className="text-2xl md:text-4xl font-black text-white mt-1 leading-none">{blindsLabel}</p>
               <p className="text-base md:text-xl font-700 mt-1" style={{ color: '#F2D8A7' }}>

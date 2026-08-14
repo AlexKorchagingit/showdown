@@ -49,7 +49,7 @@ function CreateStructureForm({ onCreate }: { onCreate: (form: CreateForm) => voi
           type="text"
           value={form.name}
           onChange={(e) => set('name', e.target.value)}
-          placeholder="ROYAL FREEZEOUT"
+          placeholder="Grand Opening"
           className={FIELD_CLASS}
         />
       </section>
@@ -118,7 +118,7 @@ function LevelEditor({
   structure: BlindStructure;
   onChange: (levels: BlindLevel[]) => void;
 }) {
-  const patchLevel = (index: number, key: keyof BlindLevel, raw: string) => {
+  const patchLevel = (index: number, key: Exclude<keyof BlindLevel, 'isBreak'>, raw: string) => {
     const value = Number(raw);
     onChange(
       structure.levels.map((level, i) =>
@@ -130,8 +130,8 @@ function LevelEditor({
   };
 
   const addLevel = () => {
-    const last = structure.levels[structure.levels.length - 1];
-    const nextBb = last ? last.bigBlind * 2 : 200;
+    const lastPlaying = [...structure.levels].reverse().find((level) => !level.isBreak);
+    const nextBb = lastPlaying ? lastPlaying.bigBlind * 2 : 200;
     onChange(
       renumberLevels([
         ...structure.levels,
@@ -140,7 +140,23 @@ function LevelEditor({
           smallBlind: nextBb / 2,
           bigBlind: nextBb,
           ante: nextBb,
-          durationMinutes: last?.durationMinutes ?? structure.levelDuration,
+          durationMinutes: lastPlaying?.durationMinutes ?? structure.levelDuration,
+        },
+      ]),
+    );
+  };
+
+  const addBreak = () => {
+    onChange(
+      renumberLevels([
+        ...structure.levels,
+        {
+          level: 0,
+          smallBlind: 0,
+          bigBlind: 0,
+          ante: 0,
+          durationMinutes: 20,
+          isBreak: true,
         },
       ]),
     );
@@ -157,60 +173,94 @@ function LevelEditor({
         <div
           key={`${level.level}-${index}`}
           className="rounded-xl p-3 space-y-2"
-          style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
+          style={{
+            background: level.isBreak ? 'rgba(34,197,94,0.08)' : '#2A211D',
+            border: level.isBreak
+              ? '1px solid rgba(34,197,94,0.35)'
+              : '1px solid rgba(255,255,255,0.06)',
+          }}
         >
           <div className="flex items-center justify-between">
             <p className="text-[12px] font-800 uppercase tracking-wide" style={{ color: '#D99962' }}>
-              Уровень {level.level}
+              {level.isBreak ? 'Перерыв' : `Уровень ${level.level}`}
             </p>
             <button
               type="button"
               onClick={() => removeLevel(index)}
               disabled={structure.levels.length <= 1}
               className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30"
-              aria-label={`Удалить уровень ${level.level}`}
+              aria-label={level.isBreak ? 'Удалить перерыв' : `Удалить уровень ${level.level}`}
             >
               <Trash2 size={14} style={{ color: '#A39B98' }} />
             </button>
           </div>
-          <div className="grid grid-cols-4 gap-1.5">
-            {(
-              [
-                ['smallBlind', 'SB'],
-                ['bigBlind', 'BB'],
-                ['ante', 'Ante'],
-                ['durationMinutes', 'Мин'],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="min-w-0">
-                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
-                  {label}
-                </span>
-                <input
-                  type="number"
-                  value={level[key]}
-                  onChange={(e) => patchLevel(index, key, e.target.value)}
-                  className={FIELD_CLASS}
-                />
-              </label>
-            ))}
-          </div>
+          {level.isBreak ? (
+            <label className="block max-w-[8rem]">
+              <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                Мин
+              </span>
+              <input
+                type="number"
+                value={level.durationMinutes}
+                onChange={(e) => patchLevel(index, 'durationMinutes', e.target.value)}
+                className={FIELD_CLASS}
+              />
+            </label>
+          ) : (
+            <div className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  ['smallBlind', 'SB'],
+                  ['bigBlind', 'BB'],
+                  ['ante', 'Ante'],
+                  ['durationMinutes', 'Мин'],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="min-w-0">
+                  <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                    {label}
+                  </span>
+                  <input
+                    type="number"
+                    value={level[key]}
+                    onChange={(e) => patchLevel(index, key, e.target.value)}
+                    className={FIELD_CLASS}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       ))}
 
-      <button
-        type="button"
-        onClick={addLevel}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-700"
-        style={{
-          background: 'rgba(217,153,98,0.1)',
-          border: '1px solid rgba(217,153,98,0.3)',
-          color: '#D99962',
-        }}
-      >
-        <Plus size={16} strokeWidth={2.4} />
-        Добавить уровень
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={addLevel}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-700"
+          style={{
+            background: 'rgba(217,153,98,0.1)',
+            border: '1px solid rgba(217,153,98,0.3)',
+            color: '#D99962',
+          }}
+        >
+          <Plus size={16} strokeWidth={2.4} />
+          Добавить уровень
+        </button>
+        <button
+          type="button"
+          onClick={addBreak}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-700"
+          style={{
+            background: 'rgba(34,197,94,0.1)',
+            border: '1px solid rgba(34,197,94,0.3)',
+            color: '#86efac',
+          }}
+        >
+          <Plus size={16} strokeWidth={2.4} />
+          Перерыв
+        </button>
+      </div>
     </div>
   );
 }
@@ -240,7 +290,7 @@ export function AdminBlindsSettings() {
     const duration = Number(form.levelDuration) || 20;
     const created: BlindStructure = {
       id: `bs-${Date.now()}`,
-      name: form.name.trim().toUpperCase(),
+      name: form.name.trim(),
       levelDuration: duration,
       guarantee: Number(form.guarantee) || 0,
       levels: buildLevels(Math.max(1, Number(form.levelCount) || 12), 200, duration),
@@ -330,8 +380,9 @@ export function AdminBlindsSettings() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold text-white truncate">{structure.name}</p>
                   <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
-                    {structure.levels.length} ур. · {structureDurationLabel(structure)} ·{' '}
-                    {structure.guarantee.toLocaleString('ru-RU')}
+                    {structure.levels.filter((l) => !l.isBreak).length} ур.
+                    {structure.levels.some((l) => l.isBreak) ? ' · перерыв' : ''} ·{' '}
+                    {structureDurationLabel(structure)} · {structure.guarantee.toLocaleString('ru-RU')}
                   </p>
                 </div>
                 <ChevronRight size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />

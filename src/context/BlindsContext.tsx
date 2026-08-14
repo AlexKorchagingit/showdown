@@ -53,7 +53,7 @@ function findStructure(state: BlindsState, id: string | null): BlindStructure | 
 
 function fullDuration(state: BlindsState, index = state.levelIndex): number {
   const structure = findStructure(state, state.activeStructureId);
-  return durationSeconds(structure?.levels[index], structure?.levelDuration ?? 20);
+  return durationSeconds(structure?.levels[index]);
 }
 
 function clampIndex(state: BlindsState, index: number): number {
@@ -69,7 +69,7 @@ function afterStructureChange(state: BlindsState, next: BlindStructure): BlindsS
   if (state.activeStructureId !== next.id) return synced;
 
   const levelIndex = clampIndex(synced, state.levelIndex);
-  const maxSeconds = durationSeconds(next.levels[levelIndex], next.levelDuration);
+  const maxSeconds = durationSeconds(next.levels[levelIndex]);
   return {
     ...synced,
     levelIndex,
@@ -91,7 +91,7 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
         ...state,
         activeStructureId: action.structureId,
         levelIndex: 0,
-        secondsLeft: durationSeconds(structure.levels[0], structure.levelDuration),
+        secondsLeft: durationSeconds(structure.levels[0]),
         isRunning: false,
       };
     }
@@ -112,7 +112,7 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
       return {
         ...state,
         levelIndex: nextIndex,
-        secondsLeft: durationSeconds(structure.levels[nextIndex], structure.levelDuration),
+        secondsLeft: durationSeconds(structure.levels[nextIndex]),
       };
     }
     case 'tick': {
@@ -131,7 +131,7 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
           break;
         }
         index += 1;
-        left += durationSeconds(structure.levels[index], structure.levelDuration);
+        left += durationSeconds(structure.levels[index]);
       }
 
       const leveledUp = index > state.levelIndex;
