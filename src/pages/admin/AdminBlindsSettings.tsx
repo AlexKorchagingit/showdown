@@ -111,6 +111,13 @@ function CreateStructureForm({ onCreate }: { onCreate: (form: CreateForm) => voi
   );
 }
 
+function levelTitle(level: BlindLevel): string {
+  if (level.isBreak && level.isLateRegEnd) return 'Перерыв · закрытие реги';
+  if (level.isBreak) return 'Перерыв';
+  if (level.isLateRegEnd) return `Уровень ${level.level} · закрытие реги`;
+  return `Уровень ${level.level}`;
+}
+
 function LevelEditor({
   structure,
   onChange,
@@ -118,15 +125,21 @@ function LevelEditor({
   structure: BlindStructure;
   onChange: (levels: BlindLevel[]) => void;
 }) {
-  const patchLevel = (index: number, key: Exclude<keyof BlindLevel, 'isBreak'>, raw: string) => {
-    const value = Number(raw);
+  const patchLevel = (index: number, patch: Partial<BlindLevel>) => {
     onChange(
-      structure.levels.map((level, i) =>
-        i === index
-          ? { ...level, [key]: Number.isFinite(value) ? value : 0 }
-          : level,
+      renumberLevels(
+        structure.levels.map((level, i) => (i === index ? { ...level, ...patch } : level)),
       ),
     );
+  };
+
+  const patchNumber = (
+    index: number,
+    key: 'smallBlind' | 'bigBlind' | 'ante' | 'durationMinutes',
+    raw: string,
+  ) => {
+    const value = Number(raw);
+    patchLevel(index, { [key]: Number.isFinite(value) ? value : 0 });
   };
 
   const addLevel = () => {
@@ -155,7 +168,7 @@ function LevelEditor({
           smallBlind: 0,
           bigBlind: 0,
           ante: 0,
-          durationMinutes: 20,
+          durationMinutes: 10,
           isBreak: true,
         },
       ]),
@@ -171,18 +184,24 @@ function LevelEditor({
     <div className="space-y-2">
       {structure.levels.map((level, index) => (
         <div
-          key={`${level.level}-${index}`}
+          key={`${level.level}-${index}-${level.isBreak ? 'b' : 'p'}-${level.isLateRegEnd ? 'lr' : ''}`}
           className="rounded-xl p-3 space-y-2"
           style={{
-            background: level.isBreak ? 'rgba(34,197,94,0.08)' : '#2A211D',
-            border: level.isBreak
-              ? '1px solid rgba(34,197,94,0.35)'
-              : '1px solid rgba(255,255,255,0.06)',
+            background: level.isLateRegEnd
+              ? 'rgba(244,63,94,0.10)'
+              : level.isBreak
+                ? 'rgba(34,197,94,0.08)'
+                : '#2A211D',
+            border: level.isLateRegEnd
+              ? '1px solid rgba(244,63,94,0.40)'
+              : level.isBreak
+                ? '1px solid rgba(34,197,94,0.35)'
+                : '1px solid rgba(255,255,255,0.06)',
           }}
         >
           <div className="flex items-center justify-between">
             <p className="text-[12px] font-800 uppercase tracking-wide" style={{ color: '#D99962' }}>
-              {level.isBreak ? 'Перерыв' : `Уровень ${level.level}`}
+              {levelTitle(level)}
             </p>
             <button
               type="button"
@@ -194,6 +213,36 @@ function LevelEditor({
               <Trash2 size={14} style={{ color: '#A39B98' }} />
             </button>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="inline-flex items-center gap-2 text-[12px] font-600 text-white/85">
+              <input
+                type="checkbox"
+                checked={level.isBreak === true}
+                onChange={(e) => {
+                  const isBreak = e.target.checked;
+                  patchLevel(
+                    index,
+                    isBreak
+                      ? { isBreak: true, smallBlind: 0, bigBlind: 0, ante: 0 }
+                      : { isBreak: false },
+                  );
+                }}
+                className="accent-[#D99962]"
+              />
+              Это перерыв
+            </label>
+            <label className="inline-flex items-center gap-2 text-[12px] font-600 text-white/85">
+              <input
+                type="checkbox"
+                checked={level.isLateRegEnd === true}
+                onChange={(e) => patchLevel(index, { isLateRegEnd: e.target.checked })}
+                className="accent-[#D99962]"
+              />
+              Закрытие поздней регистрации
+            </label>
+          </div>
+
           {level.isBreak ? (
             <label className="block max-w-[8rem]">
               <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
@@ -202,7 +251,7 @@ function LevelEditor({
               <input
                 type="number"
                 value={level.durationMinutes}
-                onChange={(e) => patchLevel(index, 'durationMinutes', e.target.value)}
+                onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
                 className={FIELD_CLASS}
               />
             </label>
@@ -223,7 +272,7 @@ function LevelEditor({
                   <input
                     type="number"
                     value={level[key]}
-                    onChange={(e) => patchLevel(index, key, e.target.value)}
+                    onChange={(e) => patchNumber(index, key, e.target.value)}
                     className={FIELD_CLASS}
                   />
                 </label>
@@ -381,7 +430,8 @@ export function AdminBlindsSettings() {
                   <p className="text-[14px] font-bold text-white truncate">{structure.name}</p>
                   <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
                     {structure.levels.filter((l) => !l.isBreak).length} ур.
-                    {structure.levels.some((l) => l.isBreak) ? ' · перерыв' : ''} ·{' '}
+                    {structure.levels.some((l) => l.isBreak) ? ' · перерыв' : ''}
+                    {structure.levels.some((l) => l.isLateRegEnd) ? ' · конец реги' : ''} ·{' '}
                     {structureDurationLabel(structure)} · {structure.guarantee.toLocaleString('ru-RU')}
                   </p>
                 </div>

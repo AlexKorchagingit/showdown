@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -17,7 +17,14 @@ import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { useBlinds } from '../../context/BlindsContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
-import { durationSeconds, formatBlinds } from '../../data/blindStructures';
+import {
+  durationSeconds,
+  formatBlinds,
+  formatEta,
+  isLateRegClosed,
+  secondsUntilLateRegEnd,
+  secondsUntilNextBreak,
+} from '../../data/blindStructures';
 import { asset } from '../../lib/assets';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
@@ -123,6 +130,25 @@ export function AdminBlindsTimer() {
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
   const eventTitle = tournament?.title ?? structure?.name ?? '';
+
+  const timeToNextBreak = useMemo(
+    () =>
+      structure
+        ? secondsUntilNextBreak(structure.levels, levelIndex, secondsLeft)
+        : null,
+    [structure, levelIndex, secondsLeft],
+  );
+  const timeToLateRegEnd = useMemo(
+    () =>
+      structure
+        ? secondsUntilLateRegEnd(structure.levels, levelIndex, secondsLeft)
+        : null,
+    [structure, levelIndex, secondsLeft],
+  );
+  const lateRegClosed = useMemo(
+    () => (structure ? isLateRegClosed(structure.levels, levelIndex) : false),
+    [structure, levelIndex],
+  );
 
   useEffect(() => {
     if (!chipleaderId || !tournament) return;
@@ -256,7 +282,11 @@ export function AdminBlindsTimer() {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8">
               <p className="text-lg md:text-2xl font-black uppercase tracking-[0.18em]" style={{ color: '#D99962' }}>
-                {isBreak ? 'Break' : `Level ${levelNumber}`}
+                {isBreak
+                  ? currentLevel?.isLateRegEnd
+                    ? 'Конец реги'
+                    : 'Break'
+                  : `Level ${levelNumber}`}
               </p>
               <p className="text-2xl md:text-4xl font-black text-white mt-1 leading-none">{blindsLabel}</p>
               <p className="text-base md:text-xl font-700 mt-1" style={{ color: '#F2D8A7' }}>
@@ -303,12 +333,28 @@ export function AdminBlindsTimer() {
           </div>
         </div>
 
-        <div className="w-20 md:w-28 shrink-0 relative pt-5 pr-4">
+        <div className="w-40 md:w-56 shrink-0 pt-5 pr-4 flex flex-col items-end gap-4">
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="absolute top-5 right-4 max-h-16 md:max-h-20 w-auto object-contain opacity-85"
+            className="max-h-16 md:max-h-20 w-auto object-contain opacity-85"
           />
+          <div className="w-full text-right space-y-2">
+            {timeToNextBreak != null && (
+              <p className="text-[11px] md:text-[13px] font-700 leading-snug text-white/80">
+                Перерыв через:{' '}
+                <span className="tabular-nums font-black text-white">{formatEta(timeToNextBreak)}</span>
+              </p>
+            )}
+            {lateRegClosed ? (
+              <p className="text-[11px] md:text-[13px] font-800 text-red-500">Регистрация закрыта</p>
+            ) : timeToLateRegEnd != null ? (
+              <p className="text-[11px] md:text-[13px] font-700 leading-snug text-white/80">
+                Поздняя рега: еще{' '}
+                <span className="tabular-nums font-black text-white">{formatEta(timeToLateRegEnd)}</span>
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
 

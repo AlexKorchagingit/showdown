@@ -5,6 +5,7 @@ export type BlindLevel = {
   ante: number;
   durationMinutes: number;
   isBreak?: boolean;
+  isLateRegEnd?: boolean;
 };
 
 export type TournamentStructure = {
@@ -33,12 +34,12 @@ export const DEFAULT_PAYOUTS: PrizePlace[] = [
 ];
 
 const STORAGE_KEY = 'showdown.blindStructures';
-const STORAGE_VERSION = 'extended-v1';
+const STORAGE_VERSION = 'dual-breaks-v1';
 
 type BlindStep = { sb: number; bb: number };
 
-/** Playing levels before the scheduled break. */
-const PRE_BREAK_STEPS: BlindStep[] = [
+/** 25 playing rungs. Breaks are inserted after 6 and 12. */
+const PLAYING_STEPS: BlindStep[] = [
   { sb: 100, bb: 100 },
   { sb: 100, bb: 200 },
   { sb: 200, bb: 300 },
@@ -47,10 +48,6 @@ const PRE_BREAK_STEPS: BlindStep[] = [
   { sb: 400, bb: 800 },
   { sb: 500, bb: 1000 },
   { sb: 600, bb: 1200 },
-];
-
-/** Playing levels after the scheduled break. */
-const POST_BREAK_STEPS: BlindStep[] = [
   { sb: 1000, bb: 1500 },
   { sb: 1000, bb: 2000 },
   { sb: 1500, bb: 3000 },
@@ -70,27 +67,18 @@ const POST_BREAK_STEPS: BlindStep[] = [
   { sb: 100000, bb: 200000 },
 ];
 
-const BREAK_MINUTES = 20;
-
 export function durationSeconds(level: BlindLevel | undefined, fallbackMinutes = 20): number {
   const minutes = level?.durationMinutes ?? fallbackMinutes;
   return Math.max(1, minutes) * 60;
 }
 
 export function structureDurationLabel(structure: BlindStructure): string {
-  if (structure.levels.length === 0) return `${structure.levelDuration} мин`;
-  const values = structure.levels.map((l) => l.durationMinutes);
+  const playing = structure.levels.filter((l) => !l.isBreak);
+  if (playing.length === 0) return `${structure.levelDuration} мин`;
+  const values = playing.map((l) => l.durationMinutes);
   const min = Math.min(...values);
   const max = Math.max(...values);
   return min === max ? `${min} мин` : `${min}–${max} мин`;
-}
-
-function sameStep(a: BlindStep, b: BlindStep): boolean {
-  return a.sb === b.sb && a.bb === b.bb;
-}
-
-function omitSteps(steps: BlindStep[], omit: BlindStep[]): BlindStep[] {
-  return steps.filter((step) => !omit.some((skip) => sameStep(step, skip)));
 }
 
 function playingLevel(level: number, step: BlindStep, durationMinutes: number): BlindLevel {
@@ -103,44 +91,45 @@ function playingLevel(level: number, step: BlindStep, durationMinutes: number): 
   };
 }
 
-function breakLevel(): BlindLevel {
+function breakLevel(durationMinutes: number, lateRegEnd = false): BlindLevel {
   return {
     level: 0,
     smallBlind: 0,
     bigBlind: 0,
     ante: 0,
-    durationMinutes: BREAK_MINUTES,
+    durationMinutes,
     isBreak: true,
+    ...(lateRegEnd ? { isLateRegEnd: true } : {}),
   };
 }
 
-export interface ExtendedLevelOptions {
-  preMinutes: number;
-  postMinutes: number;
-  extraBeforeBreak?: BlindStep;
-  omitAfterBreak?: BlindStep[];
+export interface ClubLevelOptions {
+  /** L1–L6 */
+  block1Minutes: number;
+  /** L7–L12 */
+  block2Minutes: number;
+  /** L13–L25 */
+  block3Minutes: number;
 }
 
-/** Extended smooth ladder: BB ante = BB, 20-minute break after the early levels. */
-export function buildExtendedLevels(options: ExtendedLevelOptions): BlindLevel[] {
-  const pre = options.extraBeforeBreak
-    ? [...PRE_BREAK_STEPS, options.extraBeforeBreak]
-    : PRE_BREAK_STEPS;
-  const post = options.omitAfterBreak
-    ? omitSteps(POST_BREAK_STEPS, options.omitAfterBreak)
-    : POST_BREAK_STEPS;
-
+/**
+ * 25 playing levels + two standalone breaks:
+ * after L6 (10 min) and after L12 (15 min, late-reg close).
+ */
+export function buildClubLevels(options: ClubLevelOptions): BlindLevel[] {
   const levels: BlindLevel[] = [];
   let n = 1;
-  for (const step of pre) {
-    levels.push(playingLevel(n, step, options.preMinutes));
+
+  PLAYING_STEPS.forEach((step, index) => {
+    if (index === 6) levels.push(breakLevel(10));
+    if (index === 12) levels.push(breakLevel(15, true));
+
+    const minutes =
+      index < 6 ? options.block1Minutes : index < 12 ? options.block2Minutes : options.block3Minutes;
+    levels.push(playingLevel(n, step, minutes));
     n += 1;
-  }
-  levels.push(breakLevel());
-  for (const step of post) {
-    levels.push(playingLevel(n, step, options.postMinutes));
-    n += 1;
-  }
+  });
+
   return levels;
 }
 
@@ -150,9 +139,10 @@ export function buildLevels(
   _startingBigBlind = 200,
   durationMinutes = 20,
 ): BlindLevel[] {
-  return buildExtendedLevels({
-    preMinutes: durationMinutes,
-    postMinutes: durationMinutes,
+  return buildClubLevels({
+    block1Minutes: durationMinutes,
+    block2Minutes: durationMinutes,
+    block3Minutes: durationMinutes,
   });
 }
 
@@ -160,72 +150,35 @@ function makeStructure(
   id: string,
   name: string,
   guarantee: number,
-  options: ExtendedLevelOptions,
+  options: ClubLevelOptions,
 ): BlindStructure {
   return {
     id,
     name,
-    levelDuration: options.preMinutes,
+    levelDuration: options.block1Minutes,
     guarantee,
-    levels: buildExtendedLevels(options),
+    levels: buildClubLevels(options),
     payouts: DEFAULT_PAYOUTS.map((place) => ({ ...place })),
   };
 }
 
-const DEEP_EXTRA: BlindStep = { sb: 800, bb: 1600 };
-const FREEROLL_OMIT: BlindStep[] = [
-  { sb: 1000, bb: 1500 },
-  { sb: 2500, bb: 5000 },
-  { sb: 6000, bb: 12000 },
-];
-const PHOENIX_OMIT: BlindStep[] = [
-  { sb: 1500, bb: 3000 },
-  { sb: 6000, bb: 12000 },
-  { sb: 10000, bb: 15000 },
-];
+const WEEKDAY: ClubLevelOptions = { block1Minutes: 15, block2Minutes: 15, block3Minutes: 12 };
+const WEEKDAY_SPORT: ClubLevelOptions = { block1Minutes: 15, block2Minutes: 15, block3Minutes: 15 };
+const WEEKEND: ClubLevelOptions = { block1Minutes: 20, block2Minutes: 20, block3Minutes: 15 };
 
 /**
  * Canonical club structures — names match tournament titles exactly.
  * Persisted to localStorage so admin edits survive reloads.
  */
 export const BLIND_STRUCTURES: BlindStructure[] = [
-  makeStructure('bs-grand-opening', 'Grand Opening', 20000, {
-    preMinutes: 20,
-    postMinutes: 15,
-    extraBeforeBreak: DEEP_EXTRA,
-  }),
-  makeStructure('bs-freeroll', 'Freeroll', 8000, {
-    preMinutes: 15,
-    postMinutes: 12,
-    omitAfterBreak: FREEROLL_OMIT,
-  }),
-  makeStructure('bs-triple-life', 'Triple Life', 12000, {
-    preMinutes: 15,
-    postMinutes: 12,
-  }),
-  makeStructure('bs-phoenix', 'Phoenix', 12000, {
-    preMinutes: 15,
-    postMinutes: 12,
-    omitAfterBreak: PHOENIX_OMIT,
-  }),
-  makeStructure('bs-freezeout', 'Freezeout', 15000, {
-    preMinutes: 15,
-    postMinutes: 12,
-  }),
-  makeStructure('bs-chill-out', 'Chill out', 10000, {
-    preMinutes: 15,
-    postMinutes: 12,
-    omitAfterBreak: FREEROLL_OMIT,
-  }),
-  makeStructure('bs-bounty-hunter', 'Bounty Hunter', 10000, {
-    preMinutes: 20,
-    postMinutes: 15,
-  }),
-  makeStructure('bs-deepstack', 'Deepstack', 15000, {
-    preMinutes: 20,
-    postMinutes: 15,
-    extraBeforeBreak: DEEP_EXTRA,
-  }),
+  makeStructure('bs-grand-opening', 'Grand Opening', 20000, WEEKEND),
+  makeStructure('bs-freeroll', 'Freeroll', 8000, WEEKDAY),
+  makeStructure('bs-triple-life', 'Triple Life', 12000, WEEKDAY_SPORT),
+  makeStructure('bs-phoenix', 'Phoenix', 12000, WEEKDAY),
+  makeStructure('bs-freezeout', 'Freezeout', 15000, WEEKDAY_SPORT),
+  makeStructure('bs-chill-out', 'Chill out', 10000, WEEKDAY),
+  makeStructure('bs-bounty-hunter', 'Bounty Hunter', 10000, WEEKEND),
+  makeStructure('bs-deepstack', 'Deepstack', 15000, WEEKEND),
 ];
 
 function cloneLevel(level: BlindLevel): BlindLevel {
@@ -310,7 +263,9 @@ export function findBlindStructure(id: string | null): BlindStructure | undefine
 
 export function formatBlinds(level: BlindLevel | undefined): string {
   if (!level) return '—';
-  if (level.isBreak) return 'Перерыв';
+  if (level.isBreak) {
+    return level.isLateRegEnd ? 'Перерыв · конец реги' : 'Перерыв';
+  }
   const base = `${level.smallBlind.toLocaleString('ru-RU')}/${level.bigBlind.toLocaleString('ru-RU')}`;
   return level.ante > 0 ? `${base} (${level.ante.toLocaleString('ru-RU')})` : base;
 }
@@ -322,4 +277,58 @@ export function renumberLevels(levels: BlindLevel[]): BlindLevel[] {
     n += 1;
     return { ...level, level: n };
   });
+}
+
+function secondsUntilMatch(
+  levels: BlindLevel[],
+  levelIndex: number,
+  secondsLeft: number,
+  match: (level: BlindLevel) => boolean,
+): number | null {
+  if (levels.length === 0) return null;
+  const current = levels[levelIndex];
+  const searchFrom = current && match(current) ? levelIndex + 1 : levelIndex;
+  const target = levels.findIndex((level, index) => index >= searchFrom && match(level));
+  if (target < 0) return null;
+
+  let total = Math.max(0, secondsLeft);
+  for (let index = levelIndex + 1; index < target; index += 1) {
+    total += durationSeconds(levels[index]);
+  }
+  return total;
+}
+
+/** Remaining seconds until the next `isBreak` level starts. Null if none left. */
+export function secondsUntilNextBreak(
+  levels: BlindLevel[],
+  levelIndex: number,
+  secondsLeft: number,
+): number | null {
+  return secondsUntilMatch(levels, levelIndex, secondsLeft, (level) => level.isBreak === true);
+}
+
+/** Remaining seconds until the `isLateRegEnd` level starts. Null if none exists. */
+export function secondsUntilLateRegEnd(
+  levels: BlindLevel[],
+  levelIndex: number,
+  secondsLeft: number,
+): number | null {
+  return secondsUntilMatch(levels, levelIndex, secondsLeft, (level) => level.isLateRegEnd === true);
+}
+
+export function isLateRegClosed(levels: BlindLevel[], levelIndex: number): boolean {
+  const target = levels.findIndex((level) => level.isLateRegEnd === true);
+  if (target < 0) return false;
+  return levelIndex >= target;
+}
+
+export function formatEta(totalSeconds: number): string {
+  const safe = Math.max(0, Math.ceil(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
