@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, MessageSquare, Minus, Plus, X } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
@@ -21,6 +22,27 @@ const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string 
   { type: 'addon', label: 'Аддон' },
 ];
 
+function formatHourDelta(delta: number): string {
+  const abs = Math.abs(delta);
+  const amount = Number.isInteger(abs) ? String(abs) : abs.toFixed(1).replace('.', ',');
+  return `${delta > 0 ? '+' : '−'}${amount}ч`;
+}
+
+function FadingHoursDelta({ flash }: { flash?: { delta: number; token: number } }) {
+  if (!flash) return null;
+  return (
+    <motion.span
+      key={flash.token}
+      initial={{ opacity: 1, y: 0 }}
+      animate={{ opacity: 0, y: -8 }}
+      transition={{ duration: 1.5, ease: 'easeOut' }}
+      className={`text-[11px] font-800 ${flash.delta > 0 ? 'text-green-400' : 'text-red-500'}`}
+    >
+      {formatHourDelta(flash.delta)}
+    </motion.span>
+  );
+}
+
 export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -30,6 +52,7 @@ export function AdminTournamentFinance() {
     addCharge,
     addTicket,
     getDealerHours,
+    getDealerLoggedAt,
     adjustDealerHours,
     unpaidForPlayer,
     unpaidTotalForPlayer,
@@ -40,6 +63,7 @@ export function AdminTournamentFinance() {
   const [query, setQuery] = useState('');
   const [dealerName, setDealerName] = useState('');
   const [dealerHours, setDealerHours] = useState('');
+  const [hourFlash, setHourFlash] = useState<Record<string, { delta: number; token: number }>>({});
 
   const tournament = tournaments.find((t) => t.id === id);
 
@@ -60,6 +84,10 @@ export function AdminTournamentFinance() {
   const remainingInPlay = tournament.participants.filter((p) => typeof p.place !== 'number').length;
   const closeBlocked = remainingInPlay > 1;
   const nonPlayingDealers = tournament.dealers ?? [];
+
+  const flashHours = (key: string, delta: number) => {
+    setHourFlash((prev) => ({ ...prev, [key]: { delta, token: Date.now() } }));
+  };
 
   const handleTicket = (userId: string, nickname: string) => {
     const reason = window.prompt(`Причина выдачи билета для ${nickname}?`, '');
@@ -109,6 +137,32 @@ export function AdminTournamentFinance() {
         p.id === playerId ? { ...p, comment: next.trim() } : p,
       ),
     });
+  };
+
+  const setDealerComment = (index: number, name: string, current?: string) => {
+    const next = window.prompt(`Комментарий к дилеру ${name}`, current ?? '');
+    if (next === null) return;
+    updateTournament(tournament.id, {
+      dealers: nonPlayingDealers.map((row, i) =>
+        i === index ? { ...row, comment: next.trim() } : row,
+      ),
+    });
+  };
+
+  const adjustNonPlayingDealerHours = (index: number, deltaHours: number) => {
+    const row = nonPlayingDealers[index];
+    if (!row) return;
+    const total = Math.max(0, row.hours * 60 + row.minutes + deltaHours * 60);
+    const hours = Math.floor(total / 60);
+    const minutes = Math.round(total % 60);
+    updateTournament(tournament.id, {
+      dealers: nonPlayingDealers.map((item, i) =>
+        i === index
+          ? { ...item, hours, minutes, loggedAt: new Date().toISOString() }
+          : item,
+      ),
+    });
+    flashHours(`np-${index}`, deltaHours);
   };
 
   const addNonPlayingDealer = () => {
@@ -216,6 +270,7 @@ export function AdminTournamentFinance() {
                   tx.type === 'ticket',
               );
               const hours = getDealerHours(tournament.id, player.id);
+              const dealerLoggedAt = getDealerLoggedAt(tournament.id, player.id);
               const hasDebt = unpaid.length > 0;
               const eliminated = typeof player.place === 'number';
               const placedIdx = placedOrdered.findIndex((p) => p.id === player.id);
@@ -400,9 +455,17 @@ export function AdminTournamentFinance() {
                       Дилер-часы:
                     </span>
                     <div className="flex items-center gap-2">
+                      <span className="relative w-0 h-0 overflow-visible">
+                        <span className="absolute right-1 bottom-3 whitespace-nowrap">
+                          <FadingHoursDelta flash={hourFlash[player.id]} />
+                        </span>
+                      </span>
                       <button
                         type="button"
-                        onClick={() => adjustDealerHours(tournament.id, player.id, -0.5)}
+                        onClick={() => {
+                          adjustDealerHours(tournament.id, player.id, -0.5);
+                          flashHours(player.id, -0.5);
+                        }}
                         className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95"
                         style={{
                           background: 'rgba(255,255,255,0.06)',
@@ -417,7 +480,10 @@ export function AdminTournamentFinance() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => adjustDealerHours(tournament.id, player.id, 0.5)}
+                        onClick={() => {
+                          adjustDealerHours(tournament.id, player.id, 0.5);
+                          flashHours(player.id, 0.5);
+                        }}
                         className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95"
                         style={{
                           background: 'rgba(255,255,255,0.06)',
@@ -429,6 +495,11 @@ export function AdminTournamentFinance() {
                       </button>
                     </div>
                   </div>
+                  {dealerLoggedAt ? (
+                    <p className="text-[10px] font-600 -mt-2 text-right" style={{ color: '#8c8c88' }}>
+                      {formatTxDateTime(dealerLoggedAt)}
+                    </p>
+                  ) : null}
 
                   {hasDebt && unpaidTotal > 0 && (
                     <button
@@ -468,10 +539,46 @@ export function AdminTournamentFinance() {
                         {formatTxDateTime(row.loggedAt)}
                       </p>
                     ) : null}
+                    {row.comment?.trim() ? (
+                      <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: '#A39B98' }}>
+                        {row.comment}
+                      </p>
+                    ) : null}
                   </div>
-                  <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
-                    {row.hours} ч {row.minutes} мин
-                  </p>
+                  <FadingHoursDelta flash={hourFlash[`np-${index}`]} />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => adjustNonPlayingDealerHours(index, -0.5)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      aria-label="Минус полчаса"
+                    >
+                      <Minus size={13} style={{ color: '#A39B98' }} />
+                    </button>
+                    <p className="text-[12px] font-700 w-[4.5rem] text-center" style={{ color: '#D99962' }}>
+                      {row.hours} ч {row.minutes} мин
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => adjustNonPlayingDealerHours(index, 0.5)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      aria-label="Плюс полчаса"
+                    >
+                      <Plus size={13} style={{ color: '#D99962' }} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDealerComment(index, row.name, row.comment)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: 'rgba(217,153,98,0.12)',
+                      border: '1px solid rgba(217,153,98,0.35)',
+                    }}
+                    aria-label={`Комментарий к ${row.name}`}
+                  >
+                    <MessageSquare size={13} style={{ color: '#D99962' }} />
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeNonPlayingDealer(index)}

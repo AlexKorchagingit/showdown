@@ -16,3 +16,8 @@ export function formatTxTime(iso: string): string {
 export function formatTxDateTime(iso: string): string {
   return `${formatTxDate(iso)} ${formatTxTime(iso)}`;
 }
+
+/** Paid txs use updatedAt (settlement time); unpaid use the original charge date. */
+export function ledgerTimestamp(tx: { status: string; date: string; updatedAt?: string }): string {
+  return tx.status === 'paid' ? (tx.updatedAt ?? tx.date) : tx.date;
+}

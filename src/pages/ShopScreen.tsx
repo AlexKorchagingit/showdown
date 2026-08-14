@@ -154,7 +154,7 @@ export function ShopScreen() {
           <ArrowLeft size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
         </button>
 
-        <h1 className="absolute left-1/2 -translate-x-1/2 text-[15px] font-800 tracking-[0.22em] text-white uppercase pointer-events-none">
+        <h1 className="absolute left-1/2 -translate-x-1/2 text-2xl font-black tracking-[0.14em] text-white uppercase pointer-events-none">
           Магазин
         </h1>
 

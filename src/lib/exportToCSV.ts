@@ -1,6 +1,6 @@
 import type { Transaction } from '../types/finance';
 import { TRANSACTION_STATUS_LABEL, TRANSACTION_TYPE_LABEL } from '../types/finance';
-import { formatTxDate, formatTxTime } from './transactionDisplay';
+import { formatTxDate, formatTxTime, ledgerTimestamp } from './transactionDisplay';
 
 function csvEscape(value: string | number | boolean): string {
   const raw = String(value ?? '');
@@ -21,10 +21,11 @@ export function exportToCSV(
 ) {
   const headers = ['Дата', 'Время', 'Турнир', 'Игрок', 'Тип', 'Сумма', 'Статус', 'Комментарий'];
 
-  const rows = transactions.map((tx) =>
-    [
-      formatTxDate(tx.date),
-      formatTxTime(tx.date),
+  const rows = transactions.map((tx) => {
+    const stamp = ledgerTimestamp(tx);
+    return [
+      formatTxDate(stamp),
+      formatTxTime(stamp),
       resolvers.tournamentTitle(tx.tournamentId),
       resolvers.playerName(tx.userId),
       TRANSACTION_TYPE_LABEL[tx.type],
@@ -33,8 +34,8 @@ export function exportToCSV(
       tx.comment,
     ]
       .map(csvEscape)
-      .join(','),
-  );
+      .join(',');
+  });
 
   const blob = new Blob([`\uFEFF${[headers.join(','), ...rows].join('\n')}`], {
     type: 'text/csv;charset=utf-8;',

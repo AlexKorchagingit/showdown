@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ChevronRight, Download, X } from 'lucide-react';
+import { Check, ChevronRight, Download, X } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -15,13 +15,12 @@ import { useTournaments } from '../../../context/TournamentContext';
 import { exportToCSV } from '../../../lib/exportToCSV';
 import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
 import { playerNickname } from '../../../lib/playerName';
-import { formatTxDate, formatTxTime } from '../../../lib/transactionDisplay';
+import { formatTxDate, formatTxTime, ledgerTimestamp } from '../../../lib/transactionDisplay';
 import {
   TRANSACTION_STATUS_LABEL,
   TRANSACTION_TYPE_LABEL,
   type Transaction,
 } from '../../../types/finance';
-import { DebtorsTab } from './DebtorsTab';
 
 const PERIODS: { id: FinancePeriod; label: string }[] = [
   { id: 'today', label: 'Сегодня' },
@@ -42,20 +41,23 @@ function formatRub(value: number): string {
 }
 
 function newestFirst(a: Transaction, b: Transaction): number {
-  return new Date(b.date).getTime() - new Date(a.date).getTime();
+  return new Date(ledgerTimestamp(b)).getTime() - new Date(ledgerTimestamp(a)).getTime();
 }
 
 export function CashierTab() {
-  const { transactions } = useFinance();
+  const { transactions, markPaid } = useFinance();
   const { tournaments } = useTournaments();
   const [period, setPeriod] = useState<FinancePeriod>('today');
-  const [showDebtors, setShowDebtors] = useState(false);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
 
   const tournamentTitle = (id: string) => tournaments.find((t) => t.id === id)?.title ?? id;
 
   const filtered = useMemo(
-    () => transactions.filter((tx) => isInPeriod(tx.date, period)).slice().sort(newestFirst),
+    () =>
+      transactions
+        .filter((tx) => isInPeriod(ledgerTimestamp(tx), period))
+        .slice()
+        .sort(newestFirst),
     [transactions, period],
   );
 
@@ -82,7 +84,7 @@ export function CashierTab() {
       datesInPeriod(period).map((day) => ({
         label: day.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
         amount: paid
-          .filter((tx) => sameDay(tx.date, day))
+          .filter((tx) => sameDay(ledgerTimestamp(tx), day))
           .reduce((sum, tx) => sum + tx.amount, 0),
       })),
     [paid, period],
@@ -95,23 +97,6 @@ export function CashierTab() {
       : sheet === 'expected'
         ? 'Долгов нет'
         : 'Нет выданных билетов за период';
-
-  if (showDebtors) {
-    return (
-      <div className="space-y-4">
-        <button
-          type="button"
-          onClick={() => setShowDebtors(false)}
-          className="flex items-center gap-2 text-[13px] font-700"
-          style={{ color: '#D99962' }}
-        >
-          <ArrowLeft size={16} />
-          Назад к кассе
-        </button>
-        <DebtorsTab />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
@@ -134,19 +119,6 @@ export function CashierTab() {
           );
         })}
       </div>
-
-      <button
-        type="button"
-        onClick={() => setShowDebtors(true)}
-        className="w-full py-4 rounded-xl text-[16px] font-800 tracking-wide active:scale-[0.98] transition-transform"
-        style={{
-          background: 'linear-gradient(to right, #7f1d1d, #ef4444)',
-          color: '#fff',
-          boxShadow: '0 0 18px rgba(239,68,68,0.32)',
-        }}
-      >
-        Должники
-      </button>
 
       <div className="grid grid-cols-1 gap-3">
         <button type="button" onClick={() => setSheet('revenue')} className="text-left">
@@ -290,6 +262,7 @@ export function CashierTab() {
                       key={tx.id}
                       tx={tx}
                       tournamentTitle={tournamentTitle(tx.tournamentId)}
+                      onSettle={sheet === 'expected' ? () => markPaid([tx.id]) : undefined}
                     />
                   ))}
                 </div>
@@ -332,11 +305,14 @@ function MetricCard({
 function TransactionCard({
   tx,
   tournamentTitle,
+  onSettle,
 }: {
   tx: Transaction;
   tournamentTitle: string;
+  onSettle?: () => void;
 }) {
   const amountColor = tx.status === 'unpaid' ? '#f87171' : '#F2D8A7';
+  const stamp = ledgerTimestamp(tx);
 
   return (
     <div className="rounded-xl px-3 py-3 space-y-1.5" style={{ background: '#2A211D' }}>
@@ -357,12 +333,22 @@ function TransactionCard({
         </div>
       </div>
       <p className="text-[11px]" style={{ color: '#A39B98' }}>
-        {formatTxDate(tx.date)} · {formatTxTime(tx.date)}
+        {formatTxDate(stamp)} · {formatTxTime(stamp)}
       </p>
       {tx.comment.trim() ? (
         <p className="text-[11px] leading-snug" style={{ color: '#c8a38e' }}>
           {tx.comment}
         </p>
+      ) : null}
+      {onSettle ? (
+        <button
+          type="button"
+          onClick={onSettle}
+          className="w-full mt-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-800 text-white bg-green-600 active:scale-[0.98] transition-transform"
+        >
+          <Check size={16} strokeWidth={2.6} />
+          Погасить долг
+        </button>
       ) : null}
     </div>
   );

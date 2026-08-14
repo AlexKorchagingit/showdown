@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { SectionScreen } from '../components/SectionScreen';
 import { useUser } from '../context/UserContext';
 import { isAchievementDone, type Achievement } from '../data/achievements';
@@ -72,7 +73,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
           ].join(' ')}
         />
       </div>
-      <div className="relative z-10 w-full min-h-0 px-0.5 overflow-hidden">
+      <div className="relative z-10 w-full min-h-0 px-0.5 overflow-hidden shrink-0">
         <p
           className={[
             'font-black leading-tight text-[10px] line-clamp-2',
@@ -81,9 +82,11 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         >
           {achievement.title}
         </p>
-        <p className="overflow-hidden text-white/55 text-ellipsis line-clamp-3 text-[9px] leading-tight mt-0.5">
-          {achievement.description}
-        </p>
+        <div className="h-[30px] overflow-hidden mt-0.5">
+          <p className="text-white/55 text-[9px] leading-tight truncate whitespace-normal line-clamp-2 overflow-hidden">
+            {achievement.description}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -91,18 +94,20 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 
 export function AchievementsScreen() {
   const { email } = useUser();
+  const { playerId } = useParams<{ playerId?: string }>();
+  const progressKey = playerId || email;
 
   const achievements = useMemo(() => {
-    const progress = loadAchievementProgress(email);
+    const progress = loadAchievementProgress(progressKey);
     return sortAchievements(resolveAchievements(progress));
-  }, [email]);
+  }, [progressKey]);
 
   const done = achievements.filter(isAchievementDone).length;
 
   return (
     <SectionScreen
       title="Достижения"
-      backTo="/profile"
+      backTo={playerId ? `/profile/${encodeURIComponent(playerId)}` : '/profile'}
       centerTitle
       headerClassName="py-5"
       contentPaddingBottom="calc(env(safe-area-inset-bottom, 0px) + 8rem)"

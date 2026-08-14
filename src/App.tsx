@@ -30,7 +30,7 @@ import { UserProvider } from './context/UserContext';
 import { BlindsProvider } from './context/BlindsContext';
 
 const NAV_HEIGHT = '5rem';
-const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|profile\/[^/]+|settings|shop|about|qa|achievements|admin\/.+)$/;
+const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
 const SPLASH_MS = 2000;
 
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
@@ -67,6 +67,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/about"             element={<AboutClubScreen />} />
             <Route path="/qa"                element={<QnAScreen />} />
             <Route path="/achievements"      element={<AchievementsScreen />} />
+            <Route path="/achievements/:playerId" element={<AchievementsScreen />} />
             <Route path="/admin/users"           element={<AdminUsersScreen />} />
             <Route path="/admin/tournaments"     element={<AdminTournamentsScreen />} />
             <Route path="/admin/tournaments/:id" element={<AdminTournamentEditor />} />

@@ -12,6 +12,8 @@ export interface Transaction {
   comment: string;
   isDealer: boolean;
   dealerHours: number;
+  /** Set when the transaction is marked paid — drives today's revenue. */
+  updatedAt?: string;
 }
 
 export const TRANSACTION_TYPE_LABEL: Record<TransactionType, string> = {

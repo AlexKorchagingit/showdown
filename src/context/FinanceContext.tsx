@@ -20,6 +20,7 @@ function dealerKey(tournamentId: string, userId: string) {
 interface FinanceContextValue {
   transactions: Transaction[];
   getDealerHours: (tournamentId: string, userId: string) => number;
+  getDealerLoggedAt: (tournamentId: string, userId: string) => string | undefined;
   adjustDealerHours: (tournamentId: string, userId: string, delta: number) => void;
   addCharge: (
     tournamentId: string,
@@ -50,14 +51,22 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [dealerHoursMap, setDealerHoursMap] = useState<Record<string, number>>(() =>
     seedDealerHours(MOCK_TRANSACTIONS),
   );
+  const [dealerLoggedAtMap, setDealerLoggedAtMap] = useState<Record<string, string>>({});
 
   const getDealerHours = useCallback(
     (tournamentId: string, userId: string) => dealerHoursMap[dealerKey(tournamentId, userId)] ?? 0,
     [dealerHoursMap],
   );
 
+  const getDealerLoggedAt = useCallback(
+    (tournamentId: string, userId: string) => dealerLoggedAtMap[dealerKey(tournamentId, userId)],
+    [dealerLoggedAtMap],
+  );
+
   const adjustDealerHours = useCallback((tournamentId: string, userId: string, delta: number) => {
     const key = dealerKey(tournamentId, userId);
+    const stamped = new Date().toISOString();
+    setDealerLoggedAtMap((prev) => ({ ...prev, [key]: stamped }));
     setDealerHoursMap((prev) => {
       const nextHours = Math.max(0, Math.round(((prev[key] ?? 0) + delta) * 10) / 10);
       setTransactions((txs) =>
@@ -117,8 +126,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const markPaid = useCallback((transactionIds: string[]) => {
     const idSet = new Set(transactionIds);
+    const paidAt = new Date().toISOString();
     setTransactions((prev) =>
-      prev.map((tx) => (idSet.has(tx.id) ? { ...tx, status: 'paid' as const } : tx)),
+      prev.map((tx) =>
+        idSet.has(tx.id) ? { ...tx, status: 'paid' as const, updatedAt: paidAt } : tx,
+      ),
     );
   }, []);
 
@@ -155,6 +167,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     () => ({
       transactions,
       getDealerHours,
+      getDealerLoggedAt,
       adjustDealerHours,
       addCharge,
       addTicket,
@@ -167,6 +180,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     [
       transactions,
       getDealerHours,
+      getDealerLoggedAt,
       adjustDealerHours,
       addCharge,
       addTicket,

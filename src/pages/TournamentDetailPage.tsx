@@ -375,7 +375,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               )}
             </div>
 
-            {tournamentFinished && (
+            {tournamentFinished && isAdmin && (
               <div
                 className="rounded-2xl p-5 space-y-3"
                 style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
@@ -423,6 +423,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                           {row.loggedAt ? (
                             <p className="text-[10px] font-600 mt-0.5" style={{ color: '#8c8c88' }}>
                               {formatTxDateTime(row.loggedAt)}
+                            </p>
+                          ) : null}
+                          {row.comment?.trim() ? (
+                            <p className="text-[10px] mt-0.5 line-clamp-2" style={{ color: '#A39B98' }}>
+                              {row.comment}
                             </p>
                           ) : null}
                         </div>

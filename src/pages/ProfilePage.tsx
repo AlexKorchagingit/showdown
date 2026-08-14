@@ -4,10 +4,21 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { CURRENT_PLAYER_STATS } from '../data/playerStats';
-import { characterProfileLeft, DEFAULT_CHARACTER_ID, DEFAULT_BG_ID, resolveImage } from '../data/shopItems';
+import {
+  characterProfileLeft,
+  DEFAULT_BG_ID,
+  resolveImage,
+} from '../data/shopItems';
+import {
+  characterImageForPlayer,
+} from '../lib/playerCharacter';
 import { resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 
 const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
+
+/** Shared portrait placement so own and public profiles line up. */
+const PROFILE_CAT_CLASS =
+  'absolute bottom-[60px] h-[57%] w-auto object-contain object-bottom z-0 pointer-events-none';
 
 const SIDE_STATS_SOURCE = [
   {
@@ -48,13 +59,15 @@ export function ProfilePage() {
   const publicProfile = readOnly && playerId ? resolvePublicProfile(playerId, state) : null;
 
   const displayNickname = publicProfile?.nickname ?? nickname;
-  const displayCharacter = readOnly
-    ? resolveImage(DEFAULT_CHARACTER_ID, 'character')
+  const displayCharacter = readOnly && playerId
+    ? characterImageForPlayer(playerId, displayNickname, equippedChar)
     : characterImage;
   const displayBackground = readOnly ? resolveImage(DEFAULT_BG_ID, 'bg') : backgroundImage;
-  const displayCharId = readOnly ? DEFAULT_CHARACTER_ID : equippedChar;
 
   const trimmedSlogan = readOnly ? '' : slogan.trim();
+  const achievementsPath = readOnly && playerId
+    ? `/achievements/${encodeURIComponent(playerId)}`
+    : '/achievements';
 
   const sideStats = useMemo(() => {
     if (!readOnly || !publicProfile) {
@@ -64,19 +77,16 @@ export function ProfilePage() {
       }));
     }
 
-    const rows: { label: string; display: string }[] = [];
-    if (publicProfile.points != null && publicProfile.points > 0) {
-      rows.push({ label: 'Рейтинг', display: publicProfile.points.toLocaleString('ru-RU') });
-    }
-    if (publicProfile.won != null && publicProfile.won > 0) {
-      rows.push({ label: 'Победы', display: String(publicProfile.won) });
-    }
-    if (publicProfile.knockouts != null && publicProfile.knockouts > 0) {
-      rows.push({ label: 'Нокауты', display: String(publicProfile.knockouts) });
-    }
-    if (publicProfile.played != null && publicProfile.played > 0) {
-      rows.push({ label: 'Игры', display: String(publicProfile.played) });
-    }
+    const rows = [
+      {
+        label: 'Рейтинг',
+        display: publicProfile.ratingPlace != null ? `#${publicProfile.ratingPlace}` : '—',
+      },
+      { label: 'Победы', display: String(publicProfile.won ?? 0) },
+      { label: 'Финалы', display: String(publicProfile.finals ?? 0) },
+      { label: 'Нокауты', display: String(publicProfile.knockouts ?? 0) },
+      { label: 'Игры', display: String(publicProfile.played ?? 0) },
+    ];
 
     return rows.map((stat, index) => ({
       ...stat,
@@ -84,10 +94,16 @@ export function ProfilePage() {
     }));
   }, [readOnly, publicProfile]);
 
-  const extraStats = useMemo(
-    () => (readOnly ? [] : EXTRA_STATS_SOURCE.filter((stat) => stat.value > 0)),
-    [readOnly],
-  );
+  const extraStats = useMemo(() => {
+    if (!readOnly || !publicProfile) {
+      return EXTRA_STATS_SOURCE.filter((stat) => stat.value > 0);
+    }
+    return [
+      { label: 'Хедз-ап', value: publicProfile.headsUp ?? 0 },
+      { label: 'Топ 3', value: publicProfile.top3 ?? 0 },
+      { label: 'Топ 9', value: publicProfile.finals ?? 0 },
+    ].filter((stat) => stat.value > 0);
+  }, [readOnly, publicProfile]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -99,26 +115,9 @@ export function ProfilePage() {
       <img
         src={displayCharacter}
         alt=""
-        className="absolute bottom-[60px] h-[57%] w-auto object-contain object-bottom z-0 pointer-events-none"
-        style={{ left: characterProfileLeft(displayCharId) }}
+        className={PROFILE_CAT_CLASS}
+        style={{ left: characterProfileLeft(equippedChar) }}
       />
-
-      {readOnly && (
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-          style={{
-            background: 'rgba(28,20,16,0.78)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(217,153,98,0.28)',
-          }}
-          aria-label="Назад"
-        >
-          <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-        </button>
-      )}
 
       {/* Header card */}
       <div className="relative z-10 mx-4 mt-2 px-4 pt-2 pb-1 rounded-2xl bg-[#110b09]/40 backdrop-blur-md border border-[#D99962]/20">
@@ -144,50 +143,46 @@ export function ProfilePage() {
           )}
         </div>
 
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => setIsExpanded((v) => !v)}
-            className="w-full flex justify-center mt-0.5 active:opacity-60 transition-opacity"
-            aria-expanded={isExpanded}
-            aria-label="Раскрыть раздел"
-          >
-            <ChevronDown
-              size={20}
-              className={`text-white transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-            />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setIsExpanded((v) => !v)}
+          className="w-full flex justify-center mt-0.5 active:opacity-60 transition-opacity"
+          aria-expanded={isExpanded}
+          aria-label="Раскрыть раздел"
+        >
+          <ChevronDown
+            size={20}
+            className={`text-white transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+          />
+        </button>
 
-        {!readOnly && (
-          <motion.div
-            initial={false}
-            animate={{ height: isExpanded ? 'auto' : 0 }}
-            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="flex flex-row justify-between items-center mt-2 pt-3 border-t border-white/10 gap-3 pb-1">
-              <div className="flex flex-row gap-4">
-                {extraStats.map(({ label, value }) => (
-                  <div key={label} className="flex flex-col items-center">
-                    <span className="text-lg font-bold text-[#D99962] leading-none">{value}</span>
-                    <span className="text-white/60 text-[10px] uppercase mt-1 whitespace-nowrap">
-                      {label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => navigate('/achievements')}
-                className="shrink-0 bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white text-sm font-bold px-4 py-2 rounded-lg active:scale-95 transition-transform"
-              >
-                Достижения
-              </button>
+        <motion.div
+          initial={false}
+          animate={{ height: isExpanded ? 'auto' : 0 }}
+          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          className="overflow-hidden"
+        >
+          <div className="flex flex-row justify-between items-center mt-2 pt-3 border-t border-white/10 gap-3 pb-1">
+            <div className="flex flex-row gap-4">
+              {extraStats.map(({ label, value }) => (
+                <div key={label} className="flex flex-col items-center">
+                  <span className="text-lg font-bold text-[#D99962] leading-none">{value}</span>
+                  <span className="text-white/60 text-[10px] uppercase mt-1 whitespace-nowrap">
+                    {label}
+                  </span>
+                </div>
+              ))}
             </div>
-          </motion.div>
-        )}
+
+            <button
+              type="button"
+              onClick={() => navigate(achievementsPath)}
+              className="shrink-0 bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white text-sm font-bold px-4 py-2 rounded-lg active:scale-95 transition-transform"
+            >
+              Достижения
+            </button>
+          </div>
+        </motion.div>
       </div>
 
       {/* Left stats */}
@@ -208,8 +203,22 @@ export function ProfilePage() {
         </div>
       )}
 
-      {/* Shop — own profile only */}
-      {!readOnly && (
+      {readOnly ? (
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="absolute bottom-2 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
+          style={{
+            background: 'rgba(28,20,16,0.78)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(217,153,98,0.28)',
+          }}
+          aria-label="Назад"
+        >
+          <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
+        </button>
+      ) : (
         <div className="absolute bottom-2 left-0 right-0 z-10 px-4 flex flex-col items-center">
           <button
             type="button"

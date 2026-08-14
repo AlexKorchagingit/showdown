@@ -126,6 +126,7 @@ function PlayerRow({
             nickname={player.nickname}
             className="text-[13px] font-600 truncate text-white block"
             stats={{
+              ratingPlace: rank,
               points: player.points,
               played: player.played,
               won: player.won,

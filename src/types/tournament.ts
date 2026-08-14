@@ -19,8 +19,10 @@ export interface TournamentDealer {
   name: string;
   hours: number;
   minutes: number;
-  /** ISO timestamp of when this hours row was logged. */
+  /** ISO timestamp of when this hours row was logged / last changed. */
   loggedAt?: string;
+  /** Admin note for this dealer row. */
+  comment?: string;
 }
 
 export const DEFAULT_STAFF_ROLES = ['Админ', 'Дилер 1', 'Дилер 2', 'Дилер 3'] as const;
