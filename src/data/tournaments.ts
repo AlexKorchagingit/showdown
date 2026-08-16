@@ -151,7 +151,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
       const list = pickParticipants(20);
       // Last five are already eliminated (places 16–20) so the missing-places warning shows.
       return list.map((p, index) => {
-        const placed = index < 15 ? p : applyPlaceToParticipant(p, index + 1, 10000);
+        const placed = index < 15 ? p : applyPlaceToParticipant(p, index + 1, 10000, list.length);
         if (p.id === '16') return { ...placed, comment: 'Спорный нокаут на баббле' };
         if (p.id === '18') return { ...placed, comment: 'Ушёл без расчёта' };
         return placed;

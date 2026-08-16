@@ -277,7 +277,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                       ? ['#D99962', '#8c8c88', '#8C4C27'][p.place - 1] ?? null
                       : null;
                     const award = p.place != null
-                      ? ratingPointsForPlace(p.place, live.guarantee)
+                      ? ratingPointsForPlace(p.place, live.guarantee, live.participants.length)
                       : 0;
 
                     return (

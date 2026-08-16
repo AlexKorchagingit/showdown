@@ -25,6 +25,7 @@ import {
   secondsUntilLateRegEnd,
   secondsUntilNextBreak,
 } from '../../data/blindStructures';
+import { calculatePayouts } from '../../data/prizeStructure';
 import { asset } from '../../lib/assets';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
@@ -152,6 +153,13 @@ export function AdminBlindsTimer() {
     [structure, levelIndex],
   );
 
+  const prizePool = tournament?.guarantee ?? structure?.guarantee ?? 0;
+  const fieldSize = tournament?.participants.length ?? 0;
+  const payouts = useMemo(
+    () => calculatePayouts(fieldSize, prizePool),
+    [fieldSize, prizePool],
+  );
+
   useEffect(() => {
     if (!chipleaderId || !tournament) return;
     const stillSeated = tournament.participants.some(
@@ -188,22 +196,26 @@ export function AdminBlindsTimer() {
             Гарантия очков
           </p>
           <p className="text-5xl md:text-6xl font-black mt-2 leading-none" style={{ color: '#F2D8A7' }}>
-            {structure.guarantee.toLocaleString('ru-RU')}
+            {prizePool.toLocaleString('ru-RU')}
+          </p>
+          <p className="text-sm md:text-base font-700 mt-3" style={{ color: '#F2D8A7' }}>
+            В призах: {payouts.length} чел. (30%)
           </p>
 
           <div className="mt-6 flex flex-col xl:flex-row gap-6 xl:gap-8">
             <div className="flex-1 space-y-2.5 min-w-0">
-              {structure.payouts.map(({ place, share }) => (
-                <div key={place} className="flex items-baseline gap-2">
-                  <span className="text-base md:text-lg font-700 text-white/70">{place} место</span>
-                  <span className="text-lg md:text-xl font-black" style={{ color: '#D99962' }}>
-                    {share}%
-                  </span>
-                  <span className="text-sm md:text-base font-600 text-white/45">
-                    {Math.round((structure.guarantee * share) / 100).toLocaleString('ru-RU')}
-                  </span>
-                </div>
-              ))}
+              {payouts.length === 0 ? (
+                <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
+              ) : (
+                payouts.map(({ place, points }) => (
+                  <div key={place} className="flex items-baseline gap-2">
+                    <span className="text-base md:text-lg font-700 text-white/70">{place} место</span>
+                    <span className="text-lg md:text-xl font-black" style={{ color: '#D99962' }}>
+                      {points.toLocaleString('ru-RU')}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="flex-1 min-w-0">

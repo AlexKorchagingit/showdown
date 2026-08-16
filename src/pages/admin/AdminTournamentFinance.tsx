@@ -6,7 +6,12 @@ import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
 import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
-import { applyPlaceToParticipant, swapParticipantPlaces } from '../../data/prizeStructure';
+import {
+  applyPlaceToParticipant,
+  calculatePayouts,
+  closeTournamentWithPayouts,
+  swapParticipantPlaces,
+} from '../../data/prizeStructure';
 import {
   nextEliminatedPlace,
   sortByPlace,
@@ -101,17 +106,39 @@ export function AdminTournamentFinance() {
       window.alert('Не все участники вылетели!');
       return;
     }
-    if (!window.confirm('Закрыть турнир? Он станет прошедшим, запись будет недоступна.')) return;
-    updateTournament(tournament.id, { isClosed: true });
+    const payouts = calculatePayouts(tournament.participants.length, tournament.guarantee);
+    const preview =
+      payouts.length === 0
+        ? 'Призовых мест нет.'
+        : `В призах: ${payouts.length} чел. (30%)\n${payouts
+            .map((row) => `${row.place}-е место — ${row.points.toLocaleString('ru-RU')} очков`)
+            .join('\n')}`;
+    if (
+      !window.confirm(
+        `Закрыть турнир? Он станет прошедшим, запись будет недоступна.\n\n${preview}\n\nЭти очки будут начислены по занятым местам.`,
+      )
+    ) {
+      return;
+    }
+    updateTournament(tournament.id, {
+      isClosed: true,
+      resultsEntered: true,
+      participants: closeTournamentWithPayouts(tournament.participants, tournament.guarantee),
+    });
   };
 
   const eliminatePlayer = (playerId: string) => {
     const place = nextEliminatedPlace(tournament.participants);
     if (place == null) return;
+    const totalPlayers = tournament.participants.length;
+    const syncRating = tournament.resultsEntered === true;
     updateTournament(tournament.id, {
-      participants: tournament.participants.map((p) =>
-        p.id === playerId ? applyPlaceToParticipant(p, place, tournament.guarantee) : p,
-      ),
+      participants: tournament.participants.map((p) => {
+        if (p.id !== playerId) return p;
+        return syncRating
+          ? applyPlaceToParticipant(p, place, tournament.guarantee, totalPlayers)
+          : { ...p, place };
+      }),
     });
   };
 
@@ -125,6 +152,7 @@ export function AdminTournamentFinance() {
         playerId,
         neighbor.id,
         tournament.guarantee,
+        tournament.resultsEntered === true,
       ),
     });
   };
