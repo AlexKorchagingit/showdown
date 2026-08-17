@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Gem, Plus, Users } from 'lucide-react';
+import { Gem, Users } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
 import { CoinBalance } from '../../components/CoinBalance';
 import { useProfile } from '../../context/ProfileContext';
