@@ -1,7 +1,10 @@
-import { useState, useRef, type ReactNode } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlayerNameLink } from '../components/PlayerNameLink';
+import { useProfile } from '../context/ProfileContext';
+import { useUser } from '../context/UserContext';
+import { mockUsers } from '../data/mockUsers';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL, type RatingPlayer } from '../types/player';
 
 type RatingTab = 'general' | 'seasonal';
@@ -12,23 +15,74 @@ const MONTHS = [
   'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
 ];
 
+const COLUMN_TABS: { id: MetricColumn; label: string }[] = [
+  { id: 'tournaments', label: 'Турниры' },
+  { id: 'wins', label: 'Победы' },
+  { id: 'knockouts', label: 'Нокауты' },
+];
+
 const TOP3_GLOW: Record<number, string> = {
   1: '#D99962',
   2: '#8c8c88',
   3: '#8C4C27',
 };
 
-const rankTextColor = (rank: number): string => {
-  if (rank === 1) return '#F2D8A7';
-  if (rank === 2) return '#A39B98';
-  if (rank === 3) return '#c8a38e';
-  return '#ffffff';
-};
+function rankClassName(rank: number): string {
+  if (rank === 1) return 'text-[#D99962] drop-shadow-[0_0_8px_rgba(217,153,98,0.7)]';
+  if (rank === 2) return 'text-[#9ca3af]';
+  if (rank === 3) return 'text-[#b87333]';
+  return 'text-white/70';
+}
 
 function metricValue(player: RatingPlayer, column: MetricColumn): number {
   if (column === 'tournaments') return player.played;
   if (column === 'wins') return player.won;
   return player.knockouts;
+}
+
+function initialFrom(nickname: string): string {
+  const trimmed = nickname.trim();
+  return trimmed ? trimmed[0]!.toUpperCase() : '?';
+}
+
+function nicknamesForAccount(email: string, profileNickname: string): string[] {
+  const names = new Set<string>();
+  const profile = profileNickname.trim().toLowerCase();
+  if (profile) names.add(profile);
+  const account = mockUsers.find(
+    (user) => user.email.trim().toLowerCase() === email.trim().toLowerCase(),
+  );
+  if (account) names.add(account.nickname.toLowerCase());
+  return [...names];
+}
+
+function findCurrentEntry(
+  players: RatingPlayer[],
+  email: string,
+  profileNickname: string,
+): { player: RatingPlayer; rank: number } {
+  const aliases = nicknamesForAccount(email, profileNickname);
+  const index = players.findIndex((player) => aliases.includes(player.nickname.toLowerCase()));
+  if (index >= 0) {
+    return { player: players[index], rank: index + 1 };
+  }
+
+  const account = mockUsers.find(
+    (user) => user.email.trim().toLowerCase() === email.trim().toLowerCase(),
+  );
+  const nickname = profileNickname.trim() || account?.nickname || 'Вы';
+  return {
+    player: {
+      id: 'me',
+      nickname,
+      initial: initialFrom(nickname),
+      points: 0,
+      played: 0,
+      won: 0,
+      knockouts: 0,
+    },
+    rank: players.length + 1,
+  };
 }
 
 function ColumnSelector({
@@ -38,32 +92,22 @@ function ColumnSelector({
   active: MetricColumn;
   onChange: (column: MetricColumn) => void;
 }) {
-  const options: { id: MetricColumn; label: ReactNode; aria: string }[] = [
-    { id: 'tournaments', label: 'Турниры', aria: 'Турниры' },
-    { id: 'wins', label: <Trophy size={14} strokeWidth={2.3} />, aria: 'Победы' },
-    { id: 'knockouts', label: <Crosshair size={14} strokeWidth={2.3} />, aria: 'Нокауты' },
-  ];
-
   return (
-    <div
-      className="flex items-center gap-2 p-1 rounded-xl"
-      style={{ background: '#1E1612', border: '1px solid rgba(255,255,255,0.06)' }}
-      role="tablist"
-      aria-label="Показатель таблицы"
-    >
-      {options.map(({ id, label, aria }) => {
+    <div className="flex items-center gap-1" role="tablist" aria-label="Показатель таблицы">
+      {COLUMN_TABS.map(({ id, label }) => {
         const isActive = active === id;
         return (
           <button
             key={id}
             type="button"
             role="tab"
-            aria-label={aria}
             aria-selected={isActive}
             onClick={() => onChange(id)}
-            className={`h-8 px-3 rounded-lg text-[11px] font-700 transition-colors flex items-center justify-center ${
-              isActive ? 'bg-[#D99962] text-[#110b09]' : 'text-[#8c8c88]'
-            }`}
+            className={
+              isActive
+                ? 'bg-[#D99962] text-[#110b09] font-bold rounded-lg px-3 py-1'
+                : 'text-[#8c8c88] hover:text-white px-3 py-1'
+            }
           >
             {label}
           </button>
@@ -77,17 +121,19 @@ function PlayerRow({
   player,
   rank,
   activeColumn,
+  sticky = false,
 }: {
   player: RatingPlayer;
   rank: number;
   activeColumn: MetricColumn;
+  sticky?: boolean;
 }) {
   const isTop3 = rank <= 3;
   const glowColor = isTop3 ? TOP3_GLOW[rank] : null;
 
   return (
     <div className="relative">
-      {isTop3 && (
+      {isTop3 && !sticky && (
         <div
           className="absolute inset-0 rounded-2xl animate-pulse pointer-events-none"
           style={{ boxShadow: `0 0 10px ${glowColor}` }}
@@ -95,26 +141,31 @@ function PlayerRow({
       )}
 
       <div
-        className="relative z-10 flex items-center px-4 py-3 rounded-2xl"
-        style={{
-          background: isTop3 ? 'rgba(70,49,41,0.45)' : '#2A211D',
-          border: isTop3
-            ? `1px solid ${glowColor}50`
-            : '1px solid rgba(255,255,255,0.05)',
-        }}
+        className={
+          sticky
+            ? 'relative z-10 flex items-center px-4 py-3 rounded-2xl bg-gradient-to-r from-[#463129] to-[#231A16] border border-[#D99962]/50 shadow-[0_-5px_20px_rgba(0,0,0,0.5)]'
+            : 'relative z-10 flex items-center px-4 py-3 rounded-2xl'
+        }
+        style={
+          sticky
+            ? undefined
+            : {
+                background: isTop3 ? 'rgba(70,49,41,0.45)' : '#2A211D',
+                border: isTop3
+                  ? `1px solid ${glowColor}50`
+                  : '1px solid rgba(255,255,255,0.05)',
+              }
+        }
       >
-        <span
-          className="w-7 shrink-0 text-center font-800 leading-none"
-          style={{ fontSize: 18, color: rankTextColor(rank) }}
-        >
+        <span className={`w-7 shrink-0 text-center font-800 leading-none text-[18px] ${rankClassName(rank)}`}>
           {rank}
         </span>
 
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
           style={{
-            background: isTop3 ? 'rgba(140,76,39,0.28)' : 'rgba(255,255,255,0.06)',
-            color: isTop3 ? '#c8a38e' : '#A39B98',
+            background: isTop3 || sticky ? 'rgba(140,76,39,0.28)' : 'rgba(255,255,255,0.06)',
+            color: isTop3 || sticky ? '#c8a38e' : '#A39B98',
           }}
         >
           {player.initial}
@@ -151,6 +202,8 @@ function PlayerRow({
 }
 
 export function RatingPage() {
+  const { email } = useUser();
+  const { nickname } = useProfile();
   const [activeTab, setActiveTab] = useState<RatingTab>('general');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [activeColumn, setActiveColumn] = useState<MetricColumn>('tournaments');
@@ -171,8 +224,13 @@ export function RatingPage() {
       ? MOCK_PLAYERS_GENERAL
       : (MOCK_PLAYERS_SEASONAL[selectedMonth] ?? []);
 
+  const me = useMemo(
+    () => findCurrentEntry(players, email, nickname),
+    [players, email, nickname],
+  );
+
   return (
-    <div className="flex flex-col h-full bg-obsidian">
+    <div className="relative flex flex-col h-full bg-obsidian">
       <div className="flex-shrink-0 px-5 pt-6 pb-4 space-y-4">
         <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
           РЕЙТИНГ
@@ -264,7 +322,7 @@ export function RatingPage() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute inset-0 scrollable pb-4"
+            className="absolute inset-0 scrollable pb-28"
           >
             {players.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3">
@@ -287,6 +345,15 @@ export function RatingPage() {
             )}
           </motion.div>
         </AnimatePresence>
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 p-4 z-40 bg-gradient-to-t from-[#110b09] via-[#110b09]/95 to-transparent pb-safe">
+        <PlayerRow
+          player={me.player}
+          rank={me.rank}
+          activeColumn={activeColumn}
+          sticky
+        />
       </div>
     </div>
   );
