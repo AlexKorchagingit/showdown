@@ -288,7 +288,7 @@ function withBreakBlinds(levels: BlindLevel[]): BlindLevel[] {
     if (!isBreakLevel(level)) return level;
     if (level.smallBlind > 0 && level.bigBlind > 0) return { ...level, isBreak: true };
     const next = levels.slice(index + 1).find((row) => !isBreakLevel(row));
-    const prev = [...levels.slice(0, index)].reverse().find((row) => !isBreakLevel(row));
+    const prev = levels.slice(0, index).reverse().find((row) => !isBreakLevel(row));
     const source = next ?? prev;
     return {
       ...level,
