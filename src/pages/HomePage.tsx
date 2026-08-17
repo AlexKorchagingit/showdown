@@ -16,9 +16,9 @@ import type { Tournament } from '../types/tournament';
 // ─── Mock state ───────────────────────────────────────────────────────────────
 
 const PODIUM = [
-  { rank: 2, name: 'Дмитрий В.',   points: 3850, glowColor: '#8c8c88' },
+  { rank: 2, name: 'Дмитрий В.',   points: 3850, glowColor: '#9ca3af' },
   { rank: 1, name: 'Александр К.', points: 4200, glowColor: '#D99962' },
-  { rank: 3, name: 'Михаил С.',    points: 3610, glowColor: '#8C4C27' },
+  { rank: 3, name: 'Михаил С.',    points: 3610, glowColor: '#b87333' },
 ];
 
 const TELEGRAM_URL = 'https://t.me/showdown_bryansk';
@@ -174,13 +174,13 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         aria-label="Мы в соцсетях"
         className="relative flex items-center -space-x-6 pr-1 active:scale-95 transition-transform"
       >
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#1D4ED8] border-[3px] border-[#110b09] z-[1]">
-          <Send size={15} strokeWidth={2.2} className="text-white" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2A211D] border-[3px] border-[#110b09] z-[1]">
+          <Send size={15} strokeWidth={2.2} className="text-[#D99962]" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#DB2777] border-[3px] border-[#110b09] z-[2]">
-          <InstagramIcon size={15} className="text-white" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2A211D] border-[3px] border-[#110b09] z-[2]">
+          <InstagramIcon size={15} className="text-[#D99962]" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2563EB] border-[3px] border-[#110b09] z-10 text-[10px] font-bold text-white">
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2A211D] border-[3px] border-[#110b09] z-10 text-[10px] font-bold text-[#D99962]">
           VK
         </span>
       </button>
@@ -266,7 +266,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
 
         <button
           onClick={(e) => { e.stopPropagation(); onPress(); }}
-          className="self-start px-5 py-2 rounded-xl text-[13px] font-700 active:scale-95 transition-transform"
+          className="self-start px-6 py-2.5 rounded-xl text-lg font-black active:scale-95 transition-transform"
           style={{
             background: 'linear-gradient(to right, #8C4C27, #D99962)',
             boxShadow: '0 0 16px rgba(217,153,98,0.28)',
@@ -283,43 +283,55 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
 // ─── Podium ───────────────────────────────────────────────────────────────────
 function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
   const isFirst = player.rank === 1;
-  const blockH  = { 1: 76, 2: 52, 3: 38 }[player.rank as 1|2|3];
-  const blockBg = {
-    1: { background: 'linear-gradient(to bottom, #D99962, #F2D8A7)' },
-    2: { background: '#A39B98' },
-    3: { background: '#8C4C27' },
-  }[player.rank as 1|2|3];
+  const blockH = { 1: 76, 2: 52, 3: 38 }[player.rank as 1 | 2 | 3];
+  const blockClass = {
+    1: 'bg-gradient-to-b from-[#D99962] to-[#F2D8A7]',
+    2: 'bg-gradient-to-t from-[#4a5568] to-[#9ca3af] border-t border-white/40',
+    3: 'bg-gradient-to-t from-[#7b3f00] to-[#b87333] border-t border-[#fbd38d]/30',
+  }[player.rank as 1 | 2 | 3];
+  const avatarGlow = {
+    1: 'shadow-[0_0_15px_rgba(217,153,98,0.7)]',
+    2: 'shadow-[0_0_15px_rgba(156,163,175,0.6)]',
+    3: 'shadow-[0_0_15px_rgba(184,115,51,0.6)]',
+  }[player.rank as 1 | 2 | 3];
 
   return (
     <div className="flex flex-col items-center gap-2" style={{ minWidth: 88 }}>
-      {/* Thin ring wreath — identical style to lobby finalists top-3 */}
       <div className="relative">
         <div
-          className="absolute rounded-full animate-pulse pointer-events-none"
+          className={`absolute rounded-full animate-pulse pointer-events-none ${avatarGlow}`}
           style={{
             inset: '-3px',
             border: `2px solid ${player.glowColor}`,
-            boxShadow: `0 0 8px ${player.glowColor}`,
           }}
         />
         <div
           className="relative w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-700 z-10"
-          style={isFirst
-            ? { background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)', color: '#0A0908' }
-            : { background: '#2A211D', color: '#A39B98' }}
+          style={
+            isFirst
+              ? { background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)', color: '#0A0908' }
+              : { background: '#2A211D', color: '#E5E7EB' }
+          }
         >
           {player.name[0]}
         </div>
       </div>
-      <p className="text-[11px] font-500 text-center truncate w-full"
-         style={{ color: isFirst ? '#F2D8A7' : '#A39B98' }}>
+      <p
+        className={`text-[11px] font-500 text-center truncate w-full ${
+          isFirst ? 'text-[#F2D8A7]' : 'text-white/80'
+        }`}
+      >
         {player.name.split(' ')[0]}
       </p>
-      <p className="text-[12px] font-700" style={{ color: isFirst ? '#D99962' : '#6B6360' }}>
+      <p
+        className={`text-[12px] font-700 ${isFirst ? 'text-[#D99962]' : 'text-white'}`}
+      >
         {player.points.toLocaleString('ru-RU')}
       </p>
-      <div className="w-full rounded-t-lg flex items-center justify-center font-900 text-[15px]"
-           style={{ height: blockH, color: '#0A0908', ...blockBg }}>
+      <div
+        className={`w-full rounded-t-lg flex items-center justify-center font-900 text-[15px] text-[#0A0908] ${blockClass}`}
+        style={{ height: blockH }}
+      >
         {player.rank}
       </div>
     </div>
@@ -526,19 +538,19 @@ export function HomePage() {
         <div className="space-y-2.5">
           <SocialLinkRow
             href="https://vk.ru/im/channels/-240795522"
-            icon={<span className="text-[11px] font-800 text-[#93C5FD]">VK</span>}
+            icon={<span className="text-[11px] font-800 text-[#D99962]">VK</span>}
             label="ВКонтакте"
             subtitle="vk.ru/im/channels/-240795522"
           />
           <SocialLinkRow
             href="#"
-            icon={<InstagramIcon size={18} className="text-[#F472B6]" />}
+            icon={<InstagramIcon size={18} className="text-[#D99962]" />}
             label="Instagram"
             subtitle="Скоро"
           />
           <SocialLinkRow
             href={TELEGRAM_URL}
-            icon={<Send size={18} className="text-[#60A5FA]" />}
+            icon={<Send size={18} className="text-[#D99962]" />}
             label="Telegram"
             subtitle="@showdownbryansk"
           />
