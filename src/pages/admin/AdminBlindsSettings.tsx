@@ -165,15 +165,16 @@ function LevelEditor({
   };
 
   const addBreak = () => {
+    const lastPlaying = [...structure.levels].reverse().find((level) => !isBreakLevel(level));
     onChange(
       renumberLevels([
         ...structure.levels,
         {
           level: 0,
-          smallBlind: 0,
-          bigBlind: 0,
-          ante: 0,
-          durationMinutes: 10,
+          smallBlind: lastPlaying?.smallBlind || 100,
+          bigBlind: lastPlaying?.bigBlind || 200,
+          ante: lastPlaying?.ante || lastPlaying?.bigBlind || 200,
+          durationMinutes: 15,
           isBreak: true,
         },
       ]),
@@ -229,8 +230,13 @@ function LevelEditor({
                   patchLevel(
                     index,
                     isBreak
-                      ? { isBreak: true, smallBlind: 0, bigBlind: 0, ante: 0 }
-                      : { isBreak: false, smallBlind: 100, bigBlind: 200, ante: 200 },
+                      ? { isBreak: true }
+                      : {
+                          isBreak: false,
+                          smallBlind: level.smallBlind || 100,
+                          bigBlind: level.bigBlind || 200,
+                          ante: level.ante || 200,
+                        },
                   );
                 }}
                 className="accent-[#D99962]"

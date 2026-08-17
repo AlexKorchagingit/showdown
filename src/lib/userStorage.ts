@@ -96,12 +96,12 @@ function parseNotifications(raw: unknown): PendingNotification[] {
   });
 }
 
-/** Free items must stay owned even if an older record predates them. */
+/** New accounts and old records stuck at 0 always start with the club grant. */
 function resolveCoins(parsed: Partial<UserData>): number {
-  if (!Number.isFinite(parsed.coins) || !parsed.coins) return STARTING_COINS;
+  if (!Number.isFinite(parsed.coins)) return STARTING_COINS;
   const value = Number(parsed.coins);
+  if (value === 0) return STARTING_COINS;
   if (value === LEGACY_STARTING_COINS) return STARTING_COINS;
-  if (value < STARTING_COINS) return STARTING_COINS;
   return value;
 }
 
@@ -121,7 +121,10 @@ function withDefaults(parsed: Partial<UserData>): UserData {
       ]),
     ],
     equippedChar: parsed.equippedChar || DEFAULT_CHARACTER_ID,
-    equippedBg: parsed.equippedBg || DEFAULT_BG_ID,
+    equippedBg:
+      !parsed.equippedBg || parsed.equippedBg === 'bg_1'
+        ? DEFAULT_BG_ID
+        : parsed.equippedBg,
     pendingNotifications: parseNotifications(parsed.pendingNotifications),
   };
 }
@@ -165,9 +168,9 @@ export function loadUserData(email: string): UserData {
       !owned.includes(DEFAULT_CHARACTER_ID) || !owned.includes(DEFAULT_BG_ID);
     const needsPersist =
       missingStarter ||
+      current.equippedBg === 'bg_1' ||
       !Number.isFinite(rawCoins) ||
-      !rawCoins ||
-      Number(rawCoins) < STARTING_COINS ||
+      Number(rawCoins) === 0 ||
       Number(rawCoins) === LEGACY_STARTING_COINS;
     if (needsPersist) {
       saveUserData(email, restored);

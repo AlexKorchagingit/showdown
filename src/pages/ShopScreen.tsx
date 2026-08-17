@@ -13,6 +13,23 @@ const TAB_LABEL: Record<ShopItemType, string> = {
   bg: 'Фоны',
 };
 
+/** Rarity glow for character cards. */
+function characterRarityClass(price: number): string {
+  if (price >= 25000) {
+    return 'ring-2 ring-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)] bg-gradient-to-t from-yellow-900/40 to-transparent';
+  }
+  if (price >= 12000) {
+    return 'shadow-[inset_0_0_25px_rgba(225,29,72,0.3)] ring-1 ring-rose-500/50';
+  }
+  if (price >= 6000) {
+    return 'shadow-[inset_0_0_20px_rgba(168,85,247,0.2)] ring-1 ring-purple-500/30';
+  }
+  if (price >= 3000) {
+    return 'shadow-[inset_0_0_15px_rgba(156,163,175,0.15)]';
+  }
+  return '';
+}
+
 /** Price tag, «Куплено» or «Выбрано» — the same control in both card layouts. */
 function ItemStatus({
   item,
@@ -83,18 +100,12 @@ function ItemCard({
   const locked = !owned && !affordable;
   const isBackground = item.type === 'bg';
   const isKing = item.id === 'char_king';
-  const isPremium = item.price >= 12000 && !isKing;
-
-  const rarityClass = isKing
-    ? 'ring-2 ring-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)] bg-gradient-to-t from-yellow-900/40 to-transparent'
-    : isPremium || equipped
-      ? 'ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.5)]'
-      : '';
+  const rarityClass = isBackground ? '' : characterRarityClass(item.price);
 
   // Every card keeps the same portrait rectangle so both tabs line up
-  const cardClass = `relative aspect-[3/4] text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${rarityClass} ${
-    locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'
-  }`;
+  const cardClass = `relative aspect-[3/4] text-left rounded-2xl bg-[#231A16] border border-white/[0.06] transition-transform ${
+    isKing ? 'overflow-visible' : 'overflow-hidden'
+  } ${rarityClass} ${locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`;
 
   const status = (
     <ItemStatus

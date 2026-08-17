@@ -105,8 +105,8 @@ function ColumnSelector({
             onClick={() => onChange(id)}
             className={
               isActive
-                ? 'bg-[#D99962] text-[#110b09] font-bold rounded-lg px-3 py-1'
-                : 'text-[#8c8c88] hover:text-white px-3 py-1'
+                ? 'bg-[#D99962] text-[#110b09] text-xs font-bold rounded-lg px-2 py-1'
+                : 'text-xs text-[#8c8c88] hover:text-white px-2 py-1'
             }
           >
             {label}

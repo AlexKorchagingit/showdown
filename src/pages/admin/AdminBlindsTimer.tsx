@@ -48,6 +48,24 @@ const NOISE_BG = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`,
 )}")`;
 
+function AutoStack({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className="w-full min-w-0 px-1" style={{ containerType: 'inline-size' }}>
+      <p
+        className={`font-black leading-none tabular-nums truncate text-center text-[min(2.5rem,15cqi)] ${className ?? ''}`}
+      >
+        {children}
+      </p>
+    </div>
+  );
+}
+
 function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.ceil(totalSeconds));
   const minutes = Math.floor(safe / 60);
@@ -258,10 +276,10 @@ export function AdminBlindsTimer() {
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
                 В ИГРЕ
               </p>
-              <p className="text-4xl md:text-5xl font-black text-white mt-2 leading-none tabular-nums truncate w-full px-2 text-center">
+              <AutoStack className="text-white mt-2">
                 {remaining}
                 <span className="text-white/35"> / {totalEntries}</span>
-              </p>
+              </AutoStack>
               {rebuyCount != null && rebuyCount > 0 && (
                 <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
               )}
@@ -272,39 +290,35 @@ export function AdminBlindsTimer() {
             <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
               СРЕДНИЙ СТЕК
             </p>
-            <p className="text-4xl md:text-5xl font-black mt-2 leading-none tabular-nums text-[#F2D8A7] truncate w-full px-2 text-center">
+            <AutoStack className="mt-2 text-[#F2D8A7]">
               {avgStack.toLocaleString('ru-RU')}
-            </p>
+            </AutoStack>
           </section>
 
           {chipleader && (
           <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0">
-            <section className={`${GLASS} relative text-center overflow-visible min-w-0 pt-16`}>
-              <div
-                className="absolute bottom-[80px] left-1/2 -translate-x-1/2 w-32 h-32 bg-[#D99962]/40 blur-[30px] z-10 pointer-events-none"
-                aria-hidden
-              />
+            <section className="relative bg-white/[0.03] border border-white/[0.05] rounded-2xl px-5 pb-5 pt-4 text-center overflow-visible min-w-0">
               <img
                 src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
                 alt=""
-                className="absolute bottom-[80px] left-1/2 -translate-x-1/2 z-20 h-[180px] md:h-[220px] w-auto max-w-none object-contain object-bottom pointer-events-none select-none"
+                className="absolute bottom-[60px] left-1/2 -translate-x-1/2 h-[220px] w-auto object-contain z-30 pointer-events-none"
               />
-              <p className="relative z-30 text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
+              <p className="relative z-40 text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
                 CHIPLEADER
               </p>
-              <p className="relative z-30 text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
+              <p className="relative z-40 text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
                 {chipleader.nickname}
               </p>
-              <p className="relative z-30 text-3xl md:text-5xl font-black tabular-nums mt-1 leading-none text-[#D99962] truncate w-full px-2 text-center">
+              <AutoStack className="relative z-40 mt-1 text-[#D99962]">
                 {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
-              </p>
+              </AutoStack>
             </section>
           </div>
           )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-4 min-h-0">
-          <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em] text-[#D99962] mt-12">
+          <p className="text-2xl font-800 uppercase tracking-widest text-[#D99962] mt-8">
             SHOWDOWN
           </p>
           <h1
@@ -401,7 +415,7 @@ export function AdminBlindsTimer() {
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="h-16 md:h-20 w-auto object-contain opacity-90 self-end"
+            className="h-24 md:h-32 w-auto object-contain opacity-90 self-end"
           />
           <section className={`${GLASS} w-full self-end text-right space-y-4`}>
             {timeToNextBreak != null && (

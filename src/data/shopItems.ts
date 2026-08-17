@@ -35,22 +35,23 @@ const CHARACTERS: ShopItem[] = [
   { id: 'char_jester',  type: 'character', name: 'Шут',       image: asset('/characters/char_jester.png'),  price: 3000 },
   { id: 'char_cowboy',  type: 'character', name: 'Ковбой',    image: asset('/characters/char_cowboy.png'),  price: 3000 },
   { id: 'char_knight',  type: 'character', name: 'Рыцарь',    image: asset('/characters/char_knight.png'),  price: 3000 },
-  { id: 'char_mage',    type: 'character', name: 'Маг',       image: asset('/characters/char_mage.png'),    price: 6000 },
   { id: 'char_villain', type: 'character', name: 'Злодей',    image: asset('/characters/char_villain.png'), price: 6000 },
   { id: 'char_fortune', type: 'character', name: 'Гадалка',   image: asset('/characters/char_fortune.png'), price: 6000 },
+  { id: 'char_duchess', type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 6000 },
   { id: 'char_baron',   type: 'character', name: 'Барон',     image: asset('/characters/char_baron.png'),   price: 12000 },
-  { id: 'char_duchess', type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 12000 },
+  { id: 'char_mage',    type: 'character', name: 'Маг',       image: asset('/characters/char_mage.png'),    price: 12000 },
   { id: 'char_king',    type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 25000 },
 ];
 
-const BACKGROUND_FILES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
+/** Paid arts only — `bg_1.jpg` is a duplicate of the free base background. */
+const PAID_BACKGROUND_FILES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 
 const BACKGROUNDS: ShopItem[] = [
   { id: DEFAULT_BG_ID, type: 'bg', name: 'Базовый фон', image: asset('/backgrounds/bg_base.jpg'), price: 0 },
-  ...BACKGROUND_FILES.map((n) => ({
+  ...PAID_BACKGROUND_FILES.map((n, index) => ({
     id: `bg_${n}`,
     type: 'bg' as const,
-    name: `Фон ${n}`,
+    name: `Фон ${index + 1}`,
     image: asset(`/backgrounds/bg_${n}.jpg`),
     price: 1500,
   })),

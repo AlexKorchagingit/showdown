@@ -160,9 +160,7 @@ export function ProfilePage() {
         <div className={readOnly ? 'min-w-0' : 'pr-10 min-w-0'}>
           <h1 className={`text-2xl font-black leading-tight ${GOLD_TEXT}`}>{displayNickname}</h1>
           {trimmedSlogan && (
-            <p
-              className={`text-xs italic mt-1 leading-snug text-wrap break-words whitespace-normal line-clamp-2 ${GOLD_TEXT}`}
-            >
+            <p className="text-white/70 italic text-sm font-light mt-1 leading-snug text-wrap break-words whitespace-normal line-clamp-2">
               «{trimmedSlogan}»
             </p>
           )}

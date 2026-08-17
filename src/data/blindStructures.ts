@@ -8,7 +8,7 @@ export type BlindLevel = {
   isLateRegEnd?: boolean;
 };
 
-/** Breaks, and any rung whose small blind is 0, never show 0/0. */
+/** Breaks never display 0/0; a 0 small-blind is treated as a break for old records. */
 export function isBreakLevel(level: BlindLevel | undefined): boolean {
   if (!level) return false;
   return level.isBreak === true || level.smallBlind === 0;
@@ -40,7 +40,7 @@ export const DEFAULT_PAYOUTS: PrizePlace[] = [
 ];
 
 const STORAGE_KEY = 'showdown.blindStructures';
-const STORAGE_VERSION = 'club-breaks-v3';
+const STORAGE_VERSION = 'club-breaks-v4';
 
 type BlindStep = { sb: number; bb: number };
 
@@ -120,12 +120,14 @@ function playingLevel(level: number, step: BlindStep, durationMinutes: number): 
   };
 }
 
-function breakLevel(durationMinutes: number, lateRegEnd = false): BlindLevel {
+function breakLevel(durationMinutes: number, lateRegEnd = false, upcoming?: BlindStep): BlindLevel {
+  const sb = upcoming && upcoming.sb > 0 ? upcoming.sb : 100;
+  const bb = upcoming && upcoming.bb > 0 ? upcoming.bb : 200;
   return {
     level: 0,
-    smallBlind: 0,
-    bigBlind: 0,
-    ante: 0,
+    smallBlind: sb,
+    bigBlind: bb,
+    ante: bb,
     durationMinutes,
     isBreak: true,
     ...(lateRegEnd ? { isLateRegEnd: true } : {}),
@@ -149,7 +151,7 @@ export interface ClubLevelOptions {
 /**
  * Inserts two breaks after ~2 hours of play each.
  * The second break is the late-registration close.
- * 0/0 blinds only exist on `isBreak` rows.
+ * Break rows keep the upcoming blinds so the clock never shows 0/0.
  */
 export function buildClubLevels(options: ClubLevelOptions): BlindLevel[] {
   const playTarget = options.breakAfterMinutes ?? 120;
@@ -160,10 +162,10 @@ export function buildClubLevels(options: ClubLevelOptions): BlindLevel[] {
 
   options.steps.forEach((step, index) => {
     if (index === preCount) {
-      levels.push(breakLevel(options.firstBreakMinutes ?? 10));
+      levels.push(breakLevel(options.firstBreakMinutes ?? 15, false, step));
     }
     if (index === preCount + midCount) {
-      levels.push(breakLevel(options.secondBreakMinutes ?? 15, true));
+      levels.push(breakLevel(options.secondBreakMinutes ?? 15, true, step));
     }
 
     const minutes =
@@ -215,6 +217,8 @@ const CLASSIC_WEEKDAY: ClubLevelOptions = {
   preBreakMinutes: 15,
   midMinutes: 12,
   postBreakMinutes: 12,
+  firstBreakMinutes: 15,
+  secondBreakMinutes: 15,
 };
 
 /** Classic with even clocks (Triple Life). */
@@ -223,6 +227,8 @@ const CLASSIC_SPORT: ClubLevelOptions = {
   preBreakMinutes: 15,
   midMinutes: 15,
   postBreakMinutes: 12,
+  firstBreakMinutes: 15,
+  secondBreakMinutes: 15,
 };
 
 /** Smooth weekday freezeout. */
@@ -231,6 +237,8 @@ const SMOOTH_WEEKDAY: ClubLevelOptions = {
   preBreakMinutes: 15,
   midMinutes: 15,
   postBreakMinutes: 15,
+  firstBreakMinutes: 15,
+  secondBreakMinutes: 15,
 };
 
 /** Weekend / bounty: 20 min to the breaks, 15 after late reg. */
@@ -239,6 +247,8 @@ const WEEKEND: ClubLevelOptions = {
   preBreakMinutes: 20,
   midMinutes: 20,
   postBreakMinutes: 15,
+  firstBreakMinutes: 20,
+  secondBreakMinutes: 20,
 };
 
 /** Deepstack: longer clocks. */
@@ -247,6 +257,8 @@ const DEEPSTACK: ClubLevelOptions = {
   preBreakMinutes: 25,
   midMinutes: 20,
   postBreakMinutes: 15,
+  firstBreakMinutes: 20,
+  secondBreakMinutes: 20,
 };
 
 /**
@@ -266,21 +278,32 @@ export const BLIND_STRUCTURES: BlindStructure[] = [
 
 function cloneLevel(level: BlindLevel): BlindLevel {
   if (level.isBreak === true || level.smallBlind === 0) {
+    return { ...level, isBreak: true };
+  }
+  return { ...level };
+}
+
+function withBreakBlinds(levels: BlindLevel[]): BlindLevel[] {
+  return levels.map((level, index) => {
+    if (!isBreakLevel(level)) return level;
+    if (level.smallBlind > 0 && level.bigBlind > 0) return { ...level, isBreak: true };
+    const next = levels.slice(index + 1).find((row) => !isBreakLevel(row));
+    const prev = [...levels.slice(0, index)].reverse().find((row) => !isBreakLevel(row));
+    const source = next ?? prev;
     return {
       ...level,
       isBreak: true,
-      smallBlind: 0,
-      bigBlind: 0,
-      ante: 0,
+      smallBlind: source?.smallBlind || 100,
+      bigBlind: source?.bigBlind || 200,
+      ante: source?.ante || source?.bigBlind || 200,
     };
-  }
-  return { ...level };
+  });
 }
 
 function cloneStructure(structure: BlindStructure): BlindStructure {
   return {
     ...structure,
-    levels: structure.levels.map(cloneLevel),
+    levels: withBreakBlinds(structure.levels.map(cloneLevel)),
     payouts: structure.payouts.map((place) => ({ ...place })),
   };
 }
@@ -364,7 +387,7 @@ export function renumberLevels(levels: BlindLevel[]): BlindLevel[] {
   let n = 0;
   return levels.map((level) => {
     if (isBreakLevel(level)) {
-      return { ...level, isBreak: true, smallBlind: 0, bigBlind: 0, ante: 0, level: 0 };
+      return { ...level, isBreak: true, level: 0 };
     }
     n += 1;
     return { ...level, level: n };

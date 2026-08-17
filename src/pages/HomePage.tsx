@@ -22,6 +22,7 @@ const PODIUM = [
 ];
 
 const TELEGRAM_URL = 'https://t.me/showdown_bryansk';
+const INSTAGRAM_URL = 'https://www.instagram.com/showdown_br?igsh=MW1peWJjbGZma3NmaA==';
 
 function InstagramIcon({ size = 15, className = '' }: { size?: number; className?: string }) {
   return (
@@ -174,13 +175,13 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         aria-label="Мы в соцсетях"
         className="relative flex items-center -space-x-8 pr-1 active:scale-95 transition-transform"
       >
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500/20 border-[3px] border-[#110b09] z-[1]">
-          <Send size={15} strokeWidth={2.2} className="text-blue-400" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#229ED9] border-[3px] border-[#229ED9] z-[1]">
+          <Send size={15} strokeWidth={2.2} className="text-white" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-500/25 to-pink-500/25 border-[3px] border-[#110b09] z-[2]">
-          <InstagramIcon size={15} className="text-pink-400" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br from-[#833ab4] to-[#e1306c] border-[3px] border-[#c13584] z-[2]">
+          <InstagramIcon size={15} className="text-white" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-600 border border-[#110b09] z-10 text-[10px] font-bold text-white">
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2a5885] border-[3px] border-[#2a5885] z-10 text-[10px] font-bold text-white">
           VK
         </span>
       </button>
@@ -543,10 +544,10 @@ export function HomePage() {
             subtitle="vk.ru/im/channels/-240795522"
           />
           <SocialLinkRow
-            href="#"
+            href={INSTAGRAM_URL}
             icon={<InstagramIcon size={18} className="text-[#D99962]" />}
             label="Instagram"
-            subtitle="Скоро"
+            subtitle="@showdown_br"
           />
           <SocialLinkRow
             href={TELEGRAM_URL}
