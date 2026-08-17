@@ -40,12 +40,12 @@ export const DEFAULT_PAYOUTS: PrizePlace[] = [
 ];
 
 const STORAGE_KEY = 'showdown.blindStructures';
-const STORAGE_VERSION = 'break-zero-v2';
+const STORAGE_VERSION = 'club-breaks-v3';
 
 type BlindStep = { sb: number; bb: number };
 
-/** 25 playing rungs. Breaks are inserted after 6 and 12. */
-const PLAYING_STEPS: BlindStep[] = [
+/** Smooth ladder — keeps in-between rungs for weekend / deep events. */
+const SMOOTH_STEPS: BlindStep[] = [
   { sb: 100, bb: 100 },
   { sb: 100, bb: 200 },
   { sb: 200, bb: 300 },
@@ -64,6 +64,29 @@ const PLAYING_STEPS: BlindStep[] = [
   { sb: 5000, bb: 10000 },
   { sb: 6000, bb: 12000 },
   { sb: 10000, bb: 15000 },
+  { sb: 10000, bb: 20000 },
+  { sb: 15000, bb: 30000 },
+  { sb: 20000, bb: 40000 },
+  { sb: 30000, bb: 60000 },
+  { sb: 40000, bb: 80000 },
+  { sb: 50000, bb: 100000 },
+  { sb: 100000, bb: 200000 },
+];
+
+/** Classic ladder — no 1500/3000-style in-between rungs (Freeroll, Chill out, Phoenix). */
+const CLASSIC_STEPS: BlindStep[] = [
+  { sb: 100, bb: 200 },
+  { sb: 200, bb: 400 },
+  { sb: 300, bb: 600 },
+  { sb: 400, bb: 800 },
+  { sb: 500, bb: 1000 },
+  { sb: 600, bb: 1200 },
+  { sb: 1000, bb: 2000 },
+  { sb: 2000, bb: 4000 },
+  { sb: 3000, bb: 6000 },
+  { sb: 4000, bb: 8000 },
+  { sb: 5000, bb: 10000 },
+  { sb: 6000, bb: 12000 },
   { sb: 10000, bb: 20000 },
   { sb: 15000, bb: 30000 },
   { sb: 20000, bb: 40000 },
@@ -110,28 +133,45 @@ function breakLevel(durationMinutes: number, lateRegEnd = false): BlindLevel {
 }
 
 export interface ClubLevelOptions {
-  /** L1–L6 */
-  block1Minutes: number;
-  /** L7–L12 */
-  block2Minutes: number;
-  /** L13–L25 */
-  block3Minutes: number;
+  steps: BlindStep[];
+  /** Playing minutes until the first break (~2 hours). */
+  preBreakMinutes: number;
+  /** Playing minutes between the two breaks. */
+  midMinutes: number;
+  /** Playing minutes after late-reg close. */
+  postBreakMinutes: number;
+  /** Target play time before each break. */
+  breakAfterMinutes?: number;
+  firstBreakMinutes?: number;
+  secondBreakMinutes?: number;
 }
 
 /**
- * 25 playing levels + two standalone breaks:
- * after L6 (10 min) and after L12 (15 min, late-reg close).
+ * Inserts two breaks after ~2 hours of play each.
+ * The second break is the late-registration close.
+ * 0/0 blinds only exist on `isBreak` rows.
  */
 export function buildClubLevels(options: ClubLevelOptions): BlindLevel[] {
+  const playTarget = options.breakAfterMinutes ?? 120;
+  const preCount = Math.max(1, Math.round(playTarget / options.preBreakMinutes));
+  const midCount = Math.max(1, Math.round(playTarget / options.midMinutes));
   const levels: BlindLevel[] = [];
   let n = 1;
 
-  PLAYING_STEPS.forEach((step, index) => {
-    if (index === 6) levels.push(breakLevel(10));
-    if (index === 12) levels.push(breakLevel(15, true));
+  options.steps.forEach((step, index) => {
+    if (index === preCount) {
+      levels.push(breakLevel(options.firstBreakMinutes ?? 10));
+    }
+    if (index === preCount + midCount) {
+      levels.push(breakLevel(options.secondBreakMinutes ?? 15, true));
+    }
 
     const minutes =
-      index < 6 ? options.block1Minutes : index < 12 ? options.block2Minutes : options.block3Minutes;
+      index < preCount
+        ? options.preBreakMinutes
+        : index < preCount + midCount
+          ? options.midMinutes
+          : options.postBreakMinutes;
     levels.push(playingLevel(n, step, minutes));
     n += 1;
   });
@@ -146,9 +186,10 @@ export function buildLevels(
   durationMinutes = 20,
 ): BlindLevel[] {
   return buildClubLevels({
-    block1Minutes: durationMinutes,
-    block2Minutes: durationMinutes,
-    block3Minutes: durationMinutes,
+    steps: SMOOTH_STEPS,
+    preBreakMinutes: durationMinutes,
+    midMinutes: durationMinutes,
+    postBreakMinutes: Math.max(12, durationMinutes - 5),
   });
 }
 
@@ -161,16 +202,52 @@ function makeStructure(
   return {
     id,
     name,
-    levelDuration: options.block1Minutes,
+    levelDuration: options.preBreakMinutes,
     guarantee,
     levels: buildClubLevels(options),
     payouts: DEFAULT_PAYOUTS.map((place) => ({ ...place })),
   };
 }
 
-const WEEKDAY: ClubLevelOptions = { block1Minutes: 15, block2Minutes: 15, block3Minutes: 12 };
-const WEEKDAY_SPORT: ClubLevelOptions = { block1Minutes: 15, block2Minutes: 15, block3Minutes: 15 };
-const WEEKEND: ClubLevelOptions = { block1Minutes: 20, block2Minutes: 20, block3Minutes: 15 };
+/** Classic weekday: 15 min to first break, 12 min after; no 1500/3000 rungs. */
+const CLASSIC_WEEKDAY: ClubLevelOptions = {
+  steps: CLASSIC_STEPS,
+  preBreakMinutes: 15,
+  midMinutes: 12,
+  postBreakMinutes: 12,
+};
+
+/** Classic with even clocks (Triple Life). */
+const CLASSIC_SPORT: ClubLevelOptions = {
+  steps: CLASSIC_STEPS,
+  preBreakMinutes: 15,
+  midMinutes: 15,
+  postBreakMinutes: 12,
+};
+
+/** Smooth weekday freezeout. */
+const SMOOTH_WEEKDAY: ClubLevelOptions = {
+  steps: SMOOTH_STEPS,
+  preBreakMinutes: 15,
+  midMinutes: 15,
+  postBreakMinutes: 15,
+};
+
+/** Weekend / bounty: 20 min to the breaks, 15 after late reg. */
+const WEEKEND: ClubLevelOptions = {
+  steps: SMOOTH_STEPS,
+  preBreakMinutes: 20,
+  midMinutes: 20,
+  postBreakMinutes: 15,
+};
+
+/** Deepstack: longer clocks. */
+const DEEPSTACK: ClubLevelOptions = {
+  steps: SMOOTH_STEPS,
+  preBreakMinutes: 25,
+  midMinutes: 20,
+  postBreakMinutes: 15,
+};
 
 /**
  * Canonical club structures — names match tournament titles exactly.
@@ -178,13 +255,13 @@ const WEEKEND: ClubLevelOptions = { block1Minutes: 20, block2Minutes: 20, block3
  */
 export const BLIND_STRUCTURES: BlindStructure[] = [
   makeStructure('bs-grand-opening', 'Grand Opening', 20000, WEEKEND),
-  makeStructure('bs-freeroll', 'Freeroll', 8000, WEEKDAY),
-  makeStructure('bs-triple-life', 'Triple Life', 12000, WEEKDAY_SPORT),
-  makeStructure('bs-phoenix', 'Phoenix', 12000, WEEKDAY),
-  makeStructure('bs-freezeout', 'Freezeout', 15000, WEEKDAY_SPORT),
-  makeStructure('bs-chill-out', 'Chill out', 10000, WEEKDAY),
+  makeStructure('bs-freeroll', 'Freeroll', 8000, CLASSIC_WEEKDAY),
+  makeStructure('bs-triple-life', 'Triple Life', 12000, CLASSIC_SPORT),
+  makeStructure('bs-phoenix', 'Phoenix', 12000, CLASSIC_WEEKDAY),
+  makeStructure('bs-freezeout', 'Freezeout', 15000, SMOOTH_WEEKDAY),
+  makeStructure('bs-chill-out', 'Chill out', 10000, CLASSIC_WEEKDAY),
   makeStructure('bs-bounty-hunter', 'Bounty Hunter', 10000, WEEKEND),
-  makeStructure('bs-deepstack', 'Deepstack', 15000, WEEKEND),
+  makeStructure('bs-deepstack', 'Deepstack', 15000, DEEPSTACK),
 ];
 
 function cloneLevel(level: BlindLevel): BlindLevel {

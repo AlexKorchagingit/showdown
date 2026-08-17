@@ -246,19 +246,19 @@ export function AdminBlindsTimer() {
                   )}
                 </>
               ) : (
-                <p className="text-[#8c8c88] italic text-sm">Идет подсчет распределения очков...</p>
+                <p className="text-xl font-medium text-white/70">Идет подсчет распределения очков...</p>
               )}
             </div>
           </section>
         </div>
 
-        <div className="w-[220px] md:w-[260px] shrink-0 flex flex-col gap-4 min-h-0 overflow-visible">
+        <div className="w-[220px] md:w-[260px] shrink-0 flex flex-col gap-4 min-h-0 min-w-0 overflow-visible">
           {hasEntries && (
-            <section className={`${GLASS} text-center`}>
+            <section className={`${GLASS} text-center min-w-0`}>
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
                 В ИГРЕ
               </p>
-              <p className="text-4xl md:text-5xl font-black text-white mt-2 leading-none tabular-nums">
+              <p className="text-4xl md:text-5xl font-black text-white mt-2 leading-none tabular-nums truncate w-full px-2 text-center">
                 {remaining}
                 <span className="text-white/35"> / {totalEntries}</span>
               </p>
@@ -268,30 +268,34 @@ export function AdminBlindsTimer() {
             </section>
           )}
 
-          <section className={`${GLASS} text-center`}>
+          <section className={`${GLASS} text-center min-w-0`}>
             <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
               СРЕДНИЙ СТЕК
             </p>
-            <p className="text-4xl md:text-5xl font-black mt-2 leading-none tabular-nums text-[#F2D8A7]">
+            <p className="text-4xl md:text-5xl font-black mt-2 leading-none tabular-nums text-[#F2D8A7] truncate w-full px-2 text-center">
               {avgStack.toLocaleString('ru-RU')}
             </p>
           </section>
 
           {chipleader && (
-          <div className="relative z-[1] mt-auto overflow-visible flex flex-col">
-            <section className={`${GLASS} text-center overflow-visible`}>
+          <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0">
+            <section className={`${GLASS} relative text-center overflow-visible min-w-0 pt-16`}>
+              <div
+                className="absolute bottom-[80px] left-1/2 -translate-x-1/2 w-32 h-32 bg-[#D99962]/40 blur-[30px] z-10 pointer-events-none"
+                aria-hidden
+              />
               <img
                 src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
                 alt=""
-                className="mx-auto h-40 md:h-48 w-auto max-w-full object-contain object-bottom pointer-events-none select-none drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]"
+                className="absolute bottom-[80px] left-1/2 -translate-x-1/2 z-20 h-[180px] md:h-[220px] w-auto max-w-none object-contain object-bottom pointer-events-none select-none"
               />
-              <p className="text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962] mt-3">
+              <p className="relative z-30 text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
                 CHIPLEADER
               </p>
-              <p className="text-xl md:text-2xl font-black text-white leading-tight mt-1">
+              <p className="relative z-30 text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
                 {chipleader.nickname}
               </p>
-              <p className="text-3xl md:text-5xl font-black tabular-nums mt-1 leading-none text-[#D99962]">
+              <p className="relative z-30 text-3xl md:text-5xl font-black tabular-nums mt-1 leading-none text-[#D99962] truncate w-full px-2 text-center">
                 {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
               </p>
             </section>
@@ -300,7 +304,7 @@ export function AdminBlindsTimer() {
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-4 min-h-0">
-          <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em] text-[#D99962] mt-3">
+          <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em] text-[#D99962] mt-12">
             SHOWDOWN
           </p>
           <h1
@@ -385,7 +389,7 @@ export function AdminBlindsTimer() {
           </div>
           </div>
 
-          <p className="text-2xl font-bold text-white/70 -mt-2 pb-1">
+          <p className="text-2xl font-bold text-white/70 -mt-4 pb-1">
             Next Blinds:{' '}
             <span className="text-[#D99962]">
               {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
@@ -397,27 +401,27 @@ export function AdminBlindsTimer() {
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="h-48 md:h-64 w-auto object-contain opacity-90 self-end"
+            className="h-16 md:h-20 w-auto object-contain opacity-90 self-end"
           />
           <section className={`${GLASS} w-full self-end text-right space-y-4`}>
             {timeToNextBreak != null && (
               <div>
-                <p className="text-2xl md:text-4xl font-800 uppercase tracking-[0.08em] text-white/55">
+                <p className="text-base md:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
                   Перерыв через
                 </p>
-                <p className="text-3xl md:text-4xl font-black tabular-nums text-white mt-1">
+                <p className="text-xl md:text-2xl font-black tabular-nums text-white mt-1">
                   {formatEta(timeToNextBreak)}
                 </p>
               </div>
             )}
             {lateRegClosed ? (
-              <p className="text-xl font-bold text-red-500">Регистрация закрыта</p>
+              <p className="text-lg font-bold text-red-500">Регистрация закрыта</p>
             ) : timeToLateRegEnd != null ? (
               <div>
-                <p className="text-2xl md:text-4xl font-800 uppercase tracking-[0.08em] text-white/55">
+                <p className="text-base md:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
                   Поздняя регистрация
                 </p>
-                <p className="text-3xl md:text-4xl font-black tabular-nums text-white mt-1">
+                <p className="text-xl md:text-2xl font-black tabular-nums text-white mt-1">
                   {formatEta(timeToLateRegEnd)}
                 </p>
               </div>

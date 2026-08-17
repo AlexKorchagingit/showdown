@@ -6,7 +6,8 @@ import {
 
 export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку белых фишек';
 
-export const STARTING_COINS = 50000;
+export const STARTING_COINS = 1500;
+const LEGACY_STARTING_COINS = 50000;
 
 export interface PendingNotification {
   id: string;
@@ -99,6 +100,7 @@ function parseNotifications(raw: unknown): PendingNotification[] {
 function resolveCoins(parsed: Partial<UserData>): number {
   if (!Number.isFinite(parsed.coins) || !parsed.coins) return STARTING_COINS;
   const value = Number(parsed.coins);
+  if (value === LEGACY_STARTING_COINS) return STARTING_COINS;
   if (value < STARTING_COINS) return STARTING_COINS;
   return value;
 }
@@ -165,7 +167,8 @@ export function loadUserData(email: string): UserData {
       missingStarter ||
       !Number.isFinite(rawCoins) ||
       !rawCoins ||
-      Number(rawCoins) < STARTING_COINS;
+      Number(rawCoins) < STARTING_COINS ||
+      Number(rawCoins) === LEGACY_STARTING_COINS;
     if (needsPersist) {
       saveUserData(email, restored);
     }

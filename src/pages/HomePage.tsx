@@ -180,7 +180,7 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         <span className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-500/25 to-pink-500/25 border-[3px] border-[#110b09] z-[2]">
           <InstagramIcon size={15} className="text-pink-400" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-600/20 border-[3px] border-[#110b09] z-10 text-[10px] font-bold text-blue-400">
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-600 border border-[#110b09] z-10 text-[10px] font-bold text-white">
           VK
         </span>
       </button>
