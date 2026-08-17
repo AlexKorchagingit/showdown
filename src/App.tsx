@@ -48,10 +48,20 @@ interface AppLayoutProps {
 function AppLayout({ userEmail }: AppLayoutProps) {
   const location = useLocation();
   const hideNav = HIDE_NAV_PATH.test(location.pathname);
+  const isBlindsTimer = location.pathname === '/admin/blinds/timer';
 
   const contentPaddingBottom = hideNav
     ? 'env(safe-area-inset-bottom, 0px)'
     : `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})`;
+
+  if (isBlindsTimer) {
+    return (
+      <div className="w-full h-[100dvh] bg-[#0A0908]">
+        <AdminBlindsTimer />
+        <RubyBonusHost />
+      </div>
+    );
+  }
 
   return (
     <div className={columnClass} style={{ height: '100dvh' }}>

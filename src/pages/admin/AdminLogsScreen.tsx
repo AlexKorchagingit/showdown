@@ -98,27 +98,37 @@ export function AdminLogsScreen() {
             const action = logActionLabel(log);
             const target = logTargetLabel(log);
             return (
-              <div key={log.id} className="bg-[#231A16] p-3 rounded-lg mb-2 space-y-1">
-                <p className="text-[11px] font-600" style={{ color: '#8c8c88' }}>
+              <div
+                key={log.id}
+                className="mb-3 rounded-xl p-3 space-y-1.5"
+                style={{
+                  background: '#231A16',
+                  borderLeft: '3px solid #D99962',
+                  border: '1px solid rgba(217,153,98,0.22)',
+                  borderLeftWidth: 3,
+                  borderLeftColor: '#D99962',
+                }}
+              >
+                <p className="text-[11px] font-700 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
                   {formatLogDateTime(log.timestamp)}
                 </p>
                 <p className="text-[13px] leading-snug text-white">
-                  <span style={{ color: '#8c8c88' }}>Админ: </span>
+                  <span style={{ color: '#D99962' }}>Админ: </span>
                   {log.adminName || log.adminEmail}
                 </p>
                 <p className="text-[13px] leading-snug text-white">
-                  <span style={{ color: '#8c8c88' }}>Действие: </span>
+                  <span style={{ color: '#D99962' }}>Действие: </span>
                   {action}
                 </p>
                 {target ? (
                   <p className="text-[13px] leading-snug text-white">
-                    <span style={{ color: '#8c8c88' }}>У кого/Где: </span>
+                    <span style={{ color: '#D99962' }}>У кого/Где: </span>
                     {target}
                   </p>
                 ) : null}
                 {log.details ? (
-                  <p className="text-[13px] leading-snug" style={{ color: '#A39B98' }}>
-                    <span className="text-[#8c8c88]">Детали: </span>
+                  <p className="text-[13px] leading-snug text-white">
+                    <span style={{ color: '#D99962' }}>Детали: </span>
                     {log.details}
                   </p>
                 ) : null}

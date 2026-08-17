@@ -206,8 +206,8 @@ export function AdminBlindsTimer() {
       : 'Break'
     : `Level ${levelNumber}`;
 
-  return (
-    <div className="fixed inset-0 z-[100] text-white bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#231A16] to-[#0A0908]">
+  return createPortal(
+    <div className="fixed inset-0 z-[200] text-white bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#231A16] to-[#0A0908] overflow-visible">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
         style={{ backgroundImage: NOISE_BG }}
@@ -279,20 +279,20 @@ export function AdminBlindsTimer() {
 
           {chipleader && (
           <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0">
-            <section className="relative mt-20 overflow-visible bg-white/[0.03] border border-white/[0.05] rounded-2xl text-center min-w-0">
-              <div className="relative z-10 px-5 pb-4 pt-3">
-                <img
-                  src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
-                  alt=""
-                  className="absolute bottom-full left-1/2 z-30 h-[300px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom pointer-events-none"
-                />
+            <section className="relative mt-32 overflow-visible bg-white/[0.03] border border-white/[0.05] rounded-2xl text-center min-w-0">
+              <img
+                src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
+                alt=""
+                className="relative z-30 mx-auto block h-[320px] w-auto max-w-none -mt-32 object-contain object-bottom pointer-events-none"
+              />
+              <div className="relative z-10 px-5 pb-4 pt-1">
                 <p className="text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
                   CHIPLEADER
                 </p>
                 <p className="text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
                   {chipleader.nickname}
                 </p>
-                <FitText className="mt-1 text-[#D99962]">
+                <FitText className="text-[#D99962]">
                   {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
                 </FitText>
               </div>
@@ -504,6 +504,7 @@ export function AdminBlindsTimer() {
           </div>,
           document.body,
         )}
-    </div>
+    </div>,
+    document.body,
   );
 }
