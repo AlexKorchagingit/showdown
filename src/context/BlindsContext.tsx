@@ -33,6 +33,7 @@ interface BlindsState {
   chipleaderId: string | null;
   totalEntries: number | null;
   rebuyCount: number | null;
+  chipleaderStack: number | null;
   levelUpNonce: number;
 }
 
@@ -49,7 +50,8 @@ type BlindsAction =
   | { type: 'setAvgStack'; value: number | null }
   | { type: 'setChipleader'; userId: string | null }
   | { type: 'setTotalEntries'; value: number | null }
-  | { type: 'setRebuyCount'; value: number | null };
+  | { type: 'setRebuyCount'; value: number | null }
+  | { type: 'setChipleaderStack'; value: number | null };
 
 function findStructure(state: BlindsState, id: string | null): BlindStructure | undefined {
   if (!id) return undefined;
@@ -156,15 +158,23 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
         ...state,
         linkedTournamentId: action.tournamentId,
         chipleaderId: action.tournamentId === state.linkedTournamentId ? state.chipleaderId : null,
+        chipleaderStack:
+          action.tournamentId === state.linkedTournamentId ? state.chipleaderStack : null,
       };
     case 'setAvgStack':
       return { ...state, avgStackOverride: action.value };
     case 'setChipleader':
-      return { ...state, chipleaderId: action.userId };
+      return {
+        ...state,
+        chipleaderId: action.userId,
+        chipleaderStack: action.userId === state.chipleaderId ? state.chipleaderStack : null,
+      };
     case 'setTotalEntries':
       return { ...state, totalEntries: action.value };
     case 'setRebuyCount':
       return { ...state, rebuyCount: action.value };
+    case 'setChipleaderStack':
+      return { ...state, chipleaderStack: action.value };
     default:
       return state;
   }
@@ -190,11 +200,13 @@ interface BlindsContextValue {
   chipleaderId: string | null;
   totalEntries: number | null;
   rebuyCount: number | null;
+  chipleaderStack: number | null;
   setLinkedTournament: (tournamentId: string | null) => void;
   setAvgStackOverride: (value: number | null) => void;
   setChipleader: (userId: string | null) => void;
   setTotalEntries: (value: number | null) => void;
   setRebuyCount: (value: number | null) => void;
+  setChipleaderStack: (value: number | null) => void;
 }
 
 const BlindsContext = createContext<BlindsContextValue | null>(null);
@@ -211,6 +223,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     chipleaderId: null,
     totalEntries: null,
     rebuyCount: null,
+    chipleaderStack: null,
     levelUpNonce: 0,
   }));
 
@@ -295,11 +308,13 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       chipleaderId: state.chipleaderId,
       totalEntries: state.totalEntries,
       rebuyCount: state.rebuyCount,
+      chipleaderStack: state.chipleaderStack,
       setLinkedTournament: (tournamentId) => dispatch({ type: 'linkTournament', tournamentId }),
       setAvgStackOverride: (value) => dispatch({ type: 'setAvgStack', value }),
       setChipleader: (userId) => dispatch({ type: 'setChipleader', userId }),
       setTotalEntries: (value) => dispatch({ type: 'setTotalEntries', value }),
       setRebuyCount: (value) => dispatch({ type: 'setRebuyCount', value }),
+      setChipleaderStack: (value) => dispatch({ type: 'setChipleaderStack', value }),
     }),
     [state, addStructure, updateStructure, updateLevels, ensureTimer, setRunning],
   );

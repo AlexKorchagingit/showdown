@@ -23,6 +23,8 @@ export function TimerSessionFields({ structureName }: { structureName?: string }
     setChipleader,
     setTotalEntries,
     setRebuyCount,
+    chipleaderStack,
+    setChipleaderStack,
   } = useBlinds();
 
   const name = activeStructure?.name ?? structureName ?? '';
@@ -129,6 +131,28 @@ export function TimerSessionFields({ structureName }: { structureName?: string }
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="block">
+        <span className={LABEL_CLASS}>Стек чиплидера</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          placeholder="Не задано"
+          disabled={!chipleaderId}
+          value={chipleaderStack ?? ''}
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            if (raw === '') {
+              setChipleaderStack(null);
+              return;
+            }
+            const next = Number(raw);
+            setChipleaderStack(Number.isFinite(next) ? Math.max(0, Math.round(next)) : null);
+          }}
+          className={`${FIELD_CLASS} disabled:opacity-40`}
+        />
       </label>
     </div>
   );

@@ -37,10 +37,15 @@ import {
 
 const SETTINGS_ROUTE = '/admin/blinds/settings';
 const CIRCLE_SIZE = 360;
-const STROKE = 8;
-const RADIUS = 160;
+const STROKE = 10;
+const RADIUS = 158;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]';
+const GLASS =
+  'bg-white/[0.03] border border-white/[0.05] rounded-2xl p-5 backdrop-blur-sm';
+const NOISE_BG = `url("data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`,
+)}")`;
 
 function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.ceil(totalSeconds));
@@ -66,7 +71,7 @@ function ControlButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="bg-white/5 hover:bg-white/10 text-white/50 p-4 rounded-full transition-colors active:scale-95 disabled:opacity-30 disabled:hover:bg-white/5"
+      className="bg-white/5 hover:bg-white/20 text-white/80 hover:text-[#D99962] p-4 rounded-full transition-colors active:scale-95 disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-white/80"
     >
       {children}
     </button>
@@ -96,6 +101,7 @@ export function AdminBlindsTimer() {
     setChipleader,
     totalEntries,
     rebuyCount,
+    chipleaderStack,
   } = useBlinds();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -175,7 +181,10 @@ export function AdminBlindsTimer() {
 
   const currentLevel = structure.levels[levelIndex];
   const nextLevel = structure.levels[levelIndex + 1];
-  const levelSeconds = durationSeconds(currentLevel, currentLevel?.durationMinutes ?? structure.levelDuration);
+  const levelSeconds = durationSeconds(
+    currentLevel,
+    currentLevel?.durationMinutes ?? structure.levelDuration,
+  );
   const remainingRatio = Math.min(1, Math.max(0, secondsLeft / Math.max(1, levelSeconds)));
   const dashOffset = CIRCUMFERENCE * (1 - remainingRatio);
   const isBreak = currentLevel?.isBreak === true;
@@ -190,94 +199,113 @@ export function AdminBlindsTimer() {
     : currentLevel && currentLevel.ante > 0
       ? `Ante ${currentLevel.ante.toLocaleString('ru-RU')}`
       : 'Ante —';
+  const levelBadge = isBreak
+    ? currentLevel?.isLateRegEnd
+      ? 'Конец реги'
+      : 'Break'
+    : `Level ${levelNumber}`;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#0A0908] text-white">
-      <div className="flex w-full h-full">
-        <div className="w-[40%] min-w-[240px] max-w-[560px] flex flex-col px-5 pt-8 pb-28 overflow-y-auto">
-          <p className="text-lg md:text-xl font-900 uppercase tracking-[0.18em]" style={{ color: '#D99962' }}>
-            Гарантия очков
-          </p>
-          <p className="text-5xl md:text-6xl font-black mt-2 leading-none" style={{ color: '#F2D8A7' }}>
-            {prizePool.toLocaleString('ru-RU')}
-          </p>
+    <div className="fixed inset-0 z-[100] text-white bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#231A16] to-[#0A0908]">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
+        style={{ backgroundImage: NOISE_BG }}
+        aria-hidden
+      />
 
-          <div className="mt-6 flex flex-col xl:flex-row gap-6 xl:gap-8">
-            <div className="flex-1 space-y-2.5 min-w-0">
+      <div className="relative flex w-full h-full gap-4 px-4 pt-6 pb-28">
+        <div className="w-[240px] md:w-[280px] shrink-0 overflow-y-auto">
+          <section className={`${GLASS} h-full`}>
+            <p className="text-[11px] md:text-xs font-800 uppercase tracking-[0.2em] text-[#D99962]">
+              Гарантия очков
+            </p>
+            <p className="text-4xl md:text-5xl font-black mt-3 leading-none tabular-nums text-[#F2D8A7]">
+              {prizePool.toLocaleString('ru-RU')}
+            </p>
+
+            <div className="mt-5 tabular-nums">
               {hasEntries ? (
                 <>
-                  <p className="text-sm md:text-base font-700" style={{ color: '#F2D8A7' }}>
+                  <p className="text-xs font-700 uppercase tracking-[0.14em] text-white/40 mb-3">
                     В призах: {payouts.length} чел. (30%)
                   </p>
                   {payouts.length === 0 ? (
                     <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
                   ) : (
-                    payouts.map(({ place, points }) => (
-                      <div key={place} className="flex items-baseline gap-2">
-                        <span className="text-base md:text-lg font-700 text-white/70">{place} место</span>
-                        <span className="text-lg md:text-xl font-black" style={{ color: '#D99962' }}>
-                          {points.toLocaleString('ru-RU')}
-                        </span>
-                      </div>
-                    ))
+                    <div className="space-y-2.5">
+                      {payouts.map(({ place, points }) => (
+                        <div key={place} className="flex justify-between items-baseline gap-3">
+                          <span className="text-sm md:text-base font-700 text-white/55">{place} место</span>
+                          <span className="text-base md:text-lg font-black tabular-nums text-[#D99962]">
+                            {points.toLocaleString('ru-RU')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </>
               ) : (
-                <p className="text-[#8c8c88] italic text-sm md:text-base">
-                  Идет подсчет распределения очков...
-                </p>
+                <p className="text-[#8c8c88] italic text-sm">Идет подсчет распределения очков...</p>
               )}
             </div>
-
-            <div className="flex-1 min-w-0">
-              {hasEntries && (
-                <p className="text-sm md:text-base font-700 text-white leading-snug mb-4">
-                  Осталось игроков: {remaining} / {totalEntries}
-                  {rebuyCount != null && rebuyCount > 0 ? ` (в т.ч. ${rebuyCount} ребаев)` : ''}
-                </p>
-              )}
-              <p
-                className="text-[12px] md:text-sm font-800 uppercase tracking-[0.16em]"
-                style={{ color: '#D99962' }}
-              >
-                Средний стек
-              </p>
-              <p className="text-3xl md:text-5xl font-black mt-1 leading-none tabular-nums" style={{ color: '#F2D8A7' }}>
-                {avgStack.toLocaleString('ru-RU')}
-              </p>
-
-              <div className="mt-6">
-                {chipleader ? (
-                  <div className="relative">
-                    <p
-                      className={`relative z-10 text-sm md:text-base font-900 uppercase tracking-[0.28em] drop-shadow-[0_0_10px_rgba(217,153,98,0.65)] ${GOLD_TEXT}`}
-                    >
-                      Chipleader
-                    </p>
-                    <p className="relative z-10 text-2xl md:text-3xl font-black text-white mt-1 leading-tight">
-                      {chipleader.nickname}
-                    </p>
-                    <div className="relative mt-3 w-fit">
-                      <div className="absolute inset-0 bg-[#D99962]/20 blur-[30px] -z-10 rounded-full" />
-                      <img
-                        src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
-                        alt=""
-                        className="relative z-10 h-48 md:h-56 w-auto object-contain pointer-events-none select-none"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm font-600 uppercase tracking-wide" style={{ color: '#6B6360' }}>
-                    Чиплидер не выбран
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+          </section>
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col items-center justify-center relative px-3 py-6 pb-28">
-          <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em]" style={{ color: '#D99962' }}>
+        <div className="w-[220px] md:w-[260px] shrink-0 flex flex-col gap-4 overflow-y-auto">
+          {hasEntries && (
+            <section className={`${GLASS} text-center`}>
+              <p className="text-[10px] md:text-[11px] font-800 uppercase tracking-[0.18em] text-white/40">
+                Игроки (в игре)
+              </p>
+              <p className="text-4xl md:text-5xl font-black text-white mt-2 leading-none tabular-nums">
+                {remaining}
+                <span className="text-white/35"> / {totalEntries}</span>
+              </p>
+              {rebuyCount != null && rebuyCount > 0 && (
+                <p className="text-[11px] font-600 text-white/40 mt-2">Ребаев: {rebuyCount}</p>
+              )}
+            </section>
+          )}
+
+          <section className={`${GLASS} text-center`}>
+            <p className="text-[10px] md:text-[11px] font-800 uppercase tracking-[0.18em] text-white/40">
+              Средний стек
+            </p>
+            <p className="text-4xl md:text-5xl font-black mt-2 leading-none tabular-nums text-[#F2D8A7]">
+              {avgStack.toLocaleString('ru-RU')}
+            </p>
+          </section>
+
+          <section className={`${GLASS} text-center mt-auto`}>
+            <p
+              className={`text-sm font-900 uppercase tracking-[0.28em] drop-shadow-[0_0_10px_rgba(217,153,98,0.65)] ${GOLD_TEXT}`}
+            >
+              Chipleader
+            </p>
+            {chipleader ? (
+              <>
+                <div className="w-32 h-32 rounded-full ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.4)] overflow-hidden mx-auto my-2 bg-[#1A1411]">
+                  <img
+                    src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
+                    alt=""
+                    className="w-full h-full object-cover object-top pointer-events-none select-none"
+                  />
+                </div>
+                <p className="text-xl font-black text-white leading-tight">{chipleader.nickname}</p>
+                <p className="text-2xl md:text-3xl font-black tabular-nums mt-1 text-[#D99962]">
+                  {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm font-600 uppercase tracking-wide mt-4 text-[#6B6360]">
+                Чиплидер не выбран
+              </p>
+            )}
+          </section>
+        </div>
+
+        <div className="flex-1 min-w-0 flex flex-col items-center justify-center px-2">
+          <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em] text-[#D99962]">
             Showdown
           </p>
           <h1
@@ -286,12 +314,21 @@ export function AdminBlindsTimer() {
             {eventTitle}
           </h1>
 
-          <div className="relative my-4 w-[min(86vw,28rem)] md:w-[min(48vw,32rem)] aspect-square">
+          <div className="relative my-4 w-[min(78vw,26rem)] md:w-[min(44vw,30rem)] aspect-square">
             <svg
               viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
               className="w-full h-full -rotate-90 pointer-events-none"
               aria-hidden
             >
+              <defs>
+                <filter id="timer-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
               <circle
                 cx={CIRCLE_SIZE / 2}
                 cy={CIRCLE_SIZE / 2}
@@ -310,22 +347,17 @@ export function AdminBlindsTimer() {
                 strokeLinecap="round"
                 strokeDasharray={CIRCUMFERENCE}
                 strokeDashoffset={dashOffset}
+                filter="url(#timer-glow)"
                 style={{ transition: 'stroke-dashoffset 0.25s linear' }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 pointer-events-none">
-              <p className="text-2xl md:text-4xl font-black uppercase tracking-[0.18em]" style={{ color: '#D99962' }}>
-                {isBreak
-                  ? currentLevel?.isLateRegEnd
-                    ? 'Конец реги'
-                    : 'Break'
-                  : `Level ${levelNumber}`}
-              </p>
-              <p className="text-4xl md:text-6xl font-black text-white mt-1 leading-none">{blindsLabel}</p>
-              <p className="text-xl md:text-3xl font-700 mt-1" style={{ color: '#F2D8A7' }}>
-                {anteLabel}
-              </p>
-              <p className="text-[4.5rem] md:text-[7rem] font-black leading-none tabular-nums mt-2">
+              <span className="bg-[#D99962]/20 text-[#D99962] px-4 py-1 rounded-full text-sm font-bold tracking-widest uppercase">
+                {levelBadge}
+              </span>
+              <p className="text-3xl md:text-5xl font-black text-white mt-3 leading-none">{blindsLabel}</p>
+              <p className="text-lg md:text-2xl font-700 mt-1 text-[#F2D8A7]">{anteLabel}</p>
+              <p className="text-[4.2rem] md:text-[6.5rem] font-black leading-none tabular-nums mt-2 drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                 {formatClock(secondsLeft)}
               </p>
             </div>
@@ -343,33 +375,47 @@ export function AdminBlindsTimer() {
             />
           </div>
 
-          <p className="text-xl md:text-2xl font-bold text-white/70">
-            Next Blinds: {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
+          <p className="text-2xl font-bold text-white/70">
+            Next Blinds:{' '}
+            <span className="text-[#D99962]">
+              {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
+            </span>
           </p>
         </div>
 
-        <div className="w-52 md:w-72 shrink-0 pt-5 pr-4 pb-28 flex flex-col items-end gap-4">
+        <div className="w-52 md:w-64 shrink-0 flex flex-col items-end gap-4">
           <img
             src={asset('/SD.png')}
             alt="Showdown"
             className="h-24 md:h-32 w-auto object-contain opacity-90"
           />
-          <div className="w-full text-right space-y-2">
+          <section className={`${GLASS} w-full text-right space-y-3`}>
             {timeToNextBreak != null && (
-              <p className="text-[12px] md:text-[14px] font-700 leading-snug text-white/80">
-                Перерыв через:{' '}
-                <span className="tabular-nums font-black text-white">{formatEta(timeToNextBreak)}</span>
-              </p>
+              <div>
+                <p className="text-[10px] font-800 uppercase tracking-[0.16em] text-white/40">
+                  Перерыв через
+                </p>
+                <p className="text-lg md:text-xl font-black tabular-nums text-white mt-0.5">
+                  {formatEta(timeToNextBreak)}
+                </p>
+              </div>
             )}
             {lateRegClosed ? (
-              <p className="text-[12px] md:text-[14px] font-bold text-red-500">Регистрация закрыта</p>
+              <p className="text-sm font-bold text-red-500">Регистрация закрыта</p>
             ) : timeToLateRegEnd != null ? (
-              <p className="text-[12px] md:text-[14px] font-700 leading-snug text-white/80">
-                Поздняя регистрация:{' '}
-                <span className="tabular-nums font-black text-white">{formatEta(timeToLateRegEnd)}</span>
-              </p>
+              <div>
+                <p className="text-[10px] font-800 uppercase tracking-[0.16em] text-white/40">
+                  Поздняя регистрация
+                </p>
+                <p className="text-lg md:text-xl font-black tabular-nums text-white mt-0.5">
+                  {formatEta(timeToLateRegEnd)}
+                </p>
+              </div>
             ) : null}
-          </div>
+            {timeToNextBreak == null && !lateRegClosed && timeToLateRegEnd == null && (
+              <p className="text-sm text-white/35">Тайминги не заданы</p>
+            )}
+          </section>
         </div>
       </div>
 
@@ -391,7 +437,7 @@ export function AdminBlindsTimer() {
           {isRunning ? (
             <Pause size={22} strokeWidth={2.2} fill="currentColor" />
           ) : (
-            <Play size={22} strokeWidth={2.2} fill="currentColor" />
+            <Play size={22} strokeWidth={2.2} fill="currentColor" className="pl-1" />
           )}
         </ControlButton>
         <ControlButton
