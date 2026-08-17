@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
@@ -87,6 +87,7 @@ export function AdminTournamentFinance() {
   const [hourFlash, setHourFlash] = useState<Record<string, { delta: number; token: number }>>({});
   const [addOpen, setAddOpen] = useState(false);
   const [tournamentComment, setTournamentComment] = useState('');
+  const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const tournament = tournaments.find((t) => t.id === id);
 
@@ -102,6 +103,13 @@ export function AdminTournamentFinance() {
   useEffect(() => {
     setTournamentComment(tournament?.adminSecretComment ?? '');
   }, [tournament?.id, tournament?.adminSecretComment]);
+
+  useEffect(
+    () => () => {
+      if (commentTimer.current) clearTimeout(commentTimer.current);
+    },
+    [],
+  );
 
   if (!tournament) return <Navigate to="/admin/finance" replace />;
 
@@ -119,6 +127,24 @@ export function AdminTournamentFinance() {
 
   const flashHours = (key: string, delta: number) => {
     setHourFlash((prev) => ({ ...prev, [key]: { delta, token: Date.now() } }));
+  };
+
+  const persistComment = (value: string) => {
+    updateTournament(tournament.id, { adminSecretComment: value });
+  };
+
+  const handleCommentChange = (value: string) => {
+    setTournamentComment(value);
+    if (commentTimer.current) clearTimeout(commentTimer.current);
+    commentTimer.current = setTimeout(() => persistComment(value), 400);
+  };
+
+  const handleCommentBlur = () => {
+    if (commentTimer.current) {
+      clearTimeout(commentTimer.current);
+      commentTimer.current = null;
+    }
+    persistComment(tournamentComment);
   };
 
   const handleTicket = (userId: string, nickname: string) => {
@@ -882,7 +908,8 @@ export function AdminTournamentFinance() {
           </h3>
           <textarea
             value={tournamentComment}
-            onChange={(e) => setTournamentComment(e.target.value)}
+            onChange={(e) => handleCommentChange(e.target.value)}
+            onBlur={handleCommentBlur}
             placeholder="Заметки для служебной информации…"
             rows={4}
             className="w-full rounded-xl px-3 py-2.5 text-[13px] text-white outline-none resize-none"
@@ -891,19 +918,6 @@ export function AdminTournamentFinance() {
               border: '1px solid rgba(217,153,98,0.28)',
             }}
           />
-          <button
-            type="button"
-            onClick={() =>
-              updateTournament(tournament.id, { adminSecretComment: tournamentComment.trim() })
-            }
-            className="w-full h-11 rounded-xl text-[13px] font-800 active:scale-[0.98] transition-transform"
-            style={{
-              background: 'linear-gradient(to right, #8C4C27, #D99962)',
-              color: '#0A0908',
-            }}
-          >
-            Сохранить
-          </button>
         </div>
       </div>
     </div>

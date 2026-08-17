@@ -164,11 +164,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const nonPlayingDealers = (live.dealers ?? []).filter((d) => d.name.trim());
   const hasDealers = playingDealers.length > 0 || nonPlayingDealers.length > 0;
   const adminComment = live.adminSecretComment?.trim() ?? '';
-  const staffRows = live.staff ?? [];
   const showServiceInfo =
-    isAdmin &&
-    tournamentFinished &&
-    (hasDealers || adminComment.length > 0 || staffRows.length > 0 || live.resultsEntered === true);
+    isAdmin && tournamentFinished && (hasDealers || adminComment.length > 0);
 
   return (
     <>
@@ -497,37 +494,6 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     {adminComment || 'Комментарий не указан'}
                   </p>
                 </section>
-
-                {(staffRows.length > 0 || live.resultsEntered) && (
-                  <section>
-                    <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-3" style={{ color: '#D99962' }}>
-                      Персонал
-                    </p>
-                    {staffRows.length === 0 ? (
-                      <p className="text-[13px]" style={{ color: '#6B6360' }}>Данные не заполнены</p>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {staffRows.map((row) => (
-                          <div
-                            key={row.role}
-                            className="flex items-start justify-between gap-3 rounded-xl px-3 py-2.5"
-                            style={{ background: 'rgba(17,11,9,0.55)' }}
-                          >
-                            <div className="min-w-0">
-                              <p className="text-[12px] font-700 text-white">{row.role}</p>
-                              <p className="text-[12px] truncate" style={{ color: '#A39B98' }}>
-                                {row.name || '—'}
-                              </p>
-                            </div>
-                            <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
-                              {row.hours}ч {String(row.minutes).padStart(2, '0')}м
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                )}
               </div>
             )}
           </div>

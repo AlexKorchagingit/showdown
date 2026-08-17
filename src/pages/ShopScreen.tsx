@@ -13,21 +13,33 @@ const TAB_LABEL: Record<ShopItemType, string> = {
   bg: 'Фоны',
 };
 
-/** Rarity glow for character cards. */
-function characterRarityClass(price: number): string {
+/** Rarity glow: bronze / purple inset on the card, ruby and gold on a wrapping ring. */
+function characterRarity(price: number): { wrap: string; card: string } {
   if (price >= 25000) {
-    return 'ring-2 ring-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)] bg-gradient-to-t from-yellow-900/40 to-transparent';
+    return {
+      wrap: 'rounded-2xl ring-2 ring-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)]',
+      card: 'bg-gradient-to-t from-yellow-900/40 to-transparent',
+    };
   }
   if (price >= 12000) {
-    return 'shadow-[inset_0_0_25px_rgba(225,29,72,0.3)] ring-1 ring-rose-500/50';
+    return {
+      wrap: 'rounded-2xl shadow-[0_0_20px_rgba(225,29,72,0.3)] ring-1 ring-rose-500/50',
+      card: '',
+    };
   }
   if (price >= 6000) {
-    return 'shadow-[inset_0_0_20px_rgba(168,85,247,0.2)] ring-1 ring-purple-500/30';
+    return {
+      wrap: '',
+      card: 'shadow-[inset_0_0_20px_rgba(168,85,247,0.2)] ring-1 ring-purple-500/30',
+    };
   }
   if (price >= 3000) {
-    return 'shadow-[inset_0_0_15px_rgba(156,163,175,0.15)]';
+    return {
+      wrap: '',
+      card: 'shadow-[inset_0_0_15px_rgba(140,76,39,0.3)]',
+    };
   }
-  return '';
+  return { wrap: '', card: '' };
 }
 
 /** Price tag, «Куплено» or «Выбрано» — the same control in both card layouts. */
@@ -99,13 +111,11 @@ function ItemCard({
 }) {
   const locked = !owned && !affordable;
   const isBackground = item.type === 'bg';
-  const isKing = item.id === 'char_king';
-  const rarityClass = isBackground ? '' : characterRarityClass(item.price);
+  const rarity = isBackground ? { wrap: '', card: '' } : characterRarity(item.price);
 
-  // Every card keeps the same portrait rectangle so both tabs line up
-  const cardClass = `relative aspect-[3/4] text-left rounded-2xl bg-[#231A16] border border-white/[0.06] transition-transform ${
-    isKing ? 'overflow-visible' : 'overflow-hidden'
-  } ${rarityClass} ${locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`;
+  const cardClass = `relative aspect-[3/4] w-full text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${rarity.card} ${
+    locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'
+  }`;
 
   const status = (
     <ItemStatus
@@ -118,22 +128,18 @@ function ItemCard({
   );
 
   // Backgrounds are shown edge to edge with the control floating on the artwork
-  if (isBackground) {
-    return (
-      <button type="button" onClick={onSelect} disabled={locked} className={cardClass}>
-        <img
-          src={item.image}
-          alt={item.name}
-          className="absolute inset-0 w-full h-full object-cover rounded-xl"
-        />
-        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90%] z-10">{status}</span>
-      </button>
-    );
-  }
-
-  return (
+  const card = isBackground ? (
+    <button type="button" onClick={onSelect} disabled={locked} className={cardClass}>
+      <img
+        src={item.image}
+        alt={item.name}
+        className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+      />
+      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90%] z-10">{status}</span>
+    </button>
+  ) : (
     <button type="button" onClick={onSelect} disabled={locked} className={`${cardClass} flex flex-col`}>
-      <div className="flex-1 min-h-0 relative overflow-hidden bg-[#1d0b07]">
+      <div className="flex-1 min-h-0 relative overflow-hidden rounded-t-2xl bg-[#1d0b07]">
         <img
           src={item.image}
           alt={item.name}
@@ -147,6 +153,9 @@ function ItemCard({
       </div>
     </button>
   );
+
+  if (!rarity.wrap) return card;
+  return <div className={rarity.wrap}>{card}</div>;
 }
 
 export function ShopScreen() {

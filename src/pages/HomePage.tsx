@@ -181,8 +181,9 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         <span className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br from-[#833ab4] to-[#e1306c] border-[3px] border-[#c13584] z-[2]">
           <InstagramIcon size={15} className="text-white" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2a5885] border-[3px] border-[#2a5885] z-10 text-[10px] font-bold text-white">
-          VK
+        <span className="relative z-10 w-9 h-9 rounded-full flex items-center justify-center overflow-hidden bg-[#0A0908] shadow-[0_0_12px_rgba(59,130,246,0.4)] border border-blue-500/30 text-[10px] font-bold text-blue-200">
+          <span className="absolute inset-0 rounded-full bg-blue-500/25 pointer-events-none" />
+          <span className="relative">VK</span>
         </span>
       </button>
     </header>

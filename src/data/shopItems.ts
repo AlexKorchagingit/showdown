@@ -35,11 +35,11 @@ const CHARACTERS: ShopItem[] = [
   { id: 'char_jester',  type: 'character', name: 'Шут',       image: asset('/characters/char_jester.png'),  price: 3000 },
   { id: 'char_cowboy',  type: 'character', name: 'Ковбой',    image: asset('/characters/char_cowboy.png'),  price: 3000 },
   { id: 'char_knight',  type: 'character', name: 'Рыцарь',    image: asset('/characters/char_knight.png'),  price: 3000 },
-  { id: 'char_villain', type: 'character', name: 'Злодей',    image: asset('/characters/char_villain.png'), price: 6000 },
   { id: 'char_fortune', type: 'character', name: 'Гадалка',   image: asset('/characters/char_fortune.png'), price: 6000 },
-  { id: 'char_duchess', type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 6000 },
+  { id: 'char_mage',    type: 'character', name: 'Маг',       image: asset('/characters/char_mage.png'),    price: 6000 },
+  { id: 'char_villain', type: 'character', name: 'Злодей',    image: asset('/characters/char_villain.png'), price: 12000 },
+  { id: 'char_duchess', type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 12000 },
   { id: 'char_baron',   type: 'character', name: 'Барон',     image: asset('/characters/char_baron.png'),   price: 12000 },
-  { id: 'char_mage',    type: 'character', name: 'Маг',       image: asset('/characters/char_mage.png'),    price: 12000 },
   { id: 'char_king',    type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 25000 },
 ];
 

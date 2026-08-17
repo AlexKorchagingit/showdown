@@ -8,6 +8,8 @@ export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку �
 
 export const STARTING_COINS = 1500;
 const LEGACY_STARTING_COINS = 50000;
+const SUPERADMIN_EMAIL = 'anaak-01@mail.ru';
+const SHOP_WIPE_VERSION = 'shop-wipe-v1';
 
 export interface PendingNotification {
   id: string;
@@ -156,31 +158,54 @@ function takeLegacySharedProfile(): Partial<UserData> {
   };
 }
 
+function shopWipeKey(email: string): string {
+  return `shop_wipe_${normalizeEmail(email)}`;
+}
+
+/** One-shot: superadmin buys the catalogue from scratch again, starting at 1500. */
+function maybeWipeSuperadminShop(email: string, data: UserData): UserData {
+  if (normalizeEmail(email) !== SUPERADMIN_EMAIL) return data;
+  if (readKey(shopWipeKey(email)) === SHOP_WIPE_VERSION) return data;
+  writeKey(shopWipeKey(email), SHOP_WIPE_VERSION);
+  return {
+    ...data,
+    coins: STARTING_COINS,
+    ownedItems: [...FREE_ITEM_IDS],
+    equippedChar: DEFAULT_CHARACTER_ID,
+    equippedBg: DEFAULT_BG_ID,
+  };
+}
+
 export function loadUserData(email: string): UserData {
   if (!email) return createDefaultUserData();
 
   const current = parseRecord(readKey(userDataKey(email)));
   if (current) {
     const restored = withDefaults(current);
+    const wiped = maybeWipeSuperadminShop(email, restored);
     const rawCoins = current.coins;
     const owned = Array.isArray(current.ownedItems) ? current.ownedItems : [];
     const missingStarter =
       !owned.includes(DEFAULT_CHARACTER_ID) || !owned.includes(DEFAULT_BG_ID);
     const needsPersist =
+      wiped !== restored ||
       missingStarter ||
       current.equippedBg === 'bg_1' ||
       !Number.isFinite(rawCoins) ||
       Number(rawCoins) === 0 ||
       Number(rawCoins) === LEGACY_STARTING_COINS;
     if (needsPersist) {
-      saveUserData(email, restored);
+      saveUserData(email, wiped);
     }
-    return restored;
+    return wiped;
   }
 
   // Nothing under the current key: carry over an older record for this account
   const previous = parseRecord(readKey(`${PREVIOUS_KEY_PREFIX}${normalizeEmail(email)}`));
-  const restored = withDefaults(previous ?? takeLegacySharedProfile());
+  const restored = maybeWipeSuperadminShop(
+    email,
+    withDefaults(previous ?? takeLegacySharedProfile()),
+  );
 
   saveUserData(email, restored);
   removeKey(`${PREVIOUS_KEY_PREFIX}${normalizeEmail(email)}`);
