@@ -39,7 +39,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
   return (
     <div
       className={[
-        'relative aspect-square rounded-xl p-2 flex flex-col justify-center items-center text-center overflow-hidden max-w-[160px] mx-auto w-full',
+        'relative rounded-xl p-2 flex flex-col justify-start items-center text-center max-w-[160px] mx-auto w-full',
         hasProgressBar ? 'pr-4' : '',
         done
           ? 'bg-gradient-to-br from-[#463129] via-[#8C4C27]/40 to-[#231A16] border-2 border-[#D99962] shadow-[inset_0_0_15px_rgba(217,153,98,0.5)]'
@@ -59,35 +59,33 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         </div>
       )}
 
-      <div
-        className="relative z-10 flex items-center justify-center shrink-0 mb-1"
-        style={{ width: artSize, height: artSize }}
-      >
-        <img
-          src={achievement.imageUrl}
-          alt=""
-          aria-hidden
-          className={[
-            'relative z-10 w-full h-full object-contain',
-            done ? '' : 'opacity-55 grayscale-[0.35]',
-          ].join(' ')}
-        />
-      </div>
-      <div className="relative z-10 w-full min-h-0 px-0.5 overflow-hidden shrink-0">
+      <div className="relative z-10 w-full flex flex-col justify-start items-center min-h-[60px]">
+        <div
+          className="flex items-center justify-center shrink-0 mb-1"
+          style={{ width: artSize, height: artSize }}
+        >
+          <img
+            src={achievement.imageUrl}
+            alt=""
+            aria-hidden
+            className={[
+              'relative z-10 w-full h-full object-contain',
+              done ? '' : 'opacity-55 grayscale-[0.35]',
+            ].join(' ')}
+          />
+        </div>
         <p
           className={[
-            'font-black leading-tight text-[10px] line-clamp-2',
+            'w-full px-0.5 font-black leading-tight text-[10px] whitespace-normal break-words',
             'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]',
           ].join(' ')}
         >
           {achievement.title}
         </p>
-        <div className="h-[30px] overflow-hidden mt-0.5">
-          <p className="text-white/55 text-[9px] leading-tight truncate whitespace-normal line-clamp-2 overflow-hidden">
-            {achievement.description}
-          </p>
-        </div>
       </div>
+      <p className="relative z-10 w-full px-0.5 text-white/55 text-[9px] leading-tight mt-0.5 whitespace-normal break-words">
+        {achievement.description}
+      </p>
     </div>
   );
 }

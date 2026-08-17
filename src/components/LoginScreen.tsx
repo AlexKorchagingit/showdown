@@ -42,10 +42,14 @@ export function LoginScreen({ onLogin }: Props) {
   const [otpError, setOtpError]           = useState(false);
   const [isSuccess, setIsSuccess]         = useState(false);
 
+  const [isAgreed, setIsAgreed] = useState(false);
+  const [isPolicyOpen, setIsPolicyOpen] = useState(false);
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifiedRef = useRef(false);
 
   const isEmailValid = EMAIL_REGEX.test(email.trim());
+  const canGetCode = isAgreed && isEmailValid && !isLoading;
 
   useEffect(() => {
     const savedStep = localStorage.getItem('temp_auth_step');
@@ -89,7 +93,7 @@ export function LoginScreen({ onLogin }: Props) {
   }, []);
 
   const handleGetCode = () => {
-    if (!isEmailValid || isLoading) return;
+    if (!canGetCode) return;
     sendCode(email, 60);
   };
 
@@ -179,20 +183,51 @@ export function LoginScreen({ onLogin }: Props) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="example@mail.com"
                 autoComplete="email"
-                className="bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 w-full mb-4 outline-none focus:border-[#D99962]/60 transition-colors"
+                className="bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 w-full mb-3 outline-none focus:border-[#D99962]/60 transition-colors"
               />
+
+              <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isAgreed}
+                  onChange={(e) => setIsAgreed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#D99962]/60 bg-[#231A16] accent-[#D99962] cursor-pointer"
+                />
+                <span className="text-xs text-[#8c8c88] leading-snug">
+                  Я согласен на обработку персональных данных и принимаю{' '}
+                  <span
+                    role="link"
+                    tabIndex={0}
+                    className="text-[#D99962] underline cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsPolicyOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsPolicyOpen(true);
+                      }
+                    }}
+                  >
+                    Политику конфиденциальности
+                  </span>
+                </span>
+              </label>
 
               <button
                 type="button"
                 onClick={handleGetCode}
-                disabled={!isEmailValid || isLoading}
+                disabled={!canGetCode}
                 className={`w-full py-3.5 rounded-xl text-[15px] font-700 tracking-wide transition-all active:scale-[0.98] ${
-                  isEmailValid && !isLoading
+                  canGetCode
                     ? 'text-[#0A0908]'
                     : 'opacity-50 cursor-not-allowed bg-[#463129] text-white/50'
                 }`}
                 style={
-                  isEmailValid && !isLoading
+                  canGetCode
                     ? {
                         background: 'linear-gradient(to right, #8C4C27, #D99962)',
                         boxShadow: '0 0 16px rgba(217,153,98,0.28)',
@@ -276,6 +311,58 @@ export function LoginScreen({ onLogin }: Props) {
           )}
         </AnimatePresence>
       </div>
+
+      {isPolicyOpen && (
+        <div className="fixed inset-0 z-50 bg-black/90 p-4 flex items-center justify-center">
+          <div
+            className="w-full max-w-md rounded-2xl p-5 border border-white/20"
+            style={{
+              background: 'rgba(35, 26, 22, 0.72)',
+              backdropFilter: 'blur(18px)',
+              WebkitBackdropFilter: 'blur(18px)',
+            }}
+          >
+            <h2 className="text-[16px] font-800 uppercase tracking-wide text-white mb-3">
+              Политика конфиденциальности
+            </h2>
+            <div className="max-h-[60vh] overflow-y-auto text-sm text-[#8c8c88] space-y-3 pr-1">
+              <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+                incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+                exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+              </p>
+              <p>
+                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
+                fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+                culpa qui officia deserunt mollit anim id est laborum.
+              </p>
+              <p>
+                Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo
+                minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis
+                dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum
+                necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non
+                recusandae.
+              </p>
+              <p>
+                Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus
+                maiores alias consequatur aut perferendis doloribus asperiores repellat. Настоящая
+                заглушка описывает согласие на обработку персональных данных в соответствии с
+                152-ФЗ.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPolicyOpen(false)}
+              className="mt-4 w-full py-3 rounded-xl text-[14px] font-700 text-[#0A0908]"
+              style={{
+                background: 'linear-gradient(to right, #8C4C27, #D99962)',
+              }}
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes loginBgPulse {

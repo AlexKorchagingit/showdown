@@ -535,7 +535,7 @@ export function AdminTournamentFinance() {
                     <button
                       type="button"
                       onClick={() => markPlayerPaid(tournament.id, player.id)}
-                      className="w-full py-3 rounded-xl text-[13px] bg-red-600 text-white font-bold active:scale-[0.98] transition-transform"
+                      className="w-full py-3 rounded-xl text-[13px] bg-red-900/80 border border-red-500/50 text-white font-bold active:scale-[0.98] transition-transform"
                     >
                       Оплатить {unpaidTotal.toLocaleString('ru-RU')} руб
                     </button>

@@ -404,7 +404,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                             Играющий
                           </p>
                         </div>
-                        <p className="text-red-500 font-bold text-[12px] shrink-0">
+                        <p className="text-white text-[12px] shrink-0">
                           {formatDealerHours(row.hours)}
                         </p>
                       </div>
@@ -426,12 +426,12 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                             </p>
                           ) : null}
                           {row.comment?.trim() ? (
-                            <p className="text-red-500 font-bold text-[10px] mt-0.5 line-clamp-2">
+                            <p className="text-red-500 font-normal text-[10px] mt-0.5">
                               {row.comment}
                             </p>
                           ) : null}
                         </div>
-                        <p className="text-red-500 font-bold text-[12px] shrink-0">
+                        <p className="text-white text-[12px] shrink-0">
                           {formatDealerHours(row.hours, row.minutes)}
                         </p>
                       </div>

@@ -31,6 +31,8 @@ interface BlindsState {
   linkedTournamentId: string | null;
   avgStackOverride: number | null;
   chipleaderId: string | null;
+  totalEntries: number | null;
+  rebuyCount: number | null;
   levelUpNonce: number;
 }
 
@@ -45,7 +47,9 @@ type BlindsAction =
   | { type: 'tick'; elapsed: number }
   | { type: 'linkTournament'; tournamentId: string | null }
   | { type: 'setAvgStack'; value: number | null }
-  | { type: 'setChipleader'; userId: string | null };
+  | { type: 'setChipleader'; userId: string | null }
+  | { type: 'setTotalEntries'; value: number | null }
+  | { type: 'setRebuyCount'; value: number | null };
 
 function findStructure(state: BlindsState, id: string | null): BlindStructure | undefined {
   if (!id) return undefined;
@@ -157,6 +161,10 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
       return { ...state, avgStackOverride: action.value };
     case 'setChipleader':
       return { ...state, chipleaderId: action.userId };
+    case 'setTotalEntries':
+      return { ...state, totalEntries: action.value };
+    case 'setRebuyCount':
+      return { ...state, rebuyCount: action.value };
     default:
       return state;
   }
@@ -180,9 +188,13 @@ interface BlindsContextValue {
   linkedTournamentId: string | null;
   avgStackOverride: number | null;
   chipleaderId: string | null;
+  totalEntries: number | null;
+  rebuyCount: number | null;
   setLinkedTournament: (tournamentId: string | null) => void;
   setAvgStackOverride: (value: number | null) => void;
   setChipleader: (userId: string | null) => void;
+  setTotalEntries: (value: number | null) => void;
+  setRebuyCount: (value: number | null) => void;
 }
 
 const BlindsContext = createContext<BlindsContextValue | null>(null);
@@ -197,6 +209,8 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     linkedTournamentId: null,
     avgStackOverride: null,
     chipleaderId: null,
+    totalEntries: null,
+    rebuyCount: null,
     levelUpNonce: 0,
   }));
 
@@ -279,9 +293,13 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       linkedTournamentId: state.linkedTournamentId,
       avgStackOverride: state.avgStackOverride,
       chipleaderId: state.chipleaderId,
+      totalEntries: state.totalEntries,
+      rebuyCount: state.rebuyCount,
       setLinkedTournament: (tournamentId) => dispatch({ type: 'linkTournament', tournamentId }),
       setAvgStackOverride: (value) => dispatch({ type: 'setAvgStack', value }),
       setChipleader: (userId) => dispatch({ type: 'setChipleader', userId }),
+      setTotalEntries: (value) => dispatch({ type: 'setTotalEntries', value }),
+      setRebuyCount: (value) => dispatch({ type: 'setRebuyCount', value }),
     }),
     [state, addStructure, updateStructure, updateLevels, ensureTimer, setRunning],
   );

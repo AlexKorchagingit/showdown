@@ -193,7 +193,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'punctual',
     title: 'Пунктуальность',
-    description: 'Получить страховку за приход вовремя',
+    description: 'Прийти до начала турнира',
     imageUrl: art('punctual'),
     tier: 'silver',
     completed: true,

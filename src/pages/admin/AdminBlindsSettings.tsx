@@ -128,7 +128,11 @@ function LevelEditor({
   const patchLevel = (index: number, patch: Partial<BlindLevel>) => {
     onChange(
       renumberLevels(
-        structure.levels.map((level, i) => (i === index ? { ...level, ...patch } : level)),
+        structure.levels.map((level, i) => {
+          if (i === index) return { ...level, ...patch };
+          if (patch.isLateRegEnd === true) return { ...level, isLateRegEnd: false };
+          return level;
+        }),
       ),
     );
   };

@@ -94,6 +94,8 @@ export function AdminBlindsTimer() {
     avgStackOverride,
     chipleaderId,
     setChipleader,
+    totalEntries,
+    rebuyCount,
   } = useBlinds();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -121,7 +123,7 @@ export function AdminBlindsTimer() {
 
   const structure = activeStructure ?? structures.find((s) => s.id === requestedId);
   const tournament = tournaments.find((t) => t.id === linkedTournamentId);
-  const { remaining, registered } = tournamentPlayerCounts(tournament);
+  const { remaining } = tournamentPlayerCounts(tournament);
   const avgStack = avgStackOverride ?? autoAvgStack(tournament);
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
@@ -154,10 +156,11 @@ export function AdminBlindsTimer() {
   );
 
   const prizePool = tournament?.guarantee ?? structure?.guarantee ?? 0;
-  const fieldSize = tournament?.participants.length ?? 0;
+  const hasEntries = totalEntries != null;
+  const fieldSize = hasEntries ? totalEntries : 0;
   const payouts = useMemo(
-    () => calculatePayouts(fieldSize, prizePool),
-    [fieldSize, prizePool],
+    () => (hasEntries ? calculatePayouts(fieldSize, prizePool) : []),
+    [hasEntries, fieldSize, prizePool],
   );
 
   useEffect(() => {
@@ -198,36 +201,43 @@ export function AdminBlindsTimer() {
           <p className="text-5xl md:text-6xl font-black mt-2 leading-none" style={{ color: '#F2D8A7' }}>
             {prizePool.toLocaleString('ru-RU')}
           </p>
-          <p className="text-sm md:text-base font-700 mt-3" style={{ color: '#F2D8A7' }}>
-            В призах: {payouts.length} чел. (30%)
-          </p>
 
           <div className="mt-6 flex flex-col xl:flex-row gap-6 xl:gap-8">
             <div className="flex-1 space-y-2.5 min-w-0">
-              {payouts.length === 0 ? (
-                <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
+              {hasEntries ? (
+                <>
+                  <p className="text-sm md:text-base font-700" style={{ color: '#F2D8A7' }}>
+                    В призах: {payouts.length} чел. (30%)
+                  </p>
+                  {payouts.length === 0 ? (
+                    <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
+                  ) : (
+                    payouts.map(({ place, points }) => (
+                      <div key={place} className="flex items-baseline gap-2">
+                        <span className="text-base md:text-lg font-700 text-white/70">{place} место</span>
+                        <span className="text-lg md:text-xl font-black" style={{ color: '#D99962' }}>
+                          {points.toLocaleString('ru-RU')}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </>
               ) : (
-                payouts.map(({ place, points }) => (
-                  <div key={place} className="flex items-baseline gap-2">
-                    <span className="text-base md:text-lg font-700 text-white/70">{place} место</span>
-                    <span className="text-lg md:text-xl font-black" style={{ color: '#D99962' }}>
-                      {points.toLocaleString('ru-RU')}
-                    </span>
-                  </div>
-                ))
+                <p className="text-[#8c8c88] italic text-sm md:text-base">
+                  Идет подсчет распределения очков...
+                </p>
               )}
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] md:text-sm font-800 uppercase tracking-[0.16em]" style={{ color: '#D99962' }}>
-                Осталось игроков
-              </p>
-              <p className="text-3xl md:text-5xl font-black text-white mt-1 leading-none tabular-nums">
-                {remaining}
-                <span className="text-xl md:text-2xl font-700 text-white/45"> / {registered}</span>
-              </p>
+              {hasEntries && (
+                <p className="text-sm md:text-base font-700 text-white leading-snug mb-4">
+                  Осталось игроков: {remaining} / {totalEntries}
+                  {rebuyCount != null && rebuyCount > 0 ? ` (в т.ч. ${rebuyCount} ребаев)` : ''}
+                </p>
+              )}
               <p
-                className="text-[12px] md:text-sm font-800 uppercase tracking-[0.16em] mt-4"
+                className="text-[12px] md:text-sm font-800 uppercase tracking-[0.16em]"
                 style={{ color: '#D99962' }}
               >
                 Средний стек
@@ -338,11 +348,11 @@ export function AdminBlindsTimer() {
           </p>
         </div>
 
-        <div className="w-44 md:w-60 shrink-0 pt-5 pr-4 pb-28 flex flex-col items-end gap-4">
+        <div className="w-52 md:w-72 shrink-0 pt-5 pr-4 pb-28 flex flex-col items-end gap-4">
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="h-20 md:h-28 w-auto object-contain opacity-90"
+            className="h-24 md:h-32 w-auto object-contain opacity-90"
           />
           <div className="w-full text-right space-y-2">
             {timeToNextBreak != null && (
@@ -355,7 +365,7 @@ export function AdminBlindsTimer() {
               <p className="text-[12px] md:text-[14px] font-bold text-red-500">Регистрация закрыта</p>
             ) : timeToLateRegEnd != null ? (
               <p className="text-[12px] md:text-[14px] font-700 leading-snug text-white/80">
-                Поздняя регистрация: до{' '}
+                Поздняя регистрация:{' '}
                 <span className="tabular-nums font-black text-white">{formatEta(timeToLateRegEnd)}</span>
               </p>
             ) : null}

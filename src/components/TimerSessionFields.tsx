@@ -16,9 +16,13 @@ export function TimerSessionFields({ structureName }: { structureName?: string }
     avgStackOverride,
     chipleaderId,
     linkedTournamentId,
+    totalEntries,
+    rebuyCount,
     setLinkedTournament,
     setAvgStackOverride,
     setChipleader,
+    setTotalEntries,
+    setRebuyCount,
   } = useBlinds();
 
   const name = activeStructure?.name ?? structureName ?? '';
@@ -47,6 +51,48 @@ export function TimerSessionFields({ structureName }: { structureName?: string }
         <span className={LABEL_CLASS}>Турнир</span>
         <p className="text-[14px] font-bold text-white">{name || '—'}</p>
       </div>
+
+      <label className="block">
+        <span className={LABEL_CLASS}>Всего входов (Игроки)</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          placeholder="Не задано"
+          value={totalEntries ?? ''}
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            if (raw === '') {
+              setTotalEntries(null);
+              return;
+            }
+            const next = Number(raw);
+            setTotalEntries(Number.isFinite(next) ? Math.max(0, Math.floor(next)) : null);
+          }}
+          className={FIELD_CLASS}
+        />
+      </label>
+
+      <label className="block">
+        <span className={LABEL_CLASS}>Кол-во ребаев</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          placeholder="0"
+          value={rebuyCount ?? ''}
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            if (raw === '') {
+              setRebuyCount(null);
+              return;
+            }
+            const next = Number(raw);
+            setRebuyCount(Number.isFinite(next) ? Math.max(0, Math.floor(next)) : null);
+          }}
+          className={FIELD_CLASS}
+        />
+      </label>
 
       <label className="block">
         <span className={LABEL_CLASS}>Средний стек (ручной ввод)</span>
