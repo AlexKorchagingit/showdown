@@ -49,7 +49,7 @@ export function PlayerAvatar({
       <img
         src={url}
         alt="avatar"
-        className={`relative z-10 ${SIZE_CLASS[size]} object-contain rounded-full bg-[#231A16]`}
+        className={`relative z-10 ${SIZE_CLASS[size]} object-contain object-center bg-transparent mix-blend-screen`}
       />
     </div>
   );
