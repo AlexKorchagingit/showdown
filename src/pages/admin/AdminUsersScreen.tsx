@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { mockUsers as initialUsers, type MockUser } from '../../data/mockUsers';
-import { ADMIN_EMAIL } from '../../context/UserContext';
+import { ADMIN_EMAIL, useUser } from '../../context/UserContext';
+import { useAuditLog } from '../../context/AuditLogContext';
 import { CompactHeader } from '../../components/CompactHeader';
 
 export function AdminUsersScreen() {
+  const { email } = useUser();
+  const { logAction } = useAuditLog();
   const [users, setUsers] = useState<MockUser[]>(initialUsers);
 
   const toggleAdmin = (id: string) => {
+    const target = users.find((u) => u.id === id);
+    if (!target || target.email.toLowerCase() === ADMIN_EMAIL) return;
+    const granting = !target.isAdmin;
     setUsers((prev) =>
       prev.map((u) =>
         u.id === id && u.email.toLowerCase() !== ADMIN_EMAIL
@@ -15,6 +21,14 @@ export function AdminUsersScreen() {
           : u,
       ),
     );
+    if (granting) {
+      logAction(
+        email,
+        'Админ',
+        `Пользователю ${target.nickname} выданы права администратора`,
+        target.email,
+      );
+    }
   };
 
   return (

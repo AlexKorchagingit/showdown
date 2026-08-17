@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { isSuperAdmin, useUser } from '../context/UserContext';
 
 interface Props {
   open: boolean;
@@ -17,6 +18,10 @@ const ITEMS = [
 
 export function AdminBottomSheet({ open, onClose }: Props) {
   const navigate = useNavigate();
+  const { email } = useUser();
+  const items = isSuperAdmin(email)
+    ? [...ITEMS, { label: 'Logs', to: '/admin/logs' }]
+    : ITEMS;
 
   const handleSelect = (to: string) => {
     onClose();
@@ -54,7 +59,7 @@ export function AdminBottomSheet({ open, onClose }: Props) {
             <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-6" />
 
             <div className="space-y-3">
-              {ITEMS.map(({ label, to }) => (
+              {items.map(({ label, to }) => (
                 <button
                   key={to}
                   type="button"

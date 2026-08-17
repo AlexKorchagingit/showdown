@@ -4,7 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
-import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
+import { useUser } from '../../context/UserContext';
+import { useAuditLog } from '../../context/AuditLogContext';
+import { DEFAULT_ENTRY_FEE, TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
 import {
   applyPlaceToParticipant,
@@ -64,6 +66,8 @@ export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { tournaments, updateTournament } = useTournaments();
+  const { email } = useUser();
+  const { logAction } = useAuditLog();
   const {
     transactions,
     addCharge,
@@ -121,6 +125,36 @@ export function AdminTournamentFinance() {
     const reason = window.prompt(`Причина выдачи билета для ${nickname}?`, '');
     if (reason === null) return;
     addTicket(tournament.id, userId, reason.trim() || 'Билет');
+    logAction(
+      email,
+      'Билет',
+      `Выдан бесплатный вход на турнир ${tournament.title}. Причина: ${reason.trim() || 'Билет'}`,
+      playerEmail(userId, nickname),
+    );
+  };
+
+  const handleCharge = (
+    userId: string,
+    nickname: string,
+    type: Exclude<TransactionType, 'ticket'>,
+  ) => {
+    addCharge(tournament.id, userId, type);
+    logAction(
+      email,
+      'Касса',
+      `Создана транзакция: ${TRANSACTION_TYPE_LABEL[type]} (${DEFAULT_ENTRY_FEE}р) на турнире ${tournament.title}`,
+      playerEmail(userId, nickname),
+    );
+  };
+
+  const handlePayDebt = (userId: string, nickname: string, amount: number) => {
+    markPlayerPaid(tournament.id, userId);
+    logAction(
+      email,
+      'Долг',
+      `Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
+      playerEmail(userId, nickname),
+    );
   };
 
   const closeTournament = () => {
@@ -172,6 +206,11 @@ export function AdminTournamentFinance() {
         tournament.isBounty === true,
       ),
     });
+    logAction(
+      email,
+      'Турнир',
+      `Турнир ${tournament.title} закрыт. Внесены результаты`,
+    );
   };
 
   const eliminatePlayer = (playerId: string) => {
@@ -214,9 +253,16 @@ export function AdminTournamentFinance() {
 
   const removePlayerFromTournament = (playerId: string) => {
     if (!window.confirm('Точно удалить игрока из турнира?')) return;
+    const player = tournament.participants.find((p) => p.id === playerId);
     updateTournament(tournament.id, {
       participants: tournament.participants.filter((p) => p.id !== playerId),
     });
+    logAction(
+      email,
+      'Игрок',
+      `Игрок удален из турнира ${tournament.title}`,
+      player ? playerEmail(player.id, player.nickname) : undefined,
+    );
   };
 
   const movePlace = (playerId: string, direction: -1 | 1) => {
@@ -607,7 +653,7 @@ export function AdminTournamentFinance() {
                       <button
                         key={type}
                         type="button"
-                        onClick={() => addCharge(tournament.id, player.id, type)}
+                        onClick={() => handleCharge(player.id, player.nickname, type)}
                         className="py-2 rounded-lg text-[11px] font-700 active:scale-95 transition-transform"
                         style={{
                           background: 'rgba(217,153,98,0.12)',
@@ -702,7 +748,7 @@ export function AdminTournamentFinance() {
                   {hasLocalDebt && unpaidTotal > 0 && (
                     <button
                       type="button"
-                      onClick={() => markPlayerPaid(tournament.id, player.id)}
+                      onClick={() => handlePayDebt(player.id, player.nickname, unpaidTotal)}
                       className="w-full py-3 rounded-xl text-[13px] bg-red-900/80 border border-red-500/50 text-white font-bold active:scale-[0.98] transition-transform"
                     >
                       Оплатить {unpaidTotal.toLocaleString('ru-RU')} руб

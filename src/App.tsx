@@ -25,10 +25,12 @@ import { AdminFinanceScreen } from './pages/admin/AdminFinanceScreen';
 import { AdminTournamentFinance } from './pages/admin/AdminTournamentFinance';
 import { AdminRubyScreen } from './pages/admin/AdminRubyScreen';
 import { AdminStatisticScreen } from './pages/admin/AdminStatisticScreen';
+import { AdminLogsScreen } from './pages/admin/AdminLogsScreen';
 import { TournamentProvider } from './context/TournamentContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
+import { AuditLogProvider } from './context/AuditLogContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 
@@ -81,6 +83,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/admin/finance/tournaments/:id" element={<AdminTournamentFinance />} />
             <Route path="/admin/ruby"            element={<AdminRubyScreen />} />
             <Route path="/admin/statistic"       element={<AdminStatisticScreen />} />
+            <Route path="/admin/logs"            element={<AdminLogsScreen />} />
             <Route path="/admin/achievements/users"      element={<AdminAchievementsUsers />} />
             <Route path="/admin/achievements/edit/:userId" element={<AdminAchievementsEditor />} />
             <Route path="*"                  element={<Navigate to="/" replace />} />
@@ -154,15 +157,17 @@ export default function App() {
   return (
     <div className={shellClass}>
       <UserProvider email={userEmail}>
-        <ProfileProvider>
-          <TournamentProvider>
-            <FinanceProvider>
-              <BlindsProvider>
-                <AppLayout userEmail={userEmail} />
-              </BlindsProvider>
-            </FinanceProvider>
-          </TournamentProvider>
-        </ProfileProvider>
+        <AuditLogProvider>
+          <ProfileProvider>
+            <TournamentProvider>
+              <FinanceProvider>
+                <BlindsProvider>
+                  <AppLayout userEmail={userEmail} />
+                </BlindsProvider>
+              </FinanceProvider>
+            </TournamentProvider>
+          </ProfileProvider>
+        </AuditLogProvider>
       </UserProvider>
     </div>
   );

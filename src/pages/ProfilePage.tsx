@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, BarChart3, ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
+import { useAuditLog } from '../context/AuditLogContext';
 import { useTournaments } from '../context/TournamentContext';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENT_PLAYER_STATS } from '../data/playerStats';
@@ -17,6 +18,7 @@ import {
 } from '../lib/playerCharacter';
 import { resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 import { computePlayerAdminStats } from '../lib/playerAnalytics';
+import { playerEmail } from '../lib/systemPlayers';
 import { AdminPlayerStats } from '../components/admin/AdminPlayerStats';
 
 const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
@@ -57,7 +59,8 @@ export function ProfilePage() {
   const { playerId } = useParams<{ playerId?: string }>();
   const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
-  const { isAdmin } = useUser();
+  const { isAdmin, email } = useUser();
+  const { logAction } = useAuditLog();
   const { tournaments } = useTournaments();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -281,7 +284,22 @@ export function ProfilePage() {
           nickname={displayNickname}
           stats={adminStats}
           onClose={() => setStatsOpen(false)}
-          onClearDebts={playerId ? () => markAllUnpaidForPlayer(playerId) : undefined}
+          onClearDebts={
+            playerId
+              ? () => {
+                  const amount = adminStats?.clubDebt ?? 0;
+                  markAllUnpaidForPlayer(playerId);
+                  if (amount > 0) {
+                    logAction(
+                      email,
+                      'Долг',
+                      `Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
+                      playerEmail(playerId, displayNickname),
+                    );
+                  }
+                }
+              : undefined
+          }
         />
       )}
     </div>

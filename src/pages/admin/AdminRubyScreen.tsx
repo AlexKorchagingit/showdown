@@ -4,6 +4,7 @@ import { CompactHeader } from '../../components/CompactHeader';
 import { CoinBalance } from '../../components/CoinBalance';
 import { useProfile } from '../../context/ProfileContext';
 import { useUser } from '../../context/UserContext';
+import { useAuditLog } from '../../context/AuditLogContext';
 import {
   grantRubies,
   grantRubiesToEveryone,
@@ -21,6 +22,7 @@ type GrantTarget =
 
 export function AdminRubyScreen() {
   const { email } = useUser();
+  const { logAction } = useAuditLog();
   const { coins, addCoins } = useProfile();
   const [revision, setRevision] = useState(0);
   const [target, setTarget] = useState<GrantTarget | null>(null);
@@ -63,6 +65,12 @@ export function AdminRubyScreen() {
         creditCurrentUser: addCoins,
       });
     }
+    logAction(
+      email,
+      'Рубины',
+      `Начислено ${parsedAmount.toLocaleString('ru-RU')} рубинов. Причина: ${message}`,
+      target.kind === 'one' ? target.email : undefined,
+    );
     setRevision((value) => value + 1);
     closeModal();
   };
