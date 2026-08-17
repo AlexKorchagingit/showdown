@@ -11,14 +11,16 @@ import { asset } from '../lib/assets';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { CURRENT_USER_RATING } from '../types/player';
+import { PlayerAvatar } from '../components/PlayerAvatar';
+import { useProfile } from '../context/ProfileContext';
 import type { Tournament } from '../types/tournament';
 
 // ─── Mock state ───────────────────────────────────────────────────────────────
 
 const PODIUM = [
-  { rank: 2, name: 'Дмитрий В.',   points: 3850, glowColor: '#9ca3af' },
-  { rank: 1, name: 'Александр К.', points: 4200, glowColor: '#D99962' },
-  { rank: 3, name: 'Михаил С.',    points: 3610, glowColor: '#b87333' },
+  { rank: 2, id: '2', name: 'Дмитрий В.',   points: 3850, glowColor: '#9ca3af' },
+  { rank: 1, id: '1', name: 'Александр К.', points: 4200, glowColor: '#D99962' },
+  { rank: 3, id: '3', name: 'Михаил С.',    points: 3610, glowColor: '#b87333' },
 ];
 
 const TELEGRAM_URL = 'https://t.me/showdown_bryansk';
@@ -299,24 +301,13 @@ function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
 
   return (
     <div className="flex flex-col items-center gap-2" style={{ minWidth: 88 }}>
-      <div className="relative">
-        <div
-          className={`absolute rounded-full animate-pulse pointer-events-none ${avatarGlow}`}
-          style={{
-            inset: '-3px',
-            border: `2px solid ${player.glowColor}`,
-          }}
+      <div className={`relative rounded-full ${avatarGlow}`}>
+        <PlayerAvatar
+          playerId={player.id}
+          nickname={player.name}
+          size="md"
+          glowColor={player.glowColor}
         />
-        <div
-          className="relative w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-700 z-10"
-          style={
-            isFirst
-              ? { background: 'linear-gradient(135deg, #8C4C27, #F2D8A7)', color: '#0A0908' }
-              : { background: '#2A211D', color: '#E5E7EB' }
-          }
-        >
-          {player.name[0]}
-        </div>
       </div>
       <p
         className={`text-[11px] font-500 text-center truncate w-full ${
@@ -341,6 +332,8 @@ function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
 }
 
 function RatingSection({ onNavigate }: { onNavigate: () => void }) {
+  const { nickname, equippedAvatar } = useProfile();
+
   return (
     <div className="space-y-4">
       <button onClick={onNavigate}
@@ -365,14 +358,11 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         <span className="text-[14px] font-800 w-10 shrink-0" style={{ color: '#D99962' }}>
           #{CURRENT_USER_RATING.rank}
         </span>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-          style={{ background: 'rgba(217,153,98,0.18)', color: '#c8a38e' }}
-        >
-          {CURRENT_USER_RATING.initial}
-        </div>
+        <PlayerAvatar src={equippedAvatar} playerId="me" nickname={nickname} size="sm" />
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-700 truncate text-white">{CURRENT_USER_RATING.nickname}</p>
+          <p className="text-[13px] font-700 truncate text-white">
+            {nickname.trim() || CURRENT_USER_RATING.nickname}
+          </p>
         </div>
         <p className="text-[13px] font-bold tracking-wide shrink-0 text-black">
           {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}

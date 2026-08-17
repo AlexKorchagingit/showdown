@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { mockUsers as initialUsers, type MockUser } from '../../data/mockUsers';
+import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { ADMIN_EMAIL } from '../../context/UserContext';
 import { useAuditLog } from '../../context/AuditLogContext';
 import { CompactHeader } from '../../components/CompactHeader';
@@ -53,7 +54,8 @@ export function AdminUsersScreen() {
                 className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5"
                 style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
               >
-                <div className="min-w-0">
+                <PlayerAvatar playerId={user.id} nickname={user.nickname} size="sm" />
+                <div className="min-w-0 flex-1">
                   <p className="text-white font-700 text-[15px] truncate">{user.nickname}</p>
                   <p className="text-[12px] font-500 truncate" style={{ color: '#8c8c88' }}>
                     {user.email}

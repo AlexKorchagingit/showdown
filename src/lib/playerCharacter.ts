@@ -1,6 +1,7 @@
 import { mockUsers } from '../data/mockUsers';
 import {
   DEFAULT_CHARACTER_ID,
+  avatarUrlForChar,
   resolveImage,
   shopItemsOfType,
 } from '../data/shopItems';
@@ -33,4 +34,12 @@ export function characterImageForPlayer(
   selfChar: string,
 ): string {
   return resolveImage(equippedCharForPlayer(playerId, nickname, selfChar), 'character');
+}
+
+export function avatarUrlForPlayer(
+  playerId: string,
+  nickname: string,
+  selfChar: string,
+): string {
+  return avatarUrlForChar(equippedCharForPlayer(playerId, nickname, selfChar));
 }

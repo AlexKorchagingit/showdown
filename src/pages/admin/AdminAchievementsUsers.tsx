@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { SectionScreen } from '../../components/SectionScreen';
+import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { mockUsers } from '../../data/mockUsers';
 
 export function AdminAchievementsUsers() {
@@ -21,7 +22,8 @@ export function AdminAchievementsUsers() {
             className="w-full flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-left active:scale-[0.99] transition-transform"
             style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
           >
-            <div className="min-w-0">
+            <PlayerAvatar playerId={user.id} nickname={user.nickname} size="sm" />
+            <div className="min-w-0 flex-1">
               <p className="text-white font-700 text-[15px] truncate">{user.nickname}</p>
               <p className="text-[12px] font-500 truncate" style={{ color: '#8c8c88' }}>
                 {user.email}

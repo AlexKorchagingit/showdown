@@ -8,13 +8,14 @@ import {
   type ReactNode,
 } from 'react';
 import { useUser } from './UserContext';
-import { findShopItem, resolveImage } from '../data/shopItems';
+import { findShopItem, resolveImage, avatarUrlForChar } from '../data/shopItems';
 import { loadUserData, saveUserData, type UserData } from '../lib/userStorage';
 
 interface ProfileContextValue extends UserData {
   /** Image paths resolved from the equipped item ids. */
   characterImage: string;
   backgroundImage: string;
+  equippedAvatar: string;
   updateNickname: (value: string) => void;
   updateBirthDate: (value: string) => void;
   updateSlogan: (value: string) => void;
@@ -122,6 +123,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       ...data,
       characterImage: resolveImage(data.equippedChar, 'character'),
       backgroundImage: resolveImage(data.equippedBg, 'bg'),
+      equippedAvatar: avatarUrlForChar(data.equippedChar),
       updateNickname,
       updateBirthDate,
       updateSlogan,

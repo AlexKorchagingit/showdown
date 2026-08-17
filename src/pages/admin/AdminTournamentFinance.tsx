@@ -21,6 +21,7 @@ import {
 } from '../../lib/tournamentStatus';
 import { formatTxDateTime } from '../../lib/transactionDisplay';
 import { PlayerNameLink } from '../../components/PlayerNameLink';
+import { PlayerAvatar } from '../../components/PlayerAvatar';
 import type { TournamentDealer } from '../../types/tournament';
 import { ALL_PARTICIPANTS } from '../../data/participants';
 import { CURRENT_USER_RATING } from '../../types/player';
@@ -580,12 +581,7 @@ export function AdminTournamentFinance() {
                 >
                   <div className={`space-y-3 ${eliminated ? 'opacity-50 grayscale' : ''}`}>
                   <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-                      style={{ background: 'rgba(140,76,39,0.28)', color: '#c8a38e' }}
-                    >
-                      {player.nickname[0].toUpperCase()}
-                    </div>
+                    <PlayerAvatar playerId={player.id} nickname={player.nickname} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <PlayerNameLink

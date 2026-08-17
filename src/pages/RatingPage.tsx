@@ -2,6 +2,7 @@ import { useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlayerNameLink } from '../components/PlayerNameLink';
+import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
 import { mockUsers } from '../data/mockUsers';
@@ -161,15 +162,13 @@ function PlayerRow({
           {rank}
         </span>
 
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-          style={{
-            background: isTop3 || sticky ? 'rgba(140,76,39,0.28)' : 'rgba(255,255,255,0.06)',
-            color: isTop3 || sticky ? '#c8a38e' : '#A39B98',
-          }}
-        >
-          {player.initial}
-        </div>
+        <PlayerAvatar
+          playerId={player.id}
+          nickname={player.nickname}
+          size="md"
+          glowColor={isTop3 && !sticky ? glowColor ?? undefined : undefined}
+          className="ml-1"
+        />
 
         <div className="flex-1 min-w-0 pl-2">
           <PlayerNameLink

@@ -13,6 +13,28 @@ export interface ShopItem {
 export const DEFAULT_CHARACTER_ID = 'char_base';
 export const DEFAULT_BG_ID = 'bg_base';
 export const DEFAULT_CHARACTER_LEFT = '18%';
+export const DEFAULT_AVATAR_FILE = 'default_cat.png';
+
+const CHARACTER_AVATAR_FILES: Record<string, string> = {
+  char_base: DEFAULT_AVATAR_FILE,
+  char_jester: 'jester.png',
+  char_cowboy: 'cowboy.png',
+  char_knight: 'knight.png',
+  char_fortune: 'fortune_teller.png',
+  char_mage: 'mage.png',
+  char_villain: 'villain.png',
+  char_duchess: 'duchess.png',
+  char_baron: 'baron.png',
+  char_king: 'king.png',
+};
+
+export const DEFAULT_AVATAR_URL = asset(`/avatars/${DEFAULT_AVATAR_FILE}`);
+
+/** Head-shot for lists and rating; falls back to the default cat. */
+export function avatarUrlForChar(charId: string | undefined | null): string {
+  const file = (charId && CHARACTER_AVATAR_FILES[charId]) || DEFAULT_AVATAR_FILE;
+  return asset(`/avatars/${file}`);
+}
 
 /** Profile portrait offset — some arts sit too far left in the frame. */
 export const CHARACTER_PROFILE_LEFT: Record<string, string> = {

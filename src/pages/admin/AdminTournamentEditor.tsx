@@ -12,6 +12,7 @@ import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentSta
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
+import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { CURRENT_USER_RATING } from '../../types/player';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
 
@@ -227,15 +228,7 @@ function ParticipantsEditor({
                   {idx + 1}
                 </span>
 
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 shrink-0"
-                  style={{
-                    background: isFinalTable ? 'rgba(140,76,39,0.28)' : 'rgba(255,255,255,0.08)',
-                    color: isFinalTable ? '#c8a38e' : '#A39B98',
-                  }}
-                >
-                  {p.nickname[0].toUpperCase()}
-                </div>
+                <PlayerAvatar playerId={p.id} nickname={p.nickname} size="sm" />
 
                 <p className="flex-1 min-w-0 text-[13px] font-600 truncate text-white">
                   {p.nickname}
@@ -309,7 +302,8 @@ function ParticipantsEditor({
                         className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
                         style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
                       >
-                        <div className="min-w-0 text-left">
+                        <PlayerAvatar playerId={user.id} nickname={user.nickname} size="sm" />
+                        <div className="min-w-0 text-left flex-1">
                           <p className="text-[13px] font-700 text-white truncate">{user.nickname}</p>
                           <p className="text-[11px] font-500 truncate" style={{ color: '#8c8c88' }}>
                             {user.email}

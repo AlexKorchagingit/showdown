@@ -2,6 +2,7 @@ import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crossh
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { PlayerNameLink } from '../components/PlayerNameLink';
+import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useTournaments } from '../context/TournamentContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUser } from '../context/UserContext';
@@ -337,27 +338,12 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                           </span>
 
                           <div className="relative shrink-0">
-                            {isPodium && wreathColor && (
-                              <div
-                                className="absolute rounded-full pointer-events-none animate-pulse"
-                                style={{
-                                  inset: '-3px',
-                                  border: `2px solid ${wreathColor}`,
-                                  boxShadow: `0 0 8px ${wreathColor}`,
-                                }}
-                              />
-                            )}
-                            <div
-                              className="relative w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-700 z-10"
-                              style={{
-                                background: isFinalTable
-                                  ? 'rgba(140,76,39,0.28)'
-                                  : 'rgba(255,255,255,0.08)',
-                                color: isFinalTable ? '#c8a38e' : '#A39B98',
-                              }}
-                            >
-                              {p.nickname[0].toUpperCase()}
-                            </div>
+                            <PlayerAvatar
+                              playerId={p.id}
+                              nickname={p.nickname}
+                              size="sm"
+                              glowColor={isPodium ? wreathColor ?? undefined : undefined}
+                            />
                           </div>
 
                           <div className="flex-1 min-w-0">
