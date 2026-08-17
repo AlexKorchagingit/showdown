@@ -23,6 +23,13 @@ export const ALL_PARTICIPANTS: Participant[] = [
   { id: '18', nickname: 'NataV',         rating:  860 },
   { id: '19', nickname: 'GlebS',         rating:  750 },
   { id: '20', nickname: 'MaximN',        rating:  640 },
+  { id: '21', nickname: 'DenisL',        rating:  580 },
+  { id: '22', nickname: 'IgorB',         rating:  520 },
+  { id: '23', nickname: 'AntonK',        rating:  470 },
+  { id: '24', nickname: 'VadimR',        rating:  410 },
+  { id: '25', nickname: 'EgorT',         rating:  360 },
+  { id: '26', nickname: 'SashaM',        rating:  310 },
+  { id: '27', nickname: 'KostyaP',       rating:  260 },
 ];
 
 /** Independent copies so edits in one tournament never leak into another. */

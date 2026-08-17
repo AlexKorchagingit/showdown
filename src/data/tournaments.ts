@@ -1,4 +1,4 @@
-import type { Tournament } from '../types/tournament';
+import { DEFAULT_TOTAL_SEATS, type Tournament } from '../types/tournament';
 import { pickParticipants } from './participants';
 import { asset } from '../lib/assets';
 import { CLUB_ADDRESS } from '../lib/clubAddress';
@@ -12,7 +12,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-22',
     startTime: '17:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 20000,
     about:
       'Грандиозное начало новой покерной истории! Торжественный турнир в честь открытия, где атмосфера праздника встречается с бескомпромиссной борьбой за сукном. Звон бокалов, новые лица, амбициозные цели и возможность с первого же дня захватить лидерство в сезоне. Займите свое место за столом — пора написать первую победную главу!',
@@ -37,7 +37,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-24',
     startTime: '19:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 8000,
     about:
       'Идеальный старт для новичков и отличная разминка для профи! Турнир без стартового взноса, где ваш главный капитал — это ваше мастерство. Никаких рисков, только чистый покер, бесценный опыт и реальная возможность заработать первые рейтинговые очки. Хватайте свой счастливый билет и покажите за столом, на что вы способны!',
@@ -63,7 +63,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-25',
     startTime: '19:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 12000,
     about:
       'Формат для тех, кто умеет делать выводы из своих ошибок. У вас есть ровно три «жизни», чтобы добраться до финального стола. Играйте агрессивно, рискуйте, проверяйте оппонентов на прочность, но помните: лимит исчерпаем. Каждое возвращение в игру должно быть острее предыдущего. Распределите свои шансы с умом и заберите свое по праву!',
@@ -87,7 +87,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-26',
     startTime: '19:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 12000,
     about:
       'Турнир, в котором никто не сдается до самого конца. Потеряли стек на обидном бэд-бите? Не беда! Восстаньте из пепла, возвращайтесь в игру и покажите, что настоящие чемпионы умеют делать грандиозные камбэки. Пламя азарта будет гореть до последней раздачи. Докажите всем за столом, что вас просто невозможно сломить!',
@@ -111,7 +111,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-27',
     startTime: '19:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 15000,
     about:
       'Турнир для королей дисциплины. Без ре-энтри, без аддонов, без вторых шансов. У вас есть единственный патрон, чтобы доказать своё покерное превосходство. Одно неверное решение — и вы зритель. Сумеете ли вы сохранить хладнокровие, воспользоваться своим единственным шансом и побороться за самую престижную гарантию очков?',
@@ -122,7 +122,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
       'Плавная структура турнира',
       'Поздняя регистрация до 22:10',
     ],
-    participants: pickParticipants(16),
+    participants: pickParticipants(24),
     lateRegUntil: '22:10',
     blindStructure: 'Freezeout',
     stackSize: 30000,
@@ -136,7 +136,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-28',
     startTime: '19:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 10000,
     about:
       'Классика покера в самой расслабленной и вкусной атмосфере Клуба! Бесконечные ребаи, мощный аддон в перерыве и море экшена за столами. Идеальный вечер, чтобы отдохнуть в компании друзей. Играйте раскованно, собирайте невероятные комбинации и забирайте корону победителя в максимально комфортных условиях!',
@@ -174,7 +174,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-29',
     startTime: '17:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 10000,
     about:
       'Объявляем сезон охоты открытым! В этом турнире агрессия щедро вознаграждается: за каждого выбитого оппонента вы получаете дополнительные очки. Никакой отсидки в глухой обороне — здесь побеждают хищники. Присматривайтесь к коротким стекам, готовьте ловушки и забирайте награду за головы своих соперников. Кто станет главным охотником этого вечера?',
@@ -213,7 +213,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     address: CLUB_ADDRESS,
     startDate: '2026-08-30',
     startTime: '17:00',
-    totalSeats: 36,
+    totalSeats: DEFAULT_TOTAL_SEATS,
     guarantee: 15000,
     about:
       'Турнир для настоящих стратегов и ценителей интеллектуального покера. Забудьте про лотерею на первых уровнях! Огромный стартовый стек и плавная структура блайндов дают максимальное пространство для маневров, красивых блефов и сложных розыгрышей на постфлопе. Это марафон, а не спринт. Хватит ли вам выдержки переиграть оппонентов на длинной дистанции?',

@@ -1,7 +1,6 @@
-import { Clock, MapPin } from 'lucide-react';
+import { ChevronRight, Clock } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { isFinished } from '../lib/tournamentStatus';
-import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 
 interface Props {
@@ -9,22 +8,27 @@ interface Props {
   onClick: (tournament: Tournament) => void;
 }
 
+function occupiedSeatsClass(occupiedSeats: number): string {
+  if (occupiedSeats >= 23) return 'text-red-500 font-bold';
+  if (occupiedSeats >= 15) return 'text-[#D99962] font-bold';
+  return 'text-white';
+}
+
 export function TournamentCard({ tournament, onClick }: Props) {
   const { title, startDate, startTime, totalSeats, participants } = tournament;
 
-  const seatsLeft  = Math.max(0, totalSeats - participants.length);
-  const isFull     = seatsLeft === 0;
-  const isPast     = isFinished(tournament);
+  const occupiedSeats = participants.length;
+  const isPast = isFinished(tournament);
 
-  const dateObj      = new Date(startDate);
-  const weekday      = dateObj.toLocaleDateString('ru-RU', { weekday: 'long' });
-  const dayMonth     = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  const dateObj = new Date(startDate);
+  const weekday = dateObj.toLocaleDateString('ru-RU', { weekday: 'long' });
+  const dayMonth = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
   const weekdayUpper = weekday.toUpperCase();
 
   return (
     <button
       onClick={() => onClick(tournament)}
-      className="relative w-full text-left rounded-2xl overflow-hidden active:scale-[0.98] transition-transform duration-150"
+      className="relative w-full text-left rounded-2xl overflow-hidden active:scale-[0.98] transition-transform duration-200"
       style={{
         background: '#1d0b07',
         border: '1px solid rgba(255,255,255,0.07)',
@@ -66,8 +70,8 @@ export function TournamentCard({ tournament, onClick }: Props) {
           {title}
         </h3>
 
-        <div className="space-y-1 mt-3">
-          <div className="flex flex-col gap-1 text-[12px]">
+        <div className="space-y-2 mt-3">
+          <div className="flex flex-col gap-2 text-[12px]">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-700" style={{ color: '#D99962' }}>{weekdayUpper}</span>
               <span style={{ color: 'rgba(255,255,255,0.8)' }}>{dayMonth}</span>
@@ -78,21 +82,23 @@ export function TournamentCard({ tournament, onClick }: Props) {
             </div>
           </div>
 
-          <div className="flex items-start gap-1.5 text-[11px]" style={{ color: '#8c8c88' }}>
-            <MapPin size={11} className="shrink-0 mt-0.5" style={{ color: '#c8a38e' }} />
-            <span className="whitespace-normal break-words text-wrap">
-              {CLUB_ADDRESS_CITY}
-              <br />
-              {CLUB_ADDRESS_STREET}
-            </span>
-          </div>
-
-          <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
-            {isFull ? 'Мест нет' : `Мест: ${seatsLeft}/${totalSeats}`}
-            {isPast && ' · Завершён'}
-          </p>
+          {!isPast && (
+            <p className="text-sm font-medium">
+              Мест:{' '}
+              <span className={occupiedSeatsClass(occupiedSeats)}>
+                {occupiedSeats}/{totalSeats}
+              </span>
+            </p>
+          )}
         </div>
       </div>
+
+      <ChevronRight
+        size={18}
+        strokeWidth={2}
+        aria-hidden
+        className="absolute z-20 bottom-3 right-3 pointer-events-none text-white/30"
+      />
     </button>
   );
 }

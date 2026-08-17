@@ -250,7 +250,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* ─── УЧАСТНИКИ ─── */}
             <div className="rounded-2xl overflow-hidden"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Header: left = "Участники (20/36)", right = "Рейтинг сезона" */}
+              {/* Header: left = "Участники (occupied/total)", right = "Рейтинг сезона" */}
               <div className="flex items-center justify-between px-5 py-4"
                    style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <h3 className="text-[12px] font-700 uppercase tracking-[0.2em]" style={{ color: '#F2D8A7' }}>

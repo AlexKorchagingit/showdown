@@ -9,7 +9,7 @@ import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { compareByStart, isFinished } from '../../lib/tournamentStatus';
 import { asset } from '../../lib/assets';
-import type { Tournament } from '../../types/tournament';
+import { DEFAULT_TOTAL_SEATS, type Tournament } from '../../types/tournament';
 
 type Tab = 'all' | 'create';
 
@@ -41,7 +41,7 @@ const EMPTY_FORM: CreateForm = {
   title: '',
   startDate: '',
   startTime: '19:00',
-  totalSeats: '36',
+  totalSeats: String(DEFAULT_TOTAL_SEATS),
   guarantee: '20000',
   about: '',
   features: [],
@@ -66,7 +66,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       address: CLUB_ADDRESS,
       startDate: form.startDate,
       startTime: form.startTime || '19:00',
-      totalSeats: Number(form.totalSeats) || 36,
+      totalSeats: Number(form.totalSeats) || DEFAULT_TOTAL_SEATS,
       guarantee: Number(form.guarantee) || 0,
       about: form.about.trim(),
       features: form.features,

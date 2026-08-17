@@ -38,6 +38,9 @@ export function createEmptyStaff(): TournamentStaffMember[] {
   }));
 }
 
+/** Global field size for every tournament (list, lobby, mocks, create form). */
+export const DEFAULT_TOTAL_SEATS = 27;
+
 export interface Tournament {
   id: string;
   title: string;

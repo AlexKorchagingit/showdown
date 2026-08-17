@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, Trash2, UserPlus, X,
 } from 'lucide-react';
-import type { Participant, Tournament } from '../../types/tournament';
+import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
 import { mockUsers } from '../../data/mockUsers';
 import { ALL_PARTICIPANTS } from '../../data/participants';
@@ -439,7 +439,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
                 </p>
                 <EditableText
                   value={String(tournament.totalSeats)}
-                  onSave={(v) => patch({ totalSeats: Number(v) || tournament.totalSeats })}
+                  onSave={(v) => patch({ totalSeats: Number(v) || DEFAULT_TOTAL_SEATS })}
                   type="number"
                   renderValue={(v) => (
                     <span className="text-white font-800 text-[18px]">{v}</span>
