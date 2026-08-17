@@ -185,8 +185,8 @@ export function AdminBlindsTimer() {
     currentLevel,
     currentLevel?.durationMinutes ?? structure.levelDuration,
   );
-  const remainingRatio = Math.min(1, Math.max(0, secondsLeft / Math.max(1, levelSeconds)));
-  const dashOffset = CIRCUMFERENCE * (1 - remainingRatio);
+  const percent = Math.min(100, Math.max(0, (secondsLeft / Math.max(1, levelSeconds)) * 100));
+  const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
   const isBreak = currentLevel?.isBreak === true;
   const levelNumber = currentLevel?.level ?? levelIndex + 1;
   const blindsLabel = isBreak
@@ -213,9 +213,9 @@ export function AdminBlindsTimer() {
         aria-hidden
       />
 
-      <div className="relative flex w-full h-full gap-4 px-4 pt-6 pb-28">
-        <div className="w-[240px] md:w-[280px] shrink-0 overflow-y-auto">
-          <section className={`${GLASS} h-full`}>
+      <div className="relative flex w-full h-full items-stretch gap-4 overflow-visible px-4 pt-6 pb-28">
+        <div className="w-[240px] md:w-[280px] shrink-0 flex flex-col min-h-0">
+          <section className={`${GLASS} flex-1 min-h-0 overflow-y-auto`}>
             <p className="text-[11px] md:text-xs font-800 uppercase tracking-[0.2em] text-[#D99962]">
               Гарантия очков
             </p>
@@ -251,18 +251,18 @@ export function AdminBlindsTimer() {
           </section>
         </div>
 
-        <div className="w-[220px] md:w-[260px] shrink-0 flex flex-col gap-4 overflow-y-auto">
+        <div className="w-[220px] md:w-[260px] shrink-0 flex flex-col gap-4 min-h-0 overflow-visible">
           {hasEntries && (
             <section className={`${GLASS} text-center`}>
               <p className="text-[10px] md:text-[11px] font-800 uppercase tracking-[0.18em] text-white/40">
-                Игроки (в игре)
+                В ИГРЕ
               </p>
               <p className="text-4xl md:text-5xl font-black text-white mt-2 leading-none tabular-nums">
                 {remaining}
                 <span className="text-white/35"> / {totalEntries}</span>
               </p>
               {rebuyCount != null && rebuyCount > 0 && (
-                <p className="text-[11px] font-600 text-white/40 mt-2">Ребаев: {rebuyCount}</p>
+                <p className="text-[11px] font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
               )}
             </section>
           )}
@@ -276,32 +276,42 @@ export function AdminBlindsTimer() {
             </p>
           </section>
 
-          <section className={`${GLASS} text-center mt-auto`}>
-            <p
-              className={`text-sm font-900 uppercase tracking-[0.28em] drop-shadow-[0_0_10px_rgba(217,153,98,0.65)] ${GOLD_TEXT}`}
-            >
-              Chipleader
-            </p>
+          <div className="relative z-[1] flex-1 min-h-[220px] overflow-visible flex flex-col">
+            <div
+              className="absolute inset-0 bg-white/[0.03] border border-white/[0.05] rounded-2xl backdrop-blur-sm"
+              aria-hidden
+            />
             {chipleader ? (
-              <>
-                <div className="w-32 h-32 rounded-full ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.4)] overflow-hidden mx-auto my-2 bg-[#1A1411]">
-                  <img
-                    src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
-                    alt=""
-                    className="w-full h-full object-cover object-top pointer-events-none select-none"
-                  />
-                </div>
-                <p className="text-xl font-black text-white leading-tight">{chipleader.nickname}</p>
-                <p className="text-2xl md:text-3xl font-black tabular-nums mt-1 text-[#D99962]">
-                  {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
-                </p>
-              </>
+              <div className="relative flex-1 min-h-[128px] overflow-visible">
+                <img
+                  src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
+                  alt=""
+                  className="absolute left-1/2 -translate-x-1/2 top-[-60px] bottom-0 z-10 w-[92%] object-contain object-bottom pointer-events-none select-none drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]"
+                />
+              </div>
             ) : (
-              <p className="text-sm font-600 uppercase tracking-wide mt-4 text-[#6B6360]">
-                Чиплидер не выбран
-              </p>
+              <div className="relative flex-1 min-h-[72px]" />
             )}
-          </section>
+            <div className="relative z-20 shrink-0 px-5 pb-5 pt-1 text-center">
+              <p className="text-[10px] md:text-[11px] font-800 uppercase tracking-[0.28em] text-[#D99962]">
+                CHIPLEADER
+              </p>
+              {chipleader ? (
+                <>
+                  <p className="text-xl md:text-2xl font-black text-white leading-tight mt-1">
+                    {chipleader.nickname}
+                  </p>
+                  <p className="text-3xl md:text-5xl font-black tabular-nums mt-1 leading-none text-[#D99962]">
+                    {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm font-600 uppercase tracking-wide mt-2 text-[#6B6360]">
+                  Чиплидер не выбран
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col items-center justify-center px-2">
@@ -348,7 +358,7 @@ export function AdminBlindsTimer() {
                 strokeDasharray={CIRCUMFERENCE}
                 strokeDashoffset={dashOffset}
                 filter="url(#timer-glow)"
-                style={{ transition: 'stroke-dashoffset 0.25s linear' }}
+                className="transition-all duration-1000 linear"
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 pointer-events-none">
@@ -387,9 +397,9 @@ export function AdminBlindsTimer() {
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="h-24 md:h-32 w-auto object-contain opacity-90"
+            className="h-24 md:h-32 w-auto object-contain opacity-90 self-end"
           />
-          <section className={`${GLASS} w-full text-right space-y-3`}>
+          <section className={`${GLASS} w-full self-end text-right space-y-3`}>
             {timeToNextBreak != null && (
               <div>
                 <p className="text-[10px] font-800 uppercase tracking-[0.16em] text-white/40">
