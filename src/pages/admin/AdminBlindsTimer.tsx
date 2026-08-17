@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -72,7 +71,7 @@ function ControlButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="bg-white/5 hover:bg-white/20 text-white/80 hover:text-[#D99962] p-4 rounded-full transition-colors active:scale-95 disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-white/80"
+      className="relative z-10 pointer-events-auto bg-white/5 hover:bg-white/20 text-white/80 hover:text-[#D99962] p-4 rounded-full transition-colors active:scale-95 disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-white/80"
     >
       {children}
     </button>
@@ -206,8 +205,8 @@ export function AdminBlindsTimer() {
       : 'Break'
     : `Level ${levelNumber}`;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[200] text-white bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#231A16] to-[#0A0908] overflow-visible">
+  return (
+    <div className="relative h-full w-full min-h-0 text-white bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#231A16] to-[#0A0908] overflow-visible">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
         style={{ backgroundImage: NOISE_BG }}
@@ -302,7 +301,7 @@ export function AdminBlindsTimer() {
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-4 min-h-0">
-          <p className="text-2xl font-800 uppercase tracking-widest text-[#D99962] mt-8">
+          <p className="inline-block text-2xl font-800 uppercase tracking-widest mt-8 bg-gradient-to-r from-[#8C4C27] via-[#F2D8A7] to-[#D99962] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
             SHOWDOWN
           </p>
           <h1 className="text-3xl md:text-4xl font-black uppercase tracking-wide text-center mt-2 leading-tight text-[#D99962]">
@@ -372,13 +371,13 @@ export function AdminBlindsTimer() {
             </div>
             <button
               type="button"
-              className="absolute left-0 top-0 z-10 h-full w-1/2 cursor-pointer bg-transparent"
+              className="absolute left-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
               aria-label="Минус одна минута"
               onClick={() => adjustSeconds(-60)}
             />
             <button
               type="button"
-              className="absolute right-0 top-0 z-10 h-full w-1/2 cursor-pointer bg-transparent"
+              className="absolute right-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
               aria-label="Плюс одна минута"
               onClick={() => adjustSeconds(60)}
             />
@@ -429,7 +428,7 @@ export function AdminBlindsTimer() {
         </div>
       </div>
 
-      <div className="absolute bottom-5 right-5 z-30 flex items-center gap-2">
+      <div className="absolute bottom-5 right-5 z-50 flex items-center gap-2 pointer-events-auto">
         <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
           <ArrowLeft size={22} strokeWidth={2.2} />
         </ControlButton>
@@ -474,37 +473,34 @@ export function AdminBlindsTimer() {
         </ControlButton>
       </div>
 
-      {settingsOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[120] flex items-end justify-center">
-            <button
-              type="button"
-              className="absolute inset-0 bg-black/65"
-              aria-label="Закрыть настройки"
-              onClick={() => setSettingsOpen(false)}
-            />
-            <div
-              className="relative w-full max-w-[480px] max-h-[80vh] rounded-t-3xl px-4 pt-4 pb-8 overflow-y-auto"
-              style={{ background: '#1A1411', border: '1px solid rgba(217,153,98,0.28)' }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[15px] font-800 uppercase tracking-wide text-white">Настройки таймера</h2>
-                <button
-                  type="button"
-                  onClick={() => setSettingsOpen(false)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.06)' }}
-                  aria-label="Закрыть"
-                >
-                  <X size={16} style={{ color: '#A39B98' }} />
-                </button>
-              </div>
-              <TimerSessionFields structureName={structure.name} />
+      {settingsOpen && (
+        <div className="absolute inset-0 z-[60] flex items-end justify-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/65"
+            aria-label="Закрыть настройки"
+            onClick={() => setSettingsOpen(false)}
+          />
+          <div
+            className="relative w-full max-w-[480px] max-h-[80vh] rounded-t-3xl px-4 pt-4 pb-8 overflow-y-auto"
+            style={{ background: '#1A1411', border: '1px solid rgba(217,153,98,0.28)' }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-[15px] font-800 uppercase tracking-wide text-white">Настройки таймера</h2>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="w-9 h-9 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+                aria-label="Закрыть"
+              >
+                <X size={16} style={{ color: '#A39B98' }} />
+              </button>
             </div>
-          </div>,
-          document.body,
-        )}
-    </div>,
-    document.body,
+            <TimerSessionFields structureName={structure.name} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

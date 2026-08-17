@@ -164,7 +164,7 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
           className="h-16 w-auto object-contain"
           style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }}
         />
-        <span className="font-900 text-[17px] uppercase tracking-[0.18em]" style={{ color: '#F2D8A7' }}>
+        <span className="inline-block font-900 text-[17px] uppercase tracking-[0.18em] bg-gradient-to-r from-[#8C4C27] via-[#F2D8A7] to-[#D99962] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
           Showdown
         </span>
       </div>

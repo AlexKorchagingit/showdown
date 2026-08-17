@@ -53,6 +53,10 @@
     background-clip: text;
   }
 
+  .animate-gradient {
+    -webkit-text-fill-color: transparent;
+  }
+
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
