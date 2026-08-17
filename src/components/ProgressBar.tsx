@@ -27,7 +27,7 @@ export function ProgressBar({ value, max, className = '' }: Props) {
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <p className="text-lg font-bold text-white">
+      <p className="text-sm font-bold text-white">
         В игре: {value} / {max}
       </p>
 

@@ -13,7 +13,7 @@ const TAB_LABEL: Record<ShopItemType, string> = {
   bg: 'Фоны',
 };
 
-/** Rarity glow: bronze / purple inset on the card, ruby and gold on a wrapping ring. */
+/** Rarity glow: steel / purple / ruby / gold. Outer wrap is not clipped by the card. */
 function characterRarity(price: number): { wrap: string; card: string } {
   if (price >= 25000) {
     return {
@@ -35,8 +35,8 @@ function characterRarity(price: number): { wrap: string; card: string } {
   }
   if (price >= 3000) {
     return {
-      wrap: '',
-      card: 'shadow-[inset_0_0_15px_rgba(140,76,39,0.3)]',
+      wrap: 'rounded-2xl shadow-[0_0_15px_rgba(156,163,175,0.25)] ring-1 ring-gray-500/30',
+      card: 'shadow-[inset_0_0_12px_rgba(140,76,39,0.22)]',
     };
   }
   return { wrap: '', card: '' };
@@ -139,16 +139,16 @@ function ItemCard({
     </button>
   ) : (
     <button type="button" onClick={onSelect} disabled={locked} className={`${cardClass} flex flex-col`}>
-      <div className="flex-1 min-h-0 relative overflow-hidden rounded-t-2xl bg-[#1d0b07]">
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-[#1d0b07]">
         <img
           src={item.image}
           alt={item.name}
-          className="absolute inset-0 w-full h-full object-contain p-2"
+          className="absolute inset-0 h-full w-full object-contain object-bottom px-0.5 pt-1 pb-0"
         />
       </div>
 
-      <div className="shrink-0 px-3 py-2.5 space-y-2">
-        <p className="text-[13px] font-bold text-white truncate">{item.name}</p>
+      <div className="shrink-0 px-3 pt-0.5 pb-2 space-y-1.5">
+        <p className="text-[13px] font-bold leading-tight text-white truncate">{item.name}</p>
         {status}
       </div>
     </button>

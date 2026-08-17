@@ -1,5 +1,6 @@
 import { startOfDay } from './financePeriod';
 import { playerNickname } from './playerName';
+import { isFinished } from './tournamentStatus';
 import type { Transaction } from '../types/finance';
 import type { Tournament } from '../types/tournament';
 
@@ -80,6 +81,33 @@ function topThree(map: Map<string, { nickname: string; value: number }>): ClubLe
     .slice(0, 3);
 }
 
+/** Accepts numeric places and string leftovers from older saved results. */
+export function parseFinishingPlace(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.trunc(raw);
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed.replace(',', '.'));
+    if (!Number.isFinite(parsed)) return null;
+    return Math.trunc(parsed);
+  }
+  return null;
+}
+
+function bumpLeader(
+  map: Map<string, { nickname: string; value: number }>,
+  playerId: string,
+  nickname: string,
+  delta = 1,
+): void {
+  const id = String(playerId ?? '').trim() || nickname;
+  if (!id) return;
+  const row = map.get(id) ?? { nickname: nickname || id, value: 0 };
+  row.value += delta;
+  if (nickname) row.nickname = nickname;
+  map.set(id, row);
+}
+
 export function computeClubStatistics(
   tournaments: Tournament[],
   transactions: Transaction[],
@@ -152,25 +180,21 @@ export function computeClubStatistics(
   for (const tournament of tournaments) {
     for (const participant of tournament.participants) {
       const nick = participant.nickname || playerNickname(participant.id);
-      const played = attendance.get(participant.id) ?? { nickname: nick, value: 0 };
-      played.value += 1;
-      played.nickname = nick;
-      attendance.set(participant.id, played);
-
-      if (typeof participant.place === 'number' && participant.place <= 9) {
-        const row = finalists.get(participant.id) ?? { nickname: nick, value: 0 };
-        row.value += 1;
-        row.nickname = nick;
-        finalists.set(participant.id, row);
-      }
+      bumpLeader(attendance, participant.id, nick);
 
       const knockouts = participant.knockouts ?? 0;
       if (knockouts > 0) {
-        const row = bounty.get(participant.id) ?? { nickname: nick, value: 0 };
-        row.value += knockouts;
-        row.nickname = nick;
-        bounty.set(participant.id, row);
+        bumpLeader(bounty, participant.id, nick, knockouts);
       }
+    }
+
+    if (!isFinished(tournament)) continue;
+
+    for (const participant of tournament.participants) {
+      const place = parseFinishingPlace(participant.place);
+      if (place == null || place < 1 || place > 9) continue;
+      const nick = participant.nickname || playerNickname(participant.id);
+      bumpLeader(finalists, participant.id, nick);
     }
   }
 

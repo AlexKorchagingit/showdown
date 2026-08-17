@@ -280,7 +280,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 className="flex flex-col px-5 py-4"
                 style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
               >
-                <h3 className="text-lg font-bold text-white uppercase">
+                <h3 className="text-sm font-bold text-white uppercase">
                   Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
                 <span className="text-sm text-gray-400 text-right mt-1">

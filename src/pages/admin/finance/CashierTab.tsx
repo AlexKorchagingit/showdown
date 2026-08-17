@@ -132,6 +132,24 @@ export function CashierTab() {
         </button>
       </div>
 
+      <button
+        type="button"
+        onClick={() =>
+          exportToCSV(filtered, {
+            tournamentTitle,
+            playerName: playerNickname,
+          })
+        }
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-700 text-[#0A0908] active:scale-[0.98] transition-transform"
+        style={{
+          background: 'linear-gradient(to right, #8C4C27, #D99962)',
+          boxShadow: '0 0 16px rgba(217,153,98,0.28)',
+        }}
+      >
+        <Download size={17} strokeWidth={2.4} />
+        Экспорт в Excel (CSV)
+      </button>
+
       <div
         className="rounded-2xl px-2 py-4"
         style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
@@ -205,24 +223,6 @@ export function CashierTab() {
           </div>
         )}
       </div>
-
-      <button
-        type="button"
-        onClick={() =>
-          exportToCSV(filtered, {
-            tournamentTitle,
-            playerName: playerNickname,
-          })
-        }
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-700 text-[#0A0908] active:scale-[0.98] transition-transform"
-        style={{
-          background: 'linear-gradient(to right, #8C4C27, #D99962)',
-          boxShadow: '0 0 16px rgba(217,153,98,0.28)',
-        }}
-      >
-        <Download size={17} strokeWidth={2.4} />
-        Экспорт в Excel (CSV)
-      </button>
 
       {sheet &&
         createPortal(
