@@ -112,12 +112,14 @@ function withDefaults(parsed: Partial<UserData>): UserData {
     coins: resolveCoins(parsed),
     ownedItems: [
       ...new Set([
+        DEFAULT_CHARACTER_ID,
+        DEFAULT_BG_ID,
         ...FREE_ITEM_IDS,
         ...(Array.isArray(parsed.ownedItems) ? parsed.ownedItems : []),
       ]),
     ],
-    equippedChar: parsed.equippedChar || defaults.equippedChar,
-    equippedBg: parsed.equippedBg || defaults.equippedBg,
+    equippedChar: parsed.equippedChar || DEFAULT_CHARACTER_ID,
+    equippedBg: parsed.equippedBg || DEFAULT_BG_ID,
     pendingNotifications: parseNotifications(parsed.pendingNotifications),
   };
 }
@@ -156,9 +158,15 @@ export function loadUserData(email: string): UserData {
   if (current) {
     const restored = withDefaults(current);
     const rawCoins = current.coins;
+    const owned = Array.isArray(current.ownedItems) ? current.ownedItems : [];
+    const missingStarter =
+      !owned.includes(DEFAULT_CHARACTER_ID) || !owned.includes(DEFAULT_BG_ID);
     const needsPersist =
-      !Number.isFinite(rawCoins) || !rawCoins || Number(rawCoins) < STARTING_COINS;
-    if (needsPersist && restored.coins === STARTING_COINS) {
+      missingStarter ||
+      !Number.isFinite(rawCoins) ||
+      !rawCoins ||
+      Number(rawCoins) < STARTING_COINS;
+    if (needsPersist) {
       saveUserData(email, restored);
     }
     return restored;

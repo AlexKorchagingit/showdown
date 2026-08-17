@@ -11,7 +11,7 @@ export interface ShopItem {
 }
 
 export const DEFAULT_CHARACTER_ID = 'char_base';
-export const DEFAULT_BG_ID = 'bg_1';
+export const DEFAULT_BG_ID = 'bg_base';
 export const DEFAULT_CHARACTER_LEFT = '18%';
 
 /** Profile portrait offset — some arts sit too far left in the frame. */
@@ -22,35 +22,41 @@ export const CHARACTER_PROFILE_LEFT: Record<string, string> = {
   char_jester: '26%',
   char_mage: '30%',
   char_villain: '26%',
+  char_baron: '22%',
+  char_duchess: '26%',
 };
 
 export function characterProfileLeft(id: string): string {
   return CHARACTER_PROFILE_LEFT[id] ?? DEFAULT_CHARACTER_LEFT;
 }
 
-export const SHOP_ITEMS: ShopItem[] = [
-  { id: DEFAULT_CHARACTER_ID, type: 'character', name: 'Базовый',   image: asset('/characters/char_base.png'),    price: 0 },
-  { id: 'char_baron',         type: 'character', name: 'Барон',     image: asset('/characters/char_baron.png'),   price: 1000 },
-  { id: 'char_cowboy',        type: 'character', name: 'Ковбой',    image: asset('/characters/char_cowboy.png'),  price: 1200 },
-  { id: 'char_fortune',       type: 'character', name: 'Гадалка',   image: asset('/characters/char_fortune.png'), price: 1500 },
-  { id: 'char_knight',        type: 'character', name: 'Рыцарь',    image: asset('/characters/char_knight.png'),  price: 1800 },
-  { id: 'char_jester',        type: 'character', name: 'Шут',       image: asset('/characters/char_jester.png'),  price: 2000 },
-  { id: 'char_mage',          type: 'character', name: 'Маг',       image: asset('/characters/char_mage.png'),    price: 2200 },
-  { id: 'char_duchess',       type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 2500 },
-  { id: 'char_villain',       type: 'character', name: 'Злодей',    image: asset('/characters/char_villain.png'), price: 3000 },
-  { id: 'char_king',          type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 4000 },
-  { id: 'bg_1',               type: 'bg',        name: 'Фон 1',     image: asset('/backgrounds/bg_1.jpg'),        price: 0 },
-  { id: 'bg_2',               type: 'bg',        name: 'Фон 2',     image: asset('/backgrounds/bg_2.jpg'),        price: 1200 },
-  { id: 'bg_3',               type: 'bg',        name: 'Фон 3',     image: asset('/backgrounds/bg_3.jpg'),        price: 1500 },
-  { id: 'bg_4',               type: 'bg',        name: 'Фон 4',     image: asset('/backgrounds/bg_4.jpg'),        price: 1800 },
-  { id: 'bg_5',               type: 'bg',        name: 'Фон 5',     image: asset('/backgrounds/bg_5.jpg'),        price: 2000 },
-  { id: 'bg_6',               type: 'bg',        name: 'Фон 6',     image: asset('/backgrounds/bg_6.jpg'),        price: 2200 },
-  { id: 'bg_7',               type: 'bg',        name: 'Фон 7',     image: asset('/backgrounds/bg_7.jpg'),        price: 2500 },
-  { id: 'bg_8',               type: 'bg',        name: 'Фон 8',     image: asset('/backgrounds/bg_8.jpg'),        price: 2800 },
-  { id: 'bg_9',               type: 'bg',        name: 'Фон 9',     image: asset('/backgrounds/bg_9.jpg'),        price: 3000 },
-  { id: 'bg_10',              type: 'bg',        name: 'Фон 10',    image: asset('/backgrounds/bg_10.jpg'),       price: 3200 },
-  { id: 'bg_11',              type: 'bg',        name: 'Фон 11',    image: asset('/backgrounds/bg_11.jpg'),       price: 3500 },
+const CHARACTERS: ShopItem[] = [
+  { id: 'char_base',    type: 'character', name: 'Базовый',   image: asset('/characters/char_base.png'),    price: 0 },
+  { id: 'char_jester',  type: 'character', name: 'Шут',       image: asset('/characters/char_jester.png'),  price: 3000 },
+  { id: 'char_cowboy',  type: 'character', name: 'Ковбой',    image: asset('/characters/char_cowboy.png'),  price: 3000 },
+  { id: 'char_knight',  type: 'character', name: 'Рыцарь',    image: asset('/characters/char_knight.png'),  price: 3000 },
+  { id: 'char_mage',    type: 'character', name: 'Маг',       image: asset('/characters/char_mage.png'),    price: 6000 },
+  { id: 'char_villain', type: 'character', name: 'Злодей',    image: asset('/characters/char_villain.png'), price: 6000 },
+  { id: 'char_fortune', type: 'character', name: 'Гадалка',   image: asset('/characters/char_fortune.png'), price: 6000 },
+  { id: 'char_baron',   type: 'character', name: 'Барон',     image: asset('/characters/char_baron.png'),   price: 12000 },
+  { id: 'char_duchess', type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 12000 },
+  { id: 'char_king',    type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 25000 },
 ];
+
+const BACKGROUND_FILES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
+
+const BACKGROUNDS: ShopItem[] = [
+  { id: DEFAULT_BG_ID, type: 'bg', name: 'Базовый фон', image: asset('/backgrounds/bg_base.jpg'), price: 0 },
+  ...BACKGROUND_FILES.map((n) => ({
+    id: `bg_${n}`,
+    type: 'bg' as const,
+    name: `Фон ${n}`,
+    image: asset(`/backgrounds/bg_${n}.jpg`),
+    price: 1500,
+  })),
+];
+
+export const SHOP_ITEMS: ShopItem[] = [...CHARACTERS, ...BACKGROUNDS];
 
 /** Free items are owned from the very first launch. */
 export const FREE_ITEM_IDS = SHOP_ITEMS.filter((item) => item.price === 0).map((item) => item.id);

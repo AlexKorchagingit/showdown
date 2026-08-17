@@ -82,11 +82,19 @@ function ItemCard({
 }) {
   const locked = !owned && !affordable;
   const isBackground = item.type === 'bg';
+  const isKing = item.id === 'char_king';
+  const isPremium = item.price >= 12000 && !isKing;
+
+  const rarityClass = isKing
+    ? 'ring-2 ring-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)] bg-gradient-to-t from-yellow-900/40 to-transparent'
+    : isPremium || equipped
+      ? 'ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.5)]'
+      : '';
 
   // Every card keeps the same portrait rectangle so both tabs line up
-  const cardClass = `relative aspect-[3/4] text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${
-    equipped ? 'ring-2 ring-[#D99962] shadow-[0_0_15px_rgba(217,153,98,0.5)]' : ''
-  } ${locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`;
+  const cardClass = `relative aspect-[3/4] text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${rarityClass} ${
+    locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'
+  }`;
 
   const status = (
     <ItemStatus
