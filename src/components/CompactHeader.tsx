@@ -54,7 +54,7 @@ export function CompactHeader({
         >
           {title}
         </h1>
-        {right ? <div className={centerTitle ? 'ml-auto shrink-0' : 'shrink-0'}>{right}</div> : null}
+        {right ? <div className="relative z-10 ml-auto shrink-0">{right}</div> : null}
       </div>
       {children}
     </div>

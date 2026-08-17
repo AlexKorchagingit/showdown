@@ -34,6 +34,29 @@ const EMPTY_FORM: CreateForm = {
   guarantee: '20000',
 };
 
+function TimerHeaderButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
+      style={{
+        background: 'linear-gradient(to right, #8C4C27, #D99962)',
+        color: '#0A0908',
+      }}
+    >
+      Таймер
+    </button>
+  );
+}
+
 function CreateStructureForm({ onCreate }: { onCreate: (form: CreateForm) => void }) {
   const [form, setForm] = useState<CreateForm>(EMPTY_FORM);
 
@@ -350,6 +373,7 @@ export function AdminBlindsSettings() {
 
   const openTimer = (id: string) => navigate(`/admin/blinds/timer?structure=${id}`);
   const openEditor = (id: string) => navigate(`/admin/blinds/settings?structure=${id}`);
+  const timerTargetId = activeStructureId ?? structures[0]?.id ?? null;
 
   const handleCreate = (form: CreateForm) => {
     const duration = Number(form.levelDuration) || 20;
@@ -381,19 +405,7 @@ export function AdminBlindsSettings() {
         <CompactHeader
           title={editing.name}
           onBack={backFromEditor}
-          right={
-            <button
-              type="button"
-              onClick={() => openTimer(editing.id)}
-              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide"
-              style={{
-                background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                color: '#0A0908',
-              }}
-            >
-              Таймер
-            </button>
-          }
+          right={<TimerHeaderButton onClick={() => openTimer(editing.id)} />}
         />
 
         <div
@@ -417,7 +429,18 @@ export function AdminBlindsSettings() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <CompactHeader title="Blinds info" backTo="/profile" />
+      <CompactHeader
+        title="Blinds info"
+        backTo="/profile"
+        right={
+          <TimerHeaderButton
+            disabled={!timerTargetId}
+            onClick={() => {
+              if (timerTargetId) openTimer(timerTargetId);
+            }}
+          />
+        }
+      />
 
       <div
         className="flex-1 scrollable px-3"

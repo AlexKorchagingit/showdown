@@ -5,6 +5,19 @@ export function remainingPlayers(tournament: Tournament | undefined): Participan
   return tournament.participants.filter((p) => typeof p.place !== 'number');
 }
 
+/** Nickname of the player who finished each assigned place. */
+export function nicknamesByPlace(tournament: Tournament | undefined): Map<number, string> {
+  const byPlace = new Map<number, string>();
+  if (!tournament) return byPlace;
+  const pool = [...tournament.participants, ...(tournament.results ?? [])];
+  for (const player of pool) {
+    if (typeof player.place === 'number' && player.place >= 1 && !byPlace.has(player.place)) {
+      byPlace.set(player.place, player.nickname);
+    }
+  }
+  return byPlace;
+}
+
 export function tournamentPlayerCounts(tournament: Tournament | undefined): {
   remaining: number;
   registered: number;

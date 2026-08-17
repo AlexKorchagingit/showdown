@@ -32,6 +32,7 @@ import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import {
   autoAvgStack,
+  nicknamesByPlace,
   remainingPlayers,
   tournamentPlayerCounts,
 } from '../../lib/tournamentStats';
@@ -168,6 +169,9 @@ export function AdminBlindsTimer() {
     () => (hasEntries ? calculatePayouts(fieldSize, prizePool) : []),
     [hasEntries, fieldSize, prizePool],
   );
+  const hasField = Boolean(tournament && tournament.participants.length > 0);
+  const activePlayersCount = hasField ? remaining : Number.POSITIVE_INFINITY;
+  const eliminatedNickByPlace = useMemo(() => nicknamesByPlace(tournament), [tournament]);
 
   useEffect(() => {
     if (!chipleaderId || !tournament) return;
@@ -233,14 +237,34 @@ export function AdminBlindsTimer() {
                     <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
                   ) : (
                     <div className="space-y-2.5">
-                      {payouts.map(({ place, points }) => (
-                        <div key={place} className="flex justify-between items-baseline gap-3">
-                          <span className="text-lg md:text-xl font-700 text-white/70">{place} место</span>
-                          <span className="text-base md:text-lg font-black tabular-nums text-[#D99962]">
-                            {points.toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      ))}
+                      {payouts.map(({ place, points }) => {
+                        const awarded = place > activePlayersCount;
+                        const nickname = awarded ? eliminatedNickByPlace.get(place) : undefined;
+                        const label = nickname ?? `${place} место`;
+                        return (
+                          <div
+                            key={place}
+                            className={`flex justify-between items-baseline gap-3 rounded-lg px-2 py-1 -mx-2 ${
+                              awarded ? 'opacity-50 text-[#A39B98] bg-black/20' : ''
+                            }`}
+                          >
+                            <span
+                              className={`text-lg md:text-xl font-700 truncate ${
+                                awarded ? '' : 'text-white/70'
+                              }`}
+                            >
+                              {label}
+                            </span>
+                            <span
+                              className={`text-base md:text-lg font-black tabular-nums shrink-0 ${
+                                awarded ? '' : 'text-[#D99962]'
+                              }`}
+                            >
+                              {points.toLocaleString('ru-RU')}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </>
