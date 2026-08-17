@@ -289,11 +289,11 @@ export function ProfilePage() {
                   markAllUnpaidForPlayer(playerId);
                   if (amount > 0) {
                     logAction({
-                      actionType: 'Долг',
-                      description: 'Погашение долга',
-                      targetName: displayNickname,
+                      actionType: 'Погасил долг',
+                      targetUserId: playerId,
+                      targetUserName: displayNickname,
                       targetUserEmail: playerEmail(playerId, displayNickname),
-                      details: `Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
+                      details: `Сумма: ${amount.toLocaleString('ru-RU')} руб`,
                     });
                   }
                 }

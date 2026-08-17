@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { TimerSessionFields } from '../../components/TimerSessionFields';
+import { FitText } from '../../components/FitText';
 import { useBlinds } from '../../context/BlindsContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
@@ -46,24 +47,6 @@ const GLASS =
 const NOISE_BG = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`,
 )}")`;
-
-function AutoStack({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className="@container w-full min-w-0 px-1" style={{ containerType: 'inline-size' }}>
-      <p
-        className={`font-black leading-none tabular-nums whitespace-nowrap text-center text-[length:clamp(1rem,15cqi,3rem)] ${className ?? ''}`}
-      >
-        {children}
-      </p>
-    </div>
-  );
-}
 
 function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.ceil(totalSeconds));
@@ -275,10 +258,10 @@ export function AdminBlindsTimer() {
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
                 В ИГРЕ
               </p>
-              <AutoStack className="text-white mt-2">
+              <FitText className="text-white mt-2">
                 {remaining}
                 <span className="text-white/35"> / {totalEntries}</span>
-              </AutoStack>
+              </FitText>
               {rebuyCount != null && rebuyCount > 0 && (
                 <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
               )}
@@ -289,29 +272,29 @@ export function AdminBlindsTimer() {
             <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
               СРЕДНИЙ СТЕК
             </p>
-            <AutoStack className="mt-2 text-[#F2D8A7]">
+            <FitText className="mt-2 text-[#F2D8A7]">
               {avgStack.toLocaleString('ru-RU')}
-            </AutoStack>
+            </FitText>
           </section>
 
           {chipleader && (
-          <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0 pt-[160px]">
-            <section className="relative bg-white/[0.03] border border-white/[0.05] rounded-2xl px-5 pb-4 pt-3 text-center overflow-visible min-w-0">
-              <img
-                src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
-                alt=""
-                className="absolute bottom-[4.75rem] left-1/2 z-30 h-[250px] w-auto origin-bottom -translate-x-1/2 scale-110 object-contain object-bottom pointer-events-none"
-              />
-              <div className="relative z-40">
+          <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0">
+            <section className="relative mt-20 overflow-visible bg-white/[0.03] border border-white/[0.05] rounded-2xl text-center min-w-0">
+              <div className="relative z-10 px-5 pb-4 pt-3">
+                <img
+                  src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
+                  alt=""
+                  className="absolute bottom-full left-1/2 z-30 h-[300px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom pointer-events-none"
+                />
                 <p className="text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
                   CHIPLEADER
                 </p>
                 <p className="text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
                   {chipleader.nickname}
                 </p>
-                <AutoStack className="mt-1 text-[#D99962]">
+                <FitText className="mt-1 text-[#D99962]">
                   {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
-                </AutoStack>
+                </FitText>
               </div>
             </section>
           </div>
@@ -319,7 +302,7 @@ export function AdminBlindsTimer() {
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-4 min-h-0">
-          <p className="text-2xl font-800 uppercase tracking-widest text-white/45 mt-8">
+          <p className="text-2xl font-800 uppercase tracking-widest text-[#D99962] mt-8">
             SHOWDOWN
           </p>
           <h1 className="text-3xl md:text-4xl font-black uppercase tracking-wide text-center mt-2 leading-tight text-[#D99962]">

@@ -17,7 +17,7 @@ const LABEL_CLASS =
   'block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]';
 
 type GrantTarget =
-  | { kind: 'one'; email: string; nickname: string }
+  | { kind: 'one'; id: string; email: string; nickname: string }
   | { kind: 'all' };
 
 export function AdminRubyScreen() {
@@ -66,11 +66,11 @@ export function AdminRubyScreen() {
       });
     }
     logAction({
-      actionType: 'Рубины',
-      description: target.kind === 'all' ? 'Начисление всем игрокам' : 'Начисление рубинов',
+      actionType: target.kind === 'all' ? 'Начислил рубины всем' : 'Начислил рубины',
+      targetUserId: target.kind === 'one' ? target.id : undefined,
       targetUserEmail: target.kind === 'one' ? target.email : undefined,
-      targetName: target.kind === 'one' ? target.nickname : 'Все игроки',
-      details: `Начислено ${parsedAmount.toLocaleString('ru-RU')} рубинов, причина: ${message}`,
+      targetUserName: target.kind === 'one' ? target.nickname : 'Все игроки',
+      details: `Сумма: ${parsedAmount.toLocaleString('ru-RU')}. Причина: ${message}`,
     });
     setRevision((value) => value + 1);
     closeModal();
@@ -127,7 +127,7 @@ export function AdminRubyScreen() {
                 <button
                   type="button"
                   onClick={() =>
-                    setTarget({ kind: 'one', email: account.email, nickname: account.nickname })
+                    setTarget({ kind: 'one', id: account.id, email: account.email, nickname: account.nickname })
                   }
                   className="h-8 px-2.5 rounded-lg text-[11px] font-800 active:scale-[0.97]"
                   style={{

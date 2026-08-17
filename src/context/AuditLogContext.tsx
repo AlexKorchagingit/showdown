@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from 'react';
 import { loadAuditLogs, logAction as persistLogAction, subscribeAuditLogs } from '../lib/auditLogStorage';
-import { adminDisplayName } from '../lib/playerName';
 import { useUser } from './UserContext';
 import type { ActionLog, LogActionDraft } from '../types/auditLog';
 
@@ -27,7 +26,7 @@ export function AuditLogProvider({ children }: { children: ReactNode }) {
 
   const logAction = useCallback(
     (draft: LogActionDraft) => {
-      persistLogAction(email, draft, adminDisplayName(email));
+      persistLogAction(email, draft);
     },
     [email],
   );

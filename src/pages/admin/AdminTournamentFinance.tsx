@@ -150,11 +150,13 @@ export function AdminTournamentFinance() {
     if (reason === null) return;
     addTicket(tournament.id, userId, reason.trim() || 'Билет');
     logAction({
-      actionType: 'Билет',
-      description: 'Выдан бесплатный вход',
+      actionType: 'Выдал билет',
+      targetUserId: userId,
       targetUserEmail: playerEmail(userId, nickname),
-      targetName: nickname,
-      details: `Турнир: ${tournament.title}. Причина: ${reason.trim() || 'Билет'}`,
+      targetUserName: nickname,
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
+      details: `Причина: ${reason.trim() || 'Билет'}`,
     });
   };
 
@@ -165,22 +167,26 @@ export function AdminTournamentFinance() {
   ) => {
     addCharge(tournament.id, userId, type);
     logAction({
-      actionType: 'Касса',
-      description: `Создана транзакция: ${TRANSACTION_TYPE_LABEL[type]}`,
+      actionType: 'Создал транзакцию',
+      targetUserId: userId,
       targetUserEmail: playerEmail(userId, nickname),
-      targetName: nickname,
-      details: `Турнир: ${tournament.title}. Сумма: ${DEFAULT_ENTRY_FEE.toLocaleString('ru-RU')} руб`,
+      targetUserName: nickname,
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
+      details: `${TRANSACTION_TYPE_LABEL[type]}. Сумма: ${DEFAULT_ENTRY_FEE.toLocaleString('ru-RU')} руб`,
     });
   };
 
   const handlePayDebt = (userId: string, nickname: string, amount: number) => {
     markPlayerPaid(tournament.id, userId);
     logAction({
-      actionType: 'Долг',
-      description: 'Погашение долга',
+      actionType: 'Погасил долг',
+      targetUserId: userId,
       targetUserEmail: playerEmail(userId, nickname),
-      targetName: nickname,
-      details: `Турнир: ${tournament.title}. Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
+      targetUserName: nickname,
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
+      details: `Сумма: ${amount.toLocaleString('ru-RU')} руб`,
     });
   };
 
@@ -234,9 +240,9 @@ export function AdminTournamentFinance() {
       ),
     });
     logAction({
-      actionType: 'Турнир',
-      description: 'Турнир закрыт',
-      targetName: tournament.title,
+      actionType: 'Закрыл турнир',
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
       details: `Внесены результаты. Игроков: ${closingParticipants.length}`,
     });
   };
@@ -274,11 +280,13 @@ export function AdminTournamentFinance() {
         ? ` Рейтинг изменен с ${oldRating.toLocaleString('ru-RU')} на ${newRating.toLocaleString('ru-RU')}.`
         : '';
     logAction({
-      actionType: 'Результат',
-      description: 'Добавлен результат',
+      actionType: 'Добавил результат',
+      targetUserId: player.id,
       targetUserEmail: playerEmail(player.id, player.nickname),
-      targetName: player.nickname,
-      details: `Турнир: ${tournament.title}. ${place} место.${ratingNote}`,
+      targetUserName: player.nickname,
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
+      details: `${place} место.${ratingNote}`,
     });
   };
 
@@ -292,11 +300,12 @@ export function AdminTournamentFinance() {
       ],
     });
     logAction({
-      actionType: 'Игрок',
-      description: 'Игрок добавлен в турнир',
+      actionType: 'Добавил игрока',
+      targetUserId: id,
       targetUserEmail: playerEmail(id, nickname),
-      targetName: nickname,
-      details: `Турнир: ${tournament.title}`,
+      targetUserName: nickname,
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
     });
     setAddOpen(false);
   };
@@ -308,11 +317,12 @@ export function AdminTournamentFinance() {
       participants: tournament.participants.filter((p) => p.id !== playerId),
     });
     logAction({
-      actionType: 'Игрок',
-      description: 'Игрок удалён из турнира',
+      actionType: 'Удалил игрока',
+      targetUserId: player?.id,
       targetUserEmail: player ? playerEmail(player.id, player.nickname) : undefined,
-      targetName: player?.nickname,
-      details: `Турнир: ${tournament.title}`,
+      targetUserName: player?.nickname,
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
     });
   };
 
@@ -329,6 +339,19 @@ export function AdminTournamentFinance() {
         tournament.resultsEntered === true,
       ),
     });
+    const from = placedOrdered[idx].place;
+    const to = neighbor.place;
+    if (typeof from === 'number' && typeof to === 'number') {
+      logAction({
+        actionType: 'Изменил место',
+        targetUserId: playerId,
+        targetUserEmail: playerEmail(placedOrdered[idx].id, placedOrdered[idx].nickname),
+        targetUserName: placedOrdered[idx].nickname,
+        targetTournamentId: tournament.id,
+        targetTournamentName: tournament.title,
+        details: `Было ${from} место → стало ${to} место`,
+      });
+    }
   };
 
   const setPlayerComment = (playerId: string, nickname: string, current?: string) => {

@@ -4,6 +4,7 @@ import { CompactHeader } from '../../components/CompactHeader';
 import { useAuditLog } from '../../context/AuditLogContext';
 import { isSuperAdmin, useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
+import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
 import { formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
 
@@ -94,25 +95,31 @@ export function AdminLogsScreen() {
           </p>
         ) : (
           filtered.map((log) => {
-            const actor = log.adminName || log.adminEmail;
-            const title = [log.actionType, log.description].filter(Boolean).join(': ');
-            const secondLine = [log.targetName || log.targetUserEmail, log.details]
-              .filter(Boolean)
-              .join(' · ');
+            const action = logActionLabel(log);
+            const target = logTargetLabel(log);
             return (
-              <div key={log.id} className="bg-[#231A16] p-3 rounded-lg mb-2">
-                <p className="text-[11px] font-600 mb-1" style={{ color: '#8c8c88' }}>
+              <div key={log.id} className="bg-[#231A16] p-3 rounded-lg mb-2 space-y-1">
+                <p className="text-[11px] font-600" style={{ color: '#8c8c88' }}>
                   {formatLogDateTime(log.timestamp)}
-                  <span className="text-[#6B6360]"> · {log.adminEmail}</span>
                 </p>
-                <p className="text-sm font-700 text-white leading-snug">
-                  <span style={{ color: '#D99962' }}>{actor}</span>
-                  {' · '}
-                  {title}
+                <p className="text-[13px] leading-snug text-white">
+                  <span style={{ color: '#8c8c88' }}>Админ: </span>
+                  {log.adminName || log.adminEmail}
                 </p>
-                {secondLine ? (
-                  <p className="text-sm mt-1 leading-snug" style={{ color: '#A39B98' }}>
-                    {secondLine}
+                <p className="text-[13px] leading-snug text-white">
+                  <span style={{ color: '#8c8c88' }}>Действие: </span>
+                  {action}
+                </p>
+                {target ? (
+                  <p className="text-[13px] leading-snug text-white">
+                    <span style={{ color: '#8c8c88' }}>У кого/Где: </span>
+                    {target}
+                  </p>
+                ) : null}
+                {log.details ? (
+                  <p className="text-[13px] leading-snug" style={{ color: '#A39B98' }}>
+                    <span className="text-[#8c8c88]">Детали: </span>
+                    {log.details}
                   </p>
                 ) : null}
               </div>

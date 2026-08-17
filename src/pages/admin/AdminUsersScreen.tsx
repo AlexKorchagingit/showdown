@@ -22,11 +22,11 @@ export function AdminUsersScreen() {
     );
     if (granting) {
       logAction({
-        actionType: 'Пользователь',
-        description: 'Изменены права пользователя',
+        actionType: 'Выдал права администратора',
+        targetUserId: target.id,
         targetUserEmail: target.email,
-        targetName: target.nickname,
-        details: `Выданы права администратора`,
+        targetUserName: target.nickname,
+        details: 'Выданы права администратора',
       });
     }
   };

@@ -1,41 +1,39 @@
 import { asset } from './assets';
 
-const WARNING_SRC = () => asset('/sounds/warning.mp3');
-const LEVEL_UP_SRC = () => asset('/sounds/level_up.mp3');
+const LEVEL_CHANGE_SRC = () => asset('/sounds/blinds-up.mp3');
 
-/** Prime the audio element after a user gesture so later alerts can play. */
+let primed: HTMLAudioElement | null = null;
+
+function source(): HTMLAudioElement {
+  if (!primed) primed = new Audio(LEVEL_CHANGE_SRC());
+  return primed;
+}
+
+/** Prime the audio element after a user gesture so the level-change cue can play. */
 export function unlockBlindsAudio() {
-  const audio = new Audio(WARNING_SRC());
+  const audio = source();
   audio.volume = 0.01;
   void audio
     .play()
     .then(() => {
       audio.pause();
       audio.currentTime = 0;
+      audio.volume = 1;
     })
     .catch(() => {
       /* autoplay blocked until the next gesture */
     });
 }
 
-/** Three short warning beeps as the clock hits 00:03. */
-export function playWarningTriple() {
-  const src = WARNING_SRC();
-  let remaining = 3;
-  const fire = () => {
-    const audio = new Audio(src);
-    audio.volume = 1;
-    void audio.play().catch(() => {});
-    remaining -= 1;
-    if (remaining <= 0) window.clearInterval(id);
-  };
-  fire();
-  const id = window.setInterval(fire, 420);
-}
-
-/** Long gong / siren when a new blind level starts. */
+/** Plays once when the clock hits 00:00 and blinds auto-advance. */
 export function playLevelUp() {
-  const audio = new Audio(LEVEL_UP_SRC());
+  const audio = source();
+  audio.pause();
+  audio.currentTime = 0;
   audio.volume = 1;
-  void audio.play().catch(() => {});
+  void audio.play().catch(() => {
+    const fallback = new Audio(LEVEL_CHANGE_SRC());
+    fallback.volume = 1;
+    void fallback.play().catch(() => {});
+  });
 }

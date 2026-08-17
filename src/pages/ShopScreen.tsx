@@ -252,10 +252,9 @@ export function ShopScreen() {
                     if (!buyItem(item.id)) return;
                     const kind = item.type === 'bg' ? 'фона' : 'персонажа';
                     logAction({
-                      actionType: 'Магазин',
-                      description: `Покупка: ${item.name}`,
-                      targetName: nickname,
-                      details: `Списано ${item.price.toLocaleString('ru-RU')} рубинов, причина: покупка ${kind}`,
+                      actionType: 'Списал рубины',
+                      targetUserName: nickname,
+                      details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
                     });
                   }}
                 />

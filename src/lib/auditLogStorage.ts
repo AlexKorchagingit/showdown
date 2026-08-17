@@ -1,5 +1,5 @@
 import { AUDIT_LOG_STORAGE_KEY, type ActionLog, type LogActionDraft } from '../types/auditLog';
-import { adminDisplayName } from './playerName';
+import { adminAccount, adminDisplayName } from './playerName';
 
 const MAX_LOGS = 2000;
 
@@ -20,19 +20,34 @@ function isActionLog(value: unknown): value is ActionLog {
     typeof row.id === 'string' &&
     typeof row.timestamp === 'number' &&
     typeof row.adminEmail === 'string' &&
-    typeof row.actionType === 'string' &&
-    typeof row.description === 'string'
+    typeof row.actionType === 'string'
   );
 }
 
-function normalizeLog(row: ActionLog): ActionLog {
+export function normalizeLog(row: ActionLog): ActionLog {
+  const admin = adminAccount(row.adminEmail);
   return {
     ...row,
+    adminId: row.adminId || admin.id,
     adminName: row.adminName || adminDisplayName(row.adminEmail),
-    ...(row.targetUserEmail ? { targetUserEmail: row.targetUserEmail } : {}),
-    ...(row.targetName ? { targetName: row.targetName } : {}),
-    ...(row.details ? { details: row.details } : {}),
+    targetUserName: row.targetUserName || undefined,
+    targetTournamentName: row.targetTournamentName || undefined,
+    details: row.details || undefined,
   };
+}
+
+export function logActionLabel(log: ActionLog): string {
+  if (log.description && log.description !== log.actionType) return log.description;
+  return log.actionType;
+}
+
+export function logTargetLabel(log: ActionLog): string | undefined {
+  const parts: string[] = [];
+  const user = log.targetUserName || log.targetUserEmail;
+  if (user) parts.push(`Пользователь: ${user}`);
+  if (log.targetTournamentName) parts.push(`Турнир: ${log.targetTournamentName}`);
+  if (parts.length === 0 && log.targetName) parts.push(log.targetName);
+  return parts.length ? parts.join(' / ') : undefined;
 }
 
 function readStoredLogs(): ActionLog[] {
@@ -71,20 +86,20 @@ export function subscribeAuditLogs(listener: () => void): () => void {
 }
 
 /** Append an admin action to `club_audit_logs` (newest first). */
-export function logAction(
-  adminEmail: string,
-  draft: LogActionDraft,
-  adminName = adminDisplayName(adminEmail),
-): ActionLog {
+export function logAction(adminEmail: string, draft: LogActionDraft): ActionLog {
+  const admin = adminAccount(adminEmail);
   const entry: ActionLog = {
     id: newLogId(),
     timestamp: Date.now(),
-    adminEmail,
-    adminName,
+    adminId: admin.id,
+    adminEmail: admin.email || adminEmail,
+    adminName: admin.nickname,
     actionType: draft.actionType,
-    description: draft.description,
+    ...(draft.targetUserId ? { targetUserId: draft.targetUserId } : {}),
     ...(draft.targetUserEmail ? { targetUserEmail: draft.targetUserEmail } : {}),
-    ...(draft.targetName ? { targetName: draft.targetName } : {}),
+    ...(draft.targetUserName ? { targetUserName: draft.targetUserName } : {}),
+    ...(draft.targetTournamentId ? { targetTournamentId: draft.targetTournamentId } : {}),
+    ...(draft.targetTournamentName ? { targetTournamentName: draft.targetTournamentName } : {}),
     ...(draft.details ? { details: draft.details } : {}),
   };
   persistAuditLogs([entry, ...loadAuditLogs()].slice(0, MAX_LOGS));

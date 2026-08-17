@@ -18,7 +18,6 @@ import {
 } from '../data/blindStructures';
 import {
   playLevelUp,
-  playWarningTriple,
   unlockBlindsAudio,
 } from '../lib/blindsAudio';
 
@@ -227,7 +226,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     levelUpNonce: 0,
   }));
 
-  const prevSecondsRef = useRef(0);
+  const prevNonceRef = useRef(0);
 
   useEffect(() => {
     if (!state.isRunning) return;
@@ -244,18 +243,10 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   }, [state.isRunning]);
 
   useEffect(() => {
-    if (state.levelUpNonce === 0) return;
+    if (state.levelUpNonce === 0 || state.levelUpNonce === prevNonceRef.current) return;
+    prevNonceRef.current = state.levelUpNonce;
     playLevelUp();
   }, [state.levelUpNonce]);
-
-  useEffect(() => {
-    const prev = prevSecondsRef.current;
-    prevSecondsRef.current = state.secondsLeft;
-    if (!state.isRunning) return;
-    if (prev > 3 && state.secondsLeft <= 3 && state.secondsLeft > 0) {
-      playWarningTriple();
-    }
-  }, [state.isRunning, state.secondsLeft]);
 
   const addStructure = useCallback((structure: BlindStructure) => {
     addBlindStructure(structure);

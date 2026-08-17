@@ -23,12 +23,16 @@ export function playerNickname(userId: string): string {
 
 /** Club nickname for an admin email, falling back to the local part of the address. */
 export function adminDisplayName(email: string): string {
+  return adminAccount(email).nickname;
+}
+
+export function adminAccount(email: string): { id: string; nickname: string; email: string } {
   const normalized = email.trim().toLowerCase();
-  if (!normalized) return 'Админ';
+  if (!normalized) return { id: 'admin', nickname: 'Админ', email: '' };
   const fromUsers = mockUsers.find((user) => user.email.trim().toLowerCase() === normalized);
-  if (fromUsers) return fromUsers.nickname;
+  if (fromUsers) return { id: fromUsers.id, nickname: fromUsers.nickname, email: fromUsers.email };
   const local = normalized.split('@')[0]?.trim();
-  return local || email;
+  return { id: normalized, nickname: local || email, email };
 }
 
 export interface PublicProfileStats {
