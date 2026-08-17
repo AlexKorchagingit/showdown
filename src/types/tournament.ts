@@ -4,6 +4,8 @@ export interface Participant {
   rating: number;
   /** Finishing place (1 = winner). Set when tournament results are entered. */
   place?: number;
+  /** Knockouts scored in a bounty event; awarded as extra rating on close. */
+  knockouts?: number;
   /** Admin note from tournament cashier, shown in a closed lobby. */
   comment?: string;
 }
@@ -55,6 +57,8 @@ export interface Tournament {
   levelDuration: string;
   /** Past / finished only when an admin has closed the tournament. */
   isClosed: boolean;
+  /** Knockout / bounty format: extra rating for knockouts on close. */
+  isBounty?: boolean;
   /** True after admin has submitted finishing places / rating awards. */
   resultsEntered?: boolean;
   /** Admin-only note filled when closing the tournament. */

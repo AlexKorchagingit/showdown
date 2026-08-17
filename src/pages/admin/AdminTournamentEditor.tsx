@@ -11,6 +11,7 @@ import { ALL_PARTICIPANTS } from '../../data/participants';
 import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentStatus';
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
+import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { CURRENT_USER_RATING } from '../../types/player';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
 
@@ -380,6 +381,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
         ...p,
         id: `p-${Date.now()}-${p.id}`,
         place: undefined,
+        knockouts: undefined,
       })),
       features: [...tournament.features],
       isClosed: false,
@@ -491,6 +493,13 @@ function Editor({ tournament }: { tournament: Tournament }) {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="rounded-2xl p-4" style={CARD_STYLE}>
+            <BountyCheckbox
+              checked={tournament.isBounty === true}
+              onChange={(checked) => patch({ isBounty: checked })}
+            />
           </div>
 
           {/* Info */}

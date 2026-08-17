@@ -59,19 +59,17 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
         </div>
       )}
 
-      <div className="relative z-10 w-full flex flex-col justify-start items-center min-h-[60px]">
-        <div
-          className="flex items-center justify-center shrink-0 mb-1"
-          style={{ width: artSize, height: artSize }}
-        >
+      <div className="relative z-10 w-full flex flex-col justify-start items-center">
+        <div className="h-16 w-full flex items-center justify-center mb-2">
           <img
             src={achievement.imageUrl}
             alt=""
             aria-hidden
             className={[
-              'relative z-10 w-full h-full object-contain',
+              'relative z-10 max-h-full max-w-full object-contain',
               done ? '' : 'opacity-55 grayscale-[0.35]',
             ].join(' ')}
+            style={{ width: artSize, height: artSize, maxHeight: '4rem' }}
           />
         </div>
         <p

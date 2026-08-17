@@ -2,7 +2,7 @@ import type { Tournament } from '../types/tournament';
 import { pickParticipants } from './participants';
 import { asset } from '../lib/assets';
 import { CLUB_ADDRESS } from '../lib/clubAddress';
-import { applyPlaceToParticipant } from './prizeStructure';
+import { applyPlaceToParticipant, knockoutBountyPoints } from './prizeStructure';
 
 export const MOCK_TOURNAMENTS: Tournament[] = [
   {
@@ -185,12 +185,26 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
       'Плавная структура турнира',
       'Поздняя регистрация до 21:10',
     ],
-    participants: pickParticipants(13),
+    participants: (() => {
+      const list = pickParticipants(13);
+      const knockouts = [4, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0];
+      return list.map((player, index) => {
+        const placed = applyPlaceToParticipant(player, index + 1, 10000, list.length);
+        const ko = knockouts[index] ?? 0;
+        return {
+          ...placed,
+          knockouts: ko,
+          rating: placed.rating + knockoutBountyPoints(ko),
+        };
+      });
+    })(),
     lateRegUntil: '21:10',
     blindStructure: 'Bounty Hunter',
     stackSize: 30000,
     levelDuration: '20/15 мин',
-    isClosed: false,
+    isClosed: true,
+    isBounty: true,
+    resultsEntered: true,
   },
   {
     id: 'deepstack',

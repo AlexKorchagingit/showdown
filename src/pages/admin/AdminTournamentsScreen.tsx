@@ -6,6 +6,7 @@ import { useTournaments } from '../../context/TournamentContext';
 import { TournamentCard } from '../../components/TournamentCard';
 import { CompactHeader } from '../../components/CompactHeader';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
+import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { compareByStart, isFinished } from '../../lib/tournamentStatus';
 import { asset } from '../../lib/assets';
 import type { Tournament } from '../../types/tournament';
@@ -33,6 +34,7 @@ interface CreateForm {
   guarantee: string;
   about: string;
   features: string[];
+  isBounty: boolean;
 }
 
 const EMPTY_FORM: CreateForm = {
@@ -43,6 +45,7 @@ const EMPTY_FORM: CreateForm = {
   guarantee: '20000',
   about: '',
   features: [],
+  isBounty: false,
 };
 
 function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }) {
@@ -67,6 +70,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       guarantee: Number(form.guarantee) || 0,
       about: form.about.trim(),
       features: form.features,
+      isBounty: form.isBounty,
       participants: [],
       lateRegUntil: '22:45',
       blindStructure: 'Плавная',
@@ -152,6 +156,10 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
           features={form.features}
           onChange={(features) => set('features', features)}
         />
+      </section>
+
+      <section>
+        <BountyCheckbox checked={form.isBounty} onChange={(checked) => set('isBounty', checked)} />
       </section>
 
       <button

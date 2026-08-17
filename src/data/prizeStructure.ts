@@ -1,5 +1,20 @@
 import type { Participant } from '../types/tournament';
 
+/** Extra season rating awarded per knockout in a bounty tournament. */
+export const KNOCKOUT_BOUNTY_POINTS = 200;
+
+export function knockoutBountyPoints(knockouts?: number, isBounty = true): number {
+  if (!isBounty) return 0;
+  const count = Math.floor(Number(knockouts) || 0);
+  return count > 0 ? count * KNOCKOUT_BOUNTY_POINTS : 0;
+}
+
+/** Parse the cashier knockout prompt; invalid input becomes 0. */
+export function parseKnockoutCount(raw: string): number {
+  const count = Math.floor(Number(String(raw).trim().replace(',', '.')));
+  return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
 export type CalculatedPayout = {
   place: number;
   points: number;
@@ -119,29 +134,32 @@ export function swapParticipantPlaces(
   });
 }
 
-/** Add calculated ITM points onto season ratings (call once when closing). */
+/** Add calculated ITM points (and bounty knockouts) onto season ratings. */
 export function awardCalculatedPayouts(
   participants: Participant[],
   guarantee: number,
+  isBounty = false,
 ): Participant[] {
   const totalPlayers = participants.length;
   return participants.map((participant) => {
     if (typeof participant.place !== 'number') return participant;
     const points = ratingPointsForPlace(participant.place, guarantee, totalPlayers);
-    if (points === 0) return participant;
-    return { ...participant, rating: participant.rating + points };
+    const bounty = knockoutBountyPoints(participant.knockouts, isBounty);
+    if (points === 0 && bounty === 0) return participant;
+    return { ...participant, rating: participant.rating + points + bounty };
   });
 }
 
-/** Remaining player becomes 1st, then ITM points are awarded. */
+/** Remaining player becomes 1st, then ITM + knockout points are awarded. */
 export function closeTournamentWithPayouts(
   participants: Participant[],
   guarantee: number,
+  isBounty = false,
 ): Participant[] {
   const leftover = participants.filter((p) => typeof p.place !== 'number');
   const withWinner =
     leftover.length === 1
       ? participants.map((p) => (p.id === leftover[0].id ? { ...p, place: 1 } : p))
       : participants;
-  return awardCalculatedPayouts(withWinner, guarantee);
+  return awardCalculatedPayouts(withWinner, guarantee, isBounty);
 }

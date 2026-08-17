@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, Settings, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, BarChart3, ChevronDown, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
+import { useUser } from '../context/UserContext';
+import { useTournaments } from '../context/TournamentContext';
+import { useFinance } from '../context/FinanceContext';
 import { CURRENT_PLAYER_STATS } from '../data/playerStats';
 import {
   characterProfileLeft,
@@ -13,6 +16,8 @@ import {
   characterImageForPlayer,
 } from '../lib/playerCharacter';
 import { resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
+import { computePlayerAdminStats } from '../lib/playerAnalytics';
+import { PlayerAdminStatsModal } from '../components/admin/PlayerAdminStatsModal';
 
 const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
 
@@ -52,7 +57,11 @@ export function ProfilePage() {
   const { playerId } = useParams<{ playerId?: string }>();
   const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
+  const { isAdmin } = useUser();
+  const { tournaments } = useTournaments();
+  const { transactions, getDealerHours } = useFinance();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const readOnly = Boolean(playerId);
   const state = (location.state ?? null) as Partial<PublicProfileStats> | null;
@@ -104,6 +113,19 @@ export function ProfilePage() {
       { label: 'Топ 9', value: publicProfile.finals ?? 0 },
     ].filter((stat) => stat.value > 0);
   }, [readOnly, publicProfile]);
+
+  const adminStats = useMemo(() => {
+    if (!readOnly || !playerId) return null;
+    return computePlayerAdminStats(
+      playerId,
+      displayNickname,
+      tournaments,
+      transactions,
+      getDealerHours,
+    );
+  }, [readOnly, playerId, displayNickname, tournaments, transactions, getDealerHours]);
+
+  const showAdminStats = readOnly && isAdmin && adminStats != null;
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -185,6 +207,25 @@ export function ProfilePage() {
         </motion.div>
       </div>
 
+      {showAdminStats && (
+        <div className="relative z-10 mx-4 mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setStatsOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 active:opacity-70 transition-opacity"
+            style={{
+              background: 'rgba(17,11,9,0.72)',
+              border: '1px solid rgba(217,153,98,0.35)',
+            }}
+          >
+            <BarChart3 size={15} strokeWidth={2.3} className="text-[#F2D8A7]" />
+            <span className="text-[11px] font-800 uppercase tracking-wide text-[#F2D8A7]">
+              Статистика
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Left stats */}
       {sideStats.length > 0 && (
         <div className="relative mt-4 w-fit">
@@ -233,6 +274,14 @@ export function ProfilePage() {
             МАГАЗИН
           </button>
         </div>
+      )}
+
+      {showAdminStats && statsOpen && adminStats && (
+        <PlayerAdminStatsModal
+          nickname={displayNickname}
+          stats={adminStats}
+          onClose={() => setStatsOpen(false)}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { PlayerNameLink } from '../components/PlayerNameLink';
@@ -11,7 +11,7 @@ import {
   sortByPlace,
   hasMissingPlaces,
 } from '../lib/tournamentStatus';
-import { ratingPointsForPlace } from '../data/prizeStructure';
+import { knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { formatTxDateTime } from '../lib/transactionDisplay';
@@ -257,7 +257,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
                 <span className="text-[12px] font-600" style={{ color: '#D99962' }}>
-                  {tournamentFinished ? 'Место / очки' : 'Рейтинг сезона'}
+                  {tournamentFinished ? 'Очки' : 'Рейтинг сезона'}
                 </span>
               </div>
 
@@ -279,6 +279,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     const award = p.place != null
                       ? ratingPointsForPlace(p.place, live.guarantee, live.participants.length)
                       : 0;
+                    const knockouts = p.knockouts ?? 0;
+                    const koBonus = knockoutBountyPoints(knockouts, live.isBounty === true);
 
                     return (
                       <div key={p.id}>
@@ -354,14 +356,30 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                             )}
                           </div>
 
-                          <p
-                            className="text-[12px] font-700 shrink-0"
-                            style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
-                          >
-                            {isClosedRow
-                              ? (p.place != null ? `+${award.toLocaleString('ru-RU')}` : '—')
-                              : p.rating.toLocaleString('ru-RU')}
-                          </p>
+                          <div className="shrink-0 text-right">
+                            <p
+                              className="text-[12px] font-700"
+                              style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
+                            >
+                              {isClosedRow
+                                ? (p.place != null ? `+${award.toLocaleString('ru-RU')}` : '—')
+                                : p.rating.toLocaleString('ru-RU')}
+                              {isClosedRow && live.isBounty && (
+                                <span className="ml-1 font-800" style={{ color: '#86efac' }}>
+                                  + {koBonus.toLocaleString('ru-RU')} за КО
+                                </span>
+                              )}
+                            </p>
+                            {isClosedRow && live.isBounty && (
+                              <p
+                                className="flex items-center justify-end gap-1 mt-0.5 text-[10px] font-700"
+                                style={{ color: '#F2D8A7' }}
+                              >
+                                <Crosshair size={11} strokeWidth={2.4} />
+                                x {knockouts}
+                              </p>
+                            )}
+                          </div>
 
                         </div>
 

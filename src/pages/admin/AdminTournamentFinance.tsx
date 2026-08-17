@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronUp, MessageSquare, Minus, Plus, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
 import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
@@ -10,6 +10,7 @@ import {
   applyPlaceToParticipant,
   calculatePayouts,
   closeTournamentWithPayouts,
+  parseKnockoutCount,
   swapParticipantPlaces,
 } from '../../data/prizeStructure';
 import {
@@ -20,12 +21,23 @@ import {
 import { formatTxDateTime } from '../../lib/transactionDisplay';
 import { PlayerNameLink } from '../../components/PlayerNameLink';
 import type { TournamentDealer } from '../../types/tournament';
+import { ALL_PARTICIPANTS } from '../../data/participants';
+import { CURRENT_USER_RATING } from '../../types/player';
+import { systemPlayerDirectory } from '../../lib/systemPlayers';
+import { hasGlobalUnpaidDebt } from '../../lib/playerAnalytics';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
   { type: 'rebuy', label: 'Ребай' },
   { type: 'addon', label: 'Аддон' },
 ];
+
+function resolveSeasonRating(nickname: string): number {
+  const fromPool = ALL_PARTICIPANTS.find((p) => p.nickname === nickname);
+  if (fromPool) return fromPool.rating;
+  if (nickname === CURRENT_USER_RATING.nickname) return CURRENT_USER_RATING.points;
+  return 0;
+}
 
 function formatHourDelta(delta: number): string {
   const abs = Math.abs(delta);
@@ -69,6 +81,7 @@ export function AdminTournamentFinance() {
   const [dealerName, setDealerName] = useState('');
   const [dealerHours, setDealerHours] = useState('');
   const [hourFlash, setHourFlash] = useState<Record<string, { delta: number; token: number }>>({});
+  const [addOpen, setAddOpen] = useState(false);
 
   const tournament = tournaments.find((t) => t.id === id);
 
@@ -89,6 +102,11 @@ export function AdminTournamentFinance() {
   const remainingInPlay = tournament.participants.filter((p) => typeof p.place !== 'number').length;
   const closeBlocked = remainingInPlay > 1;
   const nonPlayingDealers = tournament.dealers ?? [];
+  const takenIds = new Set(tournament.participants.map((p) => p.id));
+  const takenNicks = new Set(tournament.participants.map((p) => p.nickname.toLowerCase()));
+  const availablePlayers = systemPlayerDirectory().filter(
+    (user) => !takenIds.has(user.id) && !takenNicks.has(user.nickname.toLowerCase()),
+  );
 
   const flashHours = (key: string, delta: number) => {
     setHourFlash((prev) => ({ ...prev, [key]: { delta, token: Date.now() } }));
@@ -113,32 +131,89 @@ export function AdminTournamentFinance() {
         : `В призах: ${payouts.length} чел. (30%)\n${payouts
             .map((row) => `${row.place}-е место — ${row.points.toLocaleString('ru-RU')} очков`)
             .join('\n')}`;
+    const bountyNote = tournament.isBounty
+      ? '\n\nНокаут-турнир: к очкам за место добавится 200 за каждый нокаут.'
+      : '';
     if (
       !window.confirm(
-        `Закрыть турнир? Он станет прошедшим, запись будет недоступна.\n\n${preview}\n\nЭти очки будут начислены по занятым местам.`,
+        `Закрыть турнир? Он станет прошедшим, запись будет недоступна.\n\n${preview}${bountyNote}\n\nЭти очки будут начислены по занятым местам.`,
       )
     ) {
       return;
     }
+
+    let closingParticipants = tournament.participants;
+    if (tournament.isBounty) {
+      const leftover = closingParticipants.filter((p) => typeof p.place !== 'number');
+      if (leftover.length === 1) {
+        const raw = window.prompt(
+          'Сколько нокаутов сделал игрок?',
+          String(leftover[0].knockouts ?? 0),
+        );
+        if (raw === null) return;
+        const knockouts = parseKnockoutCount(raw);
+        closingParticipants = closingParticipants.map((p) =>
+          p.id === leftover[0].id ? { ...p, knockouts } : p,
+        );
+      }
+    }
+
     updateTournament(tournament.id, {
       isClosed: true,
       resultsEntered: true,
-      participants: closeTournamentWithPayouts(tournament.participants, tournament.guarantee),
+      participants: closeTournamentWithPayouts(
+        closingParticipants,
+        tournament.guarantee,
+        tournament.isBounty === true,
+      ),
     });
   };
 
   const eliminatePlayer = (playerId: string) => {
     const place = nextEliminatedPlace(tournament.participants);
     if (place == null) return;
+    const player = tournament.participants.find((p) => p.id === playerId);
+    if (!player) return;
+
+    let knockouts = player.knockouts;
+    if (tournament.isBounty) {
+      const raw = window.prompt('Сколько нокаутов сделал игрок?', String(knockouts ?? 0));
+      if (raw === null) return;
+      knockouts = parseKnockoutCount(raw);
+    }
+
     const totalPlayers = tournament.participants.length;
     const syncRating = tournament.resultsEntered === true;
     updateTournament(tournament.id, {
       participants: tournament.participants.map((p) => {
         if (p.id !== playerId) return p;
-        return syncRating
+        const next = syncRating
           ? applyPlaceToParticipant(p, place, tournament.guarantee, totalPlayers)
           : { ...p, place };
+        return tournament.isBounty ? { ...next, knockouts } : next;
       }),
+    });
+  };
+
+  const addPlayerToTournament = (id: string, nickname: string) => {
+    if (tournament.participants.some((p) => p.id === id || p.nickname === nickname)) return;
+    if (tournament.participants.length >= tournament.totalSeats) return;
+    updateTournament(tournament.id, {
+      participants: [
+        ...tournament.participants,
+        { id, nickname, rating: resolveSeasonRating(nickname) },
+      ],
+    });
+    setAddOpen(false);
+  };
+
+  const removePlayerFromTournament = (playerId: string) => {
+    const hasTx = transactions.some(
+      (tx) => tx.tournamentId === tournament.id && tx.userId === playerId,
+    );
+    if (hasTx) return;
+    updateTournament(tournament.id, {
+      participants: tournament.participants.filter((p) => p.id !== playerId),
     });
   };
 
@@ -248,6 +323,68 @@ export function AdminTournamentFinance() {
           {tournament.title}
         </p>
 
+        {!tournament.isClosed && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setAddOpen((open) => !open)}
+              className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-800 active:scale-[0.98] transition-transform"
+              style={{
+                background: 'rgba(217,153,98,0.12)',
+                border: '1px solid rgba(217,153,98,0.4)',
+                color: '#F2D8A7',
+              }}
+            >
+              <UserPlus size={16} strokeWidth={2.3} />
+              + Добавить игрока
+            </button>
+            <AnimatePresence initial={false}>
+              {addOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22 }}
+                  className="overflow-hidden"
+                >
+                  <div
+                    className="mt-2 max-h-52 scrollable space-y-1.5 rounded-xl p-2"
+                    style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
+                  >
+                    {availablePlayers.length === 0 ? (
+                      <p className="text-center text-[12px] py-3" style={{ color: '#6B6360' }}>
+                        Все пользователи уже в турнире
+                      </p>
+                    ) : (
+                      availablePlayers.map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => addPlayerToTournament(user.id, user.nickname)}
+                          className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg active:scale-[0.98]"
+                          style={{ background: '#231A16' }}
+                        >
+                          <span className="min-w-0 text-left">
+                            <span className="block text-[13px] font-700 text-white truncate">
+                              {user.nickname}
+                            </span>
+                            {user.email ? (
+                              <span className="block text-[11px] truncate" style={{ color: '#8c8c88' }}>
+                                {user.email}
+                              </span>
+                            ) : null}
+                          </span>
+                          <Plus size={15} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
         {tournament.isClosed ? (
           <div
             className="w-full py-3.5 rounded-xl text-center text-[13px] font-800 tracking-wide"
@@ -299,7 +436,13 @@ export function AdminTournamentFinance() {
               );
               const hours = getDealerHours(tournament.id, player.id);
               const dealerLoggedAt = getDealerLoggedAt(tournament.id, player.id);
-              const hasDebt = unpaid.length > 0;
+              const hasLocalDebt = unpaid.length > 0;
+              const hasDebt = hasGlobalUnpaidDebt(transactions, player.id);
+              const canRemove =
+                !tournament.isClosed &&
+                !transactions.some(
+                  (tx) => tx.tournamentId === tournament.id && tx.userId === player.id,
+                );
               const eliminated = typeof player.place === 'number';
               const placedIdx = placedOrdered.findIndex((p) => p.id === player.id);
               const canMoveUp = eliminated && placedIdx > 0;
@@ -311,7 +454,7 @@ export function AdminTournamentFinance() {
                   className="rounded-2xl p-4 space-y-3"
                   style={{
                     background: '#2A211D',
-                    border: hasDebt
+                    border: hasLocalDebt
                       ? '1px solid rgba(239,68,68,0.45)'
                       : '1px solid rgba(255,255,255,0.06)',
                   }}
@@ -344,6 +487,15 @@ export function AdminTournamentFinance() {
                           {player.place}-е место
                         </p>
                       )}
+                      {tournament.isBounty && (
+                        <p
+                          className="flex items-center gap-1 text-[11px] font-700 mt-0.5"
+                          style={{ color: '#F2D8A7' }}
+                        >
+                          <Crosshair size={12} strokeWidth={2.4} />
+                          x {player.knockouts ?? 0}
+                        </p>
+                      )}
                       {player.comment?.trim() && (
                         <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: '#A39B98' }}>
                           {player.comment}
@@ -362,6 +514,20 @@ export function AdminTournamentFinance() {
                     >
                       <MessageSquare size={16} style={{ color: '#D99962' }} />
                     </button>
+                    {canRemove && (
+                      <button
+                        type="button"
+                        onClick={() => removePlayerFromTournament(player.id)}
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        style={{
+                          background: 'rgba(239,68,68,0.12)',
+                          border: '1px solid rgba(239,68,68,0.35)',
+                        }}
+                        aria-label="Удалить из турнира"
+                      >
+                        <X size={16} strokeWidth={2.4} style={{ color: '#f87171' }} />
+                      </button>
+                    )}
                     {eliminated && (
                       <div className="flex flex-col shrink-0 -my-1">
                         <button
@@ -531,7 +697,7 @@ export function AdminTournamentFinance() {
                   ) : null}
                   </div>
 
-                  {hasDebt && unpaidTotal > 0 && (
+                  {hasLocalDebt && unpaidTotal > 0 && (
                     <button
                       type="button"
                       onClick={() => markPlayerPaid(tournament.id, player.id)}
