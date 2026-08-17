@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
-import { useUser } from '../../context/UserContext';
 import { useAuditLog } from '../../context/AuditLogContext';
 import { DEFAULT_ENTRY_FEE, TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
@@ -66,7 +65,6 @@ export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { tournaments, updateTournament } = useTournaments();
-  const { email } = useUser();
   const { logAction } = useAuditLog();
   const {
     transactions,
@@ -151,12 +149,13 @@ export function AdminTournamentFinance() {
     const reason = window.prompt(`Причина выдачи билета для ${nickname}?`, '');
     if (reason === null) return;
     addTicket(tournament.id, userId, reason.trim() || 'Билет');
-    logAction(
-      email,
-      'Билет',
-      `Выдан бесплатный вход на турнир ${tournament.title}. Причина: ${reason.trim() || 'Билет'}`,
-      playerEmail(userId, nickname),
-    );
+    logAction({
+      actionType: 'Билет',
+      description: 'Выдан бесплатный вход',
+      targetUserEmail: playerEmail(userId, nickname),
+      targetName: nickname,
+      details: `Турнир: ${tournament.title}. Причина: ${reason.trim() || 'Билет'}`,
+    });
   };
 
   const handleCharge = (
@@ -165,22 +164,24 @@ export function AdminTournamentFinance() {
     type: Exclude<TransactionType, 'ticket'>,
   ) => {
     addCharge(tournament.id, userId, type);
-    logAction(
-      email,
-      'Касса',
-      `Создана транзакция: ${TRANSACTION_TYPE_LABEL[type]} (${DEFAULT_ENTRY_FEE}р) на турнире ${tournament.title}`,
-      playerEmail(userId, nickname),
-    );
+    logAction({
+      actionType: 'Касса',
+      description: `Создана транзакция: ${TRANSACTION_TYPE_LABEL[type]}`,
+      targetUserEmail: playerEmail(userId, nickname),
+      targetName: nickname,
+      details: `Турнир: ${tournament.title}. Сумма: ${DEFAULT_ENTRY_FEE.toLocaleString('ru-RU')} руб`,
+    });
   };
 
   const handlePayDebt = (userId: string, nickname: string, amount: number) => {
     markPlayerPaid(tournament.id, userId);
-    logAction(
-      email,
-      'Долг',
-      `Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
-      playerEmail(userId, nickname),
-    );
+    logAction({
+      actionType: 'Долг',
+      description: 'Погашение долга',
+      targetUserEmail: playerEmail(userId, nickname),
+      targetName: nickname,
+      details: `Турнир: ${tournament.title}. Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
+    });
   };
 
   const closeTournament = () => {
@@ -232,11 +233,12 @@ export function AdminTournamentFinance() {
         tournament.isBounty === true,
       ),
     });
-    logAction(
-      email,
-      'Турнир',
-      `Турнир ${tournament.title} закрыт. Внесены результаты`,
-    );
+    logAction({
+      actionType: 'Турнир',
+      description: 'Турнир закрыт',
+      targetName: tournament.title,
+      details: `Внесены результаты. Игроков: ${closingParticipants.length}`,
+    });
   };
 
   const eliminatePlayer = (playerId: string) => {
@@ -254,6 +256,7 @@ export function AdminTournamentFinance() {
 
     const totalPlayers = tournament.participants.length;
     const syncRating = tournament.resultsEntered === true;
+    const oldRating = player.rating;
     updateTournament(tournament.id, {
       participants: tournament.participants.map((p) => {
         if (p.id !== playerId) return p;
@@ -262,6 +265,20 @@ export function AdminTournamentFinance() {
           : { ...p, place };
         return tournament.isBounty ? { ...next, knockouts } : next;
       }),
+    });
+    const newRating = syncRating
+      ? applyPlaceToParticipant(player, place, tournament.guarantee, totalPlayers).rating
+      : player.rating;
+    const ratingNote =
+      syncRating && newRating !== oldRating
+        ? ` Рейтинг изменен с ${oldRating.toLocaleString('ru-RU')} на ${newRating.toLocaleString('ru-RU')}.`
+        : '';
+    logAction({
+      actionType: 'Результат',
+      description: 'Добавлен результат',
+      targetUserEmail: playerEmail(player.id, player.nickname),
+      targetName: player.nickname,
+      details: `Турнир: ${tournament.title}. ${place} место.${ratingNote}`,
     });
   };
 
@@ -274,6 +291,13 @@ export function AdminTournamentFinance() {
         { id, nickname, rating: resolveSeasonRating(nickname) },
       ],
     });
+    logAction({
+      actionType: 'Игрок',
+      description: 'Игрок добавлен в турнир',
+      targetUserEmail: playerEmail(id, nickname),
+      targetName: nickname,
+      details: `Турнир: ${tournament.title}`,
+    });
     setAddOpen(false);
   };
 
@@ -283,12 +307,13 @@ export function AdminTournamentFinance() {
     updateTournament(tournament.id, {
       participants: tournament.participants.filter((p) => p.id !== playerId),
     });
-    logAction(
-      email,
-      'Игрок',
-      `Игрок удален из турнира ${tournament.title}`,
-      player ? playerEmail(player.id, player.nickname) : undefined,
-    );
+    logAction({
+      actionType: 'Игрок',
+      description: 'Игрок удалён из турнира',
+      targetUserEmail: player ? playerEmail(player.id, player.nickname) : undefined,
+      targetName: player?.nickname,
+      details: `Турнир: ${tournament.title}`,
+    });
   };
 
   const movePlace = (playerId: string, direction: -1 | 1) => {

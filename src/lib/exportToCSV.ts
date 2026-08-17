@@ -60,15 +60,18 @@ export function exportAuditLogsToCSV(
   logs: ActionLog[],
   filename = `showdown-audit-logs-${new Date().toISOString().slice(0, 10)}.csv`,
 ) {
-  const headers = ['Date', 'Time', 'Admin', 'Action', 'Description', 'TargetUser'];
+  const headers = ['Date', 'Time', 'Admin', 'AdminName', 'Action', 'Description', 'Target', 'Details', 'TargetUser'];
   const rows = logs.map((log) => {
     const stamp = new Date(log.timestamp).toISOString();
     return [
       formatTxDate(stamp),
       formatTxTime(stamp),
       log.adminEmail,
+      log.adminName,
       log.actionType,
       log.description,
+      log.targetName ?? '',
+      log.details ?? '',
       log.targetUserEmail ?? '',
     ];
   });

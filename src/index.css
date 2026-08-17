@@ -27,6 +27,10 @@
 }
 
 @layer utilities {
+  .\@container {
+    container-type: inline-size;
+  }
+
   .scrollable {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;

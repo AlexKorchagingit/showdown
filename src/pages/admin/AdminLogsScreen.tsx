@@ -93,19 +93,31 @@ export function AdminLogsScreen() {
             Нет записей за выбранный период
           </p>
         ) : (
-          filtered.map((log) => (
-            <div key={log.id} className="bg-[#231A16] p-3 rounded-lg mb-2 text-sm">
-              <p style={{ color: '#8c8c88' }}>{formatLogDateTime(log.timestamp)}</p>
-              <p>
-                <span style={{ color: '#D99962' }}>{log.adminEmail}</span>
-                <span className="text-white">
-                  {' → '}
-                  {log.actionType}
-                </span>
-              </p>
-              <p style={{ color: '#A39B98' }}>{log.description}</p>
-            </div>
-          ))
+          filtered.map((log) => {
+            const actor = log.adminName || log.adminEmail;
+            const title = [log.actionType, log.description].filter(Boolean).join(': ');
+            const secondLine = [log.targetName || log.targetUserEmail, log.details]
+              .filter(Boolean)
+              .join(' · ');
+            return (
+              <div key={log.id} className="bg-[#231A16] p-3 rounded-lg mb-2">
+                <p className="text-[11px] font-600 mb-1" style={{ color: '#8c8c88' }}>
+                  {formatLogDateTime(log.timestamp)}
+                  <span className="text-[#6B6360]"> · {log.adminEmail}</span>
+                </p>
+                <p className="text-sm font-700 text-white leading-snug">
+                  <span style={{ color: '#D99962' }}>{actor}</span>
+                  {' · '}
+                  {title}
+                </p>
+                {secondLine ? (
+                  <p className="text-sm mt-1 leading-snug" style={{ color: '#A39B98' }}>
+                    {secondLine}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })
         )}
       </div>
     </div>

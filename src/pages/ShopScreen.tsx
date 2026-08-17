@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Gem } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
+import { useAuditLog } from '../context/AuditLogContext';
 import { CoinBalance } from '../components/CoinBalance';
 import { RubyInfoModal } from '../components/RubyInfoModal';
 import { shopItemsOfType, type ShopItem, type ShopItemType } from '../data/shopItems';
@@ -160,7 +161,8 @@ function ItemCard({
 
 export function ShopScreen() {
   const navigate = useNavigate();
-  const { coins, isOwned, isEquipped, buyItem, equipItem } = useProfile();
+  const { coins, isOwned, isEquipped, buyItem, equipItem, nickname } = useProfile();
+  const { logAction } = useAuditLog();
   const [tab, setTab] = useState<ShopItemType>('character');
   const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
 
@@ -242,7 +244,20 @@ export function ShopScreen() {
                   owned={owned}
                   equipped={isEquipped(item.id)}
                   affordable={coins >= item.price}
-                  onSelect={() => (owned ? equipItem(item.id) : buyItem(item.id))}
+                  onSelect={() => {
+                    if (owned) {
+                      equipItem(item.id);
+                      return;
+                    }
+                    if (!buyItem(item.id)) return;
+                    const kind = item.type === 'bg' ? 'фона' : 'персонажа';
+                    logAction({
+                      actionType: 'Магазин',
+                      description: `Покупка: ${item.name}`,
+                      targetName: nickname,
+                      details: `Списано ${item.price.toLocaleString('ru-RU')} рубинов, причина: покупка ${kind}`,
+                    });
+                  }}
                 />
               );
             })}

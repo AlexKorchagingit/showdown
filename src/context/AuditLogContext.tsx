@@ -8,36 +8,28 @@ import {
   type ReactNode,
 } from 'react';
 import { loadAuditLogs, logAction as persistLogAction, subscribeAuditLogs } from '../lib/auditLogStorage';
+import { adminDisplayName } from '../lib/playerName';
 import { useUser } from './UserContext';
-import type { ActionLog } from '../types/auditLog';
+import type { ActionLog, LogActionDraft } from '../types/auditLog';
 
 interface AuditLogContextValue {
   logs: ActionLog[];
-  logAction: (
-    adminEmail: string,
-    actionType: string,
-    description: string,
-    targetUserEmail?: string,
-  ) => void;
+  logAction: (draft: LogActionDraft) => void;
 }
 
 const AuditLogContext = createContext<AuditLogContextValue | null>(null);
 
 export function AuditLogProvider({ children }: { children: ReactNode }) {
+  const { email } = useUser();
   const [logs, setLogs] = useState<ActionLog[]>(() => loadAuditLogs());
 
   useEffect(() => subscribeAuditLogs(() => setLogs(loadAuditLogs())), []);
 
   const logAction = useCallback(
-    (
-      adminEmail: string,
-      actionType: string,
-      description: string,
-      targetUserEmail?: string,
-    ) => {
-      persistLogAction(adminEmail, actionType, description, targetUserEmail);
+    (draft: LogActionDraft) => {
+      persistLogAction(email, draft, adminDisplayName(email));
     },
-    [],
+    [email],
   );
 
   const value = useMemo(() => ({ logs, logAction }), [logs, logAction]);
@@ -51,14 +43,8 @@ export function useAuditLog() {
   return ctx;
 }
 
-/** `logAction` bound to the signed-in admin email. */
+/** `logAction` bound to the signed-in admin. */
 export function useLogAction() {
   const { logAction } = useAuditLog();
-  const { email } = useUser();
-  return useCallback(
-    (actionType: string, description: string, targetUserEmail?: string) => {
-      logAction(email, actionType, description, targetUserEmail);
-    },
-    [logAction, email],
-  );
+  return logAction;
 }

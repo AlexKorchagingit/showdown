@@ -41,7 +41,6 @@ const CIRCLE_SIZE = 420;
 const STROKE = 12;
 const RADIUS = 192;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]';
 const GLASS =
   'bg-white/[0.03] border border-white/[0.05] rounded-2xl p-5 backdrop-blur-sm';
 const NOISE_BG = `url("data:image/svg+xml,${encodeURIComponent(
@@ -56,9 +55,9 @@ function AutoStack({
   className?: string;
 }) {
   return (
-    <div className="w-full min-w-0 px-1" style={{ containerType: 'inline-size' }}>
+    <div className="@container w-full min-w-0 px-1" style={{ containerType: 'inline-size' }}>
       <p
-        className={`font-black leading-none tabular-nums truncate text-center text-[min(2.5rem,15cqi)] ${className ?? ''}`}
+        className={`font-black leading-none tabular-nums whitespace-nowrap text-center text-[length:clamp(1rem,15cqi,3rem)] ${className ?? ''}`}
       >
         {children}
       </p>
@@ -296,34 +295,34 @@ export function AdminBlindsTimer() {
           </section>
 
           {chipleader && (
-          <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0">
-            <section className="relative bg-white/[0.03] border border-white/[0.05] rounded-2xl px-5 pb-5 pt-4 text-center overflow-visible min-w-0">
+          <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0 pt-[160px]">
+            <section className="relative bg-white/[0.03] border border-white/[0.05] rounded-2xl px-5 pb-4 pt-3 text-center overflow-visible min-w-0">
               <img
                 src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
                 alt=""
-                className="absolute bottom-[60px] left-1/2 -translate-x-1/2 h-[220px] w-auto object-contain z-30 pointer-events-none"
+                className="absolute bottom-[4.75rem] left-1/2 z-30 h-[250px] w-auto origin-bottom -translate-x-1/2 scale-110 object-contain object-bottom pointer-events-none"
               />
-              <p className="relative z-40 text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
-                CHIPLEADER
-              </p>
-              <p className="relative z-40 text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
-                {chipleader.nickname}
-              </p>
-              <AutoStack className="relative z-40 mt-1 text-[#D99962]">
-                {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
-              </AutoStack>
+              <div className="relative z-40">
+                <p className="text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
+                  CHIPLEADER
+                </p>
+                <p className="text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
+                  {chipleader.nickname}
+                </p>
+                <AutoStack className="mt-1 text-[#D99962]">
+                  {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
+                </AutoStack>
+              </div>
             </section>
           </div>
           )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-4 min-h-0">
-          <p className="text-2xl font-800 uppercase tracking-widest text-[#D99962] mt-8">
+          <p className="text-2xl font-800 uppercase tracking-widest text-white/45 mt-8">
             SHOWDOWN
           </p>
-          <h1
-            className={`text-2xl md:text-3xl font-black uppercase tracking-wide text-center mt-2 leading-tight ${GOLD_TEXT}`}
-          >
+          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-wide text-center mt-2 leading-tight text-[#D99962]">
             {eventTitle}
           </h1>
 
@@ -415,7 +414,7 @@ export function AdminBlindsTimer() {
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="h-24 md:h-32 w-auto object-contain opacity-90 self-end"
+            className="h-36 md:h-48 w-auto object-contain opacity-90 self-end"
           />
           <section className={`${GLASS} w-full self-end text-right space-y-4`}>
             {timeToNextBreak != null && (

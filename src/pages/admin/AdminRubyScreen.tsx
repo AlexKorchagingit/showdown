@@ -65,12 +65,13 @@ export function AdminRubyScreen() {
         creditCurrentUser: addCoins,
       });
     }
-    logAction(
-      email,
-      'Рубины',
-      `Начислено ${parsedAmount.toLocaleString('ru-RU')} рубинов. Причина: ${message}`,
-      target.kind === 'one' ? target.email : undefined,
-    );
+    logAction({
+      actionType: 'Рубины',
+      description: target.kind === 'all' ? 'Начисление всем игрокам' : 'Начисление рубинов',
+      targetUserEmail: target.kind === 'one' ? target.email : undefined,
+      targetName: target.kind === 'one' ? target.nickname : 'Все игроки',
+      details: `Начислено ${parsedAmount.toLocaleString('ru-RU')} рубинов, причина: ${message}`,
+    });
     setRevision((value) => value + 1);
     closeModal();
   };

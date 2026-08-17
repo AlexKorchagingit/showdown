@@ -59,7 +59,7 @@ export function ProfilePage() {
   const { playerId } = useParams<{ playerId?: string }>();
   const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
-  const { isAdmin, email } = useUser();
+  const { isAdmin } = useUser();
   const { logAction } = useAuditLog();
   const { tournaments } = useTournaments();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
@@ -288,12 +288,13 @@ export function ProfilePage() {
                   const amount = adminStats?.clubDebt ?? 0;
                   markAllUnpaidForPlayer(playerId);
                   if (amount > 0) {
-                    logAction(
-                      email,
-                      'Долг',
-                      `Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
-                      playerEmail(playerId, displayNickname),
-                    );
+                    logAction({
+                      actionType: 'Долг',
+                      description: 'Погашение долга',
+                      targetName: displayNickname,
+                      targetUserEmail: playerEmail(playerId, displayNickname),
+                      details: `Погашен долг на сумму ${amount.toLocaleString('ru-RU')} руб`,
+                    });
                   }
                 }
               : undefined

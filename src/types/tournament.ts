@@ -54,6 +54,8 @@ export interface Tournament {
   features: string[];
   /** Occupied seats are always derived from this list — never stored separately. */
   participants: Participant[];
+  /** Optional finishing table; statistic finalists also read `participants.place`. */
+  results?: Participant[];
   lateRegUntil: string;
   blindStructure: string;
   stackSize: number;

@@ -174,7 +174,10 @@ function HistoryList({ rows }: { rows: PlayerTournamentRow[] }) {
           className="rounded-xl px-3 py-3"
           style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <p className="text-[14px] font-800 text-white">{row.title}</p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[14px] font-800 text-white truncate">{row.title}</p>
+            <p className="text-sm text-[#A39B98] shrink-0">{row.date}</p>
+          </div>
           <p className="text-[12px] font-600 mt-1" style={{ color: '#A39B98' }}>
             Место {row.place ?? '—'} из {row.field}{' '}
             <span style={{ color: '#D99962' }}>(В призах: {row.itm} чел)</span>

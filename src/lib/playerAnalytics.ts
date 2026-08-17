@@ -13,6 +13,7 @@ export type PlayerLedgerRow = {
 export type PlayerTournamentRow = {
   id: string;
   title: string;
+  date: string;
   place: number | null;
   field: number;
   itm: number;
@@ -79,6 +80,7 @@ export function computePlayerAdminStats(
     return {
       id: tournament.id,
       title: tournament.title,
+      date: formatTxDate(`${tournament.startDate}T12:00:00`),
       place: typeof participant?.place === 'number' ? participant.place : null,
       field,
       itm: itmPlaceCount(field),

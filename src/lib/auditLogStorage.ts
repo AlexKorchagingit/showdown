@@ -1,4 +1,5 @@
-import { AUDIT_LOG_STORAGE_KEY, type ActionLog } from '../types/auditLog';
+import { AUDIT_LOG_STORAGE_KEY, type ActionLog, type LogActionDraft } from '../types/auditLog';
+import { adminDisplayName } from './playerName';
 
 const MAX_LOGS = 2000;
 
@@ -24,13 +25,23 @@ function isActionLog(value: unknown): value is ActionLog {
   );
 }
 
+function normalizeLog(row: ActionLog): ActionLog {
+  return {
+    ...row,
+    adminName: row.adminName || adminDisplayName(row.adminEmail),
+    ...(row.targetUserEmail ? { targetUserEmail: row.targetUserEmail } : {}),
+    ...(row.targetName ? { targetName: row.targetName } : {}),
+    ...(row.details ? { details: row.details } : {}),
+  };
+}
+
 function readStoredLogs(): ActionLog[] {
   try {
     const raw = localStorage.getItem(AUDIT_LOG_STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isActionLog);
+    return parsed.filter(isActionLog).map(normalizeLog);
   } catch {
     return [];
   }
@@ -62,17 +73,19 @@ export function subscribeAuditLogs(listener: () => void): () => void {
 /** Append an admin action to `club_audit_logs` (newest first). */
 export function logAction(
   adminEmail: string,
-  actionType: string,
-  description: string,
-  targetUserEmail?: string,
+  draft: LogActionDraft,
+  adminName = adminDisplayName(adminEmail),
 ): ActionLog {
   const entry: ActionLog = {
     id: newLogId(),
     timestamp: Date.now(),
     adminEmail,
-    actionType,
-    description,
-    ...(targetUserEmail ? { targetUserEmail } : {}),
+    adminName,
+    actionType: draft.actionType,
+    description: draft.description,
+    ...(draft.targetUserEmail ? { targetUserEmail: draft.targetUserEmail } : {}),
+    ...(draft.targetName ? { targetName: draft.targetName } : {}),
+    ...(draft.details ? { details: draft.details } : {}),
   };
   persistAuditLogs([entry, ...loadAuditLogs()].slice(0, MAX_LOGS));
   return entry;

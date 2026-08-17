@@ -1,8 +1,7 @@
 import { startOfDay } from './financePeriod';
 import { playerNickname } from './playerName';
-import { isFinished } from './tournamentStatus';
 import type { Transaction } from '../types/finance';
-import type { Tournament } from '../types/tournament';
+import type { Participant, Tournament } from '../types/tournament';
 
 export type StatsPeriod = 'week' | 'month' | 'all';
 
@@ -67,8 +66,13 @@ export function filterStatisticTournaments(
   period: StatsPeriod,
   formatTitle: string,
 ): Tournament[] {
+  const needle = formatTitle.trim().toLowerCase();
   return tournaments.filter((tournament) => {
-    if (formatTitle !== 'all' && tournament.title !== formatTitle) return false;
+    if (needle && needle !== 'all') {
+      const title = tournament.title.trim().toLowerCase();
+      const structure = tournament.blindStructure.trim().toLowerCase();
+      if (title !== needle && structure !== needle) return false;
+    }
     return tournamentInPeriod(tournament.startDate, period);
   });
 }
@@ -94,18 +98,44 @@ export function parseFinishingPlace(raw: unknown): number | null {
   return null;
 }
 
+function participantUserId(participant: Participant & { userId?: string }): string {
+  return String(participant.userId ?? participant.id ?? '').trim();
+}
+
 function bumpLeader(
   map: Map<string, { nickname: string; value: number }>,
   playerId: string,
   nickname: string,
   delta = 1,
 ): void {
-  const id = String(playerId ?? '').trim() || nickname;
+  const id = playerId || nickname;
   if (!id) return;
   const row = map.get(id) ?? { nickname: nickname || id, value: 0 };
   row.value += delta;
   if (nickname) row.nickname = nickname;
   map.set(id, row);
+}
+
+/** Top-9 finishes from the already filtered tournament list, grouped by player id. */
+export function collectTopFinalists(tournaments: Tournament[]): ClubLeader[] {
+  const finalists = new Map<string, { nickname: string; value: number }>();
+
+  for (const tournament of tournaments) {
+    const rows = [...tournament.participants, ...(tournament.results ?? [])];
+    const counted = new Set<string>();
+
+    for (const participant of rows) {
+      const place = parseFinishingPlace(participant.place);
+      if (place == null || place < 1 || place > 9) continue;
+      const userId = participantUserId(participant);
+      if (!userId || counted.has(userId)) continue;
+      counted.add(userId);
+      const nick = participant.nickname || playerNickname(userId);
+      bumpLeader(finalists, userId, nick);
+    }
+  }
+
+  return topThree(finalists);
 }
 
 export function computeClubStatistics(
@@ -174,27 +204,18 @@ export function computeClubStatistics(
   }
 
   const attendance = new Map<string, { nickname: string; value: number }>();
-  const finalists = new Map<string, { nickname: string; value: number }>();
   const bounty = new Map<string, { nickname: string; value: number }>();
 
   for (const tournament of tournaments) {
     for (const participant of tournament.participants) {
-      const nick = participant.nickname || playerNickname(participant.id);
-      bumpLeader(attendance, participant.id, nick);
+      const userId = participantUserId(participant);
+      const nick = participant.nickname || playerNickname(userId);
+      bumpLeader(attendance, userId, nick);
 
       const knockouts = participant.knockouts ?? 0;
       if (knockouts > 0) {
-        bumpLeader(bounty, participant.id, nick, knockouts);
+        bumpLeader(bounty, userId, nick, knockouts);
       }
-    }
-
-    if (!isFinished(tournament)) continue;
-
-    for (const participant of tournament.participants) {
-      const place = parseFinishingPlace(participant.place);
-      if (place == null || place < 1 || place > 9) continue;
-      const nick = participant.nickname || playerNickname(participant.id);
-      bumpLeader(finalists, participant.id, nick);
     }
   }
 
@@ -212,7 +233,7 @@ export function computeClubStatistics(
     biggestCheck,
     attendanceChart,
     topAttendance: topThree(attendance),
-    topFinalists: topThree(finalists),
+    topFinalists: collectTopFinalists(tournaments),
     topBounty: topThree(bounty),
     tournamentCount: tournaments.length,
   };
