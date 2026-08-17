@@ -174,13 +174,13 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         aria-label="Мы в соцсетях"
         className="relative flex items-center -space-x-6 pr-1 active:scale-95 transition-transform"
       >
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2A211D] border-[3px] border-[#110b09] z-[1]">
-          <Send size={15} strokeWidth={2.2} className="text-[#D99962]" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500/20 border-[3px] border-[#110b09] z-[1]">
+          <Send size={15} strokeWidth={2.2} className="text-blue-400" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2A211D] border-[3px] border-[#110b09] z-[2]">
-          <InstagramIcon size={15} className="text-[#D99962]" />
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-500/25 to-pink-500/25 border-[3px] border-[#110b09] z-[2]">
+          <InstagramIcon size={15} className="text-pink-400" />
         </span>
-        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-[#2A211D] border-[3px] border-[#110b09] z-10 text-[10px] font-bold text-[#D99962]">
+        <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-600/20 border-[3px] border-[#110b09] z-10 text-[10px] font-bold text-blue-400">
           VK
         </span>
       </button>
@@ -266,7 +266,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
 
         <button
           onClick={(e) => { e.stopPropagation(); onPress(); }}
-          className="self-start px-6 py-2.5 rounded-xl text-lg font-black active:scale-95 transition-transform"
+          className="self-start py-2 px-4 rounded-xl text-[13px] font-bold active:scale-95 transition-transform"
           style={{
             background: 'linear-gradient(to right, #8C4C27, #D99962)',
             boxShadow: '0 0 16px rgba(217,153,98,0.28)',

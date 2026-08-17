@@ -366,7 +366,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                                 : p.rating.toLocaleString('ru-RU')}
                               {isClosedRow && live.isBounty && (
                                 <span className="ml-1 font-800" style={{ color: '#86efac' }}>
-                                  + {koBonus.toLocaleString('ru-RU')} за КО
+                                  + {koBonus.toLocaleString('ru-RU')}
                                 </span>
                               )}
                             </p>

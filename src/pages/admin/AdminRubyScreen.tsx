@@ -99,15 +99,9 @@ export function AdminRubyScreen() {
           {accounts.map((account) => (
             <div
               key={account.id}
-              className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
+              className="flex items-start gap-3 rounded-2xl px-4 py-3.5"
               style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: 'rgba(140,76,39,0.28)', color: '#c8a38e' }}
-              >
-                <Gem size={16} strokeWidth={2.2} />
-              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-700 text-[15px] truncate">{account.nickname}</p>
                 <p className="text-[12px] font-500 truncate" style={{ color: '#8c8c88' }}>
@@ -119,21 +113,23 @@ export function AdminRubyScreen() {
                   </p>
                 )}
               </div>
-              <CoinBalance coins={account.coins} compact />
-              <button
-                type="button"
-                onClick={() =>
-                  setTarget({ kind: 'one', email: account.email, nickname: account.nickname })
-                }
-                className="shrink-0 h-9 px-2.5 rounded-lg text-[11px] font-800 active:scale-[0.97]"
-                style={{
-                  background: 'rgba(217,153,98,0.14)',
-                  border: '1px solid rgba(217,153,98,0.4)',
-                  color: '#F2D8A7',
-                }}
-              >
-                + Начислить
-              </button>
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <CoinBalance coins={account.coins} compact />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTarget({ kind: 'one', email: account.email, nickname: account.nickname })
+                  }
+                  className="h-8 px-2.5 rounded-lg text-[11px] font-800 active:scale-[0.97]"
+                  style={{
+                    background: 'rgba(217,153,98,0.14)',
+                    border: '1px solid rgba(217,153,98,0.4)',
+                    color: '#F2D8A7',
+                  }}
+                >
+                  + Начислить
+                </button>
+              </div>
             </div>
           ))}
         </div>

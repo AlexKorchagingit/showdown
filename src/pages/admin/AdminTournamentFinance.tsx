@@ -208,10 +208,7 @@ export function AdminTournamentFinance() {
   };
 
   const removePlayerFromTournament = (playerId: string) => {
-    const hasTx = transactions.some(
-      (tx) => tx.tournamentId === tournament.id && tx.userId === playerId,
-    );
-    if (hasTx) return;
+    if (!window.confirm('Точно удалить игрока из турнира?')) return;
     updateTournament(tournament.id, {
       participants: tournament.participants.filter((p) => p.id !== playerId),
     });
@@ -438,11 +435,7 @@ export function AdminTournamentFinance() {
               const dealerLoggedAt = getDealerLoggedAt(tournament.id, player.id);
               const hasLocalDebt = unpaid.length > 0;
               const hasDebt = hasGlobalUnpaidDebt(transactions, player.id);
-              const canRemove =
-                !tournament.isClosed &&
-                !transactions.some(
-                  (tx) => tx.tournamentId === tournament.id && tx.userId === player.id,
-                );
+              const canRemove = !tournament.isClosed;
               const eliminated = typeof player.place === 'number';
               const placedIdx = placedOrdered.findIndex((p) => p.id === player.id);
               const canMoveUp = eliminated && placedIdx > 0;

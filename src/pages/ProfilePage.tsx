@@ -17,7 +17,7 @@ import {
 } from '../lib/playerCharacter';
 import { resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 import { computePlayerAdminStats } from '../lib/playerAnalytics';
-import { PlayerAdminStatsModal } from '../components/admin/PlayerAdminStatsModal';
+import { AdminPlayerStats } from '../components/admin/AdminPlayerStats';
 
 const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
 
@@ -277,7 +277,7 @@ export function ProfilePage() {
       )}
 
       {showAdminStats && statsOpen && adminStats && (
-        <PlayerAdminStatsModal
+        <AdminPlayerStats
           nickname={displayNickname}
           stats={adminStats}
           onClose={() => setStatsOpen(false)}
