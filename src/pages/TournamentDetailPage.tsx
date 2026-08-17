@@ -21,19 +21,39 @@ interface Props {
   onBack: () => void;
 }
 
-// Hero block (inside scroll) — rounded, with date/time, no back button
+// Hero block (inside scroll) — rounded, with date/time and back button
+function FeatureLine({ text }: { text: string }) {
+  const withThousands = text.replace(/\d{4,}/g, (raw) => Number(raw).toLocaleString('ru-RU'));
+  const parts = withThousands.split(/(БЕСПЛАТНЫЙ)/g);
+  return (
+    <>
+      {parts.map((part, index) =>
+        part === 'БЕСПЛАТНЫЙ' ? (
+          <span key={index} className="text-[#D99962] font-semibold">
+            {part}
+          </span>
+        ) : (
+          <span key={index}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 function LobbyHero({
   title,
   formattedDate,
   startTime,
   imageUrl,
   tournamentId,
+  onBack,
 }: {
   title: string;
   formattedDate: string;
   startTime: string;
   imageUrl: string;
   tournamentId: string;
+  onBack: () => void;
 }) {
   return (
     <div
@@ -93,6 +113,21 @@ function LobbyHero({
           </span>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={onBack}
+        className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
+        style={{
+          background: 'rgba(28,20,16,0.78)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(217,153,98,0.28)',
+        }}
+        aria-label="Назад"
+      >
+        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
+      </button>
     </div>
   );
 }
@@ -138,33 +173,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   return (
     <>
       <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-
-        {/* ── Back button: fixed on outer layer, never scrolls ── */}
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-          style={{
-            background: 'rgba(28,20,16,0.78)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(217,153,98,0.28)',
-          }}
-        >
-          <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-        </button>
-
         {/* ── Scrollable: hero + all content ── */}
         <div
           className="flex-1 scrollable"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' }}
         >
-          {/* Hero inside scroll — rounded corners, date/time baked in */}
           <LobbyHero
             title={live.title}
             formattedDate={formattedDate}
             startTime={live.startTime}
             imageUrl={live.imageUrl}
             tournamentId={live.id}
+            onBack={onBack}
           />
 
           {missingPlaces && (
@@ -221,7 +241,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
                   О турнире
                 </h3>
-                <p className="text-[13px] font-400 leading-relaxed" style={{ color: '#A39B98' }}>
+                <p className="text-[13px] font-400 leading-relaxed text-white/80">
                   {live.about}
                 </p>
               </section>
@@ -232,8 +252,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </h3>
                 <ul className="space-y-2">
                   {live.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-[13px] font-400" style={{ color: '#A39B98' }}>
-                      <span style={{ color: '#8C4C27', marginTop: 2 }}>•</span>{f}
+                    <li key={f} className="flex items-start gap-2.5 text-[13px] font-400 text-white/80">
+                      <span className="shrink-0 text-[#D99962] font-semibold leading-none mt-0.5">—</span>
+                      <span>
+                        <FeatureLine text={f} />
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -245,7 +268,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
                       Запись на турнир
                     </h3>
-                    <p className="italic text-[#8c8c88] text-sm p-4 bg-[#231A16] rounded-xl leading-relaxed">
+                    <p className="not-italic font-normal text-sm text-gray-300 p-4 bg-[#231A16] rounded-xl leading-relaxed">
                       Если вы записались, но не можете прийти — пожалуйста, отмените запись заранее, чтобы не занимать место.
                     </p>
                   </section>
@@ -256,13 +279,14 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* ─── УЧАСТНИКИ ─── */}
             <div className="rounded-2xl overflow-hidden"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Header: left = "Участники (occupied/total)", right = "Рейтинг сезона" */}
-              <div className="flex items-center justify-between px-5 py-4"
-                   style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <h3 className="text-[12px] font-700 uppercase tracking-[0.2em]" style={{ color: '#F2D8A7' }}>
+              <div
+                className="flex flex-col px-5 py-4"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <h3 className="text-lg font-bold text-white uppercase">
                   Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
-                <span className="text-[12px] font-600" style={{ color: '#D99962' }}>
+                <span className="text-sm text-gray-400 text-right mt-1">
                   {tournamentFinished ? 'Очки' : 'Рейтинг сезона'}
                 </span>
               </div>

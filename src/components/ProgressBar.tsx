@@ -4,32 +4,33 @@ interface Props {
   className?: string;
 }
 
+function seatsWord(count: number): string {
+  const abs = Math.abs(count) % 100;
+  const digit = abs % 10;
+  if (abs > 10 && abs < 20) return 'мест';
+  if (digit === 1) return 'место';
+  if (digit >= 2 && digit <= 4) return 'места';
+  return 'мест';
+}
+
 export function ProgressBar({ value, max, className = '' }: Props) {
-  const percent      = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  const percent = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   const isAlmostFull = percent >= 80;
-  const isFull       = percent >= 100;
+  const isFull = percent >= 100;
+  const free = Math.max(0, max - value);
 
   const barGrad = isFull
     ? 'linear-gradient(90deg, #ef4444, #dc2626)'
     : isAlmostFull
-    ? 'linear-gradient(90deg, #D99962, #ef4444)'
-    : 'linear-gradient(90deg, #8C4C27, #c8a38e)';
+      ? 'linear-gradient(90deg, #D99962, #ef4444)'
+      : 'linear-gradient(90deg, #8C4C27, #c8a38e)';
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <div className="flex items-center justify-between text-[13px] font-500">
-        <span style={{ color: '#A39B98' }}>
-          В игре:{' '}
-          <span className="text-white font-700">{value}</span>
-          <span style={{ color: '#6B6360' }}> / {max}</span>
-        </span>
-        <span className="font-700"
-              style={{ color: isFull ? '#ef4444' : isAlmostFull ? '#D99962' : '#F2D8A7' }}>
-          {percent}%
-        </span>
-      </div>
+      <p className="text-lg font-bold text-white">
+        В игре: {value} / {max}
+      </p>
 
-      {/* Smooth fill — no tick marks */}
       <div className="relative h-3 rounded-full overflow-hidden" style={{ background: '#514f4c' }}>
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
@@ -41,11 +42,9 @@ export function ProgressBar({ value, max, className = '' }: Props) {
         />
       </div>
 
-      <div className="flex justify-between text-[11px] font-500">
-        <span style={{ color: '#6B6360' }}>0</span>
-        <span style={{ color: '#A39B98' }}>Осталось: {Math.max(0, max - value)}</span>
-        <span style={{ color: '#6B6360' }}>{max}</span>
-      </div>
+      <p className="text-sm text-gray-400 text-right">
+        Свободно: {free} {seatsWord(free)}
+      </p>
     </div>
   );
 }
