@@ -31,6 +31,7 @@ interface FinanceContextValue {
   markPaid: (transactionIds: string[]) => void;
   removeTransaction: (transactionId: string) => void;
   markPlayerPaid: (tournamentId: string, userId: string) => void;
+  markAllUnpaidForPlayer: (userId: string) => void;
   unpaidForPlayer: (tournamentId: string, userId: string) => Transaction[];
   unpaidTotalForPlayer: (tournamentId: string, userId: string) => number;
 }
@@ -163,6 +164,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     [unpaidForPlayer, markPaid],
   );
 
+  const markAllUnpaidForPlayer = useCallback(
+    (userId: string) => {
+      const ids = transactions
+        .filter((tx) => tx.userId === userId && tx.status === 'unpaid')
+        .map((tx) => tx.id);
+      if (ids.length) markPaid(ids);
+    },
+    [transactions, markPaid],
+  );
+
   const value = useMemo(
     () => ({
       transactions,
@@ -174,6 +185,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       markPaid,
       removeTransaction,
       markPlayerPaid,
+      markAllUnpaidForPlayer,
       unpaidForPlayer,
       unpaidTotalForPlayer,
     }),
@@ -187,6 +199,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       markPaid,
       removeTransaction,
       markPlayerPaid,
+      markAllUnpaidForPlayer,
       unpaidForPlayer,
       unpaidTotalForPlayer,
     ],

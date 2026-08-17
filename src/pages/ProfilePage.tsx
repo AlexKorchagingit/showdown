@@ -59,7 +59,7 @@ export function ProfilePage() {
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
   const { isAdmin } = useUser();
   const { tournaments } = useTournaments();
-  const { transactions, getDealerHours } = useFinance();
+  const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
   const [isExpanded, setIsExpanded] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
 
@@ -281,6 +281,7 @@ export function ProfilePage() {
           nickname={displayNickname}
           stats={adminStats}
           onClose={() => setStatsOpen(false)}
+          onClearDebts={playerId ? () => markAllUnpaidForPlayer(playerId) : undefined}
         />
       )}
     </div>

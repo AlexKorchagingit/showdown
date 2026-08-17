@@ -128,6 +128,12 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     .filter((row) => row.hours > 0);
   const nonPlayingDealers = (live.dealers ?? []).filter((d) => d.name.trim());
   const hasDealers = playingDealers.length > 0 || nonPlayingDealers.length > 0;
+  const adminComment = live.adminSecretComment?.trim() ?? '';
+  const staffRows = live.staff ?? [];
+  const showServiceInfo =
+    isAdmin &&
+    tournamentFinished &&
+    (hasDealers || adminComment.length > 0 || staffRows.length > 0 || live.resultsEntered === true);
 
   return (
     <>
@@ -393,73 +399,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               )}
             </div>
 
-            {tournamentFinished && isAdmin && (
-              <div
-                className="rounded-2xl p-5 space-y-3"
-                style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
-              >
-                <h3
-                  className="text-[12px] font-700 uppercase tracking-[0.2em]"
-                  style={{ color: '#F2D8A7' }}
-                >
-                  Дилеры
-                </h3>
-                {!hasDealers ? (
-                  <p className="text-[13px]" style={{ color: '#6B6360' }}>
-                    Данные о дилерах не заполнены
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {playingDealers.map((row) => (
-                      <div
-                        key={`playing-${row.name}`}
-                        className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
-                        style={{ background: 'rgba(17,11,9,0.55)' }}
-                      >
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
-                          <p className="text-[10px] font-600 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
-                            Играющий
-                          </p>
-                        </div>
-                        <p className="text-white text-[12px] shrink-0">
-                          {formatDealerHours(row.hours)}
-                        </p>
-                      </div>
-                    ))}
-                    {nonPlayingDealers.map((row) => (
-                      <div
-                        key={`staff-${row.name}-${row.hours}-${row.minutes}`}
-                        className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
-                        style={{ background: 'rgba(17,11,9,0.55)' }}
-                      >
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
-                          <p className="text-[10px] font-600 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
-                            Неиграющий
-                          </p>
-                          {row.loggedAt ? (
-                            <p className="text-[10px] font-600 mt-0.5" style={{ color: '#8c8c88' }}>
-                              {formatTxDateTime(row.loggedAt)}
-                            </p>
-                          ) : null}
-                          {row.comment?.trim() ? (
-                            <p className="text-red-500 font-normal text-[10px] mt-0.5">
-                              {row.comment}
-                            </p>
-                          ) : null}
-                        </div>
-                        <p className="text-white text-[12px] shrink-0">
-                          {formatDealerHours(row.hours, row.minutes)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {isAdmin && live.resultsEntered && (
+            {showServiceInfo && (
               <div
                 className="rounded-2xl p-5 space-y-4"
                 style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
@@ -471,47 +411,99 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   Служебная информация
                 </h3>
 
+                {hasDealers && (
+                  <section>
+                    <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-3" style={{ color: '#D99962' }}>
+                      Дилеры
+                    </p>
+                    <div className="space-y-2">
+                      {playingDealers.map((row) => (
+                        <div
+                          key={`playing-${row.name}`}
+                          className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
+                          style={{ background: 'rgba(17,11,9,0.55)' }}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
+                            <p className="text-[10px] font-600 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
+                              Играющий
+                            </p>
+                          </div>
+                          <p className="text-white text-[12px] shrink-0">
+                            {formatDealerHours(row.hours)}
+                          </p>
+                        </div>
+                      ))}
+                      {nonPlayingDealers.map((row) => (
+                        <div
+                          key={`staff-${row.name}-${row.hours}-${row.minutes}`}
+                          className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
+                          style={{ background: 'rgba(17,11,9,0.55)' }}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-700 text-white truncate">{row.name}</p>
+                            <p className="text-[10px] font-600 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
+                              Неиграющий
+                            </p>
+                            {row.loggedAt ? (
+                              <p className="text-[10px] font-600 mt-0.5" style={{ color: '#8c8c88' }}>
+                                {formatTxDateTime(row.loggedAt)}
+                              </p>
+                            ) : null}
+                            {row.comment?.trim() ? (
+                              <p className="text-red-500 font-normal text-[10px] mt-0.5">
+                                {row.comment}
+                              </p>
+                            ) : null}
+                          </div>
+                          <p className="text-white text-[12px] shrink-0">
+                            {formatDealerHours(row.hours, row.minutes)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 <section>
                   <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-2" style={{ color: '#D99962' }}>
                     Комментарии по турниру
                   </p>
                   <p className="text-[13px] font-400 leading-relaxed whitespace-pre-wrap break-words" style={{ color: '#A39B98' }}>
-                    {live.adminSecretComment?.trim()
-                      ? live.adminSecretComment
-                      : 'Комментарий не указан'}
+                    {adminComment || 'Комментарий не указан'}
                   </p>
                 </section>
 
-                <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
-
-                <section>
-                  <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-3" style={{ color: '#D99962' }}>
-                    Персонал
-                  </p>
-                  {(live.staff ?? []).length === 0 ? (
-                    <p className="text-[13px]" style={{ color: '#6B6360' }}>Данные не заполнены</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {(live.staff ?? []).map((row) => (
-                        <div
-                          key={row.role}
-                          className="flex items-start justify-between gap-3 rounded-xl px-3 py-2.5"
-                          style={{ background: 'rgba(17,11,9,0.55)' }}
-                        >
-                          <div className="min-w-0">
-                            <p className="text-[12px] font-700 text-white">{row.role}</p>
-                            <p className="text-[12px] truncate" style={{ color: '#A39B98' }}>
-                              {row.name || '—'}
+                {(staffRows.length > 0 || live.resultsEntered) && (
+                  <section>
+                    <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-3" style={{ color: '#D99962' }}>
+                      Персонал
+                    </p>
+                    {staffRows.length === 0 ? (
+                      <p className="text-[13px]" style={{ color: '#6B6360' }}>Данные не заполнены</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {staffRows.map((row) => (
+                          <div
+                            key={row.role}
+                            className="flex items-start justify-between gap-3 rounded-xl px-3 py-2.5"
+                            style={{ background: 'rgba(17,11,9,0.55)' }}
+                          >
+                            <div className="min-w-0">
+                              <p className="text-[12px] font-700 text-white">{row.role}</p>
+                              <p className="text-[12px] truncate" style={{ color: '#A39B98' }}>
+                                {row.name || '—'}
+                              </p>
+                            </div>
+                            <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
+                              {row.hours}ч {String(row.minutes).padStart(2, '0')}м
                             </p>
                           </div>
-                          <p className="text-[12px] font-700 shrink-0" style={{ color: '#D99962' }}>
-                            {row.hours}ч {String(row.minutes).padStart(2, '0')}м
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
               </div>
             )}
           </div>

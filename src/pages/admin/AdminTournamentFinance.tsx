@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
@@ -23,7 +23,7 @@ import { PlayerNameLink } from '../../components/PlayerNameLink';
 import type { TournamentDealer } from '../../types/tournament';
 import { ALL_PARTICIPANTS } from '../../data/participants';
 import { CURRENT_USER_RATING } from '../../types/player';
-import { systemPlayerDirectory } from '../../lib/systemPlayers';
+import { playerEmail, systemPlayerDirectory } from '../../lib/systemPlayers';
 import { hasGlobalUnpaidDebt } from '../../lib/playerAnalytics';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
@@ -82,6 +82,7 @@ export function AdminTournamentFinance() {
   const [dealerHours, setDealerHours] = useState('');
   const [hourFlash, setHourFlash] = useState<Record<string, { delta: number; token: number }>>({});
   const [addOpen, setAddOpen] = useState(false);
+  const [tournamentComment, setTournamentComment] = useState('');
 
   const tournament = tournaments.find((t) => t.id === id);
 
@@ -93,6 +94,10 @@ export function AdminTournamentFinance() {
       : tournament.participants;
     return sortFinancePlayers(list, tournament.isClosed);
   }, [tournament, query]);
+
+  useEffect(() => {
+    setTournamentComment(tournament?.adminSecretComment ?? '');
+  }, [tournament?.id, tournament?.adminSecretComment]);
 
   if (!tournament) return <Navigate to="/admin/finance" replace />;
 
@@ -366,7 +371,7 @@ export function AdminTournamentFinance() {
                               {user.nickname}
                             </span>
                             {user.email ? (
-                              <span className="block text-[11px] truncate" style={{ color: '#8c8c88' }}>
+                              <span className="block text-[10px] text-[#8c8c88] truncate">
                                 {user.email}
                               </span>
                             ) : null}
@@ -440,6 +445,7 @@ export function AdminTournamentFinance() {
               const placedIdx = placedOrdered.findIndex((p) => p.id === player.id);
               const canMoveUp = eliminated && placedIdx > 0;
               const canMoveDown = eliminated && placedIdx >= 0 && placedIdx < placedOrdered.length - 1;
+              const email = playerEmail(player.id, player.nickname);
 
               return (
                 <div
@@ -475,6 +481,9 @@ export function AdminTournamentFinance() {
                           />
                         )}
                       </div>
+                      {email ? (
+                        <p className="text-[10px] text-[#8c8c88] truncate">{email}</p>
+                      ) : null}
                       {eliminated && (
                         <p className="text-[12px] font-800 mt-0.5" style={{ color: '#D99962' }}>
                           {player.place}-е место
@@ -816,6 +825,39 @@ export function AdminTournamentFinance() {
               <Plus size={18} strokeWidth={2.6} />
             </button>
           </div>
+        </div>
+
+        <div
+          className="mt-6 rounded-2xl p-4 space-y-3"
+          style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
+        >
+          <h3 className="text-[12px] font-700 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
+            Комментарии по турниру
+          </h3>
+          <textarea
+            value={tournamentComment}
+            onChange={(e) => setTournamentComment(e.target.value)}
+            placeholder="Заметки для служебной информации…"
+            rows={4}
+            className="w-full rounded-xl px-3 py-2.5 text-[13px] text-white outline-none resize-none"
+            style={{
+              background: '#231A16',
+              border: '1px solid rgba(217,153,98,0.28)',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() =>
+              updateTournament(tournament.id, { adminSecretComment: tournamentComment.trim() })
+            }
+            className="w-full h-11 rounded-xl text-[13px] font-800 active:scale-[0.98] transition-transform"
+            style={{
+              background: 'linear-gradient(to right, #8C4C27, #D99962)',
+              color: '#0A0908',
+            }}
+          >
+            Сохранить
+          </button>
         </div>
       </div>
     </div>

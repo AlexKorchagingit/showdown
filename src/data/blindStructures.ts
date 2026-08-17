@@ -8,6 +8,12 @@ export type BlindLevel = {
   isLateRegEnd?: boolean;
 };
 
+/** Breaks, and any rung whose small blind is 0, never show 0/0. */
+export function isBreakLevel(level: BlindLevel | undefined): boolean {
+  if (!level) return false;
+  return level.isBreak === true || level.smallBlind === 0;
+}
+
 export type TournamentStructure = {
   id: string;
   name: string;
@@ -34,7 +40,7 @@ export const DEFAULT_PAYOUTS: PrizePlace[] = [
 ];
 
 const STORAGE_KEY = 'showdown.blindStructures';
-const STORAGE_VERSION = 'dual-breaks-v1';
+const STORAGE_VERSION = 'break-zero-v2';
 
 type BlindStep = { sb: number; bb: number };
 
@@ -73,7 +79,7 @@ export function durationSeconds(level: BlindLevel | undefined, fallbackMinutes =
 }
 
 export function structureDurationLabel(structure: BlindStructure): string {
-  const playing = structure.levels.filter((l) => !l.isBreak);
+  const playing = structure.levels.filter((l) => !isBreakLevel(l));
   if (playing.length === 0) return `${structure.levelDuration} мин`;
   const values = playing.map((l) => l.durationMinutes);
   const min = Math.min(...values);
@@ -182,6 +188,15 @@ export const BLIND_STRUCTURES: BlindStructure[] = [
 ];
 
 function cloneLevel(level: BlindLevel): BlindLevel {
+  if (level.isBreak === true || level.smallBlind === 0) {
+    return {
+      ...level,
+      isBreak: true,
+      smallBlind: 0,
+      bigBlind: 0,
+      ante: 0,
+    };
+  }
   return { ...level };
 }
 
@@ -263,9 +278,7 @@ export function findBlindStructure(id: string | null): BlindStructure | undefine
 
 export function formatBlinds(level: BlindLevel | undefined): string {
   if (!level) return '—';
-  if (level.isBreak) {
-    return level.isLateRegEnd ? 'Перерыв · конец реги' : 'Перерыв';
-  }
+  if (isBreakLevel(level)) return 'ПЕРЕРЫВ';
   const base = `${level.smallBlind.toLocaleString('ru-RU')}/${level.bigBlind.toLocaleString('ru-RU')}`;
   return level.ante > 0 ? `${base} (${level.ante.toLocaleString('ru-RU')})` : base;
 }
@@ -273,7 +286,9 @@ export function formatBlinds(level: BlindLevel | undefined): string {
 export function renumberLevels(levels: BlindLevel[]): BlindLevel[] {
   let n = 0;
   return levels.map((level) => {
-    if (level.isBreak) return { ...level, level: 0 };
+    if (isBreakLevel(level)) {
+      return { ...level, isBreak: true, smallBlind: 0, bigBlind: 0, ante: 0, level: 0 };
+    }
     n += 1;
     return { ...level, level: n };
   });
@@ -304,7 +319,7 @@ export function secondsUntilNextBreak(
   levelIndex: number,
   secondsLeft: number,
 ): number | null {
-  return secondsUntilMatch(levels, levelIndex, secondsLeft, (level) => level.isBreak === true);
+  return secondsUntilMatch(levels, levelIndex, secondsLeft, (level) => isBreakLevel(level));
 }
 
 /** Remaining seconds until the `isLateRegEnd` level starts. Null if none exists. */

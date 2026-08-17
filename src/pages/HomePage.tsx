@@ -172,7 +172,7 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         type="button"
         onClick={onOpenSocials}
         aria-label="Мы в соцсетях"
-        className="relative flex items-center -space-x-6 pr-1 active:scale-95 transition-transform"
+        className="relative flex items-center -space-x-8 pr-1 active:scale-95 transition-transform"
       >
         <span className="w-9 h-9 rounded-full flex items-center justify-center bg-blue-500/20 border-[3px] border-[#110b09] z-[1]">
           <Send size={15} strokeWidth={2.2} className="text-blue-400" />

@@ -21,6 +21,7 @@ import {
   durationSeconds,
   formatBlinds,
   formatEta,
+  isBreakLevel,
   isLateRegClosed,
   secondsUntilLateRegEnd,
   secondsUntilNextBreak,
@@ -187,9 +188,7 @@ export function AdminBlindsTimer() {
   );
   const percent = Math.min(100, Math.max(0, (secondsLeft / Math.max(1, levelSeconds)) * 100));
   const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
-  const isBreak =
-    currentLevel?.isBreak === true ||
-    (currentLevel != null && currentLevel.smallBlind === 0 && currentLevel.bigBlind === 0);
+  const isBreak = isBreakLevel(currentLevel);
   const levelNumber = currentLevel?.level ?? levelIndex + 1;
   const blindsLabel = isBreak
     ? 'Перерыв'
@@ -256,7 +255,7 @@ export function AdminBlindsTimer() {
         <div className="w-[220px] md:w-[260px] shrink-0 flex flex-col gap-4 min-h-0 overflow-visible">
           {hasEntries && (
             <section className={`${GLASS} text-center`}>
-              <p className="text-[10px] md:text-[11px] font-800 uppercase tracking-[0.18em] text-white/40">
+              <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
                 В ИГРЕ
               </p>
               <p className="text-4xl md:text-5xl font-black text-white mt-2 leading-none tabular-nums">
@@ -264,14 +263,14 @@ export function AdminBlindsTimer() {
                 <span className="text-white/35"> / {totalEntries}</span>
               </p>
               {rebuyCount != null && rebuyCount > 0 && (
-                <p className="text-[11px] font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
+                <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
               )}
             </section>
           )}
 
           <section className={`${GLASS} text-center`}>
-            <p className="text-[10px] md:text-[11px] font-800 uppercase tracking-[0.18em] text-white/40">
-              Средний стек
+            <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
+              СРЕДНИЙ СТЕК
             </p>
             <p className="text-4xl md:text-5xl font-black mt-2 leading-none tabular-nums text-[#F2D8A7]">
               {avgStack.toLocaleString('ru-RU')}
@@ -279,20 +278,14 @@ export function AdminBlindsTimer() {
           </section>
 
           {chipleader && (
-          <div className="relative z-[1] mt-auto min-h-[220px] overflow-visible flex flex-col">
-            <div
-              className="absolute inset-0 bg-white/[0.03] border border-white/[0.05] rounded-2xl backdrop-blur-sm"
-              aria-hidden
-            />
-            <div className="relative flex-1 min-h-[128px] overflow-visible">
+          <div className="relative z-[1] mt-auto overflow-visible flex flex-col">
+            <section className={`${GLASS} text-center overflow-visible`}>
               <img
                 src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
                 alt=""
-                className="absolute left-1/2 -translate-x-1/2 top-[-60px] bottom-0 z-10 w-[92%] object-contain object-bottom pointer-events-none select-none drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]"
+                className="mx-auto h-40 md:h-48 w-auto max-w-full object-contain object-bottom pointer-events-none select-none drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]"
               />
-            </div>
-            <div className="relative z-20 shrink-0 px-5 pb-5 pt-1 text-center">
-              <p className="text-[10px] md:text-[11px] font-800 uppercase tracking-[0.28em] text-[#D99962]">
+              <p className="text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962] mt-3">
                 CHIPLEADER
               </p>
               <p className="text-xl md:text-2xl font-black text-white leading-tight mt-1">
@@ -301,17 +294,17 @@ export function AdminBlindsTimer() {
               <p className="text-3xl md:text-5xl font-black tabular-nums mt-1 leading-none text-[#D99962]">
                 {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
               </p>
-            </div>
+            </section>
           </div>
           )}
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-0 min-h-0">
-          <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em] text-[#D99962]">
+        <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-4 min-h-0">
+          <p className="text-[13px] md:text-[15px] font-800 uppercase tracking-[0.4em] text-[#D99962] mt-3">
             SHOWDOWN
           </p>
           <h1
-            className={`text-2xl md:text-3xl font-black uppercase tracking-wide text-center mt-0.5 leading-tight ${GOLD_TEXT}`}
+            className={`text-2xl md:text-3xl font-black uppercase tracking-wide text-center mt-2 leading-tight ${GOLD_TEXT}`}
           >
             {eventTitle}
           </h1>
@@ -366,11 +359,11 @@ export function AdminBlindsTimer() {
                 </>
               ) : (
                 <>
-                  <span className="bg-[#D99962]/20 text-[#D99962] px-4 py-1 rounded-full text-sm font-bold tracking-widest uppercase">
+                  <span className="bg-[#D99962]/20 text-[#D99962] px-5 py-1.5 rounded-full text-lg md:text-xl font-bold tracking-widest uppercase">
                     {levelBadge}
                   </span>
-                  <p className="text-3xl md:text-5xl font-black text-white mt-3 leading-none">{blindsLabel}</p>
-                  <p className="text-lg md:text-2xl font-700 mt-1 text-[#F2D8A7]">{anteLabel}</p>
+                  <p className="text-5xl md:text-7xl font-black text-white mt-3 leading-none">{blindsLabel}</p>
+                  <p className="text-2xl md:text-3xl font-700 mt-1 text-[#F2D8A7]">{anteLabel}</p>
                   <p className="text-[5.2rem] md:text-[8rem] font-black leading-none tabular-nums mt-2 drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                     {formatClock(secondsLeft)}
                   </p>
@@ -392,7 +385,7 @@ export function AdminBlindsTimer() {
           </div>
           </div>
 
-          <p className="text-2xl font-bold text-white/70 pb-1">
+          <p className="text-2xl font-bold text-white/70 -mt-2 pb-1">
             Next Blinds:{' '}
             <span className="text-[#D99962]">
               {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
@@ -404,15 +397,15 @@ export function AdminBlindsTimer() {
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="h-36 md:h-48 w-auto object-contain opacity-90 self-end"
+            className="h-48 md:h-64 w-auto object-contain opacity-90 self-end"
           />
           <section className={`${GLASS} w-full self-end text-right space-y-4`}>
             {timeToNextBreak != null && (
               <div>
-                <p className="text-xl md:text-2xl font-800 uppercase tracking-[0.08em] text-white/55">
+                <p className="text-2xl md:text-4xl font-800 uppercase tracking-[0.08em] text-white/55">
                   Перерыв через
                 </p>
-                <p className="text-2xl md:text-3xl font-black tabular-nums text-white mt-1">
+                <p className="text-3xl md:text-4xl font-black tabular-nums text-white mt-1">
                   {formatEta(timeToNextBreak)}
                 </p>
               </div>
@@ -421,10 +414,10 @@ export function AdminBlindsTimer() {
               <p className="text-xl font-bold text-red-500">Регистрация закрыта</p>
             ) : timeToLateRegEnd != null ? (
               <div>
-                <p className="text-xl md:text-2xl font-800 uppercase tracking-[0.08em] text-white/55">
+                <p className="text-2xl md:text-4xl font-800 uppercase tracking-[0.08em] text-white/55">
                   Поздняя регистрация
                 </p>
-                <p className="text-2xl md:text-3xl font-black tabular-nums text-white mt-1">
+                <p className="text-3xl md:text-4xl font-black tabular-nums text-white mt-1">
                   {formatEta(timeToLateRegEnd)}
                 </p>
               </div>

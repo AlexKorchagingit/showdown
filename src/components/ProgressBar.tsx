@@ -19,7 +19,7 @@ export function ProgressBar({ value, max, className = '' }: Props) {
     <div className={`space-y-2 ${className}`}>
       <div className="flex items-center justify-between text-[13px] font-500">
         <span style={{ color: '#A39B98' }}>
-          Зарегистрировано:{' '}
+          В игре:{' '}
           <span className="text-white font-700">{value}</span>
           <span style={{ color: '#6B6360' }}> / {max}</span>
         </span>

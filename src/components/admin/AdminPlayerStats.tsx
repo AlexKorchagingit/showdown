@@ -21,6 +21,7 @@ function StatCard({
   hint,
   accent = '#D99962',
   onClick,
+  footer,
 }: {
   icon: ReactNode;
   label: string;
@@ -28,6 +29,7 @@ function StatCard({
   hint?: string;
   accent?: string;
   onClick?: () => void;
+  footer?: ReactNode;
 }) {
   const className =
     'rounded-2xl p-4 min-h-[120px] flex flex-col text-left w-full';
@@ -59,22 +61,30 @@ function StatCard({
     </>
   );
 
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={`${className} active:scale-[0.99] transition-transform`}
-        style={style}
-      >
-        {inner}
-      </button>
-    );
-  }
-
   return (
-    <div className={className} style={style}>
+    <div
+      className={`${className} ${onClick ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}
+      style={style}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
       {inner}
+      {footer ? (
+        <div className="mt-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+          {footer}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -136,9 +146,11 @@ function LedgerList({ rows, empty }: { rows: PlayerLedgerRow[]; empty: string })
           </p>
           <div className="flex items-baseline justify-between gap-3 mt-0.5">
             <p className="text-[13px] font-700 text-white truncate">{row.tournament}</p>
-            <p className="text-[13px] font-800 shrink-0" style={{ color: '#D99962' }}>
-              {row.value}
-            </p>
+            {row.value ? (
+              <p className="text-[13px] font-800 shrink-0" style={{ color: '#D99962' }}>
+                {row.value}
+              </p>
+            ) : null}
           </div>
         </div>
       ))}
@@ -179,16 +191,19 @@ type Drill =
   | 'dealer'
   | 'visits'
   | 'history'
+  | 'prizes'
   | null;
 
 export function AdminPlayerStats({
   nickname,
   stats,
   onClose,
+  onClearDebts,
 }: {
   nickname: string;
   stats: PlayerAdminStats;
   onClose: () => void;
+  onClearDebts?: () => void;
 }) {
   const [drill, setDrill] = useState<Drill>(null);
   const favorite =
@@ -238,6 +253,17 @@ export function AdminPlayerStats({
             hint="Сумма unpaid"
             accent={stats.clubDebt > 0 ? '#f87171' : '#D99962'}
             onClick={() => setDrill('debt')}
+            footer={
+              stats.clubDebt > 0 && onClearDebts ? (
+                <button
+                  type="button"
+                  onClick={onClearDebts}
+                  className="w-full py-2 rounded-lg bg-red-900/80 border border-red-500/50 text-white text-[11px] font-bold active:scale-[0.98] transition-transform"
+                >
+                  Погасить все долги
+                </button>
+              ) : null
+            }
           />
           <StatCard
             icon={<Percent size={16} strokeWidth={2.3} />}
@@ -257,7 +283,6 @@ export function AdminPlayerStats({
             icon={<CalendarDays size={16} strokeWidth={2.3} />}
             label="Всего визитов"
             value={String(stats.tournamentsPlayed)}
-            hint="Сыграно турниров"
             onClick={() => setDrill('visits')}
           />
           <StatCard
@@ -265,6 +290,7 @@ export function AdminPlayerStats({
             label="Сумма призовых"
             value={stats.prizePoints.toLocaleString('ru-RU')}
             hint="Выиграно очков"
+            onClick={() => setDrill('prizes')}
           />
           <div className="col-span-2">
             <StatCard
@@ -295,6 +321,11 @@ export function AdminPlayerStats({
       {drill === 'visits' && (
         <DetailSheet title="Визиты" onClose={() => setDrill(null)}>
           <LedgerList rows={stats.visitRows} empty="Нет сыгранных турниров" />
+        </DetailSheet>
+      )}
+      {drill === 'prizes' && (
+        <DetailSheet title="Сумма призовых" onClose={() => setDrill(null)}>
+          <LedgerList rows={stats.prizeRows} empty="Нет призовых очков" />
         </DetailSheet>
       )}
       {drill === 'history' && (

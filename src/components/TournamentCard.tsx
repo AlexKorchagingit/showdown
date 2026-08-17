@@ -84,7 +84,7 @@ export function TournamentCard({ tournament, onClick }: Props) {
 
           {!isPast && (
             <p className="text-sm font-medium">
-              Мест:{' '}
+              В игре:{' '}
               <span className={occupiedSeatsClass(occupiedSeats)}>
                 {occupiedSeats}/{totalSeats}
               </span>

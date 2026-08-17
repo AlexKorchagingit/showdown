@@ -32,6 +32,7 @@ export type PlayerAdminStats = {
   debtRows: PlayerLedgerRow[];
   dealerRows: PlayerLedgerRow[];
   visitRows: PlayerLedgerRow[];
+  prizeRows: PlayerLedgerRow[];
   tournamentHistory: PlayerTournamentRow[];
 };
 
@@ -124,14 +125,23 @@ export function computePlayerAdminStats(
   }
 
   let prizePoints = 0;
+  const prizeRows: PlayerLedgerRow[] = [];
   for (const tournament of played) {
     const participant = tournament.participants.find((row) => row.id === playerId);
     if (!participant) continue;
     const field = tournament.participants.length;
+    let points = 0;
     if (typeof participant.place === 'number') {
-      prizePoints += ratingPointsForPlace(participant.place, tournament.guarantee, field);
+      points += ratingPointsForPlace(participant.place, tournament.guarantee, field);
     }
-    prizePoints += knockoutBountyPoints(participant.knockouts, tournament.isBounty === true);
+    points += knockoutBountyPoints(participant.knockouts, tournament.isBounty === true);
+    prizePoints += points;
+    prizeRows.push({
+      id: `prize-${tournament.id}`,
+      date: formatTxDate(`${tournament.startDate}T12:00:00`),
+      tournament: tournament.title,
+      value: points.toLocaleString('ru-RU'),
+    });
   }
 
   const toLedger = (tx: Transaction): PlayerLedgerRow => ({
@@ -158,8 +168,9 @@ export function computePlayerAdminStats(
       id: `visit-${tournament.id}`,
       date: formatTxDate(`${tournament.startDate}T12:00:00`),
       tournament: tournament.title,
-      value: '1 визит',
+      value: '',
     })),
+    prizeRows,
     tournamentHistory,
   };
 }

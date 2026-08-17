@@ -162,6 +162,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     stackSize: 30000,
     levelDuration: '15/12 мин',
     isClosed: true,
+    adminSecretComment: 'Поздний финальный стол, два спорных нокаута на баббле.',
     dealers: [
       { name: 'Игорь', hours: 5, minutes: 0, loggedAt: '2026-08-12T23:10:00' },
       { name: 'Павел С.', hours: 3, minutes: 30, loggedAt: '2026-08-12T23:12:00' },

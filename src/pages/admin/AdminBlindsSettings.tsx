@@ -8,6 +8,7 @@ import { useBlinds } from '../../context/BlindsContext';
 import {
   buildLevels,
   DEFAULT_PAYOUTS,
+  isBreakLevel,
   renumberLevels,
   structureDurationLabel,
   type BlindLevel,
@@ -112,8 +113,8 @@ function CreateStructureForm({ onCreate }: { onCreate: (form: CreateForm) => voi
 }
 
 function levelTitle(level: BlindLevel): string {
-  if (level.isBreak && level.isLateRegEnd) return 'Перерыв · закрытие реги';
-  if (level.isBreak) return 'Перерыв';
+  if (isBreakLevel(level) && level.isLateRegEnd) return 'ПЕРЕРЫВ · закрытие реги';
+  if (isBreakLevel(level)) return 'ПЕРЕРЫВ';
   if (level.isLateRegEnd) return `Уровень ${level.level} · закрытие реги`;
   return `Уровень ${level.level}`;
 }
@@ -147,7 +148,7 @@ function LevelEditor({
   };
 
   const addLevel = () => {
-    const lastPlaying = [...structure.levels].reverse().find((level) => !level.isBreak);
+    const lastPlaying = [...structure.levels].reverse().find((level) => !isBreakLevel(level));
     const nextBb = lastPlaying ? lastPlaying.bigBlind * 2 : 200;
     onChange(
       renumberLevels([
@@ -188,17 +189,17 @@ function LevelEditor({
     <div className="space-y-2">
       {structure.levels.map((level, index) => (
         <div
-          key={`${level.level}-${index}-${level.isBreak ? 'b' : 'p'}-${level.isLateRegEnd ? 'lr' : ''}`}
+          key={`${level.level}-${index}-${isBreakLevel(level) ? 'b' : 'p'}-${level.isLateRegEnd ? 'lr' : ''}`}
           className="rounded-xl p-3 space-y-2"
           style={{
             background: level.isLateRegEnd
               ? 'rgba(244,63,94,0.10)'
-              : level.isBreak
+              : isBreakLevel(level)
                 ? 'rgba(34,197,94,0.08)'
                 : '#2A211D',
             border: level.isLateRegEnd
               ? '1px solid rgba(244,63,94,0.40)'
-              : level.isBreak
+              : isBreakLevel(level)
                 ? '1px solid rgba(34,197,94,0.35)'
                 : '1px solid rgba(255,255,255,0.06)',
           }}
@@ -212,7 +213,7 @@ function LevelEditor({
               onClick={() => removeLevel(index)}
               disabled={structure.levels.length <= 1}
               className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30"
-              aria-label={level.isBreak ? 'Удалить перерыв' : `Удалить уровень ${level.level}`}
+              aria-label={isBreakLevel(level) ? 'Удалить перерыв' : `Удалить уровень ${level.level}`}
             >
               <Trash2 size={14} style={{ color: '#A39B98' }} />
             </button>
@@ -222,14 +223,14 @@ function LevelEditor({
             <label className="inline-flex items-center gap-2 text-[12px] font-600 text-white/85">
               <input
                 type="checkbox"
-                checked={level.isBreak === true}
+                checked={isBreakLevel(level)}
                 onChange={(e) => {
                   const isBreak = e.target.checked;
                   patchLevel(
                     index,
                     isBreak
                       ? { isBreak: true, smallBlind: 0, bigBlind: 0, ante: 0 }
-                      : { isBreak: false },
+                      : { isBreak: false, smallBlind: 100, bigBlind: 200, ante: 200 },
                   );
                 }}
                 className="accent-[#D99962]"
@@ -247,18 +248,23 @@ function LevelEditor({
             </label>
           </div>
 
-          {level.isBreak ? (
-            <label className="block max-w-[8rem]">
-              <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
-                Мин
-              </span>
-              <input
-                type="number"
-                value={level.durationMinutes}
-                onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
-                className={FIELD_CLASS}
-              />
-            </label>
+          {isBreakLevel(level) ? (
+            <div className="space-y-2">
+              <p className="text-[15px] font-900 uppercase tracking-[0.18em] text-white">
+                ПЕРЕРЫВ
+              </p>
+              <label className="block max-w-[8rem]">
+                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                  Мин
+                </span>
+                <input
+                  type="number"
+                  value={level.durationMinutes}
+                  onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-1.5">
               {(
@@ -433,8 +439,8 @@ export function AdminBlindsSettings() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold text-white truncate">{structure.name}</p>
                   <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
-                    {structure.levels.filter((l) => !l.isBreak).length} ур.
-                    {structure.levels.some((l) => l.isBreak) ? ' · перерыв' : ''}
+                    {structure.levels.filter((l) => !isBreakLevel(l)).length} ур.
+                    {structure.levels.some((l) => isBreakLevel(l)) ? ' · перерыв' : ''}
                     {structure.levels.some((l) => l.isLateRegEnd) ? ' · конец реги' : ''} ·{' '}
                     {structureDurationLabel(structure)} · {structure.guarantee.toLocaleString('ru-RU')}
                   </p>
