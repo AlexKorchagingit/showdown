@@ -23,6 +23,8 @@ interface ProfileContextValue extends UserData {
   /** Returns false when the balance is too low or the item is unknown. */
   buyItem: (itemId: string) => boolean;
   equipItem: (itemId: string) => void;
+  addCoins: (amount: number) => void;
+  claimFirstNotification: () => void;
 }
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
@@ -88,6 +90,33 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     [data.coins, data.ownedItems, patch],
   );
 
+  const addCoins = useCallback(
+    (amount: number) => {
+      const delta = Math.floor(Number(amount));
+      if (!Number.isFinite(delta) || delta === 0) return;
+      setData((prev) => {
+        const next = { ...prev, coins: Math.max(0, prev.coins + delta) };
+        saveUserData(email, next);
+        return next;
+      });
+    },
+    [email],
+  );
+
+  const claimFirstNotification = useCallback(() => {
+    setData((prev) => {
+      const [first, ...rest] = prev.pendingNotifications;
+      if (!first) return prev;
+      const next = {
+        ...prev,
+        coins: prev.coins + first.amount,
+        pendingNotifications: rest,
+      };
+      saveUserData(email, next);
+      return next;
+    });
+  }, [email]);
+
   const value = useMemo(
     () => ({
       ...data,
@@ -100,8 +129,21 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       isEquipped,
       buyItem,
       equipItem,
+      addCoins,
+      claimFirstNotification,
     }),
-    [data, updateNickname, updateBirthDate, updateSlogan, isOwned, isEquipped, buyItem, equipItem],
+    [
+      data,
+      updateNickname,
+      updateBirthDate,
+      updateSlogan,
+      isOwned,
+      isEquipped,
+      buyItem,
+      equipItem,
+      addCoins,
+      claimFirstNotification,
+    ],
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

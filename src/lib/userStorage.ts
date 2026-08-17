@@ -8,6 +8,12 @@ export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку �
 
 export const STARTING_COINS = 50000;
 
+export interface PendingNotification {
+  id: string;
+  message: string;
+  amount: number;
+}
+
 export interface UserData {
   nickname: string;
   birthDate: string;
@@ -16,6 +22,7 @@ export interface UserData {
   ownedItems: string[];
   equippedChar: string;
   equippedBg: string;
+  pendingNotifications: PendingNotification[];
 }
 
 /** Keys used before the record moved to `userData_<email>`. */
@@ -72,7 +79,20 @@ export function createDefaultUserData(): UserData {
     ownedItems: [...FREE_ITEM_IDS],
     equippedChar: DEFAULT_CHARACTER_ID,
     equippedBg: DEFAULT_BG_ID,
+    pendingNotifications: [],
   };
+}
+
+function parseNotifications(raw: unknown): PendingNotification[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const row = item as Partial<PendingNotification>;
+    const amount = Number(row.amount);
+    if (typeof row.id !== 'string' || typeof row.message !== 'string') return [];
+    if (!Number.isFinite(amount) || amount === 0) return [];
+    return [{ id: row.id, message: row.message, amount }];
+  });
 }
 
 /** Free items must stay owned even if an older record predates them. */
@@ -98,6 +118,7 @@ function withDefaults(parsed: Partial<UserData>): UserData {
     ],
     equippedChar: parsed.equippedChar || defaults.equippedChar,
     equippedBg: parsed.equippedBg || defaults.equippedBg,
+    pendingNotifications: parseNotifications(parsed.pendingNotifications),
   };
 }
 

@@ -23,11 +23,14 @@ import { AdminAchievementsUsers } from './pages/admin/AdminAchievementsUsers';
 import { AdminAchievementsEditor } from './pages/admin/AdminAchievementsEditor';
 import { AdminFinanceScreen } from './pages/admin/AdminFinanceScreen';
 import { AdminTournamentFinance } from './pages/admin/AdminTournamentFinance';
+import { AdminRubyScreen } from './pages/admin/AdminRubyScreen';
+import { AdminStatisticScreen } from './pages/admin/AdminStatisticScreen';
 import { TournamentProvider } from './context/TournamentContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider } from './context/UserContext';
 import { BlindsProvider } from './context/BlindsContext';
+import { RubyBonusHost } from './components/RubyBonusHost';
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
@@ -76,6 +79,8 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/admin/blinds/timer"    element={<AdminBlindsTimer />} />
             <Route path="/admin/finance"         element={<AdminFinanceScreen />} />
             <Route path="/admin/finance/tournaments/:id" element={<AdminTournamentFinance />} />
+            <Route path="/admin/ruby"            element={<AdminRubyScreen />} />
+            <Route path="/admin/statistic"       element={<AdminStatisticScreen />} />
             <Route path="/admin/achievements/users"      element={<AdminAchievementsUsers />} />
             <Route path="/admin/achievements/edit/:userId" element={<AdminAchievementsEditor />} />
             <Route path="*"                  element={<Navigate to="/" replace />} />
@@ -84,6 +89,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
       </div>
 
       {!hideNav && <BottomNav />}
+      <RubyBonusHost />
     </div>
   );
 }

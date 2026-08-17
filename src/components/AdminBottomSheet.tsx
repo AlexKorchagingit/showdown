@@ -7,10 +7,12 @@ interface Props {
 }
 
 const ITEMS = [
-  { label: 'Tournaments',  to: '/admin/tournaments' },
-  { label: 'Blinds info',  to: '/admin/blinds/settings' },
-  { label: 'Finance & Results', to: '/admin/finance' },
+  { label: 'Finance', to: '/admin/finance' },
+  { label: 'Blinds Info', to: '/admin/blinds/settings' },
+  { label: 'Ruby', to: '/admin/ruby' },
+  { label: 'Tournaments', to: '/admin/tournaments' },
   { label: 'Achievements', to: '/admin/achievements/users' },
+  { label: 'Statistic', to: '/admin/statistic' },
 ];
 
 export function AdminBottomSheet({ open, onClose }: Props) {
@@ -37,7 +39,7 @@ export function AdminBottomSheet({ open, onClose }: Props) {
 
           <motion.div
             key="admin-sheet"
-            className="absolute bottom-0 left-0 right-0 z-[70] rounded-t-3xl p-6 bg-[#231A16]"
+            className="absolute bottom-0 left-0 right-0 z-[70] rounded-t-3xl p-6 bg-[#231A16] max-h-[85dvh] overflow-y-auto"
             style={{
               paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.5rem)',
               border: '1px solid rgba(217,153,98,0.2)',
