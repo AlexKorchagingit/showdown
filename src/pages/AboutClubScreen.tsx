@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Camera, ChevronDown, FileText, GraduationCap, Trophy } from 'lucide-react';
+import { ABOUT_CLUB_DOCUMENTS } from '../data/legalDocuments';
 
 type AboutTab = 'general' | 'legal';
 
@@ -26,17 +27,6 @@ const RULES = [
 ];
 
 const PHOTO_SLOTS = ['Зал клуба', 'Игровой стол', 'Атмосфера', 'Комьюнити'];
-
-const DOCUMENTS = [
-  'Публичный договор (оферта) на оказание услуг',
-  'Дополнительное соглашение к публичному договору',
-  'Политика в отношении обработки персональных данных',
-  'Согласие на обработку персональных данных',
-  'Лист ознакомления',
-];
-
-const LOREM =
-  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nCurabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.';
 
 function PhotoCarousel() {
   return (
@@ -179,10 +169,10 @@ function LegalTab() {
       </h2>
 
       <div className="space-y-2">
-        {DOCUMENTS.map((title, index) => {
+        {ABOUT_CLUB_DOCUMENTS.map((document, index) => {
           const open = openIndex === index;
           return (
-            <div key={title} className="rounded-lg overflow-hidden">
+            <div key={document.title} className="rounded-lg overflow-hidden">
               <button
                 type="button"
                 onClick={() => setOpenIndex(open ? null : index)}
@@ -191,7 +181,7 @@ function LegalTab() {
               >
                 <span className="flex items-center gap-3 min-w-0 text-left">
                   <FileText size={18} strokeWidth={2.1} className="text-[#D99962] shrink-0" />
-                  <span className="text-[13px] font-600 text-white leading-snug">{title}</span>
+                  <span className="text-[13px] font-600 text-white leading-snug">{document.title}</span>
                 </span>
                 <ChevronDown
                   size={18}
@@ -213,7 +203,7 @@ function LegalTab() {
                     className="overflow-hidden"
                   >
                     <div className="max-h-[300px] overflow-y-auto p-4 bg-[#110b09] text-sm text-[#8c8c88] leading-relaxed whitespace-pre-line rounded-b-lg border border-t-0 border-white/[0.04]">
-                      {LOREM}
+                      {document.body}
                     </div>
                   </motion.div>
                 )}

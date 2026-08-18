@@ -26,6 +26,8 @@ export interface UserData {
   equippedChar: string;
   equippedBg: string;
   pendingNotifications: PendingNotification[];
+  /** ISO timestamp of when registration policies were accepted. */
+  agreementsAcceptedAt?: string;
 }
 
 /** Keys used before the record moved to `userData_<email>`. */
@@ -128,7 +130,14 @@ function withDefaults(parsed: Partial<UserData>): UserData {
         ? DEFAULT_BG_ID
         : parsed.equippedBg,
     pendingNotifications: parseNotifications(parsed.pendingNotifications),
+    agreementsAcceptedAt: parseIsoTimestamp(parsed.agreementsAcceptedAt),
   };
+}
+
+function parseIsoTimestamp(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
 }
 
 function parseRecord(raw: string | null): Partial<UserData> | null {
@@ -215,4 +224,51 @@ export function loadUserData(email: string): UserData {
 export function saveUserData(email: string, data: UserData) {
   if (!email) return;
   writeKey(userDataKey(email), JSON.stringify(data));
+}
+
+const USER_DATA_PREFIX = 'userData_';
+
+export function listStoredUsers(): Array<{ email: string; data: UserData }> {
+  const rows: Array<{ email: string; data: UserData }> = [];
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith(USER_DATA_PREFIX)) continue;
+      const email = key.slice(USER_DATA_PREFIX.length);
+      if (!email) continue;
+      rows.push({ email, data: loadUserData(email) });
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return rows;
+}
+
+export function listUsersWithAgreements(): Array<{
+  email: string;
+  nickname: string;
+  agreementsAcceptedAt: string;
+}> {
+  const byEmail = new Map<string, { email: string; nickname: string; agreementsAcceptedAt: string }>();
+  for (const { email, data } of listStoredUsers()) {
+    if (!data.agreementsAcceptedAt) continue;
+    byEmail.set(email.trim().toLowerCase(), {
+      email,
+      nickname: data.nickname,
+      agreementsAcceptedAt: data.agreementsAcceptedAt,
+    });
+  }
+  return [...byEmail.values()].sort((a, b) =>
+    b.agreementsAcceptedAt.localeCompare(a.agreementsAcceptedAt),
+  );
+}
+
+/** Persist first-time policy consent and return whether this was a new signature. */
+export function recordAgreementsAccepted(email: string, acceptedAt: string): UserData & { isNew: boolean } {
+  const data = loadUserData(email);
+  const iso = parseIsoTimestamp(acceptedAt) ?? new Date().toISOString();
+  if (data.agreementsAcceptedAt) return { ...data, isNew: false };
+  const next = { ...data, agreementsAcceptedAt: iso };
+  saveUserData(email, next);
+  return { ...next, isNew: true };
 }

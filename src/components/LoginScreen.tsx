@@ -2,17 +2,24 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { asset } from '../lib/assets';
+import { CONSENT_DOCUMENTS, type LegalDocument } from '../data/legalDocuments';
+import { logAction } from '../lib/auditLogStorage';
+import { recordAgreementsAccepted } from '../lib/userStorage';
+import { LegalDocumentModal } from './LegalDocumentModal';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAILJS_SERVICE  = 'service_hqlexio';
 const EMAILJS_TEMPLATE = 'template_p9ku19k';
 const EMAILJS_PUBLIC   = '8qsxWxs3kjE1X4ka6';
+const AGREEMENTS_KEY = 'temp_auth_agreements_at';
+const CONSENT_TEXT =
+  'Продолжая регистрацию, вы даете согласие на обработку персональных данных, получение информационных рассылок и использование локального хранилища.';
 
 interface Props {
   onLogin: (email: string) => void;
 }
 
-type Step = 'email' | 'code';
+type Step = 'consent' | 'email' | 'code';
 
 const TEMP_AUTH_KEYS = [
   'temp_auth_email',
@@ -20,6 +27,38 @@ const TEMP_AUTH_KEYS = [
   'temp_auth_step',
   'temp_auth_expire',
 ] as const;
+
+function readTempAuthStep(): string | null {
+  try {
+    return localStorage.getItem('temp_auth_step');
+  } catch {
+    return null;
+  }
+}
+
+function readAgreementsAt(): string {
+  try {
+    return localStorage.getItem(AGREEMENTS_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeAgreementsAt(iso: string) {
+  try {
+    localStorage.setItem(AGREEMENTS_KEY, iso);
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function clearAgreementsAt() {
+  try {
+    localStorage.removeItem(AGREEMENTS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 function clearTempAuth() {
   TEMP_AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
@@ -32,8 +71,67 @@ function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
   localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
 }
 
+function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
+  const normalized = email.trim().toLowerCase();
+  const acceptedAt = agreementsAcceptedAt || new Date().toISOString();
+  const { data, isNew } = recordAgreementsAccepted(normalized, acceptedAt);
+
+  if (isNew) {
+    logAction(normalized, {
+      actionType: 'Согласия приняты (электронная подпись)',
+      targetUserEmail: normalized,
+      targetUserName: data.nickname,
+      details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${data.agreementsAcceptedAt}`,
+    });
+  }
+
+  clearTempAuth();
+  clearAgreementsAt();
+  onLogin(email.trim());
+}
+
+function ConsentCopy({ onOpen }: { onOpen: (document: LegalDocument) => void }) {
+  const nodes: Array<string | LegalDocument> = [];
+  let cursor = 0;
+
+  for (const document of CONSENT_DOCUMENTS) {
+    const index = CONSENT_TEXT.indexOf(document.phrase, cursor);
+    if (index === -1) continue;
+    if (index > cursor) nodes.push(CONSENT_TEXT.slice(cursor, index));
+    nodes.push(document);
+    cursor = index + document.phrase.length;
+  }
+  if (cursor < CONSENT_TEXT.length) nodes.push(CONSENT_TEXT.slice(cursor));
+
+  return (
+    <p className="text-[13px] leading-relaxed text-[#F4E4BC]/90">
+      {nodes.map((node, index) =>
+        typeof node === 'string' ? (
+          <span key={`t-${index}`}>{node}</span>
+        ) : (
+          <button
+            key={node.id}
+            type="button"
+            onClick={() => onOpen(node)}
+            className="inline font-semibold text-[#E8C547] underline decoration-[#E8C547]/70 underline-offset-2"
+          >
+            {node.phrase}
+          </button>
+        ),
+      )}
+    </p>
+  );
+}
+
 export function LoginScreen({ onLogin }: Props) {
-  const [step, setStep]                   = useState<Step>('email');
+  const restoredAgreements = readAgreementsAt();
+  const restoredStep = readTempAuthStep();
+
+  const [step, setStep] = useState<Step>(() => {
+    if (restoredStep === 'code') return 'code';
+    if (restoredAgreements) return 'email';
+    return 'consent';
+  });
   const [email, setEmail]                 = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [isLoading, setIsLoading]         = useState(false);
@@ -41,15 +139,14 @@ export function LoginScreen({ onLogin }: Props) {
   const [otp, setOtp]                     = useState(['', '', '', '']);
   const [otpError, setOtpError]           = useState(false);
   const [isSuccess, setIsSuccess]         = useState(false);
-
-  const [isAgreed, setIsAgreed] = useState(false);
-  const [isPolicyOpen, setIsPolicyOpen] = useState(false);
+  const [agreementsAcceptedAt, setAgreementsAcceptedAt] = useState(restoredAgreements);
+  const [activeDocument, setActiveDocument] = useState<LegalDocument | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifiedRef = useRef(false);
 
   const isEmailValid = EMAIL_REGEX.test(email.trim());
-  const canGetCode = isAgreed && isEmailValid && !isLoading;
+  const canGetCode = Boolean(agreementsAcceptedAt) && isEmailValid && !isLoading;
 
   useEffect(() => {
     const savedStep = localStorage.getItem('temp_auth_step');
@@ -58,6 +155,7 @@ export function LoginScreen({ onLogin }: Props) {
     setEmail(localStorage.getItem('temp_auth_email') || '');
     setGeneratedCode(localStorage.getItem('temp_auth_code') || '');
     setStep('code');
+    setAgreementsAcceptedAt((current) => current || readAgreementsAt());
 
     const expireTime = Number(localStorage.getItem('temp_auth_expire') || 0);
     const timeLeft = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
@@ -92,6 +190,13 @@ export function LoginScreen({ onLogin }: Props) {
     }
   }, []);
 
+  const handleAcceptAll = () => {
+    const timestamp = new Date().toISOString();
+    setAgreementsAcceptedAt(timestamp);
+    writeAgreementsAt(timestamp);
+    setStep('email');
+  };
+
   const handleGetCode = () => {
     if (!canGetCode) return;
     sendCode(email, 60);
@@ -117,11 +222,10 @@ export function LoginScreen({ onLogin }: Props) {
     if (codeString === generatedCode) {
       verifiedRef.current = true;
       setIsSuccess(true);
-      const timer = setTimeout(() => {
-        clearTempAuth();
-        if (onLogin) onLogin(email.trim());
+      const successTimer = setTimeout(() => {
+        completeLogin(email, agreementsAcceptedAt, onLogin);
       }, 1000);
-      return () => clearTimeout(timer);
+      return () => clearTimeout(successTimer);
     }
 
     setOtpError(true);
@@ -130,7 +234,7 @@ export function LoginScreen({ onLogin }: Props) {
 
     const id = setTimeout(() => setOtpError(false), 1000);
     return () => clearTimeout(id);
-  }, [otp, generatedCode, step, email, onLogin]);
+  }, [otp, generatedCode, step, email, onLogin, agreementsAcceptedAt]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (isSuccess || !/^\d?$/.test(value)) return;
@@ -164,11 +268,35 @@ export function LoginScreen({ onLogin }: Props) {
       <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center mb-20">
         <img src={asset("/logo-final.webp")} alt="Showdown" className="h-64 w-auto mb-8" />
         <h1 className="text-3xl font-black text-[#110b09] mb-8 uppercase tracking-wide">
-          Вход
+          {step === 'consent' ? 'Регистрация' : 'Вход'}
         </h1>
 
         <AnimatePresence mode="wait">
-          {step === 'email' ? (
+          {step === 'consent' ? (
+            <motion.div
+              key="consent-step"
+              className="w-full"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="rounded-2xl border border-[#E8C547]/25 bg-[#231A16] p-4 shadow-[inset_0_1px_0_rgba(232,197,71,0.12)]">
+                <ConsentCopy onOpen={setActiveDocument} />
+                <button
+                  type="button"
+                  onClick={handleAcceptAll}
+                  className="mt-4 h-12 w-full rounded-xl text-[15px] font-700 tracking-wide text-[#0A0908] active:scale-[0.98]"
+                  style={{
+                    background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                    boxShadow: '0 0 16px rgba(217,153,98,0.28)',
+                  }}
+                >
+                  Принять все и продолжить
+                </button>
+              </div>
+            </motion.div>
+          ) : step === 'email' ? (
             <motion.div
               key="email-step"
               className="w-full"
@@ -185,37 +313,6 @@ export function LoginScreen({ onLogin }: Props) {
                 autoComplete="email"
                 className="bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 w-full mb-3 outline-none focus:border-[#D99962]/60 transition-colors"
               />
-
-              <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isAgreed}
-                  onChange={(e) => setIsAgreed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#D99962]/60 bg-[#231A16] accent-[#D99962] cursor-pointer"
-                />
-                <span className="text-xs text-[#8c8c88] leading-snug">
-                  Я согласен на обработку персональных данных и принимаю{' '}
-                  <span
-                    role="link"
-                    tabIndex={0}
-                    className="text-[#D99962] underline cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsPolicyOpen(true);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsPolicyOpen(true);
-                      }
-                    }}
-                  >
-                    Политику конфиденциальности
-                  </span>
-                </span>
-              </label>
 
               <button
                 type="button"
@@ -296,7 +393,7 @@ export function LoginScreen({ onLogin }: Props) {
                 type="button"
                 onClick={() => {
                   clearTempAuth();
-                  setStep('email');
+                  setStep(agreementsAcceptedAt ? 'email' : 'consent');
                   setOtp(['', '', '', '']);
                   setTimer(0);
                   setIsSuccess(false);
@@ -312,57 +409,9 @@ export function LoginScreen({ onLogin }: Props) {
         </AnimatePresence>
       </div>
 
-      {isPolicyOpen && (
-        <div className="fixed inset-0 z-50 bg-black/90 p-4 flex items-center justify-center">
-          <div
-            className="w-full max-w-md rounded-2xl p-5 border border-white/20"
-            style={{
-              background: 'rgba(35, 26, 22, 0.72)',
-              backdropFilter: 'blur(18px)',
-              WebkitBackdropFilter: 'blur(18px)',
-            }}
-          >
-            <h2 className="text-[16px] font-800 uppercase tracking-wide text-white mb-3">
-              Политика конфиденциальности
-            </h2>
-            <div className="max-h-[60vh] overflow-y-auto text-sm text-[#8c8c88] space-y-3 pr-1">
-              <p>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-                incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-                exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-              </p>
-              <p>
-                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-                culpa qui officia deserunt mollit anim id est laborum.
-              </p>
-              <p>
-                Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo
-                minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis
-                dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum
-                necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non
-                recusandae.
-              </p>
-              <p>
-                Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus
-                maiores alias consequatur aut perferendis doloribus asperiores repellat. Настоящая
-                заглушка описывает согласие на обработку персональных данных в соответствии с
-                152-ФЗ.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsPolicyOpen(false)}
-              className="mt-4 w-full py-3 rounded-xl text-[14px] font-700 text-[#0A0908]"
-              style={{
-                background: 'linear-gradient(to right, #8C4C27, #D99962)',
-              }}
-            >
-              Закрыть
-            </button>
-          </div>
-        </div>
-      )}
+      {activeDocument ? (
+        <LegalDocumentModal document={activeDocument} onClose={() => setActiveDocument(null)} />
+      ) : null}
 
       <style>{`
         @keyframes loginBgPulse {
