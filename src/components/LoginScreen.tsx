@@ -74,14 +74,14 @@ function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
 function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
   const normalized = email.trim().toLowerCase();
   const acceptedAt = agreementsAcceptedAt || new Date().toISOString();
-  const { data, isNew } = recordAgreementsAccepted(normalized, acceptedAt);
+  const result = recordAgreementsAccepted(normalized, acceptedAt);
 
-  if (isNew) {
+  if (result.isNew) {
     logAction(normalized, {
       actionType: 'Согласия приняты (электронная подпись)',
       targetUserEmail: normalized,
-      targetUserName: data.nickname,
-      details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${data.agreementsAcceptedAt}`,
+      targetUserName: result.nickname,
+      details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${result.agreementsAcceptedAt}`,
     });
   }
 
