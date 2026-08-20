@@ -59,7 +59,10 @@ export interface Tournament {
   /** Optional finishing table; statistic finalists also read `participants.place`. */
   results?: Participant[];
   lateRegUntil: string;
+  /** Catalog name of the blind ladder (display / fallback lookup). */
   blindStructure: string;
+  /** Catalog id of the blind ladder. The Poker Timer binds through this, not the event title. */
+  blindStructureId?: string;
   stackSize: number;
   levelDuration: string;
   /** Past / finished only when an admin has closed the tournament. */

@@ -5,6 +5,9 @@ import { ChevronRight, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
 import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { useBlinds } from '../../context/BlindsContext';
+import { useTournaments } from '../../context/TournamentContext';
+import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
+import { openTournaments } from '../../lib/timerTournament';
 import {
   buildLevels,
   DEFAULT_PAYOUTS,
@@ -356,12 +359,15 @@ function LevelEditor({
 export function AdminBlindsSettings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { tournaments } = useTournaments();
+  const { openTimerForTournament, openTimerForStructure } = useBindPokerTimer();
   const {
     structures,
     addStructure,
     updateLevels,
     activeStructureId,
     isRunning,
+    linkedTournamentId,
   } = useBlinds();
   const [isCreating, setIsCreating] = useState(false);
 
@@ -370,10 +376,9 @@ export function AdminBlindsSettings() {
     () => structures.find((s) => s.id === requestedId) ?? null,
     [structures, requestedId],
   );
+  const activeEvents = openTournaments(tournaments);
 
-  const openTimer = (id: string) => navigate(`/admin/blinds/timer?structure=${id}`);
   const openEditor = (id: string) => navigate(`/admin/blinds/settings?structure=${id}`);
-  const timerTargetId = activeStructureId ?? structures[0]?.id ?? null;
 
   const handleCreate = (form: CreateForm) => {
     const duration = Number(form.levelDuration) || 20;
@@ -393,7 +398,7 @@ export function AdminBlindsSettings() {
 
   const backFromEditor = () => {
     if (activeStructureId && editing && activeStructureId === editing.id) {
-      navigate(`/admin/blinds/timer?structure=${editing.id}`);
+      openTimerForStructure(editing.id);
       return;
     }
     navigate('/admin/blinds/settings');
@@ -405,7 +410,7 @@ export function AdminBlindsSettings() {
         <CompactHeader
           title={editing.name}
           onBack={backFromEditor}
-          right={<TimerHeaderButton onClick={() => openTimer(editing.id)} />}
+          right={<TimerHeaderButton onClick={() => openTimerForStructure(editing.id)} />}
         />
 
         <div
@@ -417,7 +422,7 @@ export function AdminBlindsSettings() {
               Таймер идёт. Изменения предстоящих уровней подхватятся сразу.
             </p>
           )}
-          <TimerSessionFields structureName={editing.name} />
+          <TimerSessionFields />
           <LevelEditor
             structure={editing}
             onChange={(levels) => updateLevels(editing.id, levels)}
@@ -434,9 +439,9 @@ export function AdminBlindsSettings() {
         backTo="/profile"
         right={
           <TimerHeaderButton
-            disabled={!timerTargetId}
+            disabled={!linkedTournamentId}
             onClick={() => {
-              if (timerTargetId) openTimer(timerTargetId);
+              if (linkedTournamentId) openTimerForTournament(linkedTournamentId);
             }}
           />
         }
@@ -446,7 +451,51 @@ export function AdminBlindsSettings() {
         className="flex-1 scrollable px-3"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
-        <TimerSessionFields structureName={structures.find((s) => s.id === activeStructureId)?.name} />
+        <TimerSessionFields />
+
+        {activeEvents.length > 0 && (
+          <section className="mb-5">
+            <p
+              className="text-[11px] font-800 uppercase tracking-[0.16em] mb-2 px-1"
+              style={{ color: '#F2D8A7' }}
+            >
+              Активные турниры
+            </p>
+            <div className="space-y-2">
+              {activeEvents.map((tournament) => (
+                <button
+                  key={tournament.id}
+                  type="button"
+                  onClick={() => openTimerForTournament(tournament.id)}
+                  className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left"
+                  style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.28)' }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(140,76,39,0.22)' }}
+                  >
+                    <Timer size={16} strokeWidth={2.2} style={{ color: '#D99962' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-bold text-white truncate">{tournament.title}</p>
+                    <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
+                      {tournament.participants.length} игр. · {tournament.blindStructure}
+                      {tournament.isBounty ? ' · bounty' : ''}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <p
+          className="text-[11px] font-800 uppercase tracking-[0.16em] mb-2 px-1"
+          style={{ color: '#D99962' }}
+        >
+          Структуры блайндов
+        </p>
         <div className="space-y-2">
           {structures.map((structure) => (
             <div
@@ -456,7 +505,7 @@ export function AdminBlindsSettings() {
             >
               <button
                 type="button"
-                onClick={() => openTimer(structure.id)}
+                onClick={() => openTimerForStructure(structure.id)}
                 className="flex-1 flex items-center gap-3 min-w-0 text-left"
               >
                 <div

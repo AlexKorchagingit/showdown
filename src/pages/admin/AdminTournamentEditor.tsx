@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, Trash2, UserPlus, X,
+  ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, Timer, Trash2, UserPlus, X,
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
@@ -12,9 +12,11 @@ import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentSta
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
+import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { CURRENT_USER_RATING } from '../../types/player';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
+import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 
 /** Season rating from the global player pool (read-only in lobby admin). */
 function resolveSeasonRating(nickname: string): number {
@@ -327,6 +329,7 @@ function ParticipantsEditor({
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
   const { updateTournament, deleteTournament, addTournament } = useTournaments();
+  const { openTimerForTournament } = useBindPokerTimer();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -491,11 +494,30 @@ function Editor({ tournament }: { tournament: Tournament }) {
             </div>
           </div>
 
-          <div className="rounded-2xl p-4" style={CARD_STYLE}>
+          <div className="rounded-2xl p-4 space-y-4" style={CARD_STYLE}>
             <BountyCheckbox
               checked={tournament.isBounty === true}
               onChange={(checked) => patch({ isBounty: checked })}
             />
+            <BlindStructurePicker
+              structureId={tournament.blindStructureId}
+              structureName={tournament.blindStructure}
+              onChange={(next) => patch(next)}
+            />
+            {!isFinished && (
+              <button
+                type="button"
+                onClick={() => openTimerForTournament(tournament.id)}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-700 text-[#0A0908] active:scale-[0.98] transition-transform"
+                style={{
+                  background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                  boxShadow: '0 0 16px rgba(217,153,98,0.28)',
+                }}
+              >
+                <Timer size={16} strokeWidth={2.4} />
+                Запустить таймер
+              </button>
+            )}
           </div>
 
           {/* Info */}

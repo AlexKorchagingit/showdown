@@ -28,7 +28,7 @@ import type { TournamentDealer } from '../../types/tournament';
 import { ALL_PARTICIPANTS } from '../../data/participants';
 import { CURRENT_USER_RATING } from '../../types/player';
 import { playerEmail, systemPlayerDirectory } from '../../lib/systemPlayers';
-import { attachRubiesAwarded } from '../../lib/calculateRubies';
+import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
 import { hasGlobalUnpaidDebt } from '../../lib/playerAnalytics';
 import { creditRubiesToBalance } from '../../lib/rubyGrants';
 
@@ -123,6 +123,7 @@ export function AdminTournamentFinance() {
 
   if (!tournament) return <Navigate to="/admin/finance" replace />;
 
+  const bountyEvent = isBountyEvent(tournament);
   const placedOrdered = sortByPlace(
     tournament.participants.filter((p) => typeof p.place === 'number'),
   );
@@ -215,8 +216,8 @@ export function AdminTournamentFinance() {
         : `В призах: ${payouts.length} чел. (30%)\n${payouts
             .map((row) => `${row.place}-е место — ${row.points.toLocaleString('ru-RU')} очков`)
             .join('\n')}`;
-    const bountyNote = tournament.isBounty
-      ? '\n\nНокаут-турнир: к очкам за место добавится 200 за каждый нокаут.'
+    const bountyNote = bountyEvent
+      ? '\n\nНокаут-турнир: к очкам за место добавится 200 за каждый нокаут. Рубины: 75% от выплаты за место + 100 за нокаут.'
       : '';
     if (
       !window.confirm(
@@ -227,7 +228,7 @@ export function AdminTournamentFinance() {
     }
 
     let closingParticipants = tournament.participants;
-    if (tournament.isBounty) {
+    if (bountyEvent) {
       const leftover = closingParticipants.filter((p) => typeof p.place !== 'number');
       if (leftover.length === 1) {
         const raw = window.prompt(
@@ -247,8 +248,9 @@ export function AdminTournamentFinance() {
       closeTournamentWithPayouts(
         closingParticipants,
         tournament.guarantee,
-        tournament.isBounty === true,
+        bountyEvent,
       ),
+      bountyEvent,
     );
     const rubyTotal = settled.reduce((sum, row) => sum + (row.rubiesAwarded ?? 0), 0);
 
@@ -289,7 +291,7 @@ export function AdminTournamentFinance() {
     if (!player) return;
 
     let knockouts = player.knockouts;
-    if (tournament.isBounty) {
+    if (bountyEvent) {
       const raw = window.prompt('Сколько нокаутов сделал игрок?', String(knockouts ?? 0));
       if (raw === null) return;
       knockouts = parseKnockoutCount(raw);
@@ -304,7 +306,7 @@ export function AdminTournamentFinance() {
         const next = syncRating
           ? applyPlaceToParticipant(p, place, tournament.guarantee, totalPlayers)
           : { ...p, place };
-        return tournament.isBounty ? { ...next, knockouts } : next;
+        return bountyEvent ? { ...next, knockouts } : next;
       }),
     });
     const newRating = syncRating
@@ -639,7 +641,7 @@ export function AdminTournamentFinance() {
                           {player.place}-е место
                         </p>
                       )}
-                      {tournament.isBounty && (
+                      {bountyEvent && (
                         <p
                           className="flex items-center gap-1 text-[11px] font-700 mt-0.5"
                           style={{ color: '#F2D8A7' }}

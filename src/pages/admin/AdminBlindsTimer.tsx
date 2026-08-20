@@ -17,6 +17,8 @@ import { FitText } from '../../components/FitText';
 import { useBlinds } from '../../context/BlindsContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
+import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
+import { resolveStructureForTournament } from '../../lib/timerTournament';
 import {
   durationSeconds,
   formatBlinds,
@@ -93,7 +95,6 @@ export function AdminBlindsTimer() {
     skipLevel,
     adjustSeconds,
     linkedTournamentId,
-    setLinkedTournament,
     avgStackOverride,
     chipleaderId,
     setChipleader,
@@ -102,18 +103,51 @@ export function AdminBlindsTimer() {
     chipleaderStack,
   } = useBlinds();
 
+  const { bindTournament } = useBindPokerTimer();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
 
-  const requestedId =
-    searchParams.get('structure') ??
-    structures.find((s) => s.name === tournaments.find((t) => t.id === linkedTournamentId)?.title)?.id ??
-    structures[0]?.id ??
-    null;
+  const tournamentIdParam = searchParams.get('tournament');
+  const structureIdParam = searchParams.get('structure');
+  const boundTournament = (() => {
+    const id = tournamentIdParam ?? linkedTournamentId;
+    if (!id) return undefined;
+    const found = tournaments.find((row) => row.id === id);
+    if (!found) return undefined;
+    if (tournamentIdParam) return found;
+    if (structureIdParam) {
+      const usesThisLadder =
+        resolveStructureForTournament(found, structures)?.id === structureIdParam;
+      return usesThisLadder ? found : undefined;
+    }
+    return found;
+  })();
+  const resolvedStructure =
+    resolveStructureForTournament(boundTournament, structures) ??
+    structures.find((row) => row.id === (structureIdParam ?? activeStructure?.id ?? '')) ??
+    activeStructure;
 
   useEffect(() => {
-    ensureTimer(requestedId);
-  }, [requestedId, ensureTimer]);
+    if (tournamentIdParam) {
+      bindTournament(tournamentIdParam);
+      return;
+    }
+    if (structureIdParam) {
+      ensureTimer(structureIdParam);
+      const linked = tournaments.find((row) => row.id === linkedTournamentId);
+      const usesThisLadder =
+        resolveStructureForTournament(linked, structures)?.id === structureIdParam;
+      if (linkedTournamentId && !usesThisLadder) bindTournament(null);
+    }
+  }, [
+    tournamentIdParam,
+    structureIdParam,
+    bindTournament,
+    ensureTimer,
+    tournaments,
+    linkedTournamentId,
+    structures,
+  ]);
 
   useEffect(() => {
     const sync = () => setFullscreen(isAppFullscreen());
@@ -125,20 +159,13 @@ export function AdminBlindsTimer() {
     };
   }, []);
 
-  const structure = activeStructure ?? structures.find((s) => s.id === requestedId);
-  const tournament = tournaments.find((t) => t.id === linkedTournamentId);
+  const structure = resolvedStructure;
+  const tournament = boundTournament;
   const { remaining } = tournamentPlayerCounts(tournament);
   const avgStack = avgStackOverride ?? autoAvgStack(tournament);
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
-  const eventTitle = structure?.name ?? '';
-
-  useEffect(() => {
-    if (!structure) return;
-    const match = tournaments.find((t) => t.title === structure.name);
-    const nextId = match?.id ?? null;
-    if (nextId !== linkedTournamentId) setLinkedTournament(nextId);
-  }, [structure, tournaments, linkedTournamentId, setLinkedTournament]);
+  const eventTitle = tournament?.title ?? structure?.name ?? '';
 
   const timeToNextBreak = useMemo(
     () =>
@@ -512,7 +539,7 @@ export function AdminBlindsTimer() {
                 <X size={16} style={{ color: '#A39B98' }} />
               </button>
             </div>
-            <TimerSessionFields structureName={structure.name} />
+            <TimerSessionFields />
           </div>
         </div>
       )}

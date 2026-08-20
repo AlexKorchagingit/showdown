@@ -262,7 +262,8 @@ const DEEPSTACK: ClubLevelOptions = {
 };
 
 /**
- * Canonical club structures — names match tournament titles exactly.
+ * Canonical club structures. Live timers bind to a Tournament by `tournamentId`,
+ * then resolve this catalog via `blindStructureId` (preferred) or `blindStructure` name.
  * Persisted to localStorage so admin edits survive reloads.
  */
 export const BLIND_STRUCTURES: BlindStructure[] = [

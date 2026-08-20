@@ -1,16 +1,21 @@
-import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useBlinds } from '../context/BlindsContext';
 import { useTournaments } from '../context/TournamentContext';
+import { useBindPokerTimer } from '../hooks/useBindPokerTimer';
 import { autoAvgStack, remainingPlayers } from '../lib/tournamentStats';
+import { openTournaments, timerPathForStructure, timerPathForTournament } from '../lib/timerTournament';
 
 const FIELD_CLASS =
   'w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#D99962]/60 transition-colors';
 const LABEL_CLASS =
   'block text-[10px] font-700 uppercase tracking-[0.16em] mb-1 text-[#D99962]';
 
-/** Avg stack and chipleader — tournament name is locked to the selected structure. */
-export function TimerSessionFields({ structureName }: { structureName?: string }) {
+/** Avg stack, chipleader, and the TournamentContext event bound by id. */
+export function TimerSessionFields() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { tournaments } = useTournaments();
+  const { bindTournament } = useBindPokerTimer();
   const {
     activeStructure,
     avgStackOverride,
@@ -18,7 +23,6 @@ export function TimerSessionFields({ structureName }: { structureName?: string }
     linkedTournamentId,
     totalEntries,
     rebuyCount,
-    setLinkedTournament,
     setAvgStackOverride,
     setChipleader,
     setTotalEntries,
@@ -27,18 +31,30 @@ export function TimerSessionFields({ structureName }: { structureName?: string }
     setChipleaderStack,
   } = useBlinds();
 
-  const name = activeStructure?.name ?? structureName ?? '';
-
-  useEffect(() => {
-    if (!name) return;
-    const match = tournaments.find((t) => t.title === name);
-    const nextId = match?.id ?? null;
-    if (nextId !== linkedTournamentId) setLinkedTournament(nextId);
-  }, [name, tournaments, linkedTournamentId, setLinkedTournament]);
-
-  const tournament = tournaments.find((t) => t.id === linkedTournamentId);
+  const onTimerPage = location.pathname === '/admin/blinds/timer';
+  const tournament = tournaments.find((row) => row.id === linkedTournamentId);
   const remaining = remainingPlayers(tournament);
   const autoStack = autoAvgStack(tournament);
+
+  const selectable = (() => {
+    const open = openTournaments(tournaments);
+    if (tournament && tournament.isClosed && !open.some((row) => row.id === tournament.id)) {
+      return [tournament, ...open];
+    }
+    return open;
+  })();
+
+  const selectTournament = (tournamentId: string) => {
+    if (!tournamentId) {
+      bindTournament(null);
+      if (onTimerPage && activeStructure) {
+        navigate(timerPathForStructure(activeStructure.id), { replace: true });
+      }
+      return;
+    }
+    bindTournament(tournamentId);
+    if (onTimerPage) navigate(timerPathForTournament(tournamentId), { replace: true });
+  };
 
   return (
     <div
@@ -49,10 +65,22 @@ export function TimerSessionFields({ structureName }: { structureName?: string }
         Сессия текущего таймера
       </p>
 
-      <div>
+      <label className="block">
         <span className={LABEL_CLASS}>Турнир</span>
-        <p className="text-[14px] font-bold text-white">{name || '—'}</p>
-      </div>
+        <select
+          value={linkedTournamentId ?? ''}
+          onChange={(event) => selectTournament(event.target.value)}
+          className={FIELD_CLASS}
+        >
+          <option value="">Не выбран</option>
+          {selectable.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.title}
+              {row.isClosed ? ' (закрыт)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label className="block">
         <span className={LABEL_CLASS}>Всего входов (Игроки)</span>

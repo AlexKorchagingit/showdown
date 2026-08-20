@@ -7,9 +7,11 @@ import { TournamentCard } from '../../components/TournamentCard';
 import { CompactHeader } from '../../components/CompactHeader';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
+import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { compareByStart, isFinished } from '../../lib/tournamentStatus';
 import { asset } from '../../lib/assets';
 import { DEFAULT_TOTAL_SEATS, type Tournament } from '../../types/tournament';
+import { useBlinds } from '../../context/BlindsContext';
 
 type Tab = 'all' | 'create';
 
@@ -35,6 +37,7 @@ interface CreateForm {
   about: string;
   features: string[];
   isBounty: boolean;
+  blindStructureId: string;
 }
 
 const EMPTY_FORM: CreateForm = {
@@ -46,16 +49,20 @@ const EMPTY_FORM: CreateForm = {
   about: '',
   features: [],
   isBounty: false,
+  blindStructureId: '',
 };
 
 function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }) {
   const { addTournament } = useTournaments();
+  const { structures } = useBlinds();
   const [form, setForm] = useState<CreateForm>(EMPTY_FORM);
 
   const set = <K extends keyof CreateForm>(key: K, value: CreateForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const isValid = form.title.trim().length > 0 && form.startDate.length > 0;
+  const selectedStructure =
+    structures.find((row) => row.id === form.blindStructureId) ?? structures[0];
 
   const handleCreate = () => {
     if (!isValid) return;
@@ -73,9 +80,10 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       isBounty: form.isBounty,
       participants: [],
       lateRegUntil: '22:45',
-      blindStructure: 'Плавная',
+      blindStructure: selectedStructure?.name ?? 'Плавная',
+      blindStructureId: selectedStructure?.id,
       stackSize: 50000,
-      levelDuration: '20/18 мин',
+      levelDuration: selectedStructure ? `${selectedStructure.levelDuration} мин` : '20/18 мин',
       isClosed: false,
     };
 
@@ -160,6 +168,14 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
 
       <section>
         <BountyCheckbox checked={form.isBounty} onChange={(checked) => set('isBounty', checked)} />
+      </section>
+
+      <section>
+        <BlindStructurePicker
+          structureId={selectedStructure?.id}
+          structureName={selectedStructure?.name}
+          onChange={(next) => set('blindStructureId', next.blindStructureId)}
+        />
       </section>
 
       <button
