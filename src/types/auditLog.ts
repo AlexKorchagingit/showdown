@@ -26,5 +26,3 @@ export type LogActionDraft = {
   targetTournamentName?: string;
   details?: string;
 };
-
-export const AUDIT_LOG_STORAGE_KEY = 'club_audit_logs';

@@ -7,31 +7,58 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { loadAuditLogs, logAction as persistLogAction, subscribeAuditLogs } from '../lib/auditLogStorage';
+import { logAction as persistLogAction } from '../lib/auditLogStorage';
+import { fetchLogs } from '../lib/logApi';
 import { useUser } from './UserContext';
 import type { ActionLog, LogActionDraft } from '../types/auditLog';
 
 interface AuditLogContextValue {
   logs: ActionLog[];
-  logAction: (draft: LogActionDraft) => void;
+  isLoading: boolean;
+  refreshLogs: () => Promise<void>;
+  logAction: (draft: LogActionDraft) => Promise<void>;
 }
 
 const AuditLogContext = createContext<AuditLogContextValue | null>(null);
 
 export function AuditLogProvider({ children }: { children: ReactNode }) {
-  const { email } = useUser();
-  const [logs, setLogs] = useState<ActionLog[]>(() => loadAuditLogs());
+  const { email, userId, account } = useUser();
+  const [logs, setLogs] = useState<ActionLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => subscribeAuditLogs(() => setLogs(loadAuditLogs())), []);
+  const refreshLogs = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const rows = await fetchLogs();
+      setLogs(rows);
+    } catch (error) {
+      console.error(error);
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshLogs();
+  }, [refreshLogs]);
 
   const logAction = useCallback(
-    (draft: LogActionDraft) => {
-      persistLogAction(email, draft);
+    async (draft: LogActionDraft) => {
+      const saved = await persistLogAction(email, draft, {
+        adminId: userId || account?.id,
+        adminName: account?.nickname,
+      });
+      if (!saved) return;
+      setLogs((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
     },
-    [email],
+    [account?.id, account?.nickname, email, userId],
   );
 
-  const value = useMemo(() => ({ logs, logAction }), [logs, logAction]);
+  const value = useMemo(
+    () => ({ logs, isLoading, refreshLogs, logAction }),
+    [isLoading, logAction, logs, refreshLogs],
+  );
 
   return <AuditLogContext.Provider value={value}>{children}</AuditLogContext.Provider>;
 }

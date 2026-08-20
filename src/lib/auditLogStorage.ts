@@ -1,27 +1,14 @@
-import { AUDIT_LOG_STORAGE_KEY, type ActionLog, type LogActionDraft } from '../types/auditLog';
+import type { ActionLog, LogActionDraft } from '../types/auditLog';
+import { findClubUser } from './clubDirectory';
+import { insertAuditLog } from './logApi';
 import { adminAccount, adminDisplayName } from './playerName';
-
-const MAX_LOGS = 2000;
-
-const listeners = new Set<() => void>();
-let memoryLogs: ActionLog[] | null = null;
+import { readSessionUserId } from './session';
 
 function newLogId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
   return `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function isActionLog(value: unknown): value is ActionLog {
-  if (!value || typeof value !== 'object') return false;
-  const row = value as Partial<ActionLog>;
-  return (
-    typeof row.id === 'string' &&
-    typeof row.timestamp === 'number' &&
-    typeof row.adminEmail === 'string' &&
-    typeof row.actionType === 'string'
-  );
 }
 
 export function normalizeLog(row: ActionLog): ActionLog {
@@ -50,50 +37,25 @@ export function logTargetLabel(log: ActionLog): string | undefined {
   return parts.length ? parts.join(' / ') : undefined;
 }
 
-function readStoredLogs(): ActionLog[] {
-  try {
-    const raw = localStorage.getItem(AUDIT_LOG_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isActionLog).map(normalizeLog);
-  } catch {
-    return [];
-  }
-}
+export type LogActor = {
+  adminId?: string;
+  adminName?: string;
+};
 
-export function loadAuditLogs(): ActionLog[] {
-  if (memoryLogs) return memoryLogs;
-  memoryLogs = readStoredLogs();
-  return memoryLogs;
-}
-
-function persistAuditLogs(logs: ActionLog[]) {
-  memoryLogs = logs;
-  try {
-    localStorage.setItem(AUDIT_LOG_STORAGE_KEY, JSON.stringify(logs));
-  } catch {
-    /* Quota or private mode — keep the in-memory journal. */
-  }
-  listeners.forEach((listener) => listener());
-}
-
-export function subscribeAuditLogs(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-/** Append an admin action to `club_audit_logs` (newest first). */
-export function logAction(adminEmail: string, draft: LogActionDraft): ActionLog {
-  const admin = adminAccount(adminEmail);
+/** Append an admin/user action to the `logs` table (newest first in the UI). */
+export async function logAction(
+  adminEmail: string,
+  draft: LogActionDraft,
+  actor?: LogActor,
+): Promise<ActionLog | null> {
+  const admin = findClubUser({ email: adminEmail }) ?? adminAccount(adminEmail);
+  const adminId = actor?.adminId || readSessionUserId() || admin.id;
   const entry: ActionLog = {
     id: newLogId(),
     timestamp: Date.now(),
-    adminId: admin.id,
+    adminId,
     adminEmail: admin.email || adminEmail,
-    adminName: admin.nickname,
+    adminName: actor?.adminName || admin.nickname,
     actionType: draft.actionType,
     ...(draft.targetUserId ? { targetUserId: draft.targetUserId } : {}),
     ...(draft.targetUserEmail ? { targetUserEmail: draft.targetUserEmail } : {}),
@@ -102,6 +64,6 @@ export function logAction(adminEmail: string, draft: LogActionDraft): ActionLog 
     ...(draft.targetTournamentName ? { targetTournamentName: draft.targetTournamentName } : {}),
     ...(draft.details ? { details: draft.details } : {}),
   };
-  persistAuditLogs([entry, ...loadAuditLogs()].slice(0, MAX_LOGS));
-  return entry;
+
+  return insertAuditLog(normalizeLog(entry));
 }

@@ -328,18 +328,24 @@ export function transactionFromRow(row: TransactionRow): Transaction {
   };
 }
 
+function nullableFk(value?: string | null): string | null {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed || trimmed === 'me') return null;
+  return trimmed;
+}
+
 export function logToRow(log: ActionLog): LogRow {
   return {
     id: log.id,
     timestamp: new Date(log.timestamp).toISOString(),
-    admin_id: log.adminId || null,
+    admin_id: nullableFk(log.adminId),
     admin_email: log.adminEmail,
     admin_name: log.adminName,
     action_type: log.actionType,
-    target_user_id: log.targetUserId ?? null,
+    target_user_id: nullableFk(log.targetUserId),
     target_user_email: log.targetUserEmail ?? null,
     target_user_name: log.targetUserName ?? null,
-    target_tournament_id: log.targetTournamentId ?? null,
+    target_tournament_id: nullableFk(log.targetTournamentId),
     target_tournament_name: log.targetTournamentName ?? null,
     details: log.details ?? log.description ?? null,
   };

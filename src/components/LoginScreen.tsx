@@ -77,12 +77,13 @@ async function completeLogin(email: string, agreementsAcceptedAt: string, onLogi
   const { user, isNew } = await loginOrRegisterUser(normalized, acceptedAt);
 
   if (isNew) {
-    logAction(normalized, {
+    await logAction(normalized, {
       actionType: 'Согласия приняты (электронная подпись)',
+      targetUserId: user.id,
       targetUserEmail: normalized,
       targetUserName: user.nickname,
       details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${user.agreementsAcceptedAt ?? acceptedAt}`,
-    });
+    }, { adminId: user.id, adminName: user.nickname });
   }
 
   clearTempAuth();

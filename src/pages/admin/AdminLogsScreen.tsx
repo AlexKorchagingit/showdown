@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { CompactHeader } from '../../components/CompactHeader';
 import { MigrateToDatabaseButton } from '../../components/admin/MigrateToDatabaseButton';
+import { ScreenLoading } from '../../components/ScreenLoading';
 import { useAuditLog } from '../../context/AuditLogContext';
 import { isSuperAdmin, useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
@@ -36,9 +37,13 @@ function inAuditPeriod(timestamp: number, period: AuditPeriod, now = new Date())
 
 export function AdminLogsScreen() {
   const { email, clubUsers } = useUser();
-  const { logs } = useAuditLog();
+  const { logs, isLoading, refreshLogs } = useAuditLog();
   const [tab, setTab] = useState<LogsTab>('general');
   const [period, setPeriod] = useState<AuditPeriod>('all');
+
+  useEffect(() => {
+    void refreshLogs();
+  }, [refreshLogs]);
 
   const isSuperAdminUser = isSuperAdmin(email);
   const filtered = useMemo(
@@ -146,7 +151,9 @@ export function AdminLogsScreen() {
               })}
             </div>
 
-            {filtered.length === 0 ? (
+            {isLoading && filtered.length === 0 ? (
+              <ScreenLoading label="Загрузка журнала…" />
+            ) : filtered.length === 0 ? (
               <p className="text-[13px] px-1" style={{ color: '#6B6360' }}>
                 Нет записей за выбранный период
               </p>
