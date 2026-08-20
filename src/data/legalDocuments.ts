@@ -36,34 +36,62 @@ export function legalDocumentById(id: LegalDocId): LegalDocument {
   return CONSENT_DOCUMENTS.find((doc) => doc.id === id) ?? CONSENT_DOCUMENTS[0];
 }
 
-/** Extra club papers shown only in About → Legal (full texts arrive later). */
-export const ABOUT_CLUB_DOCUMENTS: { title: string; body: string }[] = [
+/** Image-based papers in About → Legal (`public/legal/<file>`). */
+export type ClubLegalDocument = {
+  id: string;
+  title: string;
+  file: string;
+};
+
+export const CLUB_LEGAL_DOCUMENTS: ClubLegalDocument[] = [
   {
-    title: 'Публичный договор (оферта) на оказание услуг',
-    body: PLACEHOLDER,
-  },
-  {
-    title: 'Дополнительное соглашение к публичному договору',
-    body: PLACEHOLDER,
-  },
-  {
+    id: 'privacy-policy',
     title: 'Политика в отношении обработки персональных данных',
-    body: PLACEHOLDER,
+    file: 'privacy_policy.png',
   },
   {
+    id: 'local-storage-policy',
+    title: 'Политика в отношении использования технологий локального хранения данных',
+    file: 'local_storage_policy.png',
+  },
+  {
+    id: 'confidentiality-policy',
+    title: 'Политика конфиденциальности',
+    file: 'confidentiality_policy.png',
+  },
+  {
+    id: 'public-offer',
+    title: 'Публичный договор (договор-оферта) на оказание услуг',
+    file: 'public_offer.png',
+  },
+  {
+    id: 'offer-addendum',
+    title: 'Дополнительное соглашение к публичному договору',
+    file: 'offer_addendum.png',
+  },
+  {
+    id: 'pd-consent',
     title: 'Согласие на обработку персональных данных',
-    body: PLACEHOLDER,
+    file: 'pd_consent.png',
   },
   {
-    title: 'Согласие на получение информационных рассылок',
-    body: PLACEHOLDER,
+    id: 'pd-distribution',
+    title: 'Согласие на распространение персональных данных',
+    file: 'pd_distribution_consent.png',
   },
   {
-    title: 'Согласие на использование локального хранилища',
-    body: PLACEHOLDER,
+    id: 'marketing-consent',
+    title: 'Согласие на получение рекламных и информационных рассылок',
+    file: 'marketing_consent.png',
   },
   {
-    title: 'Лист ознакомления',
-    body: PLACEHOLDER,
+    id: 'club-rules',
+    title: 'Правила посещения клуба',
+    file: 'club_rules.png',
+  },
+  {
+    id: 'requisites',
+    title: 'Реквизиты и контакты',
+    file: 'requisites.png',
   },
 ];

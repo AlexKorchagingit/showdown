@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BarChart3, ChevronDown, Settings, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, BarChart3, ChevronDown, ChevronRight, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
 import { useAuditLog } from '../context/AuditLogContext';
-import { useTournaments } from '../context/TournamentContext';
+import { CURRENT_USER_ID, useTournaments } from '../context/TournamentContext';
 import { useFinance } from '../context/FinanceContext';
 import { CURRENT_PLAYER_STATS } from '../data/playerStats';
 import {
@@ -17,9 +17,10 @@ import {
   characterImageForPlayer,
 } from '../lib/playerCharacter';
 import { resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
-import { computePlayerAdminStats } from '../lib/playerAnalytics';
+import { collectPlayerGameHistory, computePlayerAdminStats } from '../lib/playerAnalytics';
 import { playerEmail } from '../lib/systemPlayers';
 import { AdminPlayerStats } from '../components/admin/AdminPlayerStats';
+import { GameHistorySheet } from '../components/GameHistorySheet';
 
 const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg'] as const;
 
@@ -59,12 +60,13 @@ export function ProfilePage() {
   const { playerId } = useParams<{ playerId?: string }>();
   const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
-  const { isAdmin } = useUser();
+  const { isAdmin, email } = useUser();
   const { logAction } = useAuditLog();
   const { tournaments } = useTournaments();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
   const [isExpanded, setIsExpanded] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
 
   const readOnly = Boolean(playerId);
   const state = (location.state ?? null) as Partial<PublicProfileStats> | null;
@@ -129,6 +131,11 @@ export function ProfilePage() {
   }, [readOnly, playerId, displayNickname, tournaments, transactions, getDealerHours]);
 
   const showAdminStats = readOnly && isAdmin && adminStats != null;
+
+  const gameHistory = useMemo(() => {
+    const userIds = readOnly && playerId ? [playerId] : [CURRENT_USER_ID, email];
+    return collectPlayerGameHistory(tournaments, userIds, displayNickname);
+  }, [tournaments, readOnly, playerId, email, displayNickname]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -233,14 +240,39 @@ export function ProfilePage() {
           <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-[160px] h-[150%] bg-[#231A16]/80 blur-[30px] rounded-full z-0 pointer-events-none" />
 
           <div className="relative z-10 flex flex-col gap-3 pl-4 pr-8">
-            {sideStats.map(({ label, display, size }) => (
-              <div key={label}>
-                <p className="text-[10px] text-white font-bold drop-shadow-md uppercase tracking-wide">
-                  {label}
-                </p>
-                <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{display}</p>
-              </div>
-            ))}
+            {sideStats.map(({ label, display, size }) => {
+              if (label === 'Игры') {
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setGamesOpen(true)}
+                    className="text-left active:opacity-80 transition-opacity"
+                  >
+                    <p className="text-[10px] text-white font-bold drop-shadow-md uppercase tracking-wide">
+                      {label}
+                    </p>
+                    <p className="leading-none mt-0.5 inline-flex items-center gap-0.5">
+                      <span className={`${size} ${GOLD_NUM}`}>{display}</span>
+                      <ChevronRight
+                        size={22}
+                        strokeWidth={2.4}
+                        className="text-[#D99962] drop-shadow-[0_0_8px_rgba(217,153,98,0.8)]"
+                      />
+                    </p>
+                  </button>
+                );
+              }
+
+              return (
+                <div key={label}>
+                  <p className="text-[10px] text-white font-bold drop-shadow-md uppercase tracking-wide">
+                    {label}
+                  </p>
+                  <p className={`${size} ${GOLD_NUM} leading-none mt-0.5`}>{display}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -301,6 +333,9 @@ export function ProfilePage() {
           }
         />
       )}
+      {gamesOpen ? (
+        <GameHistorySheet rows={gameHistory} onClose={() => setGamesOpen(false)} />
+      ) : null}
     </div>
   );
 }

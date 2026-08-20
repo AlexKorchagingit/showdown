@@ -44,9 +44,6 @@ const RADIUS = 192;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const GLASS =
   'bg-white/[0.03] border border-white/[0.05] rounded-2xl p-5 backdrop-blur-sm';
-const NOISE_BG = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>`,
-)}")`;
 
 function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.ceil(totalSeconds));
@@ -210,14 +207,8 @@ export function AdminBlindsTimer() {
     : `Level ${levelNumber}`;
 
   return (
-    <div className="relative h-full w-full min-h-0 text-white bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#231A16] to-[#0A0908] overflow-visible">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
-        style={{ backgroundImage: NOISE_BG }}
-        aria-hidden
-      />
-
-      <div className="relative flex w-full h-full items-stretch gap-4 overflow-visible px-4 pt-2 pb-28">
+    <div className="relative h-full w-full min-h-0 text-white bg-[#0A0908] overflow-visible">
+      <div className="relative flex w-full h-full items-stretch gap-4 overflow-visible p-6 md:p-8 pb-28">
         <div className="w-[240px] md:w-[280px] shrink-0 flex flex-col min-h-0">
           <section className={`${GLASS} flex-1 min-h-0 overflow-y-auto`}>
             <p className="text-sm md:text-lg font-800 uppercase tracking-[0.16em] text-[#D99962]">
@@ -420,7 +411,7 @@ export function AdminBlindsTimer() {
           <img
             src={asset('/SD.png')}
             alt="Showdown"
-            className="h-36 md:h-48 w-auto object-contain opacity-90 self-end"
+            className="h-40 md:h-56 w-auto object-contain opacity-90 self-end"
           />
           <section className={`${GLASS} w-full self-end text-right space-y-4`}>
             {timeToNextBreak != null && (
@@ -452,7 +443,7 @@ export function AdminBlindsTimer() {
         </div>
       </div>
 
-      <div className="absolute bottom-5 right-5 z-50 flex items-center gap-2 pointer-events-auto">
+      <div className="absolute bottom-8 right-8 z-50 flex items-center gap-2 pointer-events-auto">
         <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
           <ArrowLeft size={22} strokeWidth={2.2} />
         </ControlButton>

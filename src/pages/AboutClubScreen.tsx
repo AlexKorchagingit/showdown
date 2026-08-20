@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Camera, ChevronDown, FileText, GraduationCap, Trophy } from 'lucide-react';
-import { ABOUT_CLUB_DOCUMENTS } from '../data/legalDocuments';
+import { ArrowLeft, Camera, FileText, GraduationCap, Trophy } from 'lucide-react';
+import { CLUB_LEGAL_DOCUMENTS, type ClubLegalDocument } from '../data/legalDocuments';
+import { LegalImageModal } from '../components/LegalImageModal';
 
 type AboutTab = 'general' | 'legal';
 
@@ -146,72 +147,31 @@ function GeneralTab() {
 }
 
 function LegalTab() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [active, setActive] = useState<ClubLegalDocument | null>(null);
 
   return (
     <div>
-      <div className="mb-8">
-        <p className="text-[11px] font-700 tracking-[0.28em] uppercase text-[#D99962] mb-3">
-          Реквизиты
-        </p>
-        <p className="text-[13px] font-500 text-white/55 mb-1">Индивидуальный предприниматель</p>
-        <p className="text-[18px] font-800 text-white leading-snug mb-3">
-          Корчагин Александр Александрович
-        </p>
-        <p className="text-[14px] font-600 text-white/70 tracking-wide">
-          <span className="text-white/45 font-500 mr-2">ИНН</span>
-          <span className="tabular-nums text-white">770804408442</span>
-        </p>
-      </div>
-
       <h2 className="text-[13px] font-800 tracking-[0.22em] uppercase text-[#D99962] mb-3">
         Документы
       </h2>
 
       <div className="space-y-2">
-        {ABOUT_CLUB_DOCUMENTS.map((document, index) => {
-          const open = openIndex === index;
-          return (
-            <div key={document.title} className="rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setOpenIndex(open ? null : index)}
-                aria-expanded={open}
-                className="w-full flex justify-between items-center p-4 bg-[#231A16] rounded-lg active:opacity-90 transition-opacity"
-              >
-                <span className="flex items-center gap-3 min-w-0 text-left">
-                  <FileText size={18} strokeWidth={2.1} className="text-[#D99962] shrink-0" />
-                  <span className="text-[13px] font-600 text-white leading-snug">{document.title}</span>
-                </span>
-                <ChevronDown
-                  size={18}
-                  strokeWidth={2.2}
-                  className={`text-[#D99962] shrink-0 ml-3 transition-transform duration-300 ${
-                    open ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              <AnimatePresence initial={false}>
-                {open && (
-                  <motion.div
-                    key="body"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                    className="overflow-hidden"
-                  >
-                    <div className="max-h-[300px] overflow-y-auto p-4 bg-[#110b09] text-sm text-[#8c8c88] leading-relaxed whitespace-pre-line rounded-b-lg border border-t-0 border-white/[0.04]">
-                      {document.body}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
+        {CLUB_LEGAL_DOCUMENTS.map((document) => (
+          <button
+            key={document.id}
+            type="button"
+            onClick={() => setActive(document)}
+            className="w-full flex justify-between items-center p-4 bg-[#231A16] rounded-lg active:opacity-90 transition-opacity text-left"
+          >
+            <span className="flex items-center gap-3 min-w-0">
+              <FileText size={18} strokeWidth={2.1} className="text-[#D99962] shrink-0" />
+              <span className="text-[13px] font-600 text-white leading-snug">{document.title}</span>
+            </span>
+          </button>
+        ))}
       </div>
+
+      {active ? <LegalImageModal document={active} onClose={() => setActive(null)} /> : null}
     </div>
   );
 }

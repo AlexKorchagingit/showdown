@@ -1,7 +1,7 @@
 import { itmPlaceCount, knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { formatTxDate } from './transactionDisplay';
 import type { Transaction } from '../types/finance';
-import type { Tournament } from '../types/tournament';
+import type { Participant, Tournament } from '../types/tournament';
 
 export type PlayerLedgerRow = {
   id: string;
@@ -18,6 +18,80 @@ export type PlayerTournamentRow = {
   field: number;
   itm: number;
 };
+
+export type PlayerGameHistoryRow = {
+  id: string;
+  date: string;
+  title: string;
+  field: number;
+  place: number | null;
+  knockouts: number;
+  ratingAwarded: number;
+  startDate: string;
+};
+
+function participantUserId(participant: Participant & { userId?: string }): string {
+  return String(participant.userId ?? participant.id ?? '').trim();
+}
+
+function participantMatches(
+  participant: Participant & { userId?: string },
+  userIds: Set<string>,
+  nickname?: string,
+): boolean {
+  const id = participantUserId(participant);
+  if (id && userIds.has(id)) return true;
+  const nick = nickname?.trim().toLowerCase();
+  return Boolean(nick && participant.nickname.trim().toLowerCase() === nick);
+}
+
+function findPlayerInTournament(
+  tournament: Tournament,
+  userIds: Set<string>,
+  nickname?: string,
+): Participant | undefined {
+  const rows = [...tournament.participants, ...(tournament.results ?? [])];
+  return rows.find((row) => participantMatches(row, userIds, nickname));
+}
+
+/** Closed events this player finished (by participant / result userId, then nickname). */
+export function collectPlayerGameHistory(
+  tournaments: Tournament[],
+  userIds: string[],
+  nickname?: string,
+): PlayerGameHistoryRow[] {
+  const ids = new Set(userIds.map((id) => id.trim()).filter(Boolean));
+  const rows: PlayerGameHistoryRow[] = [];
+
+  for (const tournament of tournaments) {
+    if (!tournament.isClosed) continue;
+    const participant = findPlayerInTournament(tournament, ids, nickname);
+    if (!participant) continue;
+
+    const field = Math.max(tournament.participants.length, tournament.results?.length ?? 0);
+    const place = typeof participant.place === 'number' ? participant.place : null;
+    const knockouts = Math.max(0, Math.floor(Number(participant.knockouts) || 0));
+    const ratingAwarded =
+      (place != null ? ratingPointsForPlace(place, tournament.guarantee, field) : 0) +
+      knockoutBountyPoints(knockouts, tournament.isBounty === true);
+    const dateLabel = tournament.startTime
+      ? `${formatTxDate(`${tournament.startDate}T12:00:00`)} · ${tournament.startTime}`
+      : formatTxDate(`${tournament.startDate}T12:00:00`);
+
+    rows.push({
+      id: tournament.id,
+      date: dateLabel,
+      title: tournament.title,
+      field,
+      place,
+      knockouts,
+      ratingAwarded,
+      startDate: tournament.startDate,
+    });
+  }
+
+  return rows.sort((a, b) => b.startDate.localeCompare(a.startDate) || b.title.localeCompare(a.title, 'ru'));
+}
 
 export type PlayerAdminStats = {
   ltv: number;
