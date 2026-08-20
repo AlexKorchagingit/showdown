@@ -103,6 +103,12 @@ export async function loginOrRegisterUser(
   return { user: mapped, isNew: true };
 }
 
+export async function deleteUserRow(userId: string): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+  if (!error) return { ok: true };
+  return { ok: false, code: error.code, message: error.message };
+}
+
 export async function updateUserRow(
   userId: string,
   patch: Record<string, unknown>,

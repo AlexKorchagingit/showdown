@@ -8,6 +8,7 @@ import { useFinance } from '../../context/FinanceContext';
 import { useAuditLog } from '../../context/AuditLogContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useUser } from '../../context/UserContext';
+import { useBlinds } from '../../context/BlindsContext';
 import { DEFAULT_ENTRY_FEE, TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
 import {
@@ -32,6 +33,7 @@ import { playerEmail } from '../../lib/systemPlayers';
 import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
 import { hasGlobalUnpaidDebt } from '../../lib/playerAnalytics';
 import { creditRubiesToBalance } from '../../lib/rubyGrants';
+import { clearParticipantPlace } from '../../lib/tournamentApi';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
@@ -74,6 +76,7 @@ export function AdminTournamentFinance() {
   const { logAction } = useAuditLog();
   const { email: currentEmail, userId, clubUsers } = useUser();
   const { addCoins } = useProfile();
+  const { isRunning, linkedTournamentId } = useBlinds();
   const {
     transactions,
     addCharge,
@@ -340,6 +343,30 @@ export function AdminTournamentFinance() {
     });
   };
 
+  const returnPlayerToGame = async (playerId: string) => {
+    const player = tournament.participants.find((p) => p.id === playerId);
+    if (!player || typeof player.place !== 'number' || tournament.isClosed) return;
+    try {
+      await clearParticipantPlace(tournament.id, player.id);
+      await updateTournament(tournament.id, {
+        participants: tournament.participants.map((p) =>
+          p.id === playerId ? { ...p, place: undefined } : p,
+        ),
+      });
+      logAction({
+        actionType: 'Вернул игрока в игру',
+        targetUserId: player.id,
+        targetUserEmail: playerEmail(player.id, player.nickname),
+        targetUserName: player.nickname,
+        targetTournamentId: tournament.id,
+        targetTournamentName: tournament.title,
+        details: 'Место сброшено, игрок снова в игре',
+      });
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось вернуть игрока в игру');
+    }
+  };
+
   const addPlayerToTournament = (id: string, nickname: string) => {
     if (tournament.participants.some((p) => p.id === id || p.nickname === nickname)) return;
     if (tournament.participants.length >= tournament.totalSeats) return;
@@ -494,6 +521,13 @@ export function AdminTournamentFinance() {
         <p className="text-center text-[13px] font-600 uppercase tracking-wide" style={{ color: '#D99962' }}>
           {tournament.title}
         </p>
+        {isRunning && linkedTournamentId === tournament.id ? (
+          <div className="flex justify-center">
+            <span className="text-green-400 bg-green-500/20 px-2 py-1 rounded text-sm">
+              Таймер запущен
+            </span>
+          </div>
+        ) : null}
 
         {!tournament.isClosed && (
           <div>
@@ -797,7 +831,7 @@ export function AdminTournamentFinance() {
                     </button>
                   </div>
 
-                  {!eliminated && (
+                  {!eliminated && !tournament.isClosed && (
                     <button
                       type="button"
                       onClick={() => eliminatePlayer(player.id)}
@@ -809,6 +843,20 @@ export function AdminTournamentFinance() {
                       }}
                     >
                       Вылетел
+                    </button>
+                  )}
+                  {eliminated && !tournament.isClosed && (
+                    <button
+                      type="button"
+                      onClick={() => void returnPlayerToGame(player.id)}
+                      className="w-full py-2.5 rounded-xl text-[12px] font-800 active:scale-[0.98] transition-transform"
+                      style={{
+                        background: 'rgba(34,197,94,0.12)',
+                        border: '1px solid rgba(34,197,94,0.35)',
+                        color: '#86efac',
+                      }}
+                    >
+                      Вернулся в игру
                     </button>
                   )}
 

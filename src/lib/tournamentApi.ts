@@ -96,6 +96,26 @@ export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function clearParticipantPlace(tournamentId: string, playerId: string): Promise<void> {
+  const rowId = playerId.includes(':') ? playerId : participantRowId(tournamentId, playerId);
+  const byId = await supabase
+    .from('participants')
+    .update({ place: null })
+    .eq('id', rowId)
+    .select('id');
+  if (!byId.error && (byId.data?.length ?? 0) > 0) return;
+
+  const bySeat = await supabase
+    .from('participants')
+    .update({ place: null })
+    .eq('tournament_id', tournamentId)
+    .eq('user_id', playerId)
+    .select('id');
+  if (bySeat.error || (bySeat.data?.length ?? 0) === 0) {
+    throw new Error(bySeat.error?.message || byId.error?.message || 'Не удалось сбросить место');
+  }
+}
+
 export async function deleteParticipantSeat(tournamentId: string, userId: string): Promise<void> {
   const { error } = await supabase
     .from('participants')

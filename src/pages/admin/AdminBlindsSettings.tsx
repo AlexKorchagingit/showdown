@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronRight, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
-import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { useBlinds } from '../../context/BlindsContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
@@ -49,13 +48,25 @@ function TimerHeaderButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
+      className="h-11 flex-1 px-3 rounded-xl text-[11px] font-800 uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
       style={{
         background: 'linear-gradient(to right, #8C4C27, #D99962)',
         color: '#0A0908',
       }}
     >
       Таймер
+    </button>
+  );
+}
+
+function StructuresHeaderButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-11 flex-1 px-3 rounded-xl text-[11px] font-800 uppercase tracking-wide bg-[#514F4C] text-white"
+    >
+      Структуры блайндов
     </button>
   );
 }
@@ -372,6 +383,7 @@ export function AdminBlindsSettings() {
   const [isCreating, setIsCreating] = useState(false);
 
   const requestedId = searchParams.get('structure');
+  const showStructures = searchParams.get('view') === 'structures';
   const editing = useMemo(
     () => structures.find((s) => s.id === requestedId) ?? null,
     [structures, requestedId],
@@ -379,6 +391,7 @@ export function AdminBlindsSettings() {
   const activeEvents = openTournaments(tournaments);
 
   const openEditor = (id: string) => navigate(`/admin/blinds/settings?structure=${id}`);
+  const openStructures = () => navigate('/admin/blinds/settings?view=structures');
 
   const handleCreate = (form: CreateForm) => {
     const duration = Number(form.levelDuration) || 20;
@@ -401,7 +414,7 @@ export function AdminBlindsSettings() {
       openTimerForStructure(editing.id);
       return;
     }
-    navigate('/admin/blinds/settings');
+    openStructures();
   };
 
   if (editing) {
@@ -410,7 +423,19 @@ export function AdminBlindsSettings() {
         <CompactHeader
           title={editing.name}
           onBack={backFromEditor}
-          right={<TimerHeaderButton onClick={() => openTimerForStructure(editing.id)} />}
+          right={
+            <button
+              type="button"
+              onClick={() => openTimerForStructure(editing.id)}
+              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide"
+              style={{
+                background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                color: '#0A0908',
+              }}
+            >
+              Таймер
+            </button>
+          }
         />
 
         <div
@@ -422,7 +447,6 @@ export function AdminBlindsSettings() {
               Таймер идёт. Изменения предстоящих уровней подхватятся сразу.
             </p>
           )}
-          <TimerSessionFields />
           <LevelEditor
             structure={editing}
             onChange={(levels) => updateLevels(editing.id, levels)}
@@ -432,27 +456,113 @@ export function AdminBlindsSettings() {
     );
   }
 
+  if (showStructures) {
+    return (
+      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+        <CompactHeader title="Структуры блайндов" onBack={() => navigate('/admin/blinds/settings')} />
+
+        <div
+          className="flex-1 scrollable px-3"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+        >
+          <button
+            type="button"
+            onClick={() => setIsCreating((v) => !v)}
+            className="w-full flex items-center justify-center gap-2 py-3 mb-4 rounded-xl text-[14px] font-800 active:scale-[0.98] transition-transform text-[#0A0908]"
+            style={{
+              background: 'linear-gradient(to right, #8C4C27, #D99962)',
+              boxShadow: '0 0 16px rgba(217,153,98,0.28)',
+            }}
+          >
+            <Plus size={17} strokeWidth={2.4} />
+            Создать структуру
+          </button>
+
+          <AnimatePresence initial={false}>
+            {isCreating && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="pb-4">
+                  <CreateStructureForm onCreate={handleCreate} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <p
+            className="text-[11px] font-800 uppercase tracking-[0.16em] mb-2 px-1"
+            style={{ color: '#D99962' }}
+          >
+            Структуры блайндов
+          </p>
+          <div className="space-y-2">
+            {structures.map((structure) => (
+              <div
+                key={structure.id}
+                className="flex items-center gap-2 rounded-2xl px-3 py-2.5"
+                style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => openTimerForStructure(structure.id)}
+                  className="flex-1 flex items-center gap-3 min-w-0 text-left"
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(140,76,39,0.22)' }}
+                  >
+                    <Timer size={16} strokeWidth={2.2} style={{ color: '#D99962' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-bold text-white truncate">{structure.name}</p>
+                    <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
+                      {structure.levels.filter((l) => !isBreakLevel(l)).length} ур.
+                      {structure.levels.some((l) => isBreakLevel(l)) ? ' · перерыв' : ''}
+                      {structure.levels.some((l) => l.isLateRegEnd) ? ' · конец реги' : ''} ·{' '}
+                      {structureDurationLabel(structure)} · {structure.guarantee.toLocaleString('ru-RU')}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openEditor(structure.id)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                  aria-label={`Редактировать ${structure.name}`}
+                >
+                  <Pencil size={14} style={{ color: '#D99962' }} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <CompactHeader
-        title="Blinds info"
-        backTo="/profile"
-        right={
-          <TimerHeaderButton
-            disabled={!linkedTournamentId}
-            onClick={() => {
-              if (linkedTournamentId) openTimerForTournament(linkedTournamentId);
-            }}
-          />
-        }
-      />
+      <CompactHeader title="Blinds info" backTo="/profile" />
+      <div className="flex-shrink-0 px-3 pb-3 flex items-center gap-2">
+        <StructuresHeaderButton onClick={openStructures} />
+        <TimerHeaderButton
+          disabled={!linkedTournamentId}
+          onClick={() => {
+            if (linkedTournamentId) openTimerForTournament(linkedTournamentId);
+          }}
+        />
+      </div>
 
       <div
         className="flex-1 scrollable px-3"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
-        <TimerSessionFields />
-
         {activeEvents.length > 0 && (
           <section className="mb-5">
             <p
@@ -489,84 +599,6 @@ export function AdminBlindsSettings() {
             </div>
           </section>
         )}
-
-        <p
-          className="text-[11px] font-800 uppercase tracking-[0.16em] mb-2 px-1"
-          style={{ color: '#D99962' }}
-        >
-          Структуры блайндов
-        </p>
-        <div className="space-y-2">
-          {structures.map((structure) => (
-            <div
-              key={structure.id}
-              className="flex items-center gap-2 rounded-2xl px-3 py-2.5"
-              style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <button
-                type="button"
-                onClick={() => openTimerForStructure(structure.id)}
-                className="flex-1 flex items-center gap-3 min-w-0 text-left"
-              >
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(140,76,39,0.22)' }}
-                >
-                  <Timer size={16} strokeWidth={2.2} style={{ color: '#D99962' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-bold text-white truncate">{structure.name}</p>
-                  <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
-                    {structure.levels.filter((l) => !isBreakLevel(l)).length} ур.
-                    {structure.levels.some((l) => isBreakLevel(l)) ? ' · перерыв' : ''}
-                    {structure.levels.some((l) => l.isLateRegEnd) ? ' · конец реги' : ''} ·{' '}
-                    {structureDurationLabel(structure)} · {structure.guarantee.toLocaleString('ru-RU')}
-                  </p>
-                </div>
-                <ChevronRight size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />
-              </button>
-              <button
-                type="button"
-                onClick={() => openEditor(structure.id)}
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'rgba(255,255,255,0.06)' }}
-                aria-label={`Редактировать ${structure.name}`}
-              >
-                <Pencil size={14} style={{ color: '#D99962' }} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsCreating((v) => !v)}
-          className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-xl text-[14px] font-700 active:scale-[0.98] transition-transform"
-          style={{
-            background: 'linear-gradient(to right, #2A211D, #463129)',
-            border: '1px solid rgba(217,153,98,0.35)',
-            color: '#D99962',
-          }}
-        >
-          <Plus size={17} strokeWidth={2.4} />
-          Создать структуру
-        </button>
-
-        <AnimatePresence initial={false}>
-          {isCreating && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="pt-4">
-                <CreateStructureForm onCreate={handleCreate} />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
