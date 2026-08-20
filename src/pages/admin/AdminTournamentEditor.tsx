@@ -376,9 +376,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
         id: `p-${Date.now()}-${p.id}`,
         place: undefined,
         knockouts: undefined,
+        rubiesAwarded: undefined,
       })),
       features: [...tournament.features],
       isClosed: false,
+      rubiesDistributed: false,
       dealers: undefined,
       resultsEntered: false,
     });

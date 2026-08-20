@@ -6,6 +6,8 @@ export interface Participant {
   place?: number;
   /** Knockouts scored in a bounty event; awarded as extra rating on close. */
   knockouts?: number;
+  /** Rubies granted once when the tournament is closed. */
+  rubiesAwarded?: number;
   /** Admin note from tournament cashier, shown in a closed lobby. */
   comment?: string;
 }
@@ -64,8 +66,10 @@ export interface Tournament {
   isClosed: boolean;
   /** Knockout / bounty format: extra rating for knockouts on close. */
   isBounty?: boolean;
-  /** True after admin has submitted finishing places / rating awards. */
+  /** True after finishing places / rating awards have been submitted. */
   resultsEntered?: boolean;
+  /** True after ruby payouts were written to player balances (once per event). */
+  rubiesDistributed?: boolean;
   /** Admin-only note filled when closing the tournament. */
   adminSecretComment?: string;
   /** Dealers / admin hours logged at close. */

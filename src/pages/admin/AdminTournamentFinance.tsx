@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
-import { useTournaments } from '../../context/TournamentContext';
+import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, Gem, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
+import { CURRENT_USER_ID, useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useAuditLog } from '../../context/AuditLogContext';
+import { useProfile } from '../../context/ProfileContext';
+import { useUser } from '../../context/UserContext';
 import { DEFAULT_ENTRY_FEE, TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
 import {
@@ -26,7 +28,9 @@ import type { TournamentDealer } from '../../types/tournament';
 import { ALL_PARTICIPANTS } from '../../data/participants';
 import { CURRENT_USER_RATING } from '../../types/player';
 import { playerEmail, systemPlayerDirectory } from '../../lib/systemPlayers';
+import { attachRubiesAwarded } from '../../lib/calculateRubies';
 import { hasGlobalUnpaidDebt } from '../../lib/playerAnalytics';
+import { creditRubiesToBalance } from '../../lib/rubyGrants';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
@@ -67,6 +71,8 @@ export function AdminTournamentFinance() {
   const navigate = useNavigate();
   const { tournaments, updateTournament } = useTournaments();
   const { logAction } = useAuditLog();
+  const { email: currentEmail } = useUser();
+  const { addCoins } = useProfile();
   const {
     transactions,
     addCharge,
@@ -87,6 +93,7 @@ export function AdminTournamentFinance() {
   const [addOpen, setAddOpen] = useState(false);
   const [tournamentComment, setTournamentComment] = useState('');
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closingRef = useRef(false);
 
   const tournament = tournaments.find((t) => t.id === id);
 
@@ -102,6 +109,10 @@ export function AdminTournamentFinance() {
   useEffect(() => {
     setTournamentComment(tournament?.adminSecretComment ?? '');
   }, [tournament?.id, tournament?.adminSecretComment]);
+
+  useEffect(() => {
+    closingRef.current = false;
+  }, [tournament?.id]);
 
   useEffect(
     () => () => {
@@ -192,7 +203,7 @@ export function AdminTournamentFinance() {
   };
 
   const closeTournament = () => {
-    if (tournament.isClosed) return;
+    if (closingRef.current || tournament.isClosed || tournament.rubiesDistributed) return;
     if (closeBlocked) {
       window.alert('Не все участники вылетели!');
       return;
@@ -209,7 +220,7 @@ export function AdminTournamentFinance() {
       : '';
     if (
       !window.confirm(
-        `Закрыть турнир? Он станет прошедшим, запись будет недоступна.\n\n${preview}${bountyNote}\n\nЭти очки будут начислены по занятым местам.`,
+        `Закрыть турнир? Он станет прошедшим, запись будет недоступна.\n\n${preview}${bountyNote}\n\nЭти очки будут начислены по занятым местам. Рубины начисляются один раз в этот момент.`,
       )
     ) {
       return;
@@ -231,20 +242,43 @@ export function AdminTournamentFinance() {
       }
     }
 
-    updateTournament(tournament.id, {
-      isClosed: true,
-      resultsEntered: true,
-      participants: closeTournamentWithPayouts(
+    closingRef.current = true;
+    const settled = attachRubiesAwarded(
+      closeTournamentWithPayouts(
         closingParticipants,
         tournament.guarantee,
         tournament.isBounty === true,
       ),
+    );
+    const rubyTotal = settled.reduce((sum, row) => sum + (row.rubiesAwarded ?? 0), 0);
+
+    for (const participant of settled) {
+      const amount = participant.rubiesAwarded ?? 0;
+      if (amount <= 0) continue;
+      const email =
+        participant.id === CURRENT_USER_ID
+          ? currentEmail
+          : playerEmail(participant.id, participant.nickname);
+      if (!email) continue;
+      creditRubiesToBalance({
+        email,
+        amount,
+        currentEmail,
+        creditCurrentUser: addCoins,
+      });
+    }
+
+    updateTournament(tournament.id, {
+      isClosed: true,
+      resultsEntered: true,
+      rubiesDistributed: true,
+      participants: settled,
     });
     logAction({
       actionType: 'Закрыл турнир',
       targetTournamentId: tournament.id,
       targetTournamentName: tournament.title,
-      details: `Внесены результаты. Игроков: ${closingParticipants.length}`,
+      details: `Внесены результаты. Игроков: ${settled.length}. Рубины: ${rubyTotal.toLocaleString('ru-RU')}`,
     });
   };
 
@@ -814,6 +848,22 @@ export function AdminTournamentFinance() {
                     </p>
                   ) : null}
                   </div>
+
+                  {tournament.isClosed ? (
+                    <div
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-800"
+                      style={{
+                        background: 'rgba(244,63,94,0.12)',
+                        border: '1px solid rgba(244,63,94,0.35)',
+                        color: '#fb7185',
+                      }}
+                    >
+                      <Gem size={14} className="text-rose-500" />
+                      {typeof player.rubiesAwarded === 'number'
+                        ? `+${player.rubiesAwarded.toLocaleString('ru-RU')}`
+                        : 'Ожидается'}
+                    </div>
+                  ) : null}
 
                   {hasLocalDebt && unpaidTotal > 0 && (
                     <button

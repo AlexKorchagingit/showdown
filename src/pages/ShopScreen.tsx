@@ -76,7 +76,7 @@ function ItemStatus({
   if (equipped) {
     return (
       <span
-        className={`w-full h-9 flex items-center justify-center text-[13px] font-bold text-[#D99962] ${
+        className={`w-full h-9 flex items-center justify-center text-[13px] font-bold uppercase tracking-[0.12em] text-[#D99962] drop-shadow-[0_0_10px_rgba(217,153,98,0.8)] ${
           overlay ? 'rounded-xl bg-[#1d0b07]/85 border border-[#D99962]/40' : ''
         }`}
       >

@@ -80,3 +80,22 @@ export function grantRubiesToEveryone(options: {
     });
   }
 }
+
+/** Credit the ruby balance immediately (tournament payouts — no claim popup). */
+export function creditRubiesToBalance(options: {
+  email: string;
+  amount: number;
+  currentEmail: string;
+  creditCurrentUser: (amount: number) => void;
+}) {
+  const amount = Math.floor(Number(options.amount));
+  if (!Number.isFinite(amount) || amount <= 0 || !options.email.trim()) return;
+
+  if (normalizeEmail(options.email) === normalizeEmail(options.currentEmail)) {
+    options.creditCurrentUser(amount);
+    return;
+  }
+
+  const data = loadUserData(options.email);
+  saveUserData(options.email, { ...data, coins: data.coins + amount });
+}
