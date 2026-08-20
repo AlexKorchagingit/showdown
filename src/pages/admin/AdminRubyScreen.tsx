@@ -1,0 +1,238 @@
+import { useMemo, useState } from 'react';
+import { Gem, Users } from 'lucide-react';
+import { CompactHeader } from '../../components/CompactHeader';
+import { CoinBalance } from '../../components/CoinBalance';
+import { useProfile } from '../../context/ProfileContext';
+import { useUser } from '../../context/UserContext';
+import { useAuditLog } from '../../context/AuditLogContext';
+import { grantRubies, grantRubiesToEveryone } from '../../lib/rubyGrants';
+import { ScreenLoading } from '../../components/ScreenLoading';
+
+const FIELD_CLASS =
+  'w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#D99962]/60 transition-colors';
+const LABEL_CLASS =
+  'block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]';
+
+type GrantTarget =
+  | { kind: 'one'; id: string; email: string; nickname: string }
+  | { kind: 'all' };
+
+export function AdminRubyScreen() {
+  const { email, clubUsers, isLoading, refreshClubUsers, refreshAccount } = useUser();
+  const { logAction } = useAuditLog();
+  const { coins, addCoins } = useProfile();
+  const [busy, setBusy] = useState(false);
+  const [target, setTarget] = useState<GrantTarget | null>(null);
+  const [amount, setAmount] = useState('100');
+  const [comment, setComment] = useState('');
+
+  const accounts = useMemo(() => {
+    return clubUsers.map((account) =>
+      account.email.trim().toLowerCase() === email.trim().toLowerCase()
+        ? {
+            id: account.id,
+            email: account.email,
+            nickname: account.nickname,
+            coins,
+            pendingAmount: account.pendingNotifications.reduce(
+              (sum: number, row: { amount: number }) => sum + row.amount,
+              0,
+            ),
+          }
+        : {
+            id: account.id,
+            email: account.email,
+            nickname: account.nickname,
+            coins: account.coins,
+            pendingAmount: account.pendingNotifications.reduce(
+              (sum: number, row: { amount: number }) => sum + row.amount,
+              0,
+            ),
+          },
+    );
+  }, [clubUsers, email, coins]);
+
+  const parsedAmount = Math.floor(Number(amount));
+  const canSave = Number.isFinite(parsedAmount) && parsedAmount > 0;
+
+  const closeModal = () => {
+    setTarget(null);
+    setAmount('100');
+    setComment('');
+  };
+
+  const handleSave = async () => {
+    if (!canSave || !target || busy) return;
+    const message = comment.trim() || 'Подарок от клуба';
+    setBusy(true);
+    try {
+      if (target.kind === 'all') {
+        await grantRubiesToEveryone({
+          amount: parsedAmount,
+          message,
+          currentEmail: email,
+          creditCurrentUser: addCoins,
+        });
+      } else {
+        await grantRubies({
+          email: target.email,
+          amount: parsedAmount,
+          message,
+          currentEmail: email,
+          creditCurrentUser: addCoins,
+        });
+      }
+      await Promise.all([refreshClubUsers(), refreshAccount()]);
+      logAction({
+        actionType: target.kind === 'all' ? 'Начислил рубины всем' : 'Начислил рубины',
+        targetUserId: target.kind === 'one' ? target.id : undefined,
+        targetUserEmail: target.kind === 'one' ? target.email : undefined,
+        targetUserName: target.kind === 'one' ? target.nickname : 'Все игроки',
+        details: `Сумма: ${parsedAmount.toLocaleString('ru-RU')}. Причина: ${message}`,
+      });
+      closeModal();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось начислить рубины');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+      <CompactHeader
+        title="Ruby"
+        backTo="/profile"
+        right={
+          <button
+            type="button"
+            onClick={() => setTarget({ kind: 'all' })}
+            className="h-9 px-3 rounded-lg text-[11px] font-800 uppercase tracking-wide active:scale-[0.97]"
+            style={{
+              background: 'linear-gradient(to right, #8C4C27, #D99962)',
+              color: '#0A0908',
+            }}
+          >
+            Начислить всем
+          </button>
+        }
+      />
+
+      <div
+        className="flex-1 scrollable px-4"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+      >
+        <p className="text-[12px] font-500 mb-3 px-1" style={{ color: '#6B6360' }}>
+          Начисление рубинов. Онлайн-игрок получает баланс сразу, остальные — попап при входе.
+        </p>
+
+        {isLoading && accounts.length === 0 ? (
+          <ScreenLoading label="Загрузка пользователей…" />
+        ) : (
+        <div className="space-y-3">
+          {accounts.map((account) => (
+            <div
+              key={account.id}
+              className="flex items-start gap-3 rounded-2xl px-4 py-3.5"
+              style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-700 text-[15px] truncate">{account.nickname}</p>
+                <p className="text-[12px] font-500 truncate" style={{ color: '#8c8c88' }}>
+                  {account.email}
+                </p>
+                {account.pendingAmount > 0 && (
+                  <p className="text-[11px] font-700 mt-0.5" style={{ color: '#86efac' }}>
+                    Ожидает: +{account.pendingAmount.toLocaleString('ru-RU')}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <CoinBalance coins={account.coins} compact />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTarget({ kind: 'one', id: account.id, email: account.email, nickname: account.nickname })
+                  }
+                  className="h-8 px-2.5 rounded-lg text-[11px] font-800 active:scale-[0.97]"
+                  style={{
+                    background: 'rgba(217,153,98,0.14)',
+                    border: '1px solid rgba(217,153,98,0.4)',
+                    color: '#F2D8A7',
+                  }}
+                >
+                  + Начислить
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        )}
+      </div>
+
+      {target && (
+        <div className="absolute inset-0 z-50 flex items-end justify-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/65"
+            aria-label="Закрыть"
+            onClick={closeModal}
+          />
+          <div
+            className="relative w-full rounded-t-3xl px-4 pt-4 pb-8"
+            style={{
+              background: '#1A1411',
+              border: '1px solid rgba(217,153,98,0.28)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.5rem)',
+            }}
+          >
+            <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-4" />
+            <div className="flex items-center gap-2 mb-4">
+              {target.kind === 'all' ? <Users size={18} style={{ color: '#D99962' }} /> : <Gem size={18} style={{ color: '#D99962' }} />}
+              <h2 className="text-[15px] font-800 uppercase tracking-wide text-white">
+                {target.kind === 'all' ? 'Начислить всем' : target.nickname}
+              </h2>
+            </div>
+
+            <section className="mb-4">
+              <label className={LABEL_CLASS}>Сумма рубинов</label>
+              <input
+                type="number"
+                min={1}
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </section>
+            <section className="mb-5">
+              <label className={LABEL_CLASS}>Комментарий (за что?)</label>
+              <input
+                type="text"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder="День рождения клуба"
+                className={FIELD_CLASS}
+              />
+            </section>
+
+            <button
+              type="button"
+              disabled={!canSave || busy}
+              onClick={() => void handleSave()}
+              className={`w-full h-12 rounded-xl text-[15px] font-800 transition-transform ${
+                canSave && !busy ? 'text-[#0A0908] active:scale-[0.98]' : 'opacity-45 cursor-not-allowed text-white/50'
+              }`}
+              style={
+                canSave && !busy
+                  ? { background: 'linear-gradient(to right, #8C4C27, #D99962)' }
+                  : { background: '#463129' }
+              }
+            >
+              {busy ? 'Начисление…' : 'Начислить'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

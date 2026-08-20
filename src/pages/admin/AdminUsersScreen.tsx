@@ -1,0 +1,112 @@
+import { useState } from 'react';
+import { Check } from 'lucide-react';
+import { PlayerAvatar } from '../../components/PlayerAvatar';
+import { ScreenLoading } from '../../components/ScreenLoading';
+import { ADMIN_EMAIL, useUser } from '../../context/UserContext';
+import { useAuditLog } from '../../context/AuditLogContext';
+import { CompactHeader } from '../../components/CompactHeader';
+import { updateUserRow } from '../../lib/userApi';
+
+export function AdminUsersScreen() {
+  const { logAction } = useAuditLog();
+  const { clubUsers, isLoading, refreshClubUsers } = useUser();
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const toggleAdmin = async (id: string) => {
+    const target = clubUsers.find((u) => u.id === id);
+    if (!target || target.email.toLowerCase() === ADMIN_EMAIL) return;
+    const granting = !target.isAdmin;
+    setBusyId(id);
+    const saved = await updateUserRow(id, { is_admin: granting });
+    setBusyId(null);
+    if (!saved) {
+      window.alert('Не удалось обновить права администратора');
+      return;
+    }
+    await refreshClubUsers();
+    if (granting) {
+      logAction({
+        actionType: 'Выдал права администратора',
+        targetUserId: target.id,
+        targetUserEmail: target.email,
+        targetUserName: target.nickname,
+        details: 'Выданы права администратора',
+      });
+    }
+  };
+
+  return (
+    <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+      <CompactHeader title="Пользователи" backTo="/settings" />
+
+      <div
+        className="flex-1 scrollable px-4"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+      >
+        <p className="text-[12px] font-500 mb-3 px-1" style={{ color: '#6B6360' }}>
+          Отметьте, кто должен получить права администратора
+        </p>
+
+        {isLoading && clubUsers.length === 0 ? (
+          <ScreenLoading label="Загрузка пользователей…" />
+        ) : (
+          <div className="space-y-3">
+            {clubUsers.map((user) => {
+              const isLocked = user.email.toLowerCase() === ADMIN_EMAIL;
+
+              return (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5"
+                  style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  <PlayerAvatar
+                    playerId={user.id}
+                    nickname={user.nickname}
+                    src={user.equippedAvatar}
+                    size="sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-700 text-[15px] truncate">{user.nickname}</p>
+                    <p className="text-[12px] font-500 truncate" style={{ color: '#8c8c88' }}>
+                      {user.email}
+                    </p>
+                    {isLocked && (
+                      <p className="text-[11px] font-600 mt-0.5" style={{ color: '#D99962' }}>
+                        Главный администратор
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void toggleAdmin(user.id)}
+                    disabled={isLocked || busyId === user.id}
+                    aria-pressed={user.isAdmin}
+                    aria-label={`Права администратора для ${user.nickname}`}
+                    className={`shrink-0 w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                      isLocked || busyId === user.id ? 'cursor-not-allowed opacity-70' : ''
+                    }`}
+                    style={
+                      user.isAdmin
+                        ? {
+                            background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                            border: '1px solid rgba(217,153,98,0.6)',
+                          }
+                        : {
+                            background: 'transparent',
+                            border: '1.5px solid rgba(217,153,98,0.35)',
+                          }
+                    }
+                  >
+                    {user.isAdmin && <Check size={16} strokeWidth={3} style={{ color: '#0A0908' }} />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

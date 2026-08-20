@@ -1,0 +1,42 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main, cursor/poker-tma-mvp-47c2]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build:pages
+        env:
+          VITE_SUPABASE_URL: https://bgazyafuihjxrzfspmrf.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnYXp5YWZ1aWhqeHJ6ZnNwbXJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNDQwMzgsImV4cCI6MjEwMjgyMDAzOH0.Rv9Im7z3-ghzjVvtB_utgFVyP32G4XFX_zlU4IDwL7w
+      - run: cp dist/index.html dist/404.html && touch dist/.nojekyll
+
+      # Repo Pages source is the legacy `gh-pages` branch (not Actions artifact deploy).
+      # The github-pages environment only allows that branch, so we publish here.
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true
+          # Ensure Jekyll is skipped (gh-pages --dotfiles equivalent).
+          enable_jekyll: false
