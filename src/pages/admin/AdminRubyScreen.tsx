@@ -34,14 +34,20 @@ export function AdminRubyScreen() {
             email: account.email,
             nickname: account.nickname,
             coins,
-            pendingAmount: account.pendingNotifications.reduce((sum, row) => sum + row.amount, 0),
+            pendingAmount: account.pendingNotifications.reduce(
+              (sum: number, row: { amount: number }) => sum + row.amount,
+              0,
+            ),
           }
         : {
             id: account.id,
             email: account.email,
             nickname: account.nickname,
             coins: account.coins,
-            pendingAmount: account.pendingNotifications.reduce((sum, row) => sum + row.amount, 0),
+            pendingAmount: account.pendingNotifications.reduce(
+              (sum: number, row: { amount: number }) => sum + row.amount,
+              0,
+            ),
           },
     );
   }, [clubUsers, email, coins]);

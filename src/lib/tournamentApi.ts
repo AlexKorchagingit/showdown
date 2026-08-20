@@ -26,10 +26,10 @@ function asTournamentRow(data: unknown): TournamentRow | null {
 async function selectParticipants(tournamentId?: string): Promise<JoinedParticipantRow[]> {
   let lastError: string | undefined;
   for (const select of PARTICIPANT_SELECTS) {
-    let query = supabase.from('participants').select(select);
+    let query = supabase.from('participants').select(select as '*');
     if (tournamentId) query = query.eq('tournament_id', tournamentId);
     const { data, error } = await query;
-    if (!error && data) return data as JoinedParticipantRow[];
+    if (!error && data) return data as unknown as JoinedParticipantRow[];
     lastError = error?.message;
   }
   throw new Error(lastError || 'Не удалось загрузить участников');

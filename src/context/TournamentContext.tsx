@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from 'react';
 import type { Participant, Tournament } from '../types/tournament';
 import { useUser } from './UserContext';

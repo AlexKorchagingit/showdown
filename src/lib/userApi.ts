@@ -142,3 +142,4 @@ export function mappedUserToPatch(changes: Partial<MappedUser>): Record<string, 
 }
 
 export { getClubDirectory };
+export type { MappedUser };
