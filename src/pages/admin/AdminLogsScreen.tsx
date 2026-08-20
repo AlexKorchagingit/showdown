@@ -3,12 +3,14 @@ import { Navigate } from 'react-router-dom';
 import { CompactHeader } from '../../components/CompactHeader';
 import { MigrateToDatabaseButton } from '../../components/admin/MigrateToDatabaseButton';
 import { ScreenLoading } from '../../components/ScreenLoading';
-import { useAuditLog } from '../../context/AuditLogContext';
 import { isSuperAdmin, useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
+import { supabase } from '../../lib/supabase';
+import { logFromRow, type LogRow } from '../../lib/supabaseMap';
 import { formatLegalDateTime, formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
+import type { ActionLog } from '../../types/auditLog';
 
 type AuditPeriod = FinancePeriod | 'all';
 type LogsTab = 'general' | 'consents';
@@ -35,15 +37,47 @@ function inAuditPeriod(timestamp: number, period: AuditPeriod, now = new Date())
   return timestamp >= periodStart(period, now).getTime() && timestamp <= now.getTime() + 60_000;
 }
 
+function asLogRow(data: unknown): LogRow | null {
+  if (!data || typeof data !== 'object' || !('id' in data) || !('action_type' in data)) return null;
+  return data as LogRow;
+}
+
 export function AdminLogsScreen() {
   const { email, clubUsers } = useUser();
-  const { logs, isLoading, refreshLogs } = useAuditLog();
+  const [logs, setLogs] = useState<ActionLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState<LogsTab>('general');
   const [period, setPeriod] = useState<AuditPeriod>('all');
 
   useEffect(() => {
-    void refreshLogs();
-  }, [refreshLogs]);
+    let cancelled = false;
+    setIsLoading(true);
+    void (async () => {
+      const { data, error } = await supabase
+        .from('logs')
+        .select('*')
+        .order('timestamp', { ascending: false });
+      if (error) {
+        console.error('SUPABASE LOG ERROR:', error);
+        if (!cancelled) {
+          setLogs([]);
+          setIsLoading(false);
+        }
+        return;
+      }
+      if (cancelled) return;
+      setLogs(
+        (data ?? []).flatMap((item) => {
+          const row = asLogRow(item);
+          return row ? [logFromRow(row)] : [];
+        }),
+      );
+      setIsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isSuperAdminUser = isSuperAdmin(email);
   const filtered = useMemo(

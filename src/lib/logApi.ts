@@ -1,11 +1,31 @@
 import { supabase } from './supabase';
-import { logFromRow, logToRow, type LogRow } from './supabaseMap';
+import { logFromRow, type LogRow } from './supabaseMap';
 import type { ActionLog } from '../types/auditLog';
 
 function asLogRow(data: unknown): LogRow | null {
   if (!data || typeof data !== 'object' || !('id' in data) || !('action_type' in data)) return null;
   return data as LogRow;
 }
+
+function emptyToNull(value?: string | null): string | null {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed || trimmed === 'me') return null;
+  return trimmed;
+}
+
+/** Payload written to `public.logs`. Keys MUST stay snake_case. */
+export type AddLogInput = {
+  admin_id?: string | null;
+  admin_email: string;
+  admin_name?: string | null;
+  action_type: string;
+  target_user_id?: string | null;
+  target_user_email?: string | null;
+  target_user_name?: string | null;
+  target_tournament_id?: string | null;
+  target_tournament_name?: string | null;
+  details?: string | null;
+};
 
 export async function fetchLogs(): Promise<ActionLog[]> {
   const { data, error } = await supabase
@@ -14,7 +34,7 @@ export async function fetchLogs(): Promise<ActionLog[]> {
     .order('timestamp', { ascending: false });
 
   if (error) {
-    console.error('Failed to load audit logs', error);
+    console.error('SUPABASE LOG ERROR:', error);
     throw new Error(error.message);
   }
 
@@ -24,35 +44,45 @@ export async function fetchLogs(): Promise<ActionLog[]> {
   });
 }
 
-async function insertLogRow(row: LogRow): Promise<ActionLog | null> {
-  const { data, error } = await supabase.from('logs').insert([row]).select('*').single();
-  if (!error && data) {
-    const parsed = asLogRow(data);
-    return parsed ? logFromRow(parsed) : null;
-  }
-  console.error('Failed to insert audit log', error, row);
-  return null;
-}
-
-/** Persist one journal row. Retries without FK ids if users/tournaments constraints reject the insert. */
-export async function insertAuditLog(log: ActionLog): Promise<ActionLog | null> {
-  const row = logToRow(log);
-  const saved = await insertLogRow(row);
-  if (saved) return saved;
-
-  const withoutFks: LogRow = {
-    ...row,
-    admin_id: null,
-    target_user_id: null,
-    target_tournament_id: null,
+/**
+ * Insert one journal row. Does not touch React state.
+ * Returns true only when Postgres accepted the insert.
+ */
+export async function addLog(input: AddLogInput): Promise<boolean> {
+  const payload = {
+    admin_id: emptyToNull(input.admin_id),
+    admin_email: input.admin_email.trim().toLowerCase(),
+    admin_name: input.admin_name?.trim() || '',
+    action_type: input.action_type,
+    target_user_id: emptyToNull(input.target_user_id),
+    target_user_email: emptyToNull(input.target_user_email),
+    target_user_name: emptyToNull(input.target_user_name),
+    target_tournament_id: emptyToNull(input.target_tournament_id),
+    target_tournament_name: emptyToNull(input.target_tournament_name),
+    details: emptyToNull(input.details),
   };
-  if (
-    withoutFks.admin_id === row.admin_id &&
-    withoutFks.target_user_id === row.target_user_id &&
-    withoutFks.target_tournament_id === row.target_tournament_id
-  ) {
-    return null;
-  }
 
-  return insertLogRow(withoutFks);
+  const { error } = await supabase.from('logs').insert([payload]);
+  if (!error) return true;
+
+  console.error('SUPABASE LOG ERROR:', error);
+
+  const fkFailed = Boolean(
+    payload.admin_id || payload.target_user_id || payload.target_tournament_id,
+  );
+  if (!fkFailed) return false;
+
+  const { error: retryError } = await supabase.from('logs').insert([
+    {
+      ...payload,
+      admin_id: null,
+      target_user_id: null,
+      target_tournament_id: null,
+    },
+  ]);
+  if (retryError) {
+    console.error('SUPABASE LOG ERROR:', retryError);
+    return false;
+  }
+  return true;
 }

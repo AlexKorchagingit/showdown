@@ -3,7 +3,7 @@ import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { asset } from '../lib/assets';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
-import { logAction } from '../lib/auditLogStorage';
+import { addLog } from '../lib/logApi';
 import { loginOrRegisterUser } from '../lib/userApi';
 import { LegalImageModal } from './LegalImageModal';
 
@@ -77,13 +77,16 @@ async function completeLogin(email: string, agreementsAcceptedAt: string, onLogi
   const { user, isNew } = await loginOrRegisterUser(normalized, acceptedAt);
 
   if (isNew) {
-    await logAction(normalized, {
-      actionType: 'Согласия приняты (электронная подпись)',
-      targetUserId: user.id,
-      targetUserEmail: normalized,
-      targetUserName: user.nickname,
+    await addLog({
+      admin_id: user.id,
+      admin_email: normalized,
+      admin_name: user.nickname,
+      action_type: 'Согласия приняты (электронная подпись)',
+      target_user_id: user.id,
+      target_user_email: normalized,
+      target_user_name: user.nickname,
       details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${user.agreementsAcceptedAt ?? acceptedAt}`,
-    }, { adminId: user.id, adminName: user.nickname });
+    });
   }
 
   clearTempAuth();

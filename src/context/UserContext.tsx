@@ -17,9 +17,11 @@ import {
   updateUserRow,
   type MappedUser,
 } from '../lib/userApi';
+import { addLog as insertClubLog, type AddLogInput } from '../lib/logApi';
 import { readSessionUserId, writeSession } from '../lib/session';
 
 export { ADMIN_EMAIL, isSuperAdmin };
+export { addLog } from '../lib/logApi';
 
 export function isClubAdmin(email: string, account?: MappedUser | null): boolean {
   if (isSuperAdmin(email)) return true;
@@ -39,6 +41,7 @@ interface UserContextValue {
   patchAccount: (changes: Partial<MappedUser>) => Promise<MappedUser | null>;
   refreshAccount: () => Promise<void>;
   refreshClubUsers: () => Promise<void>;
+  addLog: (input: Omit<AddLogInput, 'admin_id' | 'admin_email' | 'admin_name'> & Partial<AddLogInput>) => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -89,6 +92,26 @@ export function UserProvider({ email, children }: { email: string; children: Rea
     [account],
   );
 
+  const addLog = useCallback(
+    async (
+      input: Omit<AddLogInput, 'admin_id' | 'admin_email' | 'admin_name'> & Partial<AddLogInput>,
+    ) => {
+      return insertClubLog({
+        admin_id: input.admin_id ?? account?.id ?? readSessionUserId() ?? null,
+        admin_email: input.admin_email ?? account?.email ?? email,
+        admin_name: input.admin_name ?? account?.nickname ?? '',
+        action_type: input.action_type,
+        target_user_id: input.target_user_id ?? null,
+        target_user_email: input.target_user_email ?? null,
+        target_user_name: input.target_user_name ?? null,
+        target_tournament_id: input.target_tournament_id ?? null,
+        target_tournament_name: input.target_tournament_name ?? null,
+        details: input.details ?? null,
+      });
+    },
+    [account?.email, account?.id, account?.nickname, email],
+  );
+
   const value = useMemo<UserContextValue>(
     () => ({
       email: account?.email || email,
@@ -100,8 +123,9 @@ export function UserProvider({ email, children }: { email: string; children: Rea
       patchAccount,
       refreshAccount,
       refreshClubUsers,
+      addLog,
     }),
-    [account, clubUsers, email, isLoading, patchAccount, refreshAccount, refreshClubUsers],
+    [account, addLog, clubUsers, email, isLoading, patchAccount, refreshAccount, refreshClubUsers],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

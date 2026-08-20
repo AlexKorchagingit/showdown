@@ -83,7 +83,7 @@ export function AdminRubyScreen() {
         });
       }
       await Promise.all([refreshClubUsers(), refreshAccount()]);
-      logAction({
+      await logAction({
         actionType: target.kind === 'all' ? 'Начислил рубины всем' : 'Начислил рубины',
         targetUserId: target.kind === 'one' ? target.id : undefined,
         targetUserEmail: target.kind === 'one' ? target.email : undefined,

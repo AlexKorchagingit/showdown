@@ -7,8 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { logAction as persistLogAction } from '../lib/auditLogStorage';
-import { fetchLogs } from '../lib/logApi';
+import { addLog, fetchLogs } from '../lib/logApi';
 import { useUser } from './UserContext';
 import type { ActionLog, LogActionDraft } from '../types/auditLog';
 
@@ -32,7 +31,7 @@ export function AuditLogProvider({ children }: { children: ReactNode }) {
       const rows = await fetchLogs();
       setLogs(rows);
     } catch (error) {
-      console.error(error);
+      console.error('SUPABASE LOG ERROR:', error);
       setLogs([]);
     } finally {
       setIsLoading(false);
@@ -45,14 +44,22 @@ export function AuditLogProvider({ children }: { children: ReactNode }) {
 
   const logAction = useCallback(
     async (draft: LogActionDraft) => {
-      const saved = await persistLogAction(email, draft, {
-        adminId: userId || account?.id,
-        adminName: account?.nickname,
+      const ok = await addLog({
+        admin_id: userId || account?.id || null,
+        admin_email: email,
+        admin_name: account?.nickname ?? '',
+        action_type: draft.actionType,
+        target_user_id: draft.targetUserId ?? null,
+        target_user_email: draft.targetUserEmail ?? null,
+        target_user_name: draft.targetUserName ?? null,
+        target_tournament_id: draft.targetTournamentId ?? null,
+        target_tournament_name: draft.targetTournamentName ?? null,
+        details: draft.details ?? null,
       });
-      if (!saved) return;
-      setLogs((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
+      if (!ok) return;
+      await refreshLogs();
     },
-    [account?.id, account?.nickname, email, userId],
+    [account?.id, account?.nickname, email, refreshLogs, userId],
   );
 
   const value = useMemo(
@@ -69,7 +76,6 @@ export function useAuditLog() {
   return ctx;
 }
 
-/** `logAction` bound to the signed-in admin. */
 export function useLogAction() {
   const { logAction } = useAuditLog();
   return logAction;

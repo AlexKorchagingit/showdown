@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Gem } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
-import { useAuditLog } from '../context/AuditLogContext';
 import { CoinBalance } from '../components/CoinBalance';
 import { RubyInfoModal } from '../components/RubyInfoModal';
 import { shopItemsOfType, type ShopItem, type ShopItemType } from '../data/shopItems';
@@ -163,8 +162,7 @@ function ItemCard({
 export function ShopScreen() {
   const navigate = useNavigate();
   const { coins, isOwned, isEquipped, buyItem, equipItem, nickname } = useProfile();
-  const { email, userId } = useUser();
-  const { logAction } = useAuditLog();
+  const { email, userId, addLog } = useUser();
   const [tab, setTab] = useState<ShopItemType>('character');
   const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
 
@@ -255,11 +253,11 @@ export function ShopScreen() {
                         const bought = await buyItem(item.id);
                         if (!bought) return;
                         const kind = item.type === 'bg' ? 'фона' : 'персонажа';
-                        await logAction({
-                          actionType: 'Списал рубины',
-                          targetUserId: userId,
-                          targetUserEmail: email,
-                          targetUserName: nickname,
+                        await addLog({
+                          action_type: 'Списал рубины',
+                          target_user_id: userId,
+                          target_user_email: email,
+                          target_user_name: nickname,
                           details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
                         });
                       })();
