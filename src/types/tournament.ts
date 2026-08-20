@@ -10,6 +10,8 @@ export interface Participant {
   rubiesAwarded?: number;
   /** Admin note from tournament cashier, shown in a closed lobby. */
   comment?: string;
+  /** Head-shot from the joined `users.equipped_avatar` column. */
+  equippedAvatar?: string;
 }
 
 export interface TournamentStaffMember {

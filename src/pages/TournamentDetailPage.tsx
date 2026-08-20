@@ -1,4 +1,5 @@
 import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair } from 'lucide-react';
+import { useEffect } from 'react';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { PlayerNameLink } from '../components/PlayerNameLink';
@@ -142,9 +143,13 @@ function formatDealerHours(hours: number, minutes = 0): string {
 }
 
 export function TournamentDetailPage({ tournament, onBack }: Props) {
-  const { isRegistered, toggleRegistration, tournaments } = useTournaments();
+  const { isRegistered, toggleRegistration, tournaments, refreshParticipants, isLoading } = useTournaments();
   const { getDealerHours } = useFinance();
   const { isAdmin } = useUser();
+
+  useEffect(() => {
+    void refreshParticipants(tournament.id);
+  }, [tournament.id, refreshParticipants]);
 
   const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
   const registered = isRegistered(live.id);
@@ -290,7 +295,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               </div>
 
               {/* Participant rows */}
-              {participants.length === 0 ? (
+              {isLoading && participants.length === 0 ? (
+                <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
+                  Загрузка участников…
+                </p>
+              ) : participants.length === 0 ? (
                 <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
                   Пока никто не зарегистрировался
                 </p>
@@ -341,6 +350,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                             <PlayerAvatar
                               playerId={p.id}
                               nickname={p.nickname}
+                              src={p.equippedAvatar}
                               size="sm"
                               glowColor={isPodium ? wreathColor ?? undefined : undefined}
                             />
@@ -498,7 +508,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             </button>
           ) : registered ? (
             <button
-              onClick={() => toggleRegistration(live.id)}
+              onClick={() => void toggleRegistration(live.id)}
               className="pointer-events-auto w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
               style={{ background: 'rgba(42,33,29,0.9)', border: '1.5px solid rgba(239,68,68,0.38)', color: '#f87171' }}
             >
@@ -506,7 +516,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             </button>
           ) : (
             <button
-              onClick={() => toggleRegistration(live.id)}
+              onClick={() => void toggleRegistration(live.id)}
               className="pointer-events-auto w-full h-14 rounded-2xl font-700 text-[15px] tracking-wide flex items-center justify-center gap-2.5 active:scale-[0.97] transition-transform"
               style={{
                 background: 'linear-gradient(to right, #8C4C27, #D99962)',

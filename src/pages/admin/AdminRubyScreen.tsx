@@ -5,11 +5,8 @@ import { CoinBalance } from '../../components/CoinBalance';
 import { useProfile } from '../../context/ProfileContext';
 import { useUser } from '../../context/UserContext';
 import { useAuditLog } from '../../context/AuditLogContext';
-import {
-  grantRubies,
-  grantRubiesToEveryone,
-  readRubyAccounts,
-} from '../../lib/rubyGrants';
+import { grantRubies, grantRubiesToEveryone } from '../../lib/rubyGrants';
+import { ScreenLoading } from '../../components/ScreenLoading';
 
 const FIELD_CLASS =
   'w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 text-[14px] outline-none focus:border-[#D99962]/60 transition-colors';
@@ -21,21 +18,33 @@ type GrantTarget =
   | { kind: 'all' };
 
 export function AdminRubyScreen() {
-  const { email } = useUser();
+  const { email, clubUsers, isLoading, refreshClubUsers, refreshAccount } = useUser();
   const { logAction } = useAuditLog();
   const { coins, addCoins } = useProfile();
-  const [revision, setRevision] = useState(0);
+  const [busy, setBusy] = useState(false);
   const [target, setTarget] = useState<GrantTarget | null>(null);
   const [amount, setAmount] = useState('100');
   const [comment, setComment] = useState('');
 
   const accounts = useMemo(() => {
-    return readRubyAccounts().map((account) =>
+    return clubUsers.map((account) =>
       account.email.trim().toLowerCase() === email.trim().toLowerCase()
-        ? { ...account, coins }
-        : account,
+        ? {
+            id: account.id,
+            email: account.email,
+            nickname: account.nickname,
+            coins,
+            pendingAmount: account.pendingNotifications.reduce((sum, row) => sum + row.amount, 0),
+          }
+        : {
+            id: account.id,
+            email: account.email,
+            nickname: account.nickname,
+            coins: account.coins,
+            pendingAmount: account.pendingNotifications.reduce((sum, row) => sum + row.amount, 0),
+          },
     );
-  }, [email, coins, revision]);
+  }, [clubUsers, email, coins]);
 
   const parsedAmount = Math.floor(Number(amount));
   const canSave = Number.isFinite(parsedAmount) && parsedAmount > 0;
@@ -46,34 +55,41 @@ export function AdminRubyScreen() {
     setComment('');
   };
 
-  const handleSave = () => {
-    if (!canSave || !target) return;
+  const handleSave = async () => {
+    if (!canSave || !target || busy) return;
     const message = comment.trim() || 'Подарок от клуба';
-    if (target.kind === 'all') {
-      grantRubiesToEveryone({
-        amount: parsedAmount,
-        message,
-        currentEmail: email,
-        creditCurrentUser: addCoins,
+    setBusy(true);
+    try {
+      if (target.kind === 'all') {
+        await grantRubiesToEveryone({
+          amount: parsedAmount,
+          message,
+          currentEmail: email,
+          creditCurrentUser: addCoins,
+        });
+      } else {
+        await grantRubies({
+          email: target.email,
+          amount: parsedAmount,
+          message,
+          currentEmail: email,
+          creditCurrentUser: addCoins,
+        });
+      }
+      await Promise.all([refreshClubUsers(), refreshAccount()]);
+      logAction({
+        actionType: target.kind === 'all' ? 'Начислил рубины всем' : 'Начислил рубины',
+        targetUserId: target.kind === 'one' ? target.id : undefined,
+        targetUserEmail: target.kind === 'one' ? target.email : undefined,
+        targetUserName: target.kind === 'one' ? target.nickname : 'Все игроки',
+        details: `Сумма: ${parsedAmount.toLocaleString('ru-RU')}. Причина: ${message}`,
       });
-    } else {
-      grantRubies({
-        email: target.email,
-        amount: parsedAmount,
-        message,
-        currentEmail: email,
-        creditCurrentUser: addCoins,
-      });
+      closeModal();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось начислить рубины');
+    } finally {
+      setBusy(false);
     }
-    logAction({
-      actionType: target.kind === 'all' ? 'Начислил рубины всем' : 'Начислил рубины',
-      targetUserId: target.kind === 'one' ? target.id : undefined,
-      targetUserEmail: target.kind === 'one' ? target.email : undefined,
-      targetUserName: target.kind === 'one' ? target.nickname : 'Все игроки',
-      details: `Сумма: ${parsedAmount.toLocaleString('ru-RU')}. Причина: ${message}`,
-    });
-    setRevision((value) => value + 1);
-    closeModal();
   };
 
   return (
@@ -104,6 +120,9 @@ export function AdminRubyScreen() {
           Начисление рубинов. Онлайн-игрок получает баланс сразу, остальные — попап при входе.
         </p>
 
+        {isLoading && accounts.length === 0 ? (
+          <ScreenLoading label="Загрузка пользователей…" />
+        ) : (
         <div className="space-y-3">
           {accounts.map((account) => (
             <div
@@ -142,6 +161,7 @@ export function AdminRubyScreen() {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {target && (
@@ -191,18 +211,18 @@ export function AdminRubyScreen() {
 
             <button
               type="button"
-              disabled={!canSave}
-              onClick={handleSave}
+              disabled={!canSave || busy}
+              onClick={() => void handleSave()}
               className={`w-full h-12 rounded-xl text-[15px] font-800 transition-transform ${
-                canSave ? 'text-[#0A0908] active:scale-[0.98]' : 'opacity-45 cursor-not-allowed text-white/50'
+                canSave && !busy ? 'text-[#0A0908] active:scale-[0.98]' : 'opacity-45 cursor-not-allowed text-white/50'
               }`}
               style={
-                canSave
+                canSave && !busy
                   ? { background: 'linear-gradient(to right, #8C4C27, #D99962)' }
                   : { background: '#463129' }
               }
             >
-              Начислить
+              {busy ? 'Начисление…' : 'Начислить'}
             </button>
           </div>
         </div>

@@ -64,7 +64,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
   const selectedStructure =
     structures.find((row) => row.id === form.blindStructureId) ?? structures[0];
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!isValid) return;
 
     const newTournament: Omit<Tournament, 'id'> = {
@@ -87,7 +87,8 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       isClosed: false,
     };
 
-    const id = addTournament(newTournament);
+    const id = await addTournament(newTournament);
+    if (!id) return;
     setForm(EMPTY_FORM);
     onCreated(id);
   };
@@ -180,7 +181,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
 
       <button
         type="button"
-        onClick={handleCreate}
+        onClick={() => void handleCreate()}
         disabled={!isValid}
         className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-[15px] transition-all active:scale-[0.98] ${
           isValid

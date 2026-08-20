@@ -5,8 +5,8 @@ import { PlayerNameLink } from '../components/PlayerNameLink';
 import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
-import { mockUsers } from '../data/mockUsers';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL, type RatingPlayer } from '../types/player';
+import { findClubUser } from '../lib/clubDirectory';
 
 type RatingTab = 'general' | 'seasonal';
 type MetricColumn = 'tournaments' | 'wins' | 'knockouts';
@@ -50,9 +50,7 @@ function nicknamesForAccount(email: string, profileNickname: string): string[] {
   const names = new Set<string>();
   const profile = profileNickname.trim().toLowerCase();
   if (profile) names.add(profile);
-  const account = mockUsers.find(
-    (user) => user.email.trim().toLowerCase() === email.trim().toLowerCase(),
-  );
+  const account = findClubUser({ email });
   if (account) names.add(account.nickname.toLowerCase());
   return [...names];
 }
@@ -68,9 +66,7 @@ function findCurrentEntry(
     return { player: players[index], rank: index + 1 };
   }
 
-  const account = mockUsers.find(
-    (user) => user.email.trim().toLowerCase() === email.trim().toLowerCase(),
-  );
+  const account = findClubUser({ email });
   const nickname = profileNickname.trim() || account?.nickname || 'Вы';
   return {
     player: {

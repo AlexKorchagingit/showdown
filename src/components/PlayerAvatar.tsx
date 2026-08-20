@@ -1,5 +1,7 @@
 import { useProfile } from '../context/ProfileContext';
+import { useUser } from '../context/UserContext';
 import { DEFAULT_AVATAR_URL } from '../data/shopItems';
+import { findClubUserByIdOrNick } from '../lib/clubDirectory';
 import { avatarUrlForPlayer } from '../lib/playerCharacter';
 
 const SIZE_CLASS = {
@@ -26,13 +28,17 @@ export function PlayerAvatar({
   className = '',
 }: PlayerAvatarProps) {
   const { equippedChar, equippedAvatar } = useProfile();
+  const { userId } = useUser();
+  const club = findClubUserByIdOrNick(playerId, nickname);
+  const isSelf = playerId === 'me' || (Boolean(playerId) && playerId === userId);
   const url =
     src ??
-    (playerId === 'me'
+    (isSelf
       ? equippedAvatar
-      : playerId && nickname
-        ? avatarUrlForPlayer(playerId, nickname, equippedChar)
-        : DEFAULT_AVATAR_URL);
+      : club?.equippedAvatar
+        || (playerId && nickname
+          ? avatarUrlForPlayer(playerId, nickname, equippedChar)
+          : DEFAULT_AVATAR_URL));
 
   return (
     <div className={`relative shrink-0 ${className}`}>

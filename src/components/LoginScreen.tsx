@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { asset } from '../lib/assets';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
 import { logAction } from '../lib/auditLogStorage';
-import { recordAgreementsAccepted } from '../lib/userStorage';
+import { loginOrRegisterUser } from '../lib/userApi';
 import { LegalImageModal } from './LegalImageModal';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,23 +71,23 @@ function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
   localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
 }
 
-function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
+async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
   const normalized = email.trim().toLowerCase();
   const acceptedAt = agreementsAcceptedAt || new Date().toISOString();
-  const result = recordAgreementsAccepted(normalized, acceptedAt);
+  const { user, isNew } = await loginOrRegisterUser(normalized, acceptedAt);
 
-  if (result.isNew) {
+  if (isNew) {
     logAction(normalized, {
       actionType: 'Согласия приняты (электронная подпись)',
       targetUserEmail: normalized,
-      targetUserName: result.nickname,
-      details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${result.agreementsAcceptedAt}`,
+      targetUserName: user.nickname,
+      details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${user.agreementsAcceptedAt ?? acceptedAt}`,
     });
   }
 
   clearTempAuth();
   clearAgreementsAt();
-  onLogin(email.trim());
+  onLogin(user.email);
 }
 
 function ConsentCopy({ onOpen }: { onOpen: (document: ClubLegalDocument) => void }) {
@@ -223,7 +223,11 @@ export function LoginScreen({ onLogin }: Props) {
       verifiedRef.current = true;
       setIsSuccess(true);
       const successTimer = setTimeout(() => {
-        completeLogin(email, agreementsAcceptedAt, onLogin);
+        void completeLogin(email, agreementsAcceptedAt, onLogin).catch((error) => {
+          verifiedRef.current = false;
+          setIsSuccess(false);
+          window.alert(error instanceof Error ? error.message : 'Не удалось войти');
+        });
       }, 1000);
       return () => clearTimeout(successTimer);
     }

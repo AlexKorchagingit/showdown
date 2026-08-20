@@ -71,7 +71,7 @@ function removeKey(key: string) {
   }
 }
 
-function generateNickname(): string {
+export function generateNickname(): string {
   return `Личность№${Math.floor(Math.random() * 10000)}`;
 }
 

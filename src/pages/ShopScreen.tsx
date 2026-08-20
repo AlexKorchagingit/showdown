@@ -244,19 +244,22 @@ export function ShopScreen() {
                   owned={owned}
                   equipped={isEquipped(item.id)}
                   affordable={coins >= item.price}
-                  onSelect={() => {
-                    if (owned) {
-                      equipItem(item.id);
-                      return;
-                    }
-                    if (!buyItem(item.id)) return;
-                    const kind = item.type === 'bg' ? 'фона' : 'персонажа';
-                    logAction({
-                      actionType: 'Списал рубины',
-                      targetUserName: nickname,
-                      details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
-                    });
-                  }}
+                    onSelect={() => {
+                      void (async () => {
+                        if (owned) {
+                          equipItem(item.id);
+                          return;
+                        }
+                        const bought = await buyItem(item.id);
+                        if (!bought) return;
+                        const kind = item.type === 'bg' ? 'фона' : 'персонажа';
+                        logAction({
+                          actionType: 'Списал рубины',
+                          targetUserName: nickname,
+                          details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
+                        });
+                      })();
+                    }}
                 />
               );
             })}

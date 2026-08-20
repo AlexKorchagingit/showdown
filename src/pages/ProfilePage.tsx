@@ -60,7 +60,7 @@ export function ProfilePage() {
   const { playerId } = useParams<{ playerId?: string }>();
   const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
-  const { isAdmin, email } = useUser();
+  const { isAdmin, email, userId } = useUser();
   const { logAction } = useAuditLog();
   const { tournaments } = useTournaments();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
@@ -133,9 +133,9 @@ export function ProfilePage() {
   const showAdminStats = readOnly && isAdmin && adminStats != null;
 
   const gameHistory = useMemo(() => {
-    const userIds = readOnly && playerId ? [playerId] : [CURRENT_USER_ID, email];
+    const userIds = readOnly && playerId ? [playerId] : [userId, CURRENT_USER_ID, email];
     return collectPlayerGameHistory(tournaments, userIds, displayNickname);
-  }, [tournaments, readOnly, playerId, email, displayNickname]);
+  }, [tournaments, readOnly, playerId, email, userId, displayNickname]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">

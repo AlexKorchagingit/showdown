@@ -2,17 +2,32 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from 'react';
 import { useUser } from './UserContext';
-import { findShopItem, resolveImage, avatarUrlForChar } from '../data/shopItems';
-import { loadUserData, saveUserData, type UserData } from '../lib/userStorage';
+import {
+  DEFAULT_BG_ID,
+  DEFAULT_CHARACTER_ID,
+  findShopItem,
+  resolveImage,
+  avatarUrlForChar,
+} from '../data/shopItems';
+import type { UserData } from '../lib/userStorage';
+
+const EMPTY_PROFILE: UserData = {
+  nickname: '',
+  birthDate: '',
+  slogan: '',
+  coins: 0,
+  ownedItems: [],
+  equippedChar: DEFAULT_CHARACTER_ID,
+  equippedBg: DEFAULT_BG_ID,
+  pendingNotifications: [],
+};
 
 interface ProfileContextValue extends UserData {
-  /** Image paths resolved from the equipped item ids. */
+  isLoading: boolean;
   characterImage: string;
   backgroundImage: string;
   equippedAvatar: string;
@@ -21,40 +36,36 @@ interface ProfileContextValue extends UserData {
   updateSlogan: (value: string) => void;
   isOwned: (itemId: string) => boolean;
   isEquipped: (itemId: string) => boolean;
-  /** Returns false when the balance is too low or the item is unknown. */
-  buyItem: (itemId: string) => boolean;
+  buyItem: (itemId: string) => Promise<boolean>;
   equipItem: (itemId: string) => void;
-  addCoins: (amount: number) => void;
+  addCoins: (amount: number) => Promise<void>;
   claimFirstNotification: () => void;
 }
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const { email } = useUser();
-  const [data, setData] = useState<UserData>(() => loadUserData(email));
+  const { account, isLoading, patchAccount } = useUser();
+  const data: UserData = account ?? EMPTY_PROFILE;
 
-  // Re-read the record whenever the signed-in account changes
-  useEffect(() => {
-    setData(loadUserData(email));
-  }, [email]);
-
-  // Every change is merged into the record and written straight to storage,
-  // keyed by the email captured for this render.
-  const patch = useCallback(
-    (changes: Partial<UserData>) => {
-      setData((prev) => {
-        const next = { ...prev, ...changes };
-        saveUserData(email, next);
-        return next;
-      });
+  const updateNickname = useCallback(
+    (value: string) => {
+      void patchAccount({ nickname: value });
     },
-    [email],
+    [patchAccount],
   );
-
-  const updateNickname = useCallback((value: string) => patch({ nickname: value }), [patch]);
-  const updateBirthDate = useCallback((value: string) => patch({ birthDate: value }), [patch]);
-  const updateSlogan = useCallback((value: string) => patch({ slogan: value }), [patch]);
+  const updateBirthDate = useCallback(
+    (value: string) => {
+      void patchAccount({ birthDate: value });
+    },
+    [patchAccount],
+  );
+  const updateSlogan = useCallback(
+    (value: string) => {
+      void patchAccount({ slogan: value });
+    },
+    [patchAccount],
+  );
 
   const isOwned = useCallback(
     (itemId: string) => data.ownedItems.includes(itemId),
@@ -70,57 +81,52 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     (itemId: string) => {
       const item = findShopItem(itemId);
       if (!item) return;
-      patch(item.type === 'character' ? { equippedChar: itemId } : { equippedBg: itemId });
+      void patchAccount(
+        item.type === 'character'
+          ? { equippedChar: itemId, equippedBg: data.equippedBg }
+          : { equippedBg: itemId, equippedChar: data.equippedChar },
+      );
     },
-    [patch],
+    [data.equippedBg, data.equippedChar, patchAccount],
   );
 
   const buyItem = useCallback(
-    (itemId: string) => {
+    async (itemId: string) => {
       const item = findShopItem(itemId);
       if (!item) return false;
       if (data.ownedItems.includes(itemId)) return true;
       if (data.coins < item.price) return false;
-
-      patch({
+      const next = await patchAccount({
         coins: data.coins - item.price,
         ownedItems: [...data.ownedItems, itemId],
       });
-      return true;
+      return Boolean(next);
     },
-    [data.coins, data.ownedItems, patch],
+    [data.coins, data.ownedItems, patchAccount],
   );
 
   const addCoins = useCallback(
-    (amount: number) => {
+    async (amount: number) => {
       const delta = Math.floor(Number(amount));
       if (!Number.isFinite(delta) || delta === 0) return;
-      setData((prev) => {
-        const next = { ...prev, coins: Math.max(0, prev.coins + delta) };
-        saveUserData(email, next);
-        return next;
-      });
+      await patchAccount({ coins: Math.max(0, data.coins + delta) });
     },
-    [email],
+    [data.coins, patchAccount],
   );
 
   const claimFirstNotification = useCallback(() => {
-    setData((prev) => {
-      const [first, ...rest] = prev.pendingNotifications;
-      if (!first) return prev;
-      const next = {
-        ...prev,
-        coins: prev.coins + first.amount,
-        pendingNotifications: rest,
-      };
-      saveUserData(email, next);
-      return next;
+    const [first, ...rest] = data.pendingNotifications;
+    if (!first) return;
+    void patchAccount({
+      coins: data.coins + first.amount,
+      pendingNotifications: rest,
     });
-  }, [email]);
+  }, [data.coins, data.pendingNotifications, patchAccount]);
 
   const value = useMemo(
     () => ({
       ...data,
+      isLoading,
       characterImage: resolveImage(data.equippedChar, 'character'),
       backgroundImage: resolveImage(data.equippedBg, 'bg'),
       equippedAvatar: avatarUrlForChar(data.equippedChar),
@@ -136,6 +142,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }),
     [
       data,
+      isLoading,
       updateNickname,
       updateBirthDate,
       updateSlogan,

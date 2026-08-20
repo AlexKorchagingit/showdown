@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
-import { mockUsers } from '../../data/mockUsers';
+import { useUser } from '../../context/UserContext';
+import { ScreenLoading } from '../../components/ScreenLoading';
 import { ALL_PARTICIPANTS } from '../../data/participants';
 import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentStatus';
 import { EditableText } from '../../components/admin/EditableText';
@@ -181,13 +182,14 @@ function ParticipantsEditor({
   participants: Participant[];
   totalSeats: number;
   canAdd: boolean;
-  onAdd: (nickname: string) => void;
+  onAdd: (id: string, nickname: string) => void;
   onRemove: (id: string) => void;
 }) {
+  const { clubUsers } = useUser();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const takenNicknames = new Set(participants.map((p) => p.nickname));
-  const available = mockUsers.filter((u) => !takenNicknames.has(u.nickname));
+  const available = clubUsers.filter((u) => !takenNicknames.has(u.nickname));
   const ranked = sortByRating(
     participants.map((p) => ({ ...p, rating: resolveSeasonRating(p.nickname) })),
   );
@@ -298,7 +300,7 @@ function ParticipantsEditor({
                         key={user.id}
                         type="button"
                         onClick={() => {
-                          onAdd(user.nickname);
+                          onAdd(user.id, user.nickname);
                           setPickerOpen(false);
                         }}
                         className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
@@ -350,11 +352,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
     setPhotoPreview(URL.createObjectURL(file));
   };
 
-  const addParticipant = (nickname: string) => {
-    patch({
+  const addParticipant = (id: string, nickname: string) => {
+    void patch({
       participants: [
         ...tournament.participants,
-        { id: `p-${Date.now()}`, nickname, rating: resolveSeasonRating(nickname) },
+        { id, nickname, rating: resolveSeasonRating(nickname) },
       ],
     });
   };
@@ -363,20 +365,19 @@ function Editor({ tournament }: { tournament: Tournament }) {
     patch({ participants: tournament.participants.filter((p) => p.id !== id) });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!window.confirm('Точно удалить?')) return;
-    deleteTournament(tournament.id);
+    await deleteTournament(tournament.id);
     navigate('/admin/tournaments');
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     const { id: _id, ...rest } = tournament;
-    const newId = addTournament({
+    const newId = await addTournament({
       ...rest,
       title: `${tournament.title} Copy`,
       participants: tournament.participants.map((p) => ({
         ...p,
-        id: `p-${Date.now()}-${p.id}`,
         place: undefined,
         knockouts: undefined,
         rubiesAwarded: undefined,
@@ -387,6 +388,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
       dealers: undefined,
       resultsEntered: false,
     });
+    if (!newId) return;
     navigate(`/admin/tournaments/${newId}`);
   };
 
@@ -584,7 +586,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
           <button
             type="button"
-            onClick={handleCopy}
+            onClick={() => void handleCopy()}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white bg-[#463129] active:scale-[0.98] transition-transform"
             style={{ border: '1px solid #D99962' }}
           >
@@ -593,7 +595,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => void handleDelete()}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white bg-red-900/80 active:scale-[0.98] transition-transform"
             style={{ border: '1px solid rgba(239,68,68,0.45)' }}
           >
@@ -608,9 +610,16 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
 export function AdminTournamentEditor() {
   const { id } = useParams<{ id: string }>();
-  const { tournaments } = useTournaments();
+  const { tournaments, isLoading } = useTournaments();
 
   const tournament = tournaments.find((t) => t.id === id);
+  if (!tournament && isLoading) {
+    return (
+      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+        <ScreenLoading label="Загрузка турнира…" />
+      </div>
+    );
+  }
   if (!tournament) return <Navigate to="/admin/tournaments" replace />;
 
   return <Editor tournament={tournament} />;

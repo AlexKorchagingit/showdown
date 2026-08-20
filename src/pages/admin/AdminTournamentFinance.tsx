@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, Gem, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
+import { ScreenLoading } from '../../components/ScreenLoading';
 import { CURRENT_USER_ID, useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useAuditLog } from '../../context/AuditLogContext';
@@ -27,7 +28,7 @@ import { PlayerAvatar } from '../../components/PlayerAvatar';
 import type { TournamentDealer } from '../../types/tournament';
 import { ALL_PARTICIPANTS } from '../../data/participants';
 import { CURRENT_USER_RATING } from '../../types/player';
-import { playerEmail, systemPlayerDirectory } from '../../lib/systemPlayers';
+import { playerEmail } from '../../lib/systemPlayers';
 import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
 import { hasGlobalUnpaidDebt } from '../../lib/playerAnalytics';
 import { creditRubiesToBalance } from '../../lib/rubyGrants';
@@ -69,9 +70,9 @@ function FadingHoursDelta({ flash }: { flash?: { delta: number; token: number } 
 export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tournaments, updateTournament } = useTournaments();
+  const { tournaments, updateTournament, isLoading } = useTournaments();
   const { logAction } = useAuditLog();
-  const { email: currentEmail } = useUser();
+  const { email: currentEmail, userId, clubUsers } = useUser();
   const { addCoins } = useProfile();
   const {
     transactions,
@@ -121,6 +122,13 @@ export function AdminTournamentFinance() {
     [],
   );
 
+  if (!tournament && isLoading) {
+    return (
+      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+        <ScreenLoading label="Загрузка турнира…" />
+      </div>
+    );
+  }
   if (!tournament) return <Navigate to="/admin/finance" replace />;
 
   const bountyEvent = isBountyEvent(tournament);
@@ -132,7 +140,7 @@ export function AdminTournamentFinance() {
   const nonPlayingDealers = tournament.dealers ?? [];
   const takenIds = new Set(tournament.participants.map((p) => p.id));
   const takenNicks = new Set(tournament.participants.map((p) => p.nickname.toLowerCase()));
-  const availablePlayers = systemPlayerDirectory().filter(
+  const availablePlayers = clubUsers.filter(
     (user) => !takenIds.has(user.id) && !takenNicks.has(user.nickname.toLowerCase()),
   );
 
@@ -203,7 +211,7 @@ export function AdminTournamentFinance() {
     });
   };
 
-  const closeTournament = () => {
+  const closeTournament = async () => {
     if (closingRef.current || tournament.isClosed || tournament.rubiesDistributed) return;
     if (closeBlocked) {
       window.alert('Не все участники вылетели!');
@@ -244,44 +252,49 @@ export function AdminTournamentFinance() {
     }
 
     closingRef.current = true;
-    const settled = attachRubiesAwarded(
-      closeTournamentWithPayouts(
-        closingParticipants,
-        tournament.guarantee,
+    try {
+      const settled = attachRubiesAwarded(
+        closeTournamentWithPayouts(
+          closingParticipants,
+          tournament.guarantee,
+          bountyEvent,
+        ),
         bountyEvent,
-      ),
-      bountyEvent,
-    );
-    const rubyTotal = settled.reduce((sum, row) => sum + (row.rubiesAwarded ?? 0), 0);
+      );
+      const rubyTotal = settled.reduce((sum, row) => sum + (row.rubiesAwarded ?? 0), 0);
 
-    for (const participant of settled) {
-      const amount = participant.rubiesAwarded ?? 0;
-      if (amount <= 0) continue;
-      const email =
-        participant.id === CURRENT_USER_ID
-          ? currentEmail
-          : playerEmail(participant.id, participant.nickname);
-      if (!email) continue;
-      creditRubiesToBalance({
-        email,
-        amount,
-        currentEmail,
-        creditCurrentUser: addCoins,
+      for (const participant of settled) {
+        const amount = participant.rubiesAwarded ?? 0;
+        if (amount <= 0) continue;
+        const email =
+          participant.id === CURRENT_USER_ID || participant.id === userId
+            ? currentEmail
+            : playerEmail(participant.id, participant.nickname);
+        if (!email) continue;
+        await creditRubiesToBalance({
+          email,
+          amount,
+          currentEmail,
+          creditCurrentUser: addCoins,
+        });
+      }
+
+      await updateTournament(tournament.id, {
+        isClosed: true,
+        resultsEntered: true,
+        rubiesDistributed: true,
+        participants: settled,
       });
+      logAction({
+        actionType: 'Закрыл турнир',
+        targetTournamentId: tournament.id,
+        targetTournamentName: tournament.title,
+        details: `Внесены результаты. Игроков: ${settled.length}. Рубины: ${rubyTotal.toLocaleString('ru-RU')}`,
+      });
+    } catch (error) {
+      closingRef.current = false;
+      window.alert(error instanceof Error ? error.message : 'Не удалось закрыть турнир');
     }
-
-    updateTournament(tournament.id, {
-      isClosed: true,
-      resultsEntered: true,
-      rubiesDistributed: true,
-      participants: settled,
-    });
-    logAction({
-      actionType: 'Закрыл турнир',
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
-      details: `Внесены результаты. Игроков: ${settled.length}. Рубины: ${rubyTotal.toLocaleString('ru-RU')}`,
-    });
   };
 
   const eliminatePlayer = (playerId: string) => {
@@ -559,7 +572,7 @@ export function AdminTournamentFinance() {
           <button
             type="button"
             aria-disabled={closeBlocked}
-            onClick={closeTournament}
+            onClick={() => void closeTournament()}
             className={`w-full py-3.5 rounded-xl text-[14px] font-800 tracking-wide transition-transform ${
               closeBlocked ? 'opacity-40 cursor-not-allowed' : 'active:scale-[0.98]'
             }`}

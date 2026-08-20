@@ -1,9 +1,6 @@
-import { mockUsers } from '../data/mockUsers';
-import {
-  loadUserData,
-  saveUserData,
-  type PendingNotification,
-} from './userStorage';
+import { fetchClubUsers, fetchUserByEmail, updateUserRow } from './userApi';
+import { getClubDirectory } from './clubDirectory';
+import type { PendingNotification } from './userStorage';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -26,52 +23,50 @@ export type RubyAccount = {
 };
 
 export function readRubyAccounts(): RubyAccount[] {
-  return mockUsers.map((user) => {
-    const data = loadUserData(user.email);
-    return {
-      id: user.id,
-      email: user.email,
-      nickname: data.nickname || user.nickname,
-      coins: data.coins,
-      pendingAmount: data.pendingNotifications.reduce((sum, row) => sum + row.amount, 0),
-    };
-  });
+  return getClubDirectory().map((user) => ({
+    id: user.id,
+    email: user.email,
+    nickname: user.nickname,
+    coins: user.coins,
+    pendingAmount: user.pendingNotifications.reduce((sum, row) => sum + row.amount, 0),
+  }));
 }
 
 /** Offline users get a claimable popup; the signed-in account is credited immediately. */
-export function grantRubies(options: {
+export async function grantRubies(options: {
   email: string;
   amount: number;
   message: string;
   currentEmail: string;
-  creditCurrentUser: (amount: number) => void;
+  creditCurrentUser: (amount: number) => void | Promise<void>;
 }) {
   const amount = Math.floor(Number(options.amount));
   if (!Number.isFinite(amount) || amount <= 0) return;
 
   if (normalizeEmail(options.email) === normalizeEmail(options.currentEmail)) {
-    options.creditCurrentUser(amount);
+    await options.creditCurrentUser(amount);
     return;
   }
 
-  const data = loadUserData(options.email);
-  saveUserData(options.email, {
-    ...data,
-    pendingNotifications: [
-      ...data.pendingNotifications,
+  const user = await fetchUserByEmail(options.email);
+  if (!user) return;
+  await updateUserRow(user.id, {
+    pending_notifications: [
+      ...user.pendingNotifications,
       createRubyNotification(options.message, amount),
     ],
   });
 }
 
-export function grantRubiesToEveryone(options: {
+export async function grantRubiesToEveryone(options: {
   amount: number;
   message: string;
   currentEmail: string;
-  creditCurrentUser: (amount: number) => void;
+  creditCurrentUser: (amount: number) => void | Promise<void>;
 }) {
-  for (const user of mockUsers) {
-    grantRubies({
+  const users = await fetchClubUsers();
+  for (const user of users) {
+    await grantRubies({
       email: user.email,
       amount: options.amount,
       message: options.message,
@@ -82,20 +77,21 @@ export function grantRubiesToEveryone(options: {
 }
 
 /** Credit the ruby balance immediately (tournament payouts — no claim popup). */
-export function creditRubiesToBalance(options: {
+export async function creditRubiesToBalance(options: {
   email: string;
   amount: number;
   currentEmail: string;
-  creditCurrentUser: (amount: number) => void;
+  creditCurrentUser: (amount: number) => void | Promise<void>;
 }) {
   const amount = Math.floor(Number(options.amount));
   if (!Number.isFinite(amount) || amount <= 0 || !options.email.trim()) return;
 
   if (normalizeEmail(options.email) === normalizeEmail(options.currentEmail)) {
-    options.creditCurrentUser(amount);
+    await options.creditCurrentUser(amount);
     return;
   }
 
-  const data = loadUserData(options.email);
-  saveUserData(options.email, { ...data, coins: data.coins + amount });
+  const user = await fetchUserByEmail(options.email);
+  if (!user) return;
+  await updateUserRow(user.id, { ruby_balance: Math.max(0, user.coins + amount) });
 }

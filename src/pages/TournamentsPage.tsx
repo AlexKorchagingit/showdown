@@ -11,7 +11,7 @@ type Tab = 'upcoming' | 'finished';
 const TAB_ORDER: Tab[] = ['upcoming', 'finished'];
 
 export function TournamentsPage() {
-  const { tournaments } = useTournaments();
+  const { tournaments, isLoading } = useTournaments();
   const navigate        = useNavigate();
 
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
@@ -87,7 +87,13 @@ export function TournamentsPage() {
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             className="absolute inset-0 scrollable px-4 pb-4 space-y-3"
           >
-            {filtered.length === 0 ? (
+            {isLoading && filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 gap-3">
+                <p className="text-[13px] font-500" style={{ color: '#6B6360' }}>
+                  Загрузка турниров…
+                </p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3">
                 <span className="text-4xl opacity-10 text-white">♠</span>
                 <p className="text-[13px] font-500" style={{ color: '#6B6360' }}>

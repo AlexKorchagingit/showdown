@@ -33,6 +33,7 @@ import { UserProvider } from './context/UserContext';
 import { AuditLogProvider } from './context/AuditLogContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
+import { readSessionEmail } from './lib/session';
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
@@ -109,13 +110,13 @@ function AppLayout({ userEmail }: AppLayoutProps) {
 
 export default function App() {
   const [userEmail, setUserEmail] = useState(
-    () => localStorage.getItem('userEmail') || '',
+    () => readSessionEmail(),
   );
   const [isAuthenticated, setIsAuthenticated] = useState(
-    () => !!localStorage.getItem('userEmail'),
+    () => Boolean(readSessionEmail()),
   );
   const [showSplash, setShowSplash] = useState(
-    () => !!localStorage.getItem('userEmail'),
+    () => Boolean(readSessionEmail()),
   );
 
   useEffect(() => {
@@ -139,8 +140,7 @@ export default function App() {
   }, [isAuthenticated]);
 
   const handleLogin = (email: string) => {
-    localStorage.setItem('userEmail', email);
-    setUserEmail(email);
+    setUserEmail(email.trim().toLowerCase());
     setIsAuthenticated(true);
   };
 

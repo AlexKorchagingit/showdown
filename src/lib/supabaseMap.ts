@@ -211,7 +211,7 @@ export function tournamentToRow(tournament: Tournament): TournamentRow {
     title: tournament.title,
     image_url: tournament.imageUrl,
     address: tournament.address,
-    start_date: tournament.startDate,
+    start_date: tournament.startDate.slice(0, 10),
     start_time: tournament.startTime,
     total_seats: tournament.totalSeats,
     guarantee: tournament.guarantee,
@@ -362,3 +362,51 @@ export function logFromRow(row: LogRow): ActionLog {
     details: row.details || undefined,
   };
 }
+
+/** Nested `users(...)` payload from a participants JOIN. */
+export type JoinedUserPreview = {
+  nickname?: string | null;
+  rating?: number | null;
+  equipped_avatar?: string[] | string | null;
+  equipped_char?: string | null;
+};
+
+export type JoinedParticipantRow = ParticipantRow & {
+  users?: JoinedUserPreview | JoinedUserPreview[] | null;
+};
+
+function unwrapJoinedUser(value: JoinedParticipantRow['users']): JoinedUserPreview | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+export function participantFromJoinedRow(row: JoinedParticipantRow): Participant {
+  const base = participantFromRow(row);
+  const joined = unwrapJoinedUser(row.users);
+  if (!joined) return base;
+  const avatarList = Array.isArray(joined.equipped_avatar)
+    ? joined.equipped_avatar
+    : typeof joined.equipped_avatar === 'string' && joined.equipped_avatar
+      ? [joined.equipped_avatar]
+      : [];
+  const avatarFromJoin =
+    avatarList.find(
+      (item) => item.startsWith('http') || item.startsWith('/') || item.includes('/avatars/'),
+    ) ?? (joined.equipped_char ? avatarUrlForChar(joined.equipped_char) : undefined);
+  return {
+    ...base,
+    nickname: joined.nickname?.trim() || base.nickname,
+    rating: typeof joined.rating === 'number' ? joined.rating : base.rating,
+    equippedAvatar: avatarFromJoin || base.equippedAvatar,
+  };
+}
+
+export type JoinedTournamentRow = TournamentRow & {
+  participants?: JoinedParticipantRow[] | null;
+};
+
+export function tournamentFromJoinedRow(row: JoinedTournamentRow): Tournament {
+  const seated = Array.isArray(row.participants) ? row.participants.map(participantFromJoinedRow) : [];
+  return tournamentFromRow(row, seated);
+}
+

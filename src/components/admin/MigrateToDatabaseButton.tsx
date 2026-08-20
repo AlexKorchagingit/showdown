@@ -55,8 +55,8 @@ export function MigrateToDatabaseButton() {
         Supabase
       </p>
       <p className="text-[13px] font-500 leading-relaxed" style={{ color: '#A39B98' }}>
-        Перенести моки и данные из localStorage в таблицы users, tournaments и participants. Приложение
-        пока продолжает читать localStorage.
+        Перенести моки и данные из localStorage в таблицы users, tournaments и participants.
+        Живые экраны уже читают Supabase; кнопка остаётся для повторного upsert.
       </p>
       <button
         type="button"

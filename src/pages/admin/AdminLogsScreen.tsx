@@ -8,7 +8,6 @@ import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
 import { formatLegalDateTime, formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
-import { listUsersWithAgreements } from '../../lib/userStorage';
 
 type AuditPeriod = FinancePeriod | 'all';
 type LogsTab = 'general' | 'consents';
@@ -36,7 +35,7 @@ function inAuditPeriod(timestamp: number, period: AuditPeriod, now = new Date())
 }
 
 export function AdminLogsScreen() {
-  const { email } = useUser();
+  const { email, clubUsers } = useUser();
   const { logs } = useAuditLog();
   const [tab, setTab] = useState<LogsTab>('general');
   const [period, setPeriod] = useState<AuditPeriod>('all');
@@ -50,7 +49,22 @@ export function AdminLogsScreen() {
         .sort((a, b) => b.timestamp - a.timestamp),
     [logs, period],
   );
-  const consents = tab === 'consents' ? listUsersWithAgreements() : [];
+  const consents = useMemo(() => {
+    if (tab !== 'consents') return [];
+    return clubUsers
+      .flatMap((user) =>
+        user.agreementsAcceptedAt
+          ? [
+              {
+                email: user.email,
+                nickname: user.nickname,
+                agreementsAcceptedAt: user.agreementsAcceptedAt,
+              },
+            ]
+          : [],
+      )
+      .sort((a, b) => b.agreementsAcceptedAt.localeCompare(a.agreementsAcceptedAt));
+  }, [tab, clubUsers]);
 
   if (!isSuperAdminUser) return <Navigate to="/profile" replace />;
 

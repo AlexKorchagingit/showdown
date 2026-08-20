@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { SectionScreen } from '../../components/SectionScreen';
 import { ACHIEVEMENTS, type AchievementProgress } from '../../data/achievements';
-import { mockUsers } from '../../data/mockUsers';
+import { useUser } from '../../context/UserContext';
+import { ScreenLoading } from '../../components/ScreenLoading';
 import {
   loadAchievementProgress,
   saveAchievementProgress,
@@ -10,9 +11,10 @@ import {
 
 export function AdminAchievementsEditor() {
   const { userId } = useParams<{ userId: string }>();
+  const { clubUsers, isLoading } = useUser();
   const user = useMemo(
-    () => mockUsers.find((u) => u.id === userId),
-    [userId],
+    () => clubUsers.find((u) => u.id === userId),
+    [clubUsers, userId],
   );
 
   const storageKey = user?.email ?? '';
@@ -24,6 +26,13 @@ export function AdminAchievementsEditor() {
   }, [storageKey]);
 
   if (!user) {
+    if (isLoading) {
+      return (
+        <SectionScreen title="Achievements" backTo="/admin/achievements/users">
+          <ScreenLoading label="Загрузка пользователя…" />
+        </SectionScreen>
+      );
+    }
     return <Navigate to="/admin/achievements/users" replace />;
   }
 
