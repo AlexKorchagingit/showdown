@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
-import type { ClubLegalDocument } from '../data/legalDocuments';
+import { clubLegalPageFiles, type ClubLegalDocument } from '../data/legalDocuments';
 import { asset } from '../lib/assets';
+import { X } from 'lucide-react';
 
 interface LegalImageModalProps {
   document: ClubLegalDocument;
@@ -9,7 +8,7 @@ interface LegalImageModalProps {
 }
 
 export function LegalImageModal({ document, onClose }: LegalImageModalProps) {
-  const [failed, setFailed] = useState(false);
+  const pages = clubLegalPageFiles(document);
 
   return (
     <div className="fixed inset-0 z-[90] flex flex-col bg-[#0A0908]">
@@ -35,22 +34,19 @@ export function LegalImageModal({ document, onClose }: LegalImageModalProps) {
         className="min-h-0 flex-1 overflow-y-auto px-3 pb-6"
         onContextMenu={(event) => event.preventDefault()}
       >
-        {failed ? (
-          <p className="px-2 pt-10 text-center text-[13px] leading-relaxed text-[#8c8c88]">
-            Документ ещё не загружен. Положите файл
-            <span className="mt-1 block font-700 text-[#D99962]">public/legal/{document.file}</span>
-          </p>
-        ) : (
-          <img
-            src={asset(`/legal/${document.file}`)}
-            alt={document.title}
-            draggable={false}
-            onContextMenu={(event) => event.preventDefault()}
-            onDragStart={(event) => event.preventDefault()}
-            onError={() => setFailed(true)}
-            className="pointer-events-none mx-auto w-full max-w-3xl select-none object-contain"
-          />
-        )}
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+          {pages.map((page, index) => (
+            <img
+              key={page}
+              src={asset(page)}
+              alt={`${document.title}, стр. ${index + 1}`}
+              draggable={false}
+              onContextMenu={(event) => event.preventDefault()}
+              onDragStart={(event) => event.preventDefault()}
+              className="pointer-events-none w-full select-none bg-white object-contain shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

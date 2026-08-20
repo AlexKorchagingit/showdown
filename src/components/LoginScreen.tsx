@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { asset } from '../lib/assets';
-import { CONSENT_DOCUMENTS, type LegalDocument } from '../data/legalDocuments';
+import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
 import { logAction } from '../lib/auditLogStorage';
 import { recordAgreementsAccepted } from '../lib/userStorage';
-import { LegalDocumentModal } from './LegalDocumentModal';
+import { LegalImageModal } from './LegalImageModal';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAILJS_SERVICE  = 'service_hqlexio';
@@ -90,16 +90,16 @@ function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (em
   onLogin(email.trim());
 }
 
-function ConsentCopy({ onOpen }: { onOpen: (document: LegalDocument) => void }) {
-  const nodes: Array<string | LegalDocument> = [];
+function ConsentCopy({ onOpen }: { onOpen: (document: ClubLegalDocument) => void }) {
+  const nodes: Array<string | ConsentLink> = [];
   let cursor = 0;
 
-  for (const document of CONSENT_DOCUMENTS) {
-    const index = CONSENT_TEXT.indexOf(document.phrase, cursor);
+  for (const link of CONSENT_DOCUMENTS) {
+    const index = CONSENT_TEXT.indexOf(link.phrase, cursor);
     if (index === -1) continue;
     if (index > cursor) nodes.push(CONSENT_TEXT.slice(cursor, index));
-    nodes.push(document);
-    cursor = index + document.phrase.length;
+    nodes.push(link);
+    cursor = index + link.phrase.length;
   }
   if (cursor < CONSENT_TEXT.length) nodes.push(CONSENT_TEXT.slice(cursor));
 
@@ -112,7 +112,7 @@ function ConsentCopy({ onOpen }: { onOpen: (document: LegalDocument) => void }) 
           <button
             key={node.id}
             type="button"
-            onClick={() => onOpen(node)}
+            onClick={() => onOpen(consentClubDocument(node))}
             className="inline font-semibold text-[#E8C547] underline decoration-[#E8C547]/70 underline-offset-2"
           >
             {node.phrase}
@@ -140,7 +140,7 @@ export function LoginScreen({ onLogin }: Props) {
   const [otpError, setOtpError]           = useState(false);
   const [isSuccess, setIsSuccess]         = useState(false);
   const [agreementsAcceptedAt, setAgreementsAcceptedAt] = useState(restoredAgreements);
-  const [activeDocument, setActiveDocument] = useState<LegalDocument | null>(null);
+  const [activeDocument, setActiveDocument] = useState<ClubLegalDocument | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifiedRef = useRef(false);
@@ -410,7 +410,7 @@ export function LoginScreen({ onLogin }: Props) {
       </div>
 
       {activeDocument ? (
-        <LegalDocumentModal document={activeDocument} onClose={() => setActiveDocument(null)} />
+        <LegalImageModal key={activeDocument.id} document={activeDocument} onClose={() => setActiveDocument(null)} />
       ) : null}
 
       <style>{`
