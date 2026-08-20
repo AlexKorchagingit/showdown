@@ -260,9 +260,24 @@ export function tournamentFromRow(row: TournamentRow, participants: Participant[
   };
 }
 
+/** Only real `users.id` values may go into `participants.user_id`. */
+export function sanitizeParticipantUserId(value?: string | null): string | null {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed || trimmed === 'me') return null;
+  if (trimmed.includes(':')) return null;
+  if (/^(mock-|guest-)/i.test(trimmed)) return null;
+  return trimmed;
+}
+
+function seatKey(tournamentId: string, playerId: string): string {
+  const prefix = `${tournamentId}:`;
+  if (playerId.startsWith(prefix)) return playerId.slice(prefix.length);
+  return playerId;
+}
+
 /** Stable PK: one seated player per event (player ids repeat across tournaments). */
 export function participantRowId(tournamentId: string, playerId: string): string {
-  return `${tournamentId}:${playerId}`;
+  return `${tournamentId}:${seatKey(tournamentId, playerId)}`;
 }
 
 export function participantToRow(
@@ -270,7 +285,7 @@ export function participantToRow(
   participant: Participant,
   userId: string | null = participant.id,
 ): ParticipantRow {
-  const resolvedUserId = userId && userId !== 'me' ? userId : null;
+  const resolvedUserId = sanitizeParticipantUserId(userId);
   return {
     id: participantRowId(tournamentId, resolvedUserId || participant.id),
     tournament_id: tournamentId,

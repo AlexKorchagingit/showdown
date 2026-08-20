@@ -18,7 +18,7 @@ import {
   syncParticipantRows,
   updateTournamentRow,
 } from '../lib/tournamentApi';
-import { participantToRow } from '../lib/supabaseMap';
+import { participantToRow, sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { getClubDirectory } from '../lib/clubDirectory';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
@@ -49,9 +49,17 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const resolveUserId = useCallback(
     (player: Participant): string | null => {
-      if (player.id === CURRENT_USER_ID) return userId || null;
-      if (getClubDirectory().some((user) => user.id === player.id)) return player.id;
-      return player.id || null;
+      const directory = getClubDirectory();
+      if (player.id === CURRENT_USER_ID) return sanitizeParticipantUserId(userId);
+      if (player.id.includes(':')) return null;
+      const byId = directory.find((user) => user.id === player.id);
+      if (byId) return byId.id;
+      const nick = player.nickname.trim().toLowerCase();
+      if (nick) {
+        const byNick = directory.find((user) => user.nickname.trim().toLowerCase() === nick);
+        if (byNick) return byNick.id;
+      }
+      return null;
     },
     [userId],
   );
@@ -123,7 +131,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           nickname: account.nickname,
           rating: 0,
         };
-        await insertParticipantRow(participantToRow(tournamentId, player, userId));
+        await insertParticipantRow(participantToRow(tournamentId, player, sanitizeParticipantUserId(userId)));
         setTournaments((prev) =>
           prev.map((row) =>
             row.id !== tournamentId ? row : { ...row, participants: [...row.participants, player] },

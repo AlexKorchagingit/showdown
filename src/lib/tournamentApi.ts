@@ -3,6 +3,7 @@ import {
   participantFromJoinedRow,
   participantRowId,
   participantToRow,
+  sanitizeParticipantUserId,
   tournamentFromRow,
   tournamentToRow,
   type JoinedParticipantRow,
@@ -10,6 +11,7 @@ import {
   type TournamentRow,
 } from './supabaseMap';
 import type { Participant, Tournament } from '../types/tournament';
+import { getClubDirectory } from './clubDirectory';
 
 /** Nested user preview: rating lives on `participants`, but the lobby asks for it on `users`. */
 const PARTICIPANT_SELECTS = [
@@ -92,8 +94,54 @@ export async function deleteTournamentRow(tournamentId: string): Promise<void> {
 }
 
 export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
-  const { error } = await supabase.from('participants').insert(row);
-  if (error) throw new Error(error.message);
+  const payload: ParticipantRow = {
+    ...row,
+    user_id: sanitizeParticipantUserId(row.user_id),
+    nickname: row.nickname.trim() || 'Игрок',
+  };
+  const { error } = await supabase.from('participants').insert(payload);
+  if (!error) return;
+  console.error('Participant Insert Error:', error, payload);
+  if (payload.user_id && (error.code === '23503' || /foreign key/i.test(error.message))) {
+    const retry: ParticipantRow = { ...payload, user_id: null };
+    const second = await supabase.from('participants').insert(retry);
+    if (!second.error) return;
+    console.error('Participant Insert Error:', second.error, retry);
+    throw new Error(second.error.message);
+  }
+  throw new Error(error.message);
+}
+
+async function fetchKnownUserIds(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('users').select('id');
+  if (error) {
+    console.error('Participant Insert Error:', error);
+    return new Set(getClubDirectory().map((user) => user.id));
+  }
+  return new Set(
+    (data ?? []).flatMap((row) => (typeof row.id === 'string' && row.id.trim() ? [row.id] : [])),
+  );
+}
+
+function bindKnownUserId(candidate: string | null | undefined, realIds: Set<string>): string | null {
+  const sanitized = sanitizeParticipantUserId(candidate);
+  if (!sanitized) return null;
+  return realIds.has(sanitized) ? sanitized : null;
+}
+
+export async function upsertParticipantRows(rows: ParticipantRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await supabase.from('participants').upsert(rows, { onConflict: 'id' });
+  if (!error) return;
+  console.error('Participant Insert Error:', error, rows);
+  if (error.code === '23503' || /foreign key/i.test(error.message)) {
+    const retry = rows.map((row) => ({ ...row, user_id: null as string | null }));
+    const second = await supabase.from('participants').upsert(retry, { onConflict: 'id' });
+    if (!second.error) return;
+    console.error('Participant Insert Error:', second.error, retry);
+    throw new Error(second.error.message);
+  }
+  throw new Error(error.message);
 }
 
 export async function clearParticipantPlace(tournamentId: string, playerId: string): Promise<void> {
@@ -133,10 +181,13 @@ export async function syncParticipantRows(
   next: Participant[],
   resolveUserId: (player: Participant) => string | null,
 ): Promise<Participant[]> {
-  const nextRows = next.map((player) => participantToRow(tournamentId, player, resolveUserId(player)));
+  const realIds = await fetchKnownUserIds();
+  const nextRows = next.map((player) =>
+    participantToRow(tournamentId, player, bindKnownUserId(resolveUserId(player), realIds)),
+  );
   const nextIds = new Set(nextRows.map((row) => row.id));
   const previousIds = previous.map((player) =>
-    participantRowId(tournamentId, resolveUserId(player) || player.id),
+    participantRowId(tournamentId, bindKnownUserId(resolveUserId(player), realIds) || player.id),
   );
   const toDelete = previousIds.filter((id) => !nextIds.has(id));
 
@@ -144,10 +195,6 @@ export async function syncParticipantRows(
     const { error } = await supabase.from('participants').delete().in('id', toDelete);
     if (error) throw new Error(error.message);
   }
-  if (nextRows.length > 0) {
-    const { error } = await supabase.from('participants').upsert(nextRows, { onConflict: 'id' });
-    if (error) throw new Error(error.message);
-  }
-
+  await upsertParticipantRows(nextRows);
   return fetchParticipants(tournamentId);
 }
