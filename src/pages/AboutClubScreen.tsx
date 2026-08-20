@@ -182,29 +182,27 @@ export function AboutClubScreen() {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-      <button
-        type="button"
-        onClick={() => navigate('/')}
-        className="absolute top-4 left-4 z-50 w-12 h-12 rounded-full flex items-center justify-center"
-        style={{
-          background: 'rgba(28,20,16,0.78)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(217,153,98,0.28)',
-        }}
-        aria-label="Назад"
-      >
-        <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
-      </button>
+      <div className="flex-shrink-0 px-5 pt-6 pb-4 space-y-4">
+        <div className="relative flex items-center justify-center min-h-10">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center"
+            style={{
+              background: 'rgba(28,20,16,0.78)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(217,153,98,0.28)',
+            }}
+            aria-label="Назад"
+          >
+            <ArrowLeft size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
+          </button>
+          <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
+            О клубе
+          </h1>
+        </div>
 
-      <div className="flex-shrink-0 px-5 pt-20 pb-3">
-        <h1 className="text-center text-[17px] font-800 tracking-[0.25em] text-white uppercase">
-          О клубе
-        </h1>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex-shrink-0 px-5 mb-4">
         <div
           className="grid grid-cols-2 gap-1 p-1 rounded-2xl"
           style={{ background: '#1A1210', border: '1px solid rgba(255,255,255,0.06)' }}
