@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Gem } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
-import { useUser } from '../context/UserContext';
 import { CoinBalance } from '../components/CoinBalance';
 import { RubyInfoModal } from '../components/RubyInfoModal';
 import { shopItemsOfType, type ShopItem, type ShopItemType } from '../data/shopItems';
@@ -161,8 +160,7 @@ function ItemCard({
 
 export function ShopScreen() {
   const navigate = useNavigate();
-  const { coins, isOwned, isEquipped, buyItem, equipItem, nickname } = useProfile();
-  const { email, userId, addLog } = useUser();
+  const { coins, isOwned, isEquipped, buyItem, equipItem } = useProfile();
   const [tab, setTab] = useState<ShopItemType>('character');
   const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
 
@@ -250,16 +248,7 @@ export function ShopScreen() {
                           equipItem(item.id);
                           return;
                         }
-                        const bought = await buyItem(item.id);
-                        if (!bought) return;
-                        const kind = item.type === 'bg' ? 'фона' : 'персонажа';
-                        await addLog({
-                          action_type: 'Списал рубины',
-                          target_user_id: userId,
-                          target_user_email: email,
-                          target_user_name: nickname,
-                          details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
-                        });
+                        await buyItem(item.id);
                       })();
                     }}
                 />

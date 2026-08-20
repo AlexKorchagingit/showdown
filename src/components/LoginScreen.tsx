@@ -78,11 +78,9 @@ async function completeLogin(email: string, agreementsAcceptedAt: string, onLogi
 
   if (isNew) {
     await addLog({
-      admin_id: user.id,
       admin_email: normalized,
       admin_name: user.nickname,
       action_type: 'Согласия приняты (электронная подпись)',
-      target_user_id: user.id,
       target_user_email: normalized,
       target_user_name: user.nickname,
       details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${user.agreementsAcceptedAt ?? acceptedAt}`,

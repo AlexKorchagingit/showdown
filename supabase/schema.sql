@@ -146,6 +146,9 @@ create index if not exists logs_admin_id_idx on public.logs (admin_id);
 create index if not exists logs_target_user_id_idx on public.logs (target_user_id);
 create index if not exists logs_target_tournament_id_idx on public.logs (target_tournament_id);
 
+-- Live club rows still have these FKs. The app writes logs WITHOUT id columns so
+-- a stale session id cannot 409 the insert. Optional: supabase/fix-logs-fks.sql
+
 -- ---------------------------------------------------------------------------
 -- updated_at
 -- ---------------------------------------------------------------------------

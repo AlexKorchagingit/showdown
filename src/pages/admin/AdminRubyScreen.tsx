@@ -83,13 +83,18 @@ export function AdminRubyScreen() {
         });
       }
       await Promise.all([refreshClubUsers(), refreshAccount()]);
-      await logAction({
+      const logged = await logAction({
         actionType: target.kind === 'all' ? 'Начислил рубины всем' : 'Начислил рубины',
         targetUserId: target.kind === 'one' ? target.id : undefined,
         targetUserEmail: target.kind === 'one' ? target.email : undefined,
         targetUserName: target.kind === 'one' ? target.nickname : 'Все игроки',
         details: `Сумма: ${parsedAmount.toLocaleString('ru-RU')}. Причина: ${message}`,
       });
+      if (!logged) {
+        window.alert(
+          'Рубины начислены, но строка не попала в таблицу logs. Полностью закройте Mini App и откройте снова.',
+        );
+      }
       closeModal();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Не удалось начислить рубины');
