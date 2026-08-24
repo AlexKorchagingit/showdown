@@ -1,4 +1,5 @@
 import { itmPlaceCount, knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
+import { calculateRubies, isBountyEvent } from './calculateRubies';
 import { formatTxDate } from './transactionDisplay';
 import type { Transaction } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
@@ -27,6 +28,7 @@ export type PlayerGameHistoryRow = {
   place: number | null;
   knockouts: number;
   ratingAwarded: number;
+  rubiesAwarded: number;
   startDate: string;
 };
 
@@ -69,6 +71,14 @@ export function collectPlayerGameHistory(
     const ratingAwarded =
       (place != null ? ratingPointsForPlace(place, tournament.guarantee, field) : 0) +
       knockoutBountyPoints(knockouts, tournament.isBounty === true);
+    const storedRubies =
+      typeof participant.rubiesAwarded === 'number' ? Math.max(0, Math.floor(participant.rubiesAwarded)) : null;
+    const rubiesAwarded =
+      storedRubies != null
+        ? storedRubies
+        : place != null
+          ? calculateRubies(place, field, knockouts, isBountyEvent(tournament))
+          : 0;
     const dateLabel = tournament.startTime
       ? `${formatTxDate(`${tournament.startDate}T12:00:00`)} · ${tournament.startTime}`
       : formatTxDate(`${tournament.startDate}T12:00:00`);
@@ -81,6 +91,7 @@ export function collectPlayerGameHistory(
       place,
       knockouts,
       ratingAwarded,
+      rubiesAwarded,
       startDate: tournament.startDate,
     });
   }

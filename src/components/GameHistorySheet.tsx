@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { Gem, X } from 'lucide-react';
 import type { PlayerGameHistoryRow } from '../lib/playerAnalytics';
 
 interface GameHistorySheetProps {
@@ -62,6 +62,15 @@ export function GameHistorySheet({ rows, onClose }: GameHistorySheetProps) {
                       <span>
                         Рейтинг:{' '}
                         <span className="text-[#D99962]">+{row.ratingAwarded.toLocaleString('ru-RU')}</span>
+                      </span>
+                    ) : null}
+                    {row.rubiesAwarded > 0 ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Gem size={12} strokeWidth={2.4} className="text-rose-500" />
+                        <span>
+                          Рубины:{' '}
+                          <span className="text-[#fb7185]">+{row.rubiesAwarded.toLocaleString('ru-RU')}</span>
+                        </span>
                       </span>
                     ) : null}
                   </div>
