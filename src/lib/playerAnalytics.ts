@@ -103,13 +103,36 @@ export type PlayerAdminStats = {
   favoriteTournament: string;
   favoriteTournamentCount: number;
   prizePoints: number;
+  avgRebuys: number;
+  addonRate: number;
+  rebuyCount: number;
+  addonCount: number;
+  addonEligibleTournaments: number;
   ltvRows: PlayerLedgerRow[];
   debtRows: PlayerLedgerRow[];
   dealerRows: PlayerLedgerRow[];
   visitRows: PlayerLedgerRow[];
   prizeRows: PlayerLedgerRow[];
+  rebuyRows: PlayerLedgerRow[];
+  addonRows: PlayerLedgerRow[];
   tournamentHistory: PlayerTournamentRow[];
 };
+
+export function tournamentOffersAddon(tournament: Tournament): boolean {
+  return (tournament.features ?? []).some((feature) => {
+    const value = feature.toLowerCase();
+    return value.includes('аддон') || value.includes('addon');
+  });
+}
+
+export function formatAvgRebuys(avg: number, tournamentsPlayed: number): string {
+  if (tournamentsPlayed <= 0) return '0';
+  return avg.toFixed(1);
+}
+
+export function formatAddonRate(percent: number): string {
+  return `${Math.round(percent)}%`;
+}
 
 export function hasGlobalUnpaidDebt(transactions: Transaction[], userId: string): boolean {
   return transactions.some((tx) => tx.userId === userId && tx.status === 'unpaid');
@@ -143,13 +166,22 @@ export function computePlayerAdminStats(
   const unpaid = mine.filter((tx) => tx.status === 'unpaid');
   const ltv = paid.reduce((sum, tx) => sum + tx.amount, 0);
   const clubDebt = unpaid.reduce((sum, tx) => sum + tx.amount, 0);
+  const rebuys = mine.filter((tx) => tx.type === 'rebuy');
+  const addons = mine.filter((tx) => tx.type === 'addon');
 
+  const ids = new Set([playerId].filter(Boolean));
   const played = tournaments.filter((tournament) =>
-    tournament.participants.some((participant) => participant.id === playerId),
+    tournament.participants.some((participant) => participantMatches(participant, ids, nickname)),
   );
+  const addonEligible = played.filter(tournamentOffersAddon);
+  const addonDenom = addonEligible.length > 0 ? addonEligible.length : played.length;
+  const avgRebuys = played.length === 0 ? 0 : rebuys.length / played.length;
+  const addonRate = addonDenom === 0 ? 0 : (addons.length / addonDenom) * 100;
 
   const tournamentHistory: PlayerTournamentRow[] = played.map((tournament) => {
-    const participant = tournament.participants.find((row) => row.id === playerId);
+    const participant = tournament.participants.find((row) =>
+      participantMatches(row, ids, nickname),
+    );
     const field = tournament.participants.length;
     return {
       id: tournament.id,
@@ -170,7 +202,7 @@ export function computePlayerAdminStats(
   const dealerRows: PlayerLedgerRow[] = [];
   for (const tournament of tournaments) {
     let hours = getDealerHours(tournament.id, playerId);
-    if (hours <= 0 && !tournament.participants.some((row) => row.id === playerId)) {
+    if (hours <= 0 && !tournament.participants.some((row) => participantMatches(row, ids, nickname))) {
       for (const dealer of tournament.dealers ?? []) {
         if (dealer.name === nickname) {
           hours += dealer.hours + dealer.minutes / 60;
@@ -203,7 +235,9 @@ export function computePlayerAdminStats(
   let prizePoints = 0;
   const prizeRows: PlayerLedgerRow[] = [];
   for (const tournament of played) {
-    const participant = tournament.participants.find((row) => row.id === playerId);
+    const participant = tournament.participants.find((row) =>
+      participantMatches(row, ids, nickname),
+    );
     if (!participant) continue;
     const field = tournament.participants.length;
     let points = 0;
@@ -247,6 +281,13 @@ export function computePlayerAdminStats(
       value: '',
     })),
     prizeRows,
+    rebuyRows: rebuys.map(toLedger),
+    addonRows: addons.map(toLedger),
     tournamentHistory,
+    avgRebuys,
+    addonRate,
+    rebuyCount: rebuys.length,
+    addonCount: addons.length,
+    addonEligibleTournaments: addonDenom,
   };
 }

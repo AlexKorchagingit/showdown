@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { CalendarDays, Clock, Landmark, Medal, Percent, Trophy, Wallet, X } from 'lucide-react';
-import type { PlayerAdminStats, PlayerLedgerRow, PlayerTournamentRow } from '../../lib/playerAnalytics';
+import { CalendarDays, Clock, Landmark, Medal, Percent, PlusCircle, RefreshCw, Trophy, Wallet, X } from 'lucide-react';
+import {
+  formatAddonRate,
+  formatAvgRebuys,
+  type PlayerAdminStats,
+  type PlayerLedgerRow,
+  type PlayerTournamentRow,
+} from '../../lib/playerAnalytics';
 
 function formatMoney(amount: number): string {
   return `${amount.toLocaleString('ru-RU')} ₽`;
@@ -200,6 +206,8 @@ type Drill =
   | 'visits'
   | 'history'
   | 'prizes'
+  | 'rebuys'
+  | 'addons'
   | null;
 
 export function AdminPlayerStats({
@@ -300,6 +308,24 @@ export function AdminPlayerStats({
             hint="Выиграно очков"
             onClick={() => setDrill('prizes')}
           />
+          <StatCard
+            icon={<RefreshCw size={16} strokeWidth={2.3} />}
+            label="Ср. ребаев за турнир"
+            value={formatAvgRebuys(stats.avgRebuys, stats.tournamentsPlayed)}
+            hint={`${stats.rebuyCount} ребаев · ${stats.tournamentsPlayed} турн.`}
+            onClick={() => setDrill('rebuys')}
+          />
+          <StatCard
+            icon={<PlusCircle size={16} strokeWidth={2.3} />}
+            label="Частота аддонов"
+            value={formatAddonRate(stats.addonRate)}
+            hint={
+              stats.addonEligibleTournaments === stats.tournamentsPlayed
+                ? `${stats.addonCount} аддонов · ${stats.tournamentsPlayed} турн.`
+                : `${stats.addonCount} аддонов · ${stats.addonEligibleTournaments} с аддоном`
+            }
+            onClick={() => setDrill('addons')}
+          />
           <div className="col-span-2">
             <StatCard
               icon={<Trophy size={16} strokeWidth={2.3} />}
@@ -334,6 +360,16 @@ export function AdminPlayerStats({
       {drill === 'prizes' && (
         <DetailSheet title="Сумма призовых" onClose={() => setDrill(null)}>
           <LedgerList rows={stats.prizeRows} empty="Нет призовых очков" />
+        </DetailSheet>
+      )}
+      {drill === 'rebuys' && (
+        <DetailSheet title="Ребаи" onClose={() => setDrill(null)}>
+          <LedgerList rows={stats.rebuyRows} empty="Нет ребаев" />
+        </DetailSheet>
+      )}
+      {drill === 'addons' && (
+        <DetailSheet title="Аддоны" onClose={() => setDrill(null)}>
+          <LedgerList rows={stats.addonRows} empty="Нет аддонов" />
         </DetailSheet>
       )}
       {drill === 'history' && (

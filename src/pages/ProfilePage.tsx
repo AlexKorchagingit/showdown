@@ -119,18 +119,19 @@ export function ProfilePage() {
     ].filter((stat) => stat.value > 0);
   }, [readOnly, publicProfile]);
 
+  const statsPlayerId = (readOnly ? playerId : userId) || '';
   const adminStats = useMemo(() => {
-    if (!readOnly || !playerId) return null;
+    if (!isAdmin || !statsPlayerId) return null;
     return computePlayerAdminStats(
-      playerId,
+      statsPlayerId,
       displayNickname,
       tournaments,
       transactions,
       getDealerHours,
     );
-  }, [readOnly, playerId, displayNickname, tournaments, transactions, getDealerHours]);
+  }, [isAdmin, statsPlayerId, displayNickname, tournaments, transactions, getDealerHours]);
 
-  const showAdminStats = readOnly && isAdmin && adminStats != null;
+  const showAdminStats = Boolean(adminStats);
 
   const gameHistory = useMemo(() => {
     const userIds = readOnly && playerId ? [playerId] : [userId, CURRENT_USER_ID, email];
@@ -315,16 +316,16 @@ export function ProfilePage() {
           stats={adminStats}
           onClose={() => setStatsOpen(false)}
           onClearDebts={
-            playerId
+            statsPlayerId
               ? () => {
                   const amount = adminStats?.clubDebt ?? 0;
-                  markAllUnpaidForPlayer(playerId);
+                  markAllUnpaidForPlayer(statsPlayerId);
                   if (amount > 0) {
                     logAction({
                       actionType: 'Погасил долг',
-                      targetUserId: playerId,
+                      targetUserId: statsPlayerId,
                       targetUserName: displayNickname,
-                      targetUserEmail: playerEmail(playerId, displayNickname),
+                      targetUserEmail: playerEmail(statsPlayerId, displayNickname),
                       details: `Сумма: ${amount.toLocaleString('ru-RU')} руб`,
                     });
                   }
