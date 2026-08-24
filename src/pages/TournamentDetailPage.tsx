@@ -15,7 +15,7 @@ import {
 } from '../lib/tournamentStatus';
 import { knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
-import { clubUserIdSet, isRegisteredClubSeat } from '../lib/clubRating';
+import { clubUserIdSet, registeredClubSeats } from '../lib/clubRating';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { formatTxDateTime } from '../lib/transactionDisplay';
 
@@ -161,11 +161,9 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
   const tournamentFinished = hasFinished(live);
   const knownIds = clubUserIdSet(clubUsers);
-  const participants = (tournamentFinished
-    ? sortByPlace(live.participants)
-    : sortByRating(live.participants)
-  ).filter((p) => isRegisteredClubSeat(p, knownIds));
-  const occupiedSeats = live.participants.length;
+  const seated = registeredClubSeats(live.participants, knownIds);
+  const participants = tournamentFinished ? sortByPlace(seated) : sortByRating(seated);
+  const occupiedSeats = seated.length;
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
   const playingDealers = live.participants
     .map((p) => ({ name: p.nickname, hours: getDealerHours(live.id, p.id) }))
@@ -310,7 +308,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 <div>
                   {participants.map((p, idx) => {
                     const isClosedRow  = tournamentFinished;
-                    const placeNum     = p.place ?? (isClosedRow ? null : idx + 1);
+                    // Open lobby: position in this field, not leftover finishing place.
+                    const placeNum = isClosedRow ? (p.place ?? null) : idx + 1;
                     const isPodium     = isClosedRow && p.place != null && p.place <= 3;
                     const isFinalTable = isClosedRow && p.place != null && p.place <= 9;
                     const wreathColor  = p.place != null

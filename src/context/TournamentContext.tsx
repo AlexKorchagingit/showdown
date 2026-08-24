@@ -19,6 +19,7 @@ import {
   updateTournamentRow,
 } from '../lib/tournamentApi';
 import { participantToRow, resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
+import { clubUserIdSet, countRegisteredClubSeats, isRegisteredClubSeat } from '../lib/clubRating';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -43,7 +44,7 @@ function isSeatOfUser(player: Participant, userId: string): boolean {
 }
 
 export function TournamentProvider({ children }: { children: React.ReactNode }) {
-  const { account, userId, isLoading: userLoading } = useUser();
+  const { account, userId, clubUsers, isLoading: userLoading } = useUser();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -129,7 +130,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           await refreshParticipants(tournamentId);
           return;
         }
-        if (liveSeats.length >= tournament.totalSeats) {
+        const knownIds = clubUserIdSet(clubUsers);
+        const occupied =
+          knownIds.size > 0
+            ? countRegisteredClubSeats(liveSeats, knownIds)
+            : liveSeats.length;
+        if (occupied >= tournament.totalSeats) {
           window.alert('Свободных мест нет');
           await refreshParticipants(tournamentId);
           return;
@@ -149,7 +155,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         window.alert(error instanceof Error ? error.message : 'Не удалось обновить запись');
       }
     },
-    [account, refreshParticipants, tournaments, userId],
+    [account, clubUsers, refreshParticipants, tournaments, userId],
   );
 
   const updateTournament = useCallback(
@@ -232,10 +238,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         console.error(error);
       }
       const { id: _id, ...rest } = current;
+      const knownIds = clubUserIdSet(clubUsers);
+      const copiedSeats = (
+        knownIds.size > 0
+          ? seats.filter((player) => isRegisteredClubSeat(player, knownIds))
+          : seats
+      ).map(resetCopiedParticipant);
       return addTournament({
         ...rest,
         title: `${current.title} Copy`,
-        participants: seats.map(resetCopiedParticipant),
+        participants: copiedSeats,
         features: [...current.features],
         isClosed: false,
         rubiesDistributed: false,
@@ -244,7 +256,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         results: undefined,
       });
     },
-    [addTournament, tournaments],
+    [addTournament, clubUsers, tournaments],
   );
 
   const deleteTournament = useCallback(async (tournamentId: string) => {

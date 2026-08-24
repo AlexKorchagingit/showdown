@@ -14,6 +14,21 @@ export function isRegisteredClubSeat(player: Participant, knownIds: Set<string>)
   return Boolean(uid && knownIds.has(uid));
 }
 
+/** Club accounts seated in this event — skips leftover guests / copied mock seats. */
+export function registeredClubSeats(
+  participants: Participant[],
+  knownIds: Set<string>,
+): Participant[] {
+  return participants.filter((player) => isRegisteredClubSeat(player, knownIds));
+}
+
+export function countRegisteredClubSeats(
+  participants: Participant[],
+  knownIds: Set<string>,
+): number {
+  return registeredClubSeats(participants, knownIds).length;
+}
+
 function initialFrom(nickname: string): string {
   const trimmed = nickname.trim();
   return trimmed ? trimmed[0]!.toUpperCase() : '?';
