@@ -33,7 +33,10 @@ interface TournamentContextValue {
   isRegistered: (tournamentId: string) => boolean;
   updateTournament: (tournamentId: string, patch: Partial<Tournament>) => Promise<void>;
   addTournament: (tournament: Omit<Tournament, 'id'>) => Promise<string>;
-  duplicateTournament: (sourceId: string) => Promise<string>;
+  duplicateTournament: (
+    sourceId: string,
+    options: { includeParticipants: boolean },
+  ) => Promise<string>;
   deleteTournament: (tournamentId: string) => Promise<void>;
 }
 
@@ -224,26 +227,31 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   );
 
   const duplicateTournament = useCallback(
-    async (sourceId: string) => {
+    async (sourceId: string, options: { includeParticipants: boolean }) => {
       const current = tournaments.find((row) => row.id === sourceId);
       if (!current) {
         window.alert('Не удалось скопировать турнир');
         return '';
       }
-      let seats = current.participants;
-      try {
-        const fetched = await fetchParticipants(sourceId);
-        if (fetched.length > 0) seats = fetched;
-      } catch (error) {
-        console.error(error);
+
+      let copiedSeats: Participant[] = [];
+      if (options.includeParticipants) {
+        let seats = current.participants;
+        try {
+          const fetched = await fetchParticipants(sourceId);
+          if (fetched.length > 0) seats = fetched;
+        } catch (error) {
+          console.error(error);
+        }
+        const knownIds = clubUserIdSet(clubUsers);
+        copiedSeats = (
+          knownIds.size > 0
+            ? seats.filter((player) => isRegisteredClubSeat(player, knownIds))
+            : seats
+        ).map(resetCopiedParticipant);
       }
+
       const { id: _id, ...rest } = current;
-      const knownIds = clubUserIdSet(clubUsers);
-      const copiedSeats = (
-        knownIds.size > 0
-          ? seats.filter((player) => isRegisteredClubSeat(player, knownIds))
-          : seats
-      ).map(resetCopiedParticipant);
       return addTournament({
         ...rest,
         title: `${current.title} Copy`,

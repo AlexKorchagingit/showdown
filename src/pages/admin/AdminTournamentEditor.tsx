@@ -16,7 +16,8 @@ import { BlindStructurePicker } from '../../components/admin/BlindStructurePicke
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
-import { seasonPointsByUserId, withClubSeasonRating } from '../../lib/clubRating';
+import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countRegisteredClubSeats } from '../../lib/clubRating';
+import { CopyTournamentModal } from '../../components/admin/CopyTournamentModal';
 
 const CARD_STYLE = {
   background: '#2A211D',
@@ -326,10 +327,16 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const { openTimerForTournament } = useBindPokerTimer();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFinished = hasFinished(tournament);
   const occupiedSeats = tournament.participants.length;
+  const copyPlayerCount = countRegisteredClubSeats(
+    tournament.participants,
+    clubUserIdSet(clubUsers),
+  );
 
   // Revoke the temporary object URL when it is replaced or the editor unmounts
   useEffect(() => {
@@ -364,9 +371,13 @@ function Editor({ tournament }: { tournament: Tournament }) {
     navigate('/admin/tournaments');
   };
 
-  const handleCopy = async () => {
-    const newId = await duplicateTournament(tournament.id);
+  const handleCopy = async (includeParticipants: boolean) => {
+    if (copying) return;
+    setCopying(true);
+    const newId = await duplicateTournament(tournament.id, { includeParticipants });
+    setCopying(false);
     if (!newId) return;
+    setCopyOpen(false);
     navigate(`/admin/tournaments/${newId}`);
   };
 
@@ -564,7 +575,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
           <button
             type="button"
-            onClick={() => void handleCopy()}
+            onClick={() => setCopyOpen(true)}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white bg-[#463129] active:scale-[0.98] transition-transform"
             style={{ border: '1px solid #D99962' }}
           >
@@ -582,6 +593,17 @@ function Editor({ tournament }: { tournament: Tournament }) {
           </button>
         </div>
       </div>
+
+      <CopyTournamentModal
+        open={copyOpen}
+        busy={copying}
+        playerCount={copyPlayerCount}
+        onClose={() => {
+          if (!copying) setCopyOpen(false);
+        }}
+        onCopyWithPlayers={() => void handleCopy(true)}
+        onCopyWithoutPlayers={() => void handleCopy(false)}
+      />
     </div>
   );
 }
