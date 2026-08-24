@@ -49,7 +49,7 @@ export function AdminUsersScreen() {
         /transactions|foreign key|restrict/i.test(result.message);
       window.alert(
         financeBlocked
-          ? 'Невозможно удалить пользователя, так как у него есть финансовые операции'
+          ? 'Не удалось удалить пользователя: остались связанные записи'
           : result.message || 'Не удалось удалить пользователя',
       );
       return;

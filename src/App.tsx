@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
 import { LoginScreen } from './components/LoginScreen';
@@ -149,6 +149,7 @@ function AuthenticatedApp({
 }
 
 export default function App() {
+  const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState(
     () => readSessionEmail(),
   );
@@ -182,6 +183,7 @@ export default function App() {
   const handleLogin = (email: string) => {
     setUserEmail(email.trim().toLowerCase());
     setIsAuthenticated(true);
+    navigate('/', { replace: true });
   };
 
   const handleAccountInvalid = () => {

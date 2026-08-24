@@ -30,42 +30,37 @@ export type PlayerGameHistoryRow = {
   startDate: string;
 };
 
-function participantUserId(participant: Participant): string {
-  return String(participant.userId ?? participant.id ?? '').trim();
-}
-
 function participantMatches(
   participant: Participant,
   userIds: Set<string>,
-  nickname?: string,
 ): boolean {
-  const id = participantUserId(participant);
-  if (id && userIds.has(id)) return true;
-  const nick = nickname?.trim().toLowerCase();
-  return Boolean(nick && participant.nickname.trim().toLowerCase() === nick);
+  const boundId = String(participant.userId ?? '').trim();
+  if (boundId) return userIds.has(boundId);
+  const seatId = String(participant.id ?? '').trim();
+  if (!seatId || seatId.includes(':')) return false;
+  return userIds.has(seatId);
 }
 
 function findPlayerInTournament(
   tournament: Tournament,
   userIds: Set<string>,
-  nickname?: string,
 ): Participant | undefined {
   const rows = [...tournament.participants, ...(tournament.results ?? [])];
-  return rows.find((row) => participantMatches(row, userIds, nickname));
+  return rows.find((row) => participantMatches(row, userIds));
 }
 
-/** Closed events this player finished (by participant / result userId, then nickname). */
+/** Closed events this player finished, bound by `participants.user_id` (not nickname). */
 export function collectPlayerGameHistory(
   tournaments: Tournament[],
   userIds: string[],
-  nickname?: string,
+  _nickname?: string,
 ): PlayerGameHistoryRow[] {
   const ids = new Set(userIds.map((id) => id.trim()).filter(Boolean));
   const rows: PlayerGameHistoryRow[] = [];
 
   for (const tournament of tournaments) {
     if (!tournament.isClosed) continue;
-    const participant = findPlayerInTournament(tournament, ids, nickname);
+    const participant = findPlayerInTournament(tournament, ids);
     if (!participant) continue;
 
     const field = Math.max(tournament.participants.length, tournament.results?.length ?? 0);
@@ -171,7 +166,7 @@ export function computePlayerAdminStats(
 
   const ids = new Set([playerId].filter(Boolean));
   const played = tournaments.filter((tournament) =>
-    tournament.participants.some((participant) => participantMatches(participant, ids, nickname)),
+    tournament.participants.some((participant) => participantMatches(participant, ids)),
   );
   const addonEligible = played.filter(tournamentOffersAddon);
   const addonDenom = addonEligible.length > 0 ? addonEligible.length : played.length;
@@ -180,7 +175,7 @@ export function computePlayerAdminStats(
 
   const tournamentHistory: PlayerTournamentRow[] = played.map((tournament) => {
     const participant = tournament.participants.find((row) =>
-      participantMatches(row, ids, nickname),
+      participantMatches(row, ids),
     );
     const field = tournament.participants.length;
     return {
@@ -202,7 +197,7 @@ export function computePlayerAdminStats(
   const dealerRows: PlayerLedgerRow[] = [];
   for (const tournament of tournaments) {
     let hours = getDealerHours(tournament.id, playerId);
-    if (hours <= 0 && !tournament.participants.some((row) => participantMatches(row, ids, nickname))) {
+    if (hours <= 0 && !tournament.participants.some((row) => participantMatches(row, ids))) {
       for (const dealer of tournament.dealers ?? []) {
         if (dealer.name === nickname) {
           hours += dealer.hours + dealer.minutes / 60;
@@ -236,7 +231,7 @@ export function computePlayerAdminStats(
   const prizeRows: PlayerLedgerRow[] = [];
   for (const tournament of played) {
     const participant = tournament.participants.find((row) =>
-      participantMatches(row, ids, nickname),
+      participantMatches(row, ids),
     );
     if (!participant) continue;
     const field = tournament.participants.length;

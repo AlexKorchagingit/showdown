@@ -136,6 +136,15 @@ export async function loginOrRegisterUser(
 }
 
 export async function deleteUserRow(userId: string): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
+  const { error: unlinkError } = await supabase
+    .from('participants')
+    .update({ user_id: null })
+    .eq('user_id', userId);
+  if (unlinkError) return { ok: false, code: unlinkError.code, message: unlinkError.message };
+
+  const { error: txError } = await supabase.from('transactions').delete().eq('user_id', userId);
+  if (txError) return { ok: false, code: txError.code, message: txError.message };
+
   const { error } = await supabase.from('users').delete().eq('id', userId);
   if (!error) {
     removeClubDirectory(userId);
