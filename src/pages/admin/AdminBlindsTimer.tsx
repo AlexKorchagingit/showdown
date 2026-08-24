@@ -235,7 +235,7 @@ export function AdminBlindsTimer() {
 
   return (
     <div className="relative h-full w-full min-h-0 overflow-hidden text-white bg-[#0A0908]">
-      <div className="relative flex h-full w-full min-h-0 items-stretch gap-4 overflow-hidden p-6 md:p-8 pb-28">
+      <div className="relative flex h-full w-full min-h-0 items-stretch gap-4 overflow-visible p-6 md:p-8 pb-28">
         <div className="w-[240px] md:w-[280px] shrink-0 flex flex-col min-h-0">
           <section className={`${GLASS} flex-1 min-h-0 overflow-y-auto`}>
             <p className="text-sm md:text-lg font-800 uppercase tracking-[0.16em] text-[#D99962]">
@@ -293,7 +293,7 @@ export function AdminBlindsTimer() {
           </section>
         </div>
 
-        <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-hidden md:w-[260px]">
+        <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-visible md:w-[260px]">
           {hasEntries && (
             <section className={`${GLASS} text-center min-w-0`}>
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
@@ -319,11 +319,11 @@ export function AdminBlindsTimer() {
           </section>
 
           {chipleader && (
-            <div className="relative z-[1] mt-auto flex w-full min-w-0 shrink-0 flex-col items-center">
+            <div className="relative z-[1] mt-auto w-full min-w-0 shrink-0">
               <img
                 src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
                 alt=""
-                className="relative z-20 -mb-3 block h-32 w-auto max-w-[170%] object-contain object-bottom pointer-events-none"
+                className="pointer-events-none absolute bottom-[calc(100%-12px)] left-1/2 z-20 h-[320px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom"
               />
               <section className="relative z-10 w-full min-w-0 overflow-hidden rounded-2xl border border-white/[0.05] bg-white/[0.03] px-4 pb-3 pt-2 text-center backdrop-blur-sm">
                 <p className="text-[11px] font-800 uppercase tracking-[0.28em] text-[#D99962] md:text-xs">
@@ -348,15 +348,11 @@ export function AdminBlindsTimer() {
             {eventTitle}
           </h1>
 
-          <p className="mt-3 mb-1 text-center text-lg font-bold text-white/70 md:text-xl">
-            Next Blinds:{' '}
-            <span className="text-[#D99962]">
-              {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
-            </span>
-          </p>
-
-          <div className="relative flex min-h-0 w-full flex-1 items-center justify-center">
-            <div className="relative aspect-square w-[min(100%,26rem)] max-h-full">
+          <div
+            className="relative mt-2 flex min-h-0 w-full flex-1 items-center justify-center"
+            style={{ containerType: 'size' }}
+          >
+            <div className="relative aspect-square w-[min(100%,100cqh,38rem)] max-h-full">
               <svg
                 viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
                 className="pointer-events-none h-full w-full -rotate-90"
@@ -393,32 +389,32 @@ export function AdminBlindsTimer() {
                   className="transition-all duration-1000 linear"
                 />
               </svg>
-              {/* Inscribed square inside the ring so copy cannot spill into the corners. */}
+              {/* Clip to the inner ring so type can be large without leaving the circle. */}
               <div
-                className="pointer-events-none absolute inset-[20%] flex flex-col items-center justify-center overflow-hidden px-1 text-center"
+                className="pointer-events-none absolute inset-[5%] flex flex-col items-center justify-center overflow-hidden rounded-full px-4 text-center"
                 style={{ containerType: 'inline-size' }}
               >
                 {isBreak ? (
                   <>
-                    <p className="text-[clamp(1rem,11cqi,1.85rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
+                    <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
                       ПЕРЕРЫВ
                     </p>
-                    <p className="mt-2 text-[clamp(2rem,24cqi,3.6rem)] font-black leading-none tabular-nums drop-shadow-[0_0_16px_rgba(217,153,98,0.5)]">
+                    <p className="mt-2 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                       {formatClock(secondsLeft)}
                     </p>
                   </>
                 ) : (
                   <>
-                    <span className="rounded-full bg-[#D99962]/20 px-3 py-0.5 text-[clamp(0.65rem,4.4cqi,0.9rem)] font-bold uppercase tracking-widest text-[#D99962]">
+                    <span className="rounded-full bg-[#D99962]/20 px-5 py-1 text-[clamp(1.05rem,11cqi,2rem)] font-bold uppercase tracking-widest text-[#D99962]">
                       {levelBadge}
                     </span>
-                    <p className="mt-1.5 max-w-full px-0.5 text-[clamp(1rem,10.5cqi,2rem)] font-black leading-[1.05] text-white">
+                    <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
                       {blindsLabel}
                     </p>
-                    <p className="mt-1 text-[clamp(0.75rem,5.5cqi,1.1rem)] font-700 text-[#F2D8A7]">
+                    <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
                       {anteLabel}
                     </p>
-                    <p className="mt-1.5 text-[clamp(2rem,24cqi,3.6rem)] font-black leading-none tabular-nums drop-shadow-[0_0_16px_rgba(217,153,98,0.5)]">
+                    <p className="mt-1.5 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                       {formatClock(secondsLeft)}
                     </p>
                   </>
@@ -438,6 +434,13 @@ export function AdminBlindsTimer() {
               />
             </div>
           </div>
+
+          <p className="mt-2 mb-1 shrink-0 text-center text-lg font-bold text-white/70 md:text-xl">
+            Next Blinds:{' '}
+            <span className="text-[#D99962]">
+              {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
+            </span>
+          </p>
         </div>
 
         <div className="w-64 md:w-80 shrink-0 flex flex-col items-end gap-4">
