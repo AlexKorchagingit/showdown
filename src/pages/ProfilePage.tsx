@@ -7,7 +7,6 @@ import { useUser } from '../context/UserContext';
 import { useAuditLog } from '../context/AuditLogContext';
 import { CURRENT_USER_ID, useTournaments } from '../context/TournamentContext';
 import { useFinance } from '../context/FinanceContext';
-import { CURRENT_PLAYER_STATS } from '../data/playerStats';
 import {
   characterProfileLeft,
   DEFAULT_BG_ID,
@@ -17,7 +16,8 @@ import {
   characterImageForPlayer,
 } from '../lib/playerCharacter';
 import { resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
-import { collectPlayerGameHistory, computePlayerAdminStats } from '../lib/playerAnalytics';
+import { clubRatingPlayers } from '../lib/clubRating';
+import { collectPlayerGameHistory, computePlayerAdminStats, summarizePlayerGameHistory } from '../lib/playerAnalytics';
 import { playerEmail } from '../lib/systemPlayers';
 import { AdminPlayerStats } from '../components/admin/AdminPlayerStats';
 import { GameHistorySheet } from '../components/GameHistorySheet';
@@ -27,28 +27,6 @@ const SIDE_STAT_SIZES = ['text-4xl', 'text-3xl', 'text-2xl', 'text-xl', 'text-lg
 /** Shared portrait placement so own and public profiles line up. */
 const PROFILE_CAT_CLASS =
   'absolute bottom-[60px] h-[57%] w-auto object-contain object-bottom z-0 pointer-events-none';
-
-const SIDE_STATS_SOURCE = [
-  {
-    label: 'Рейтинг',
-    numeric: CURRENT_PLAYER_STATS.ratingPlace,
-    display: `#${CURRENT_PLAYER_STATS.ratingPlace}`,
-  },
-  { label: 'Победы', numeric: CURRENT_PLAYER_STATS.wins, display: String(CURRENT_PLAYER_STATS.wins) },
-  { label: 'Финалы', numeric: CURRENT_PLAYER_STATS.finals, display: String(CURRENT_PLAYER_STATS.finals) },
-  {
-    label: 'Нокауты',
-    numeric: CURRENT_PLAYER_STATS.knockouts,
-    display: String(CURRENT_PLAYER_STATS.knockouts),
-  },
-  { label: 'Игры', numeric: CURRENT_PLAYER_STATS.games, display: String(CURRENT_PLAYER_STATS.games) },
-];
-
-const EXTRA_STATS_SOURCE = [
-  { label: 'Хедз-ап', value: CURRENT_PLAYER_STATS.headsUp },
-  { label: 'Топ 3', value: CURRENT_PLAYER_STATS.top3 },
-  { label: 'Топ 9', value: CURRENT_PLAYER_STATS.finals },
-];
 
 const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962] to-[#F2D8A7]';
 
@@ -60,7 +38,7 @@ export function ProfilePage() {
   const { playerId } = useParams<{ playerId?: string }>();
   const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
-  const { isAdmin, email, userId } = useUser();
+  const { isAdmin, userId, clubUsers } = useUser();
   const { logAction } = useAuditLog();
   const { tournaments } = useTournaments();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
@@ -83,43 +61,19 @@ export function ProfilePage() {
     ? `/achievements/${encodeURIComponent(playerId)}`
     : '/achievements';
 
-  const sideStats = useMemo(() => {
-    if (!readOnly || !publicProfile) {
-      return SIDE_STATS_SOURCE.filter((stat) => stat.numeric > 0).map((stat, index) => ({
-        ...stat,
-        size: SIDE_STAT_SIZES[Math.min(index, SIDE_STAT_SIZES.length - 1)],
-      }));
-    }
+  const subjectUserId = useMemo(() => {
+    const needle = (readOnly ? playerId : userId)?.trim() ?? '';
+    if (!needle) return '';
+    const match = clubUsers.find(
+      (user) =>
+        user.id === needle ||
+        user.email.trim().toLowerCase() === needle.toLowerCase(),
+    );
+    return match?.id ?? needle;
+  }, [readOnly, playerId, userId, clubUsers]);
 
-    const rows = [
-      {
-        label: 'Рейтинг',
-        display: publicProfile.ratingPlace != null ? `#${publicProfile.ratingPlace}` : '—',
-      },
-      { label: 'Победы', display: String(publicProfile.won ?? 0) },
-      { label: 'Финалы', display: String(publicProfile.finals ?? 0) },
-      { label: 'Нокауты', display: String(publicProfile.knockouts ?? 0) },
-      { label: 'Игры', display: String(publicProfile.played ?? 0) },
-    ];
+  const statsPlayerId = subjectUserId || (readOnly ? playerId : userId) || '';
 
-    return rows.map((stat, index) => ({
-      ...stat,
-      size: SIDE_STAT_SIZES[Math.min(index, SIDE_STAT_SIZES.length - 1)],
-    }));
-  }, [readOnly, publicProfile]);
-
-  const extraStats = useMemo(() => {
-    if (!readOnly || !publicProfile) {
-      return EXTRA_STATS_SOURCE.filter((stat) => stat.value > 0);
-    }
-    return [
-      { label: 'Хедз-ап', value: publicProfile.headsUp ?? 0 },
-      { label: 'Топ 3', value: publicProfile.top3 ?? 0 },
-      { label: 'Топ 9', value: publicProfile.finals ?? 0 },
-    ].filter((stat) => stat.value > 0);
-  }, [readOnly, publicProfile]);
-
-  const statsPlayerId = (readOnly ? playerId : userId) || '';
   const adminStats = useMemo(() => {
     if (!isAdmin || !statsPlayerId) return null;
     return computePlayerAdminStats(
@@ -134,9 +88,47 @@ export function ProfilePage() {
   const showAdminStats = Boolean(adminStats);
 
   const gameHistory = useMemo(() => {
-    const userIds = readOnly && playerId ? [playerId] : [userId, CURRENT_USER_ID, email];
-    return collectPlayerGameHistory(tournaments, userIds, displayNickname);
-  }, [tournaments, readOnly, playerId, email, userId, displayNickname]);
+    const ids = readOnly ? [subjectUserId] : [subjectUserId, userId, CURRENT_USER_ID];
+    return collectPlayerGameHistory(tournaments, ids, displayNickname);
+  }, [tournaments, readOnly, subjectUserId, userId, displayNickname]);
+
+  const liveStats = useMemo(() => summarizePlayerGameHistory(gameHistory), [gameHistory]);
+
+  const ratingPlace = useMemo(() => {
+    if (!subjectUserId) return null;
+    const ranked = clubRatingPlayers(clubUsers, tournaments);
+    const index = ranked.findIndex((player) => player.id === subjectUserId);
+    return index >= 0 ? index + 1 : null;
+  }, [clubUsers, tournaments, subjectUserId]);
+
+  const sideStats = useMemo(() => {
+    const rows = [
+      {
+        label: 'Рейтинг',
+        display: ratingPlace != null ? `#${ratingPlace}` : '—',
+        show: true,
+      },
+      { label: 'Победы', display: String(liveStats.wins), show: liveStats.wins > 0 },
+      { label: 'Финалы', display: String(liveStats.finals), show: liveStats.finals > 0 },
+      { label: 'Нокауты', display: String(liveStats.knockouts), show: liveStats.knockouts > 0 },
+      { label: 'Игры', display: String(liveStats.games), show: true },
+    ].filter((row) => row.show);
+
+    return rows.map((stat, index) => ({
+      ...stat,
+      size: SIDE_STAT_SIZES[Math.min(index, SIDE_STAT_SIZES.length - 1)],
+    }));
+  }, [ratingPlace, liveStats]);
+
+  const extraStats = useMemo(
+    () =>
+      [
+        { label: 'Хедз-ап', value: liveStats.headsUp },
+        { label: 'Топ 3', value: liveStats.top3 },
+        { label: 'Топ 9', value: liveStats.finals },
+      ].filter((stat) => stat.value > 0),
+    [liveStats],
+  );
 
   return (
     <div className="relative w-full h-full overflow-hidden">

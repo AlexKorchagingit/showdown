@@ -99,6 +99,41 @@ export function collectPlayerGameHistory(
   return rows.sort((a, b) => b.startDate.localeCompare(a.startDate) || b.title.localeCompare(a.title, 'ru'));
 }
 
+export type PlayerProfileStats = {
+  games: number;
+  wins: number;
+  finals: number;
+  knockouts: number;
+  headsUp: number;
+  top3: number;
+};
+
+/** Same closed-event rows as the game-history sheet, rolled up for the profile column. */
+export function summarizePlayerGameHistory(history: PlayerGameHistoryRow[]): PlayerProfileStats {
+  let wins = 0;
+  let finals = 0;
+  let knockouts = 0;
+  let headsUp = 0;
+  let top3 = 0;
+  for (const row of history) {
+    knockouts += row.knockouts;
+    const place = row.place;
+    if (place == null) continue;
+    if (place === 1) wins += 1;
+    if (place <= 2) headsUp += 1;
+    if (place <= 3) top3 += 1;
+    if (place <= 9) finals += 1;
+  }
+  return {
+    games: history.length,
+    wins,
+    finals,
+    knockouts,
+    headsUp,
+    top3,
+  };
+}
+
 export type PlayerAdminStats = {
   ltv: number;
   clubDebt: number;

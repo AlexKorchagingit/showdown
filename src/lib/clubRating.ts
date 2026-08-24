@@ -2,7 +2,7 @@ import type { Participant, Tournament } from '../types/tournament';
 import type { RatingPlayer } from '../types/player';
 import type { MappedUser } from './supabaseMap';
 import { sanitizeParticipantUserId } from './supabaseMap';
-import { collectPlayerGameHistory } from './playerAnalytics';
+import { collectPlayerGameHistory, summarizePlayerGameHistory } from './playerAnalytics';
 
 export function clubUserIdSet(users: { id: string }[]): Set<string> {
   return new Set(users.map((user) => user.id).filter(Boolean));
@@ -46,14 +46,15 @@ export function ratingPlayerFromUser(
       return !Number.isNaN(day.getTime()) && day.getMonth() === month;
     });
   }
+  const summary = summarizePlayerGameHistory(history);
   return {
     id: user.id,
     nickname: user.nickname,
     initial: initialFrom(user.nickname),
     points: history.reduce((sum, row) => sum + row.ratingAwarded, 0),
-    played: history.length,
-    won: history.filter((row) => row.place === 1).length,
-    knockouts: history.reduce((sum, row) => sum + row.knockouts, 0),
+    played: summary.games,
+    won: summary.wins,
+    knockouts: summary.knockouts,
   };
 }
 
