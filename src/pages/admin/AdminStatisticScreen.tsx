@@ -11,6 +11,11 @@ import {
 import { CompactHeader } from '../../components/CompactHeader';
 import { useFinance } from '../../context/FinanceContext';
 import { useTournaments } from '../../context/TournamentContext';
+import { useUser } from '../../context/UserContext';
+import {
+  formatAddonRate,
+  formatAvgRebuys,
+} from '../../lib/playerAnalytics';
 import {
   computeClubStatistics,
   filterStatisticTournaments,
@@ -111,6 +116,7 @@ function LeaderList({
 export function AdminStatisticScreen() {
   const { tournaments } = useTournaments();
   const { transactions } = useFinance();
+  const { clubUsers } = useUser();
   const [period, setPeriod] = useState<StatsPeriod>('all');
   const [format, setFormat] = useState('all');
 
@@ -120,8 +126,8 @@ export function AdminStatisticScreen() {
     [tournaments, period, format],
   );
   const stats = useMemo(
-    () => computeClubStatistics(filtered, transactions),
-    [filtered, transactions],
+    () => computeClubStatistics(filtered, transactions, clubUsers),
+    [filtered, transactions, clubUsers],
   );
 
   return (
@@ -200,6 +206,20 @@ export function AdminStatisticScreen() {
               hint={`${stats.biggestCheck.nickname} · ${stats.biggestCheck.tournament}`}
             />
           </div>
+          <StatCard
+            label="Ср. ребаев за турнир"
+            value={formatAvgRebuys(stats.avgRebuys, stats.seatedCount)}
+            hint={`${stats.rebuyCount} ребаев · ${stats.seatedCount} входов`}
+          />
+          <StatCard
+            label="Частота аддонов"
+            value={formatAddonRate(stats.addonRate)}
+            hint={
+              stats.addonEligibleSeats > 0 && stats.addonEligibleSeats !== stats.seatedCount
+                ? `${stats.addonCount} аддонов · ${stats.addonEligibleSeats} с аддоном`
+                : `${stats.addonCount} аддонов · ${stats.seatedCount} входов`
+            }
+          />
         </div>
 
         <div

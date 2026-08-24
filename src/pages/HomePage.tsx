@@ -17,9 +17,8 @@ import { clubRatingPlayers } from '../lib/clubRating';
 import type { RatingPlayer } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
-// ─── Mock state ───────────────────────────────────────────────────────────────
-
-const TELEGRAM_URL = 'https://t.me/showdown_bryansk';
+const CLUB_TELEGRAM_URL = 'https://t.me/showdown_bryansk';
+const SUPPORT_TELEGRAM_URL = 'https://t.me/alevvvtina';
 const INSTAGRAM_URL = 'https://www.instagram.com/showdown_br?igsh=MW1peWJjbGZma3NmaA==';
 
 function InstagramIcon({ size = 15, className = '' }: { size?: number; className?: string }) {
@@ -525,10 +524,10 @@ export function HomePage() {
             subtitle="showdown_br@mail.ru"
           />
           <SocialLinkRow
-            href={TELEGRAM_URL}
+            href={SUPPORT_TELEGRAM_URL}
             icon={<Send size={18} className="text-[#D99962]" />}
             label="Telegram"
-            subtitle="@showdownbryansk"
+            subtitle="@alevvvtina"
           />
           <SocialLinkRow
             href="https://vk.ru/idbananablue"
@@ -564,7 +563,7 @@ export function HomePage() {
             subtitle="@showdown_br"
           />
           <SocialLinkRow
-            href={TELEGRAM_URL}
+            href={CLUB_TELEGRAM_URL}
             icon={<Send size={18} className="text-[#D99962]" />}
             label="Telegram"
             subtitle="@showdownbryansk"
