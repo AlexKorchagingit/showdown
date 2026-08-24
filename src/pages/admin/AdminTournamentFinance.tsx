@@ -32,7 +32,7 @@ import { ALL_PARTICIPANTS } from '../../data/participants';
 import { CURRENT_USER_RATING } from '../../types/player';
 import { playerEmail } from '../../lib/systemPlayers';
 import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
-import { hasGlobalUnpaidDebt } from '../../lib/playerAnalytics';
+import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnalytics';
 import { creditRubiesToBalance } from '../../lib/rubyGrants';
 import { clearParticipantPlace } from '../../lib/tournamentApi';
 
@@ -136,6 +136,10 @@ export function AdminTournamentFinance() {
   if (!tournament) return <Navigate to="/admin/finance" replace />;
 
   const bountyEvent = isBountyEvent(tournament);
+  const allowsAddon = tournamentOffersAddon(tournament);
+  const chargeActions = allowsAddon
+    ? CHARGE_ACTIONS
+    : CHARGE_ACTIONS.filter((action) => action.type !== 'addon');
   const placedOrdered = sortByPlace(
     tournament.participants.filter((p) => typeof p.place === 'number'),
   );
@@ -190,6 +194,7 @@ export function AdminTournamentFinance() {
     nickname: string,
     type: Exclude<TransactionType, 'ticket'>,
   ) => {
+    if (type === 'addon' && !allowsAddon) return;
     addCharge(tournament.id, userId, type);
     logAction({
       actionType: 'Создал транзакцию',
@@ -798,8 +803,8 @@ export function AdminTournamentFinance() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {CHARGE_ACTIONS.map(({ type, label }) => (
+                  <div className={`grid gap-1.5 ${allowsAddon ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                    {chargeActions.map(({ type, label }) => (
                       <button
                         key={type}
                         type="button"
