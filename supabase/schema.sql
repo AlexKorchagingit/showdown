@@ -23,7 +23,7 @@ create table if not exists public.users (
   agreements_accepted_at timestamptz,
   birth_date text not null default '',
   slogan text not null default '',
-  owned_items text[] not null default array['char_base', 'bg_base']::text[],
+  owned_items text[] not null default array['cosmetics-reset-v2', 'char_base', 'bg_base']::text[],
   equipped_char text not null default 'char_base',
   equipped_bg text not null default 'bg_base',
   -- Shop assets currently worn (character / background ids or URLs).

@@ -11,6 +11,7 @@ import {
 import { ADMIN_EMAIL, isSuperAdmin } from '../lib/admin';
 import { getClubDirectory } from '../lib/clubDirectory';
 import {
+  applyCosmeticsResetToAllUsers,
   fetchClubUsers,
   lookupSessionAccount,
   mappedUserToPatch,
@@ -64,6 +65,7 @@ export function UserProvider({
   const onInvalidRef = useRef(onAccountInvalid);
   onInvalidRef.current = onAccountInvalid;
   const kickedRef = useRef(false);
+  const cosmeticsResetDoneRef = useRef(false);
 
   const kickDeletedAccount = useCallback(() => {
     if (kickedRef.current) return;
@@ -95,7 +97,13 @@ export function UserProvider({
     setIsLoading(true);
     try {
       const ok = await enforceSession();
-      if (ok) await refreshClubUsers();
+      if (!ok) return;
+      if (!cosmeticsResetDoneRef.current) {
+        const reset = await applyCosmeticsResetToAllUsers();
+        if (reset.ok) cosmeticsResetDoneRef.current = true;
+        if (reset.updated > 0) await enforceSession();
+      }
+      await refreshClubUsers();
     } finally {
       setIsLoading(false);
     }
@@ -103,6 +111,7 @@ export function UserProvider({
 
   useEffect(() => {
     kickedRef.current = false;
+    cosmeticsResetDoneRef.current = false;
     void refreshAccount();
   }, [refreshAccount]);
 

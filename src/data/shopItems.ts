@@ -84,6 +84,16 @@ export const SHOP_ITEMS: ShopItem[] = [...CHARACTERS, ...BACKGROUNDS];
 /** Free items are owned from the very first launch. */
 export const FREE_ITEM_IDS = SHOP_ITEMS.filter((item) => item.price === 0).map((item) => item.id);
 
+/**
+ * Sentinel stored in `owned_items` after the one-time club reset
+ * (1500 rubies + base character/background). Not a shop catalogue id.
+ */
+export const COSMETICS_RESET_TOKEN = 'cosmetics-reset-v2';
+
+export function cosmeticsResetOwnedItems(): string[] {
+  return [COSMETICS_RESET_TOKEN, ...FREE_ITEM_IDS];
+}
+
 export function findShopItem(id: string): ShopItem | undefined {
   return SHOP_ITEMS.find((item) => item.id === id);
 }

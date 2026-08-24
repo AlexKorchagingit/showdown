@@ -2,14 +2,14 @@ import {
   DEFAULT_BG_ID,
   DEFAULT_CHARACTER_ID,
   FREE_ITEM_IDS,
+  cosmeticsResetOwnedItems,
 } from '../data/shopItems';
 
 export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку белых фишек';
 
 export const STARTING_COINS = 1500;
 const LEGACY_STARTING_COINS = 50000;
-const SUPERADMIN_EMAIL = 'anaak-01@mail.ru';
-const SHOP_WIPE_VERSION = 'shop-wipe-v1';
+const SHOP_WIPE_VERSION = 'shop-wipe-v2';
 
 export interface PendingNotification {
   id: string;
@@ -81,7 +81,7 @@ export function createDefaultUserData(): UserData {
     birthDate: '',
     slogan: '',
     coins: STARTING_COINS,
-    ownedItems: [...FREE_ITEM_IDS],
+    ownedItems: cosmeticsResetOwnedItems(),
     equippedChar: DEFAULT_CHARACTER_ID,
     equippedBg: DEFAULT_BG_ID,
     pendingNotifications: [],
@@ -171,17 +171,17 @@ function shopWipeKey(email: string): string {
   return `shop_wipe_${normalizeEmail(email)}`;
 }
 
-/** One-shot: superadmin buys the catalogue from scratch again, starting at 1500. */
-function maybeWipeSuperadminShop(email: string, data: UserData): UserData {
-  if (normalizeEmail(email) !== SUPERADMIN_EMAIL) return data;
+/** One-shot: restore 1500 rubies and only the free character/background. */
+function maybeWipeShopInventory(email: string, data: UserData): UserData {
   if (readKey(shopWipeKey(email)) === SHOP_WIPE_VERSION) return data;
   writeKey(shopWipeKey(email), SHOP_WIPE_VERSION);
   return {
     ...data,
     coins: STARTING_COINS,
-    ownedItems: [...FREE_ITEM_IDS],
+    ownedItems: cosmeticsResetOwnedItems(),
     equippedChar: DEFAULT_CHARACTER_ID,
     equippedBg: DEFAULT_BG_ID,
+    pendingNotifications: [],
   };
 }
 
@@ -191,7 +191,7 @@ export function loadUserData(email: string): UserData {
   const current = parseRecord(readKey(userDataKey(email)));
   if (current) {
     const restored = withDefaults(current);
-    const wiped = maybeWipeSuperadminShop(email, restored);
+    const wiped = maybeWipeShopInventory(email, restored);
     const rawCoins = current.coins;
     const owned = Array.isArray(current.ownedItems) ? current.ownedItems : [];
     const missingStarter =
@@ -211,7 +211,7 @@ export function loadUserData(email: string): UserData {
 
   // Nothing under the current key: carry over an older record for this account
   const previous = parseRecord(readKey(`${PREVIOUS_KEY_PREFIX}${normalizeEmail(email)}`));
-  const restored = maybeWipeSuperadminShop(
+  const restored = maybeWipeShopInventory(
     email,
     withDefaults(previous ?? takeLegacySharedProfile()),
   );

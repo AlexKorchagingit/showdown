@@ -1,9 +1,10 @@
 import { isSuperAdmin } from './admin';
 import {
+  COSMETICS_RESET_TOKEN,
   DEFAULT_BG_ID,
   DEFAULT_CHARACTER_ID,
-  FREE_ITEM_IDS,
   avatarUrlForChar,
+  cosmeticsResetOwnedItems,
 } from '../data/shopItems';
 import { getClubDirectory, removeClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
 import { writeSession } from './session';
@@ -111,7 +112,7 @@ export async function loginOrRegisterUser(
     isAdmin: isSuperAdmin(normalized),
     coins: STARTING_COINS,
     agreementsAcceptedAt,
-    ownedItems: [...FREE_ITEM_IDS],
+    ownedItems: cosmeticsResetOwnedItems(),
     equippedChar: DEFAULT_CHARACTER_ID,
     equippedBg: DEFAULT_BG_ID,
     equippedAvatar: [avatarUrlForChar(DEFAULT_CHARACTER_ID), DEFAULT_CHARACTER_ID, DEFAULT_BG_ID],
@@ -189,6 +190,48 @@ export function mappedUserToPatch(changes: Partial<MappedUser>): Record<string, 
     ].filter((item): item is string => Boolean(item));
   }
   return patch;
+}
+
+export function cosmeticsResetPatch(): Record<string, unknown> {
+  return {
+    ruby_balance: STARTING_COINS,
+    owned_items: cosmeticsResetOwnedItems(),
+    equipped_char: DEFAULT_CHARACTER_ID,
+    equipped_bg: DEFAULT_BG_ID,
+    equipped_avatar: [avatarUrlForChar(DEFAULT_CHARACTER_ID), DEFAULT_CHARACTER_ID, DEFAULT_BG_ID],
+    pending_notifications: [],
+  };
+}
+
+export function userNeedsCosmeticsReset(user: Pick<MappedUser, 'ownedItems'>): boolean {
+  return !user.ownedItems.includes(COSMETICS_RESET_TOKEN);
+}
+
+let cosmeticsResetInFlight: Promise<{ updated: number; ok: boolean }> | null = null;
+
+/** One-shot: set every account without the sentinel to 1500 rubies and free cosmetics. */
+export async function applyCosmeticsResetToAllUsers(): Promise<{ updated: number; ok: boolean }> {
+  if (cosmeticsResetInFlight) return cosmeticsResetInFlight;
+  cosmeticsResetInFlight = (async () => {
+    const { data, error } = await supabase.from('users').select('*');
+    if (error || !data) return { updated: 0, ok: false };
+    const targets = data.flatMap((item) => {
+      const row = asUserRow(item);
+      if (!row) return [];
+      const user = userFromRow(row);
+      return userNeedsCosmeticsReset(user) ? [user] : [];
+    });
+    if (!targets.length) return { updated: 0, ok: true };
+    const patch = cosmeticsResetPatch();
+    const results = await Promise.all(targets.map((user) => updateUserRow(user.id, patch)));
+    const updated = results.filter(Boolean).length;
+    return { updated, ok: updated === targets.length };
+  })();
+  try {
+    return await cosmeticsResetInFlight;
+  } finally {
+    cosmeticsResetInFlight = null;
+  }
 }
 
 export { getClubDirectory };
