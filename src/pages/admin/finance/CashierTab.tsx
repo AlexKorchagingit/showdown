@@ -27,6 +27,7 @@ const PERIODS: { id: FinancePeriod; label: string }[] = [
   { id: 'today', label: 'Сегодня' },
   { id: 'week', label: 'Неделя' },
   { id: 'month', label: 'Месяц' },
+  { id: 'all', label: 'Все время' },
 ];
 
 type SheetKind = 'revenue' | 'expected' | 'tickets';
@@ -82,16 +83,15 @@ export function CashierTab() {
   const revenue = paid.reduce((sum, tx) => sum + tx.amount, 0);
   const expected = allUnpaid.reduce((sum, tx) => sum + tx.amount, 0);
 
-  const chartData = useMemo(
-    () =>
-      datesInPeriod(period).map((day) => ({
-        label: day.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-        amount: paid
-          .filter((tx) => sameDay(ledgerTimestamp(tx), day))
-          .reduce((sum, tx) => sum + tx.amount, 0),
-      })),
-    [paid, period],
-  );
+  const chartData = useMemo(() => {
+    const stamps = paid.map((tx) => ledgerTimestamp(tx));
+    return datesInPeriod(period, new Date(), stamps).map((day) => ({
+      label: day.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+      amount: paid
+        .filter((tx) => sameDay(ledgerTimestamp(tx), day))
+        .reduce((sum, tx) => sum + tx.amount, 0),
+    }));
+  }, [paid, period]);
 
   const sheetItems = sheet === 'revenue' ? paid : sheet === 'expected' ? allUnpaid : tickets;
   const emptyCopy =
@@ -125,7 +125,7 @@ export function CashierTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex rounded-xl p-1" style={{ background: '#1E1612' }}>
+      <div className="grid grid-cols-4 gap-1 rounded-xl p-1" style={{ background: '#1E1612' }}>
         {PERIODS.map(({ id, label }) => {
           const active = period === id;
           return (
@@ -133,7 +133,7 @@ export function CashierTab() {
               key={id}
               type="button"
               onClick={() => setPeriod(id)}
-              className="flex-1 py-2.5 rounded-lg text-[12px] font-700 transition-colors"
+              className="py-2.5 rounded-lg text-[11px] font-700 leading-tight transition-colors"
               style={{
                 background: active ? 'linear-gradient(to right, #8C4C27, #D99962)' : 'transparent',
                 color: active ? '#0A0908' : '#6B6360',
@@ -179,7 +179,7 @@ export function CashierTab() {
                 tick={{ fill: '#8c8c88', fontSize: 10 }}
                 axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
                 tickLine={false}
-                interval={chartData.length > 10 ? 4 : 0}
+                interval={chartData.length > 12 ? Math.ceil(chartData.length / 8) - 1 : 0}
               />
               <YAxis
                 tick={{ fill: '#8c8c88', fontSize: 10 }}

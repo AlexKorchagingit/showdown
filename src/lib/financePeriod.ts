@@ -1,4 +1,4 @@
-export type FinancePeriod = 'today' | 'week' | 'month';
+export type FinancePeriod = 'today' | 'week' | 'month' | 'all';
 
 export function startOfDay(d: Date): Date {
   const next = new Date(d);
@@ -6,8 +6,9 @@ export function startOfDay(d: Date): Date {
   return next;
 }
 
-/** Inclusive lower bound for the selected cashier period. */
+/** Inclusive lower bound for the selected cashier period. `'all'` is unbounded. */
 export function periodStart(period: FinancePeriod, now = new Date()): Date {
+  if (period === 'all') return new Date(0);
   const start = startOfDay(now);
   if (period === 'today') return start;
   if (period === 'week') {
@@ -21,13 +22,27 @@ export function periodStart(period: FinancePeriod, now = new Date()): Date {
 export function isInPeriod(isoDate: string, period: FinancePeriod, now = new Date()): boolean {
   const ts = new Date(isoDate).getTime();
   if (Number.isNaN(ts)) return false;
+  if (period === 'all') return true;
   return ts >= periodStart(period, now).getTime() && ts <= now.getTime() + 60_000;
 }
 
 /** One calendar day per tick from period start through today (inclusive). */
-export function datesInPeriod(period: FinancePeriod, now = new Date()): Date[] {
-  const start = periodStart(period, now);
+export function datesInPeriod(
+  period: FinancePeriod,
+  now = new Date(),
+  sampleIsoDates: Iterable<string> = [],
+): Date[] {
   const end = startOfDay(now);
+  let start = periodStart(period, now);
+  if (period === 'all') {
+    let earliest = Number.POSITIVE_INFINITY;
+    for (const iso of sampleIsoDates) {
+      const ts = new Date(iso).getTime();
+      if (Number.isFinite(ts) && ts < earliest) earliest = ts;
+    }
+    start = Number.isFinite(earliest) ? startOfDay(new Date(earliest)) : end;
+  }
+
   const days: Date[] = [];
   const cursor = new Date(start);
   while (cursor.getTime() <= end.getTime()) {
