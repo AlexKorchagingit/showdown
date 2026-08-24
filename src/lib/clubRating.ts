@@ -72,3 +72,23 @@ export function clubRatingPlayers(
         a.nickname.localeCompare(b.nickname, 'ru'),
     );
 }
+
+/** Season totals from closed events, keyed by `users.id`. */
+export function seasonPointsByUserId(
+  users: MappedUser[],
+  tournaments: Tournament[],
+): Map<string, number> {
+  return new Map(clubRatingPlayers(users, tournaments).map((row) => [row.id, row.points]));
+}
+
+/** Replace a seat's stored snapshot with live club season points when the player is a club user. */
+export function withClubSeasonRating(
+  player: Participant,
+  pointsById: Map<string, number>,
+): Participant {
+  const uid = sanitizeParticipantUserId(player.userId ?? player.id);
+  if (!uid) return player;
+  const points = pointsById.get(uid);
+  if (points == null || points === player.rating) return player;
+  return { ...player, rating: points };
+}

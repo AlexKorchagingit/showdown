@@ -8,24 +8,15 @@ import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../ty
 import { useTournaments } from '../../context/TournamentContext';
 import { useUser } from '../../context/UserContext';
 import { ScreenLoading } from '../../components/ScreenLoading';
-import { ALL_PARTICIPANTS } from '../../data/participants';
 import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentStatus';
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
-import { CURRENT_USER_RATING } from '../../types/player';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
-
-/** Season rating from the global player pool (read-only in lobby admin). */
-function resolveSeasonRating(nickname: string): number {
-  const fromPool = ALL_PARTICIPANTS.find((p) => p.nickname === nickname);
-  if (fromPool) return fromPool.rating;
-  if (nickname === CURRENT_USER_RATING.nickname) return CURRENT_USER_RATING.points;
-  return 0;
-}
+import { seasonPointsByUserId, withClubSeasonRating } from '../../lib/clubRating';
 
 const CARD_STYLE = {
   background: '#2A211D',
@@ -186,13 +177,13 @@ function ParticipantsEditor({
   onRemove: (id: string) => void;
 }) {
   const { clubUsers } = useUser();
+  const { tournaments } = useTournaments();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const takenNicknames = new Set(participants.map((p) => p.nickname));
   const available = clubUsers.filter((u) => !takenNicknames.has(u.nickname));
-  const ranked = sortByRating(
-    participants.map((p) => ({ ...p, rating: resolveSeasonRating(p.nickname) })),
-  );
+  const seasonById = seasonPointsByUserId(clubUsers, tournaments);
+  const ranked = sortByRating(participants.map((p) => withClubSeasonRating(p, seasonById)));
 
   return (
     <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
@@ -330,7 +321,8 @@ function ParticipantsEditor({
 /* ── Editor body ────────────────────────────────────────────────────────── */
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
-  const { updateTournament, deleteTournament, duplicateTournament } = useTournaments();
+  const { tournaments, updateTournament, deleteTournament, duplicateTournament } = useTournaments();
+  const { clubUsers } = useUser();
   const { openTimerForTournament } = useBindPokerTimer();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -353,10 +345,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
   };
 
   const addParticipant = (id: string, nickname: string) => {
+    const seasonById = seasonPointsByUserId(clubUsers, tournaments);
     void patch({
       participants: [
         ...tournament.participants,
-        { id, nickname, rating: resolveSeasonRating(nickname) },
+        { id, nickname, rating: seasonById.get(id) ?? 0, userId: id },
       ],
     });
   };

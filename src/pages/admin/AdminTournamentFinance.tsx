@@ -28,26 +28,18 @@ import { PlayerNameLink } from '../../components/PlayerNameLink';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { TimerRunningBadge } from '../../components/TimerRunningBadge';
 import type { TournamentDealer } from '../../types/tournament';
-import { ALL_PARTICIPANTS } from '../../data/participants';
-import { CURRENT_USER_RATING } from '../../types/player';
 import { playerEmail } from '../../lib/systemPlayers';
 import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
 import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnalytics';
 import { creditRubiesToBalance } from '../../lib/rubyGrants';
 import { clearParticipantPlace } from '../../lib/tournamentApi';
+import { seasonPointsByUserId } from '../../lib/clubRating';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
   { type: 'rebuy', label: 'Ребай' },
   { type: 'addon', label: 'Аддон' },
 ];
-
-function resolveSeasonRating(nickname: string): number {
-  const fromPool = ALL_PARTICIPANTS.find((p) => p.nickname === nickname);
-  if (fromPool) return fromPool.rating;
-  if (nickname === CURRENT_USER_RATING.nickname) return CURRENT_USER_RATING.points;
-  return 0;
-}
 
 function formatHourDelta(delta: number): string {
   const abs = Math.abs(delta);
@@ -379,7 +371,12 @@ export function AdminTournamentFinance() {
     updateTournament(tournament.id, {
       participants: [
         ...tournament.participants,
-        { id, nickname, rating: resolveSeasonRating(nickname) },
+        {
+          id,
+          nickname,
+          rating: seasonPointsByUserId(clubUsers, tournaments).get(id) ?? 0,
+          userId: id,
+        },
       ],
     });
     logAction({

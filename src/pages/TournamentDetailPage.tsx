@@ -1,5 +1,5 @@
 import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { PlayerNameLink } from '../components/PlayerNameLink';
@@ -15,7 +15,12 @@ import {
 } from '../lib/tournamentStatus';
 import { knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
-import { clubUserIdSet, registeredClubSeats } from '../lib/clubRating';
+import {
+  clubUserIdSet,
+  registeredClubSeats,
+  seasonPointsByUserId,
+  withClubSeasonRating,
+} from '../lib/clubRating';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { formatTxDateTime } from '../lib/transactionDisplay';
 
@@ -161,7 +166,13 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
   const tournamentFinished = hasFinished(live);
   const knownIds = clubUserIdSet(clubUsers);
-  const seated = registeredClubSeats(live.participants, knownIds);
+  const seasonById = useMemo(
+    () => seasonPointsByUserId(clubUsers, tournaments),
+    [clubUsers, tournaments],
+  );
+  const seated = registeredClubSeats(live.participants, knownIds).map((player) =>
+    withClubSeasonRating(player, seasonById),
+  );
   const participants = tournamentFinished ? sortByPlace(seated) : sortByRating(seated);
   const occupiedSeats = seated.length;
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
