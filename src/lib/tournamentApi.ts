@@ -131,17 +131,49 @@ function bindKnownUserId(candidate: string | null | undefined, realIds: Set<stri
 
 export async function upsertParticipantRows(rows: ParticipantRow[]): Promise<void> {
   if (rows.length === 0) return;
-  const { error } = await supabase.from('participants').upsert(rows, { onConflict: 'id' });
+  const payload = rows.map((row) => ({
+    ...row,
+    user_id: sanitizeParticipantUserId(row.user_id),
+    nickname: row.nickname.trim() || 'Игрок',
+  }));
+  const { error } = await supabase.from('participants').upsert(payload, { onConflict: 'id' });
   if (!error) return;
-  console.error('Participant Insert Error:', error, rows);
-  if (error.code === '23503' || /foreign key/i.test(error.message)) {
-    const retry = rows.map((row) => ({ ...row, user_id: null as string | null }));
+  console.error('Participant Insert Error:', error, payload);
+  const fkFailed = error.code === '23503' || /foreign key|participants_user_id_fkey/i.test(error.message);
+  if (fkFailed) {
+    const retry = payload.map((row) => ({ ...row, user_id: null as string | null }));
     const second = await supabase.from('participants').upsert(retry, { onConflict: 'id' });
     if (!second.error) return;
     console.error('Participant Insert Error:', second.error, retry);
     throw new Error(second.error.message);
   }
   throw new Error(error.message);
+}
+
+export async function removeParticipantSeat(
+  tournamentId: string,
+  player: Pick<Participant, 'id' | 'nickname'>,
+): Promise<void> {
+  const userId = sanitizeParticipantUserId(player.id);
+  const ids = [...new Set([player.id, participantRowId(tournamentId, player.id)].filter(Boolean))];
+
+  const byId = await supabase.from('participants').delete().in('id', ids);
+  if (byId.error) {
+    console.error('Participant Delete Error:', byId.error, { tournamentId, player, ids });
+    throw new Error(byId.error.message);
+  }
+
+  if (userId) {
+    const byUser = await supabase
+      .from('participants')
+      .delete()
+      .eq('tournament_id', tournamentId)
+      .eq('user_id', userId);
+    if (byUser.error) {
+      console.error('Participant Delete Error:', byUser.error, { tournamentId, userId });
+      throw new Error(byUser.error.message);
+    }
+  }
 }
 
 export async function clearParticipantPlace(tournamentId: string, playerId: string): Promise<void> {
@@ -175,21 +207,49 @@ export async function deleteParticipantSeat(tournamentId: string, userId: string
   await supabase.from('participants').delete().eq('id', participantRowId(tournamentId, 'me'));
 }
 
+function sameSeat(left: Participant, right: Participant): boolean {
+  return (
+    left.id === right.id &&
+    left.nickname === right.nickname &&
+    left.place === right.place &&
+    (left.knockouts ?? 0) === (right.knockouts ?? 0) &&
+    left.comment === right.comment
+  );
+}
+
 export async function syncParticipantRows(
   tournamentId: string,
   previous: Participant[],
   next: Participant[],
   resolveUserId: (player: Participant) => string | null,
 ): Promise<Participant[]> {
+  const previousById = new Map(previous.map((player) => [player.id, player]));
+  const nextIds = new Set(next.map((player) => player.id));
+  const removed = previous.filter((player) => !nextIds.has(player.id));
+  const added = next.filter((player) => !previousById.has(player.id));
+  const remainingUnchanged =
+    added.length === 0 &&
+    next.every((player) => {
+      const before = previousById.get(player.id);
+      return Boolean(before && sameSeat(before, player));
+    });
+
+  if (removed.length > 0 && remainingUnchanged) {
+    for (const player of removed) {
+      await removeParticipantSeat(tournamentId, player);
+    }
+    return fetchParticipants(tournamentId);
+  }
+
   const realIds = await fetchKnownUserIds();
   const nextRows = next.map((player) =>
     participantToRow(tournamentId, player, bindKnownUserId(resolveUserId(player), realIds)),
   );
-  const nextIds = new Set(nextRows.map((row) => row.id));
+  const upsertIds = new Set(nextRows.map((row) => row.id));
   const previousIds = previous.map((player) =>
     participantRowId(tournamentId, bindKnownUserId(resolveUserId(player), realIds) || player.id),
   );
-  const toDelete = previousIds.filter((id) => !nextIds.has(id));
+  const toDelete = previousIds.filter((id) => !upsertIds.has(id));
 
   if (toDelete.length > 0) {
     const { error } = await supabase.from('participants').delete().in('id', toDelete);

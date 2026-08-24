@@ -54,11 +54,6 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       if (player.id.includes(':')) return null;
       const byId = directory.find((user) => user.id === player.id);
       if (byId) return byId.id;
-      const nick = player.nickname.trim().toLowerCase();
-      if (nick) {
-        const byNick = directory.find((user) => user.nickname.trim().toLowerCase() === nick);
-        if (byNick) return byNick.id;
-      }
       return null;
     },
     [userId],

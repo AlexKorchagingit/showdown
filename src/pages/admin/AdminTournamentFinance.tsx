@@ -390,7 +390,7 @@ export function AdminTournamentFinance() {
   const removePlayerFromTournament = (playerId: string) => {
     if (!window.confirm('Точно удалить игрока из турнира?')) return;
     const player = tournament.participants.find((p) => p.id === playerId);
-    updateTournament(tournament.id, {
+    void updateTournament(tournament.id, {
       participants: tournament.participants.filter((p) => p.id !== playerId),
     });
     logAction({
