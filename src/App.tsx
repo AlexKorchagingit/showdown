@@ -125,9 +125,16 @@ function AuthenticatedApp({
   userEmail: string;
   showSplash: boolean;
 }) {
+  const navigate = useNavigate();
   const { account, isLoading } = useUser();
+  const ready = Boolean(account) && !isLoading && !showSplash;
 
-  if (showSplash || isLoading || !account) {
+  useEffect(() => {
+    if (!account || isLoading) return;
+    navigate('/', { replace: true });
+  }, [account, isLoading, showSplash, navigate]);
+
+  if (!ready) {
     return <SplashShell />;
   }
 
@@ -190,6 +197,7 @@ export default function App() {
     endLocalSession(userEmail);
     setUserEmail('');
     setIsAuthenticated(false);
+    navigate('/', { replace: true });
   };
 
   if (!isAuthenticated) {
