@@ -330,7 +330,7 @@ function ParticipantsEditor({
 /* ── Editor body ────────────────────────────────────────────────────────── */
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
-  const { updateTournament, deleteTournament, addTournament } = useTournaments();
+  const { updateTournament, deleteTournament, duplicateTournament } = useTournaments();
   const { openTimerForTournament } = useBindPokerTimer();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -372,22 +372,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
   };
 
   const handleCopy = async () => {
-    const { id: _id, ...rest } = tournament;
-    const newId = await addTournament({
-      ...rest,
-      title: `${tournament.title} Copy`,
-      participants: tournament.participants.map((p) => ({
-        ...p,
-        place: undefined,
-        knockouts: undefined,
-        rubiesAwarded: undefined,
-      })),
-      features: [...tournament.features],
-      isClosed: false,
-      rubiesDistributed: false,
-      dealers: undefined,
-      resultsEntered: false,
-    });
+    const newId = await duplicateTournament(tournament.id);
     if (!newId) return;
     navigate(`/admin/tournaments/${newId}`);
   };

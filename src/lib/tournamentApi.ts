@@ -6,6 +6,7 @@ import {
   sanitizeParticipantUserId,
   tournamentFromRow,
   tournamentToRow,
+  unwrapParticipantSeatKey,
   type JoinedParticipantRow,
   type ParticipantRow,
   type TournamentRow,
@@ -93,6 +94,14 @@ export async function deleteTournamentRow(tournamentId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+function isFkError(error: { code?: string; message?: string }): boolean {
+  return error.code === '23503' || /foreign key|participants_user_id_fkey/i.test(error.message ?? '');
+}
+
+function isUniqueError(error: { code?: string; message?: string }): boolean {
+  return error.code === '23505' || /duplicate key|unique constraint/i.test(error.message ?? '');
+}
+
 export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
   const payload: ParticipantRow = {
     ...row,
@@ -101,11 +110,12 @@ export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
   };
   const { error } = await supabase.from('participants').insert(payload);
   if (!error) return;
+  if (isUniqueError(error)) return;
   console.error('Participant Insert Error:', error, payload);
-  if (payload.user_id && (error.code === '23503' || /foreign key/i.test(error.message))) {
+  if (payload.user_id && isFkError(error)) {
     const retry: ParticipantRow = { ...payload, user_id: null };
     const second = await supabase.from('participants').insert(retry);
-    if (!second.error) return;
+    if (!second.error || isUniqueError(second.error)) return;
     console.error('Participant Insert Error:', second.error, retry);
     throw new Error(second.error.message);
   }
@@ -129,25 +139,79 @@ function bindKnownUserId(candidate: string | null | undefined, realIds: Set<stri
   return realIds.has(sanitized) ? sanitized : null;
 }
 
-export async function upsertParticipantRows(rows: ParticipantRow[]): Promise<void> {
-  if (rows.length === 0) return;
-  const payload = rows.map((row) => ({
+async function upsertOneParticipantRow(row: ParticipantRow): Promise<void> {
+  const payload: ParticipantRow = {
     ...row,
     user_id: sanitizeParticipantUserId(row.user_id),
     nickname: row.nickname.trim() || 'Игрок',
-  }));
+  };
   const { error } = await supabase.from('participants').upsert(payload, { onConflict: 'id' });
   if (!error) return;
   console.error('Participant Insert Error:', error, payload);
-  const fkFailed = error.code === '23503' || /foreign key|participants_user_id_fkey/i.test(error.message);
-  if (fkFailed) {
-    const retry = payload.map((row) => ({ ...row, user_id: null as string | null }));
+  if (isFkError(error) && payload.user_id) {
+    const retry: ParticipantRow = { ...payload, user_id: null };
     const second = await supabase.from('participants').upsert(retry, { onConflict: 'id' });
     if (!second.error) return;
     console.error('Participant Insert Error:', second.error, retry);
     throw new Error(second.error.message);
   }
   throw new Error(error.message);
+}
+
+export async function upsertParticipantRows(rows: ParticipantRow[]): Promise<void> {
+  for (const row of rows) {
+    await upsertOneParticipantRow(row);
+  }
+}
+
+function allocateSeatKey(
+  tournamentId: string,
+  player: Participant,
+  boundUserId: string | null,
+  used: Set<string>,
+  index: number,
+): string {
+  const preferred = boundUserId || unwrapParticipantSeatKey(tournamentId, player.id);
+  let key = preferred && !preferred.includes(':') && !used.has(preferred) ? preferred : '';
+  if (!key) key = boundUserId && !used.has(boundUserId) ? boundUserId : `g-${index + 1}`;
+  while (used.has(key)) key = `g-${index + 1}-${used.size}`;
+  used.add(key);
+  return key;
+}
+
+function rowsForSeats(
+  tournamentId: string,
+  players: Participant[],
+  resolveUserId: (player: Participant) => string | null,
+  realIds: Set<string>,
+): ParticipantRow[] {
+  const used = new Set<string>();
+  return players.map((player, index) => {
+    const bound = bindKnownUserId(resolveUserId(player), realIds);
+    const key = allocateSeatKey(tournamentId, player, bound, used, index);
+    return participantToRow(tournamentId, { ...player, id: key }, bound);
+  });
+}
+
+async function insertSeatRows(
+  tournamentId: string,
+  players: Participant[],
+  resolveUserId: (player: Participant) => string | null,
+  realIds: Set<string>,
+): Promise<void> {
+  const rows = rowsForSeats(tournamentId, players, resolveUserId, realIds);
+  let lastError: Error | null = null;
+  let inserted = 0;
+  for (const row of rows) {
+    try {
+      await insertParticipantRow(row);
+      inserted += 1;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error('Participant Insert Error:', lastError, row);
+    }
+  }
+  if (inserted === 0 && rows.length > 0 && lastError) throw lastError;
 }
 
 export async function removeParticipantSeat(
@@ -211,8 +275,10 @@ function sameSeat(left: Participant, right: Participant): boolean {
   return (
     left.id === right.id &&
     left.nickname === right.nickname &&
+    left.rating === right.rating &&
     left.place === right.place &&
     (left.knockouts ?? 0) === (right.knockouts ?? 0) &&
+    left.rubiesAwarded === right.rubiesAwarded &&
     left.comment === right.comment
   );
 }
@@ -223,38 +289,37 @@ export async function syncParticipantRows(
   next: Participant[],
   resolveUserId: (player: Participant) => string | null,
 ): Promise<Participant[]> {
-  const previousById = new Map(previous.map((player) => [player.id, player]));
-  const nextIds = new Set(next.map((player) => player.id));
-  const removed = previous.filter((player) => !nextIds.has(player.id));
-  const added = next.filter((player) => !previousById.has(player.id));
-  const remainingUnchanged =
-    added.length === 0 &&
-    next.every((player) => {
-      const before = previousById.get(player.id);
-      return Boolean(before && sameSeat(before, player));
-    });
+  let baseline = previous;
+  try {
+    baseline = await fetchParticipants(tournamentId);
+  } catch (error) {
+    console.error(error);
+  }
 
-  if (removed.length > 0 && remainingUnchanged) {
-    for (const player of removed) {
-      await removeParticipantSeat(tournamentId, player);
-    }
-    return fetchParticipants(tournamentId);
+  const previousById = new Map(baseline.map((player) => [player.id, player]));
+  const nextIds = new Set(next.map((player) => player.id));
+  const removed = baseline.filter((player) => !nextIds.has(player.id));
+  const added = next.filter((player) => !previousById.has(player.id));
+  const changed = next.filter((player) => {
+    const before = previousById.get(player.id);
+    return Boolean(before && !sameSeat(before, player));
+  });
+
+  for (const player of removed) {
+    await removeParticipantSeat(tournamentId, player);
   }
 
   const realIds = await fetchKnownUserIds();
-  const nextRows = next.map((player) =>
-    participantToRow(tournamentId, player, bindKnownUserId(resolveUserId(player), realIds)),
-  );
-  const upsertIds = new Set(nextRows.map((row) => row.id));
-  const previousIds = previous.map((player) =>
-    participantRowId(tournamentId, bindKnownUserId(resolveUserId(player), realIds) || player.id),
-  );
-  const toDelete = previousIds.filter((id) => !upsertIds.has(id));
-
-  if (toDelete.length > 0) {
-    const { error } = await supabase.from('participants').delete().in('id', toDelete);
-    if (error) throw new Error(error.message);
+  if (added.length > 0) {
+    await insertSeatRows(tournamentId, added, resolveUserId, realIds);
   }
-  await upsertParticipantRows(nextRows);
+  if (changed.length > 0) {
+    await upsertParticipantRows(
+      changed.map((player) =>
+        participantToRow(tournamentId, player, bindKnownUserId(resolveUserId(player), realIds)),
+      ),
+    );
+  }
+
   return fetchParticipants(tournamentId);
 }

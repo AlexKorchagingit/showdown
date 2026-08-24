@@ -269,10 +269,25 @@ export function sanitizeParticipantUserId(value?: string | null): string | null 
   return trimmed;
 }
 
-function seatKey(tournamentId: string, playerId: string): string {
+/**
+ * PK suffix for a seat. Strips this event's prefix and leftover PKs from
+ * other events (`triple-life:14`, `t-123:4`) so copies don't nest ids.
+ */
+export function unwrapParticipantSeatKey(tournamentId: string, playerId: string): string {
+  let key = playerId.trim();
+  if (!key) return playerId;
   const prefix = `${tournamentId}:`;
-  if (playerId.startsWith(prefix)) return playerId.slice(prefix.length);
-  return playerId;
+  if (key.startsWith(prefix)) key = key.slice(prefix.length);
+  const colon = key.lastIndexOf(':');
+  if (colon >= 0) {
+    const tail = key.slice(colon + 1).trim();
+    if (tail) key = tail;
+  }
+  return key || playerId;
+}
+
+function seatKey(tournamentId: string, playerId: string): string {
+  return unwrapParticipantSeatKey(tournamentId, playerId);
 }
 
 /** Stable PK: one seated player per event (player ids repeat across tournaments). */
@@ -308,6 +323,16 @@ export function participantFromRow(row: ParticipantRow): Participant {
     knockouts: row.knockouts || undefined,
     rubiesAwarded: row.rubies_awarded ?? undefined,
     comment: row.comment || undefined,
+  };
+}
+
+/** Copy a seat into a new event: keep identity, drop finishing stats. */
+export function resetCopiedParticipant(player: Participant): Participant {
+  return {
+    id: player.id,
+    nickname: player.nickname,
+    rating: player.rating,
+    equippedAvatar: player.equippedAvatar,
   };
 }
 

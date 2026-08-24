@@ -18,8 +18,7 @@ import {
   syncParticipantRows,
   updateTournamentRow,
 } from '../lib/tournamentApi';
-import { participantToRow, sanitizeParticipantUserId } from '../lib/supabaseMap';
-import { getClubDirectory } from '../lib/clubDirectory';
+import { participantToRow, resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -33,6 +32,7 @@ interface TournamentContextValue {
   isRegistered: (tournamentId: string) => boolean;
   updateTournament: (tournamentId: string, patch: Partial<Tournament>) => Promise<void>;
   addTournament: (tournament: Omit<Tournament, 'id'>) => Promise<string>;
+  duplicateTournament: (sourceId: string) => Promise<string>;
   deleteTournament: (tournamentId: string) => Promise<void>;
 }
 
@@ -49,12 +49,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const resolveUserId = useCallback(
     (player: Participant): string | null => {
-      const directory = getClubDirectory();
       if (player.id === CURRENT_USER_ID) return sanitizeParticipantUserId(userId);
       if (player.id.includes(':')) return null;
-      const byId = directory.find((user) => user.id === player.id);
-      if (byId) return byId.id;
-      return null;
+      return sanitizeParticipantUserId(player.id);
     },
     [userId],
   );
@@ -100,41 +97,55 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const toggleRegistration = useCallback(
     async (tournamentId: string) => {
-      if (!account || !userId) return;
+      if (!account) {
+        window.alert('Сначала войдите в аккаунт');
+        return;
+      }
+      if (!userId) {
+        window.alert('Не удалось определить игрока');
+        return;
+      }
       const tournament = tournaments.find((row) => row.id === tournamentId);
-      if (!tournament || tournament.isClosed) return;
+      if (!tournament) {
+        window.alert('Турнир не найден');
+        return;
+      }
+      if (tournament.isClosed) {
+        window.alert('Регистрация закрыта');
+        return;
+      }
 
-      const seated = tournament.participants.some((player) => isSeatOfUser(player, userId));
+      let liveSeats = tournament.participants;
+      try {
+        liveSeats = await fetchParticipants(tournamentId);
+      } catch (error) {
+        console.error(error);
+      }
+
+      const seated = liveSeats.some((player) => isSeatOfUser(player, userId));
       try {
         if (seated) {
           await deleteParticipantSeat(tournamentId, userId);
-          setTournaments((prev) =>
-            prev.map((row) =>
-              row.id !== tournamentId
-                ? row
-                : {
-                    ...row,
-                    participants: row.participants.filter((player) => !isSeatOfUser(player, userId)),
-                  },
-            ),
-          );
+          await refreshParticipants(tournamentId);
           return;
         }
-        if (tournament.participants.length >= tournament.totalSeats) return;
+        if (liveSeats.length >= tournament.totalSeats) {
+          window.alert('Свободных мест нет');
+          await refreshParticipants(tournamentId);
+          return;
+        }
         const player: Participant = {
           id: userId,
           nickname: account.nickname,
           rating: 0,
         };
-        await insertParticipantRow(participantToRow(tournamentId, player, sanitizeParticipantUserId(userId)));
-        setTournaments((prev) =>
-          prev.map((row) =>
-            row.id !== tournamentId ? row : { ...row, participants: [...row.participants, player] },
-          ),
+        await insertParticipantRow(
+          participantToRow(tournamentId, player, sanitizeParticipantUserId(userId)),
         );
         await refreshParticipants(tournamentId);
       } catch (error) {
         console.error(error);
+        await refreshParticipants(tournamentId);
         window.alert(error instanceof Error ? error.message : 'Не удалось обновить запись');
       }
     },
@@ -171,13 +182,29 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       const created: Tournament = { ...tournament, id, participants: tournament.participants ?? [] };
       try {
         const saved = await insertTournament(created);
-        if (created.participants.length > 0) {
-          saved.participants = await syncParticipantRows(
-            saved.id,
-            [],
-            created.participants,
-            resolveUserId,
+        try {
+          if (created.participants.length > 0) {
+            saved.participants = await syncParticipantRows(
+              saved.id,
+              [],
+              created.participants,
+              resolveUserId,
+            );
+          }
+        } catch (seatError) {
+          console.error(seatError);
+          try {
+            saved.participants = await fetchParticipants(saved.id);
+          } catch {
+            saved.participants = [];
+          }
+          setTournaments((prev) => [saved, ...prev]);
+          window.alert(
+            seatError instanceof Error
+              ? `Турнир создан, но состав не записался: ${seatError.message}`
+              : 'Турнир создан, но состав не записался',
           );
+          return saved.id;
         }
         setTournaments((prev) => [saved, ...prev]);
         return saved.id;
@@ -188,6 +215,36 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       }
     },
     [resolveUserId],
+  );
+
+  const duplicateTournament = useCallback(
+    async (sourceId: string) => {
+      const current = tournaments.find((row) => row.id === sourceId);
+      if (!current) {
+        window.alert('Не удалось скопировать турнир');
+        return '';
+      }
+      let seats = current.participants;
+      try {
+        const fetched = await fetchParticipants(sourceId);
+        if (fetched.length > 0) seats = fetched;
+      } catch (error) {
+        console.error(error);
+      }
+      const { id: _id, ...rest } = current;
+      return addTournament({
+        ...rest,
+        title: `${current.title} Copy`,
+        participants: seats.map(resetCopiedParticipant),
+        features: [...current.features],
+        isClosed: false,
+        rubiesDistributed: false,
+        resultsEntered: false,
+        dealers: undefined,
+        results: undefined,
+      });
+    },
+    [addTournament, tournaments],
   );
 
   const deleteTournament = useCallback(async (tournamentId: string) => {
@@ -210,11 +267,13 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       isRegistered,
       updateTournament,
       addTournament,
+      duplicateTournament,
       deleteTournament,
     }),
     [
       addTournament,
       deleteTournament,
+      duplicateTournament,
       fetchTournaments,
       isLoading,
       isRegistered,
