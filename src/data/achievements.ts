@@ -1,4 +1,3 @@
-import { CURRENT_PLAYER_STATS as S } from './playerStats';
 import { asset } from '../lib/assets';
 
 export type AchievementTier = 'gold' | 'silver' | 'ruby';
@@ -26,11 +25,7 @@ export interface AchievementProgress {
   completed?: boolean;
 }
 
-/** Progress never exceeds the goal, so a finished counter reads "10 / 10". */
-function capped(value: number, target: number): number {
-  return Math.min(value, target);
-}
-
+/** Catalogue starts locked. Admins grant progress; nothing is pre-unlocked. */
 export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'fish',
@@ -39,7 +34,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     imageUrl: art('fish'),
     tier: 'silver',
     target: 10,
-    progress: capped(S.games, 10),
   },
   {
     id: 'crucian',
@@ -48,7 +42,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     imageUrl: art('crucian'),
     tier: 'silver',
     target: 25,
-    progress: capped(S.games, 25),
   },
   {
     id: 'shark',
@@ -57,7 +50,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     imageUrl: art('shark'),
     tier: 'gold',
     target: 50,
-    progress: capped(S.games, 50),
   },
   {
     id: 'megalodon',
@@ -66,7 +58,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     imageUrl: art('megalodon'),
     tier: 'gold',
     target: 100,
-    progress: capped(S.games, 100),
   },
   {
     id: 'welcome',
@@ -74,7 +65,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Посетить свою 1-ю игру в Showdown',
     imageUrl: art('welcome'),
     tier: 'silver',
-    completed: S.games >= 1,
   },
   {
     id: 'the-best',
@@ -82,7 +72,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Стать топ-1 рейтинга за месяц',
     imageUrl: art('the-best'),
     tier: 'gold',
-    completed: false,
   },
   {
     id: 'bounty-king',
@@ -90,7 +79,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Стать топ-1 игроком по нокаутам за месяц',
     imageUrl: art('bounty-king'),
     tier: 'gold',
-    completed: false,
   },
   {
     id: 'predator',
@@ -99,7 +87,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     imageUrl: art('predator'),
     tier: 'silver',
     target: 25,
-    progress: capped(S.monthlyKnockouts, 25),
   },
   {
     id: 'headhunter',
@@ -108,7 +95,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     imageUrl: art('headhunter'),
     tier: 'silver',
     target: 10,
-    progress: capped(S.bestTournamentKnockouts, 10),
   },
   {
     id: 'winner',
@@ -116,7 +102,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Выиграть любой турнир в клубе',
     imageUrl: art('winner'),
     tier: 'gold',
-    completed: S.wins >= 1,
   },
   {
     id: 'royal-flush',
@@ -124,7 +109,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Собрать Royal Flush на любой игре в Клубе',
     imageUrl: art('royal-flush'),
     tier: 'ruby',
-    completed: false,
   },
   {
     id: 'straight-flush',
@@ -132,7 +116,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Собрать Straight Flush на любой игре в Клубе',
     imageUrl: art('straight-flush'),
     tier: 'ruby',
-    completed: false,
   },
   {
     id: 'four-kings',
@@ -140,7 +123,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Собрать каре королей на любой игре в Клубе',
     imageUrl: art('four-kings'),
     tier: 'ruby',
-    completed: false,
   },
   {
     id: 'in-the-clip',
@@ -148,7 +130,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Попасть в топ-27 рейтинга за месяц',
     imageUrl: art('in-the-clip'),
     tier: 'silver',
-    completed: S.ratingPlace <= 27,
   },
   {
     id: 'finalist',
@@ -156,7 +137,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Попасть в топ-9 финального стола',
     imageUrl: art('finalist'),
     tier: 'silver',
-    completed: S.finals >= 1,
   },
   {
     id: 'paparazzi',
@@ -164,7 +144,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Попасть в топ-3 для почетной фотографии',
     imageUrl: art('paparazzi'),
     tier: 'gold',
-    completed: S.top3 >= 1,
   },
   {
     id: 'bubble',
@@ -172,7 +151,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Стать бабблом очковой зоны (вылететь прямо перед призами)',
     imageUrl: art('bubble'),
     tier: 'silver',
-    completed: false,
   },
   {
     id: 'friend',
@@ -180,7 +158,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Привести друга первый раз в клуб',
     imageUrl: art('friend'),
     tier: 'silver',
-    completed: S.invitedFriends >= 1,
   },
   {
     id: 'resident',
@@ -188,7 +165,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Стать лидером по посещениям за месяц',
     imageUrl: art('resident'),
     tier: 'gold',
-    completed: false,
   },
   {
     id: 'punctual',
@@ -196,7 +172,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Прийти до начала турнира',
     imageUrl: art('punctual'),
     tier: 'silver',
-    completed: true,
   },
   {
     id: 'giant-slayer',
@@ -204,7 +179,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: 'Выбить из турнира Администратора клуба',
     imageUrl: art('giant-slayer'),
     tier: 'ruby',
-    completed: false,
   },
 ];
 
