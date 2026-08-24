@@ -126,8 +126,8 @@ export function AdminStatisticScreen() {
     [tournaments, period, format],
   );
   const stats = useMemo(
-    () => computeClubStatistics(filtered, transactions, clubUsers),
-    [filtered, transactions, clubUsers],
+    () => computeClubStatistics(filtered, transactions, clubUsers, period),
+    [filtered, transactions, clubUsers, period],
   );
 
   return (
@@ -236,7 +236,11 @@ export function AdminStatisticScreen() {
               </p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.attendanceChart} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                <BarChart
+                  key={`${period}-${format}`}
+                  data={stats.attendanceChart}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                   <XAxis
                     dataKey="id"
@@ -246,10 +250,14 @@ export function AdminStatisticScreen() {
                     tick={{ fill: '#8c8c88', fontSize: 10 }}
                     axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
                     tickLine={false}
-                    interval={0}
-                    angle={stats.attendanceChart.length > 5 ? -28 : 0}
-                    textAnchor={stats.attendanceChart.length > 5 ? 'end' : 'middle'}
-                    height={stats.attendanceChart.length > 5 ? 48 : 28}
+                    interval={
+                      stats.attendanceChart.length > 12
+                        ? Math.ceil(stats.attendanceChart.length / 8) - 1
+                        : 0
+                    }
+                    angle={stats.attendanceChart.length > 8 ? -28 : 0}
+                    textAnchor={stats.attendanceChart.length > 8 ? 'end' : 'middle'}
+                    height={stats.attendanceChart.length > 8 ? 48 : 28}
                   />
                   <YAxis
                     allowDecimals={false}

@@ -1,11 +1,14 @@
-import { startOfDay } from './financePeriod';
 import { clubUserIdSet, isRegisteredClubSeat } from './clubRating';
 import { tournamentOffersAddon } from './playerAnalytics';
-import { compareByStart } from './tournamentStatus';
+import { buildAttendanceChart, type AttendanceSeed, type StatsPeriod } from './statsPeriod';
 import type { Transaction } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
 
-export type StatsPeriod = 'week' | 'month' | 'all';
+export type { StatsPeriod };
+export {
+  filterStatisticTournaments,
+  tournamentInPeriod,
+} from './statsPeriod';
 
 export type ClubLeader = {
   id: string;
@@ -55,42 +58,6 @@ export function tournamentTitles(tournaments: Tournament[]): string[] {
   return [...new Set(tournaments.map((tournament) => tournament.title))];
 }
 
-export function tournamentInPeriod(
-  startDate: string,
-  period: StatsPeriod,
-  now = new Date(),
-): boolean {
-  if (period === 'all') return true;
-  const day = startOfDay(new Date(`${startDate}T12:00:00`));
-  if (Number.isNaN(day.getTime())) return false;
-
-  if (period === 'month') {
-    return day.getFullYear() === now.getFullYear() && day.getMonth() === now.getMonth();
-  }
-
-  const from = startOfDay(now);
-  from.setDate(from.getDate() - 7);
-  const to = startOfDay(now);
-  to.setDate(to.getDate() + 7);
-  return day.getTime() >= from.getTime() && day.getTime() <= to.getTime();
-}
-
-export function filterStatisticTournaments(
-  tournaments: Tournament[],
-  period: StatsPeriod,
-  formatTitle: string,
-): Tournament[] {
-  const needle = formatTitle.trim().toLowerCase();
-  return tournaments.filter((tournament) => {
-    if (needle && needle !== 'all') {
-      const title = tournament.title.trim().toLowerCase();
-      const structure = tournament.blindStructure.trim().toLowerCase();
-      if (title !== needle && structure !== needle) return false;
-    }
-    return tournamentInPeriod(tournament.startDate, period);
-  });
-}
-
 function topThree(map: Map<string, { nickname: string; value: number }>): ClubLeader[] {
   return [...map.entries()]
     .map(([id, row]) => ({ id, nickname: row.nickname, value: row.value }))
@@ -110,21 +77,6 @@ export function parseFinishingPlace(raw: unknown): number | null {
     return Math.trunc(parsed);
   }
   return null;
-}
-
-/** Axis label: `24.08`, plus year when the event is not in the current calendar year. */
-function formatAttendanceDate(startDate: string, now = new Date()): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec((startDate ?? '').trim());
-  if (!match) return (startDate ?? '').trim() || '—';
-  const year = Number(match[1]);
-  const dayMonth = `${match[3]}.${match[2]}`;
-  return year !== now.getFullYear() ? `${dayMonth}.${String(year).slice(-2)}` : dayMonth;
-}
-
-function formatAttendanceTime(startTime: string): string {
-  const match = /^(\d{1,2}):(\d{2})$/.exec((startTime ?? '').trim());
-  if (!match) return '';
-  return `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
 }
 
 function clubSeatId(participant: Participant, knownIds: Set<string>): string | null {
@@ -182,11 +134,18 @@ export function computeClubStatistics(
   tournaments: Tournament[],
   transactions: Transaction[],
   clubUsers: { id: string; nickname: string }[],
+  period: StatsPeriod = 'all',
+  now = new Date(),
 ): ClubStatistics {
-  if (tournaments.length === 0) return EMPTY_STATS;
-
   const knownIds = clubUserIdSet(clubUsers);
   const names = new Map(clubUsers.map((user) => [user.id, user.nickname]));
+
+  if (tournaments.length === 0) {
+    return {
+      ...EMPTY_STATS,
+      attendanceChart: buildAttendanceChart([], period, now),
+    };
+  }
   const tournamentIds = new Set(tournaments.map((tournament) => tournament.id));
   const titleById = new Map(tournaments.map((tournament) => [tournament.id, tournament.title]));
   const ledger = transactions.filter(
@@ -265,26 +224,11 @@ export function computeClubStatistics(
     }
   });
 
-  const attendanceRows = tournaments
-    .map((tournament, index) => ({ tournament, players: seatedByTournament[index]!.length }))
-    .sort((a, b) => compareByStart(a.tournament, b.tournament));
-
-  const dateCounts = new Map<string, number>();
-  for (const { tournament } of attendanceRows) {
-    const date = formatAttendanceDate(tournament.startDate);
-    dateCounts.set(date, (dateCounts.get(date) ?? 0) + 1);
-  }
-
-  const attendanceChart = attendanceRows.map(({ tournament, players }) => {
-    const date = formatAttendanceDate(tournament.startDate);
-    const time = formatAttendanceTime(tournament.startTime);
-    return {
-      id: tournament.id,
-      label: (dateCounts.get(date) ?? 0) > 1 && time ? `${date} ${time}` : date,
-      title: tournament.title,
-      players,
-    };
-  });
+  const attendanceRows: AttendanceSeed[] = tournaments.map((tournament, index) => ({
+    tournament,
+    players: seatedByTournament[index]!.length,
+  }));
+  const attendanceChart = buildAttendanceChart(attendanceRows, period, now);
 
   const rebuyCount = ledger.filter((tx) => tx.type === 'rebuy').length;
   const addonCount = ledger.filter((tx) => tx.type === 'addon').length;
