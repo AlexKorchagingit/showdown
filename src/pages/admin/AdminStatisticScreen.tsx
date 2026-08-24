@@ -239,14 +239,17 @@ export function AdminStatisticScreen() {
                 <BarChart data={stats.attendanceChart} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                   <XAxis
-                    dataKey="label"
+                    dataKey="id"
+                    tickFormatter={(id: string) =>
+                      stats.attendanceChart.find((row) => row.id === id)?.label ?? id
+                    }
                     tick={{ fill: '#8c8c88', fontSize: 10 }}
                     axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
                     tickLine={false}
                     interval={0}
-                    angle={stats.attendanceChart.length > 4 ? -28 : 0}
-                    textAnchor={stats.attendanceChart.length > 4 ? 'end' : 'middle'}
-                    height={stats.attendanceChart.length > 4 ? 48 : 28}
+                    angle={stats.attendanceChart.length > 5 ? -28 : 0}
+                    textAnchor={stats.attendanceChart.length > 5 ? 'end' : 'middle'}
+                    height={stats.attendanceChart.length > 5 ? 48 : 28}
                   />
                   <YAxis
                     allowDecimals={false}
@@ -263,6 +266,13 @@ export function AdminStatisticScreen() {
                       borderRadius: 12,
                       color: '#F2D8A7',
                       fontSize: 12,
+                    }}
+                    labelFormatter={(_label, payload) => {
+                      const row = payload?.[0]?.payload as
+                        | { label?: string; title?: string }
+                        | undefined;
+                      if (!row?.label) return '';
+                      return row.title ? `${row.label} · ${row.title}` : row.label;
                     }}
                     formatter={(value) => [`${Number(value ?? 0)} чел.`, 'Игроки']}
                   />
