@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronRight, Download, X } from 'lucide-react';
+import { Check, ChevronRight, Download, Trash2, X } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { useFinance } from '../../../context/FinanceContext';
 import { useTournaments } from '../../../context/TournamentContext';
+import { useAuditLog } from '../../../context/AuditLogContext';
 import { exportToCSV } from '../../../lib/exportToCSV';
 import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
 import { playerNickname } from '../../../lib/playerName';
@@ -45,10 +46,12 @@ function newestFirst(a: Transaction, b: Transaction): number {
 }
 
 export function CashierTab() {
-  const { transactions, markPaid } = useFinance();
+  const { transactions, markPaid, removeTransaction } = useFinance();
   const { tournaments } = useTournaments();
+  const { logAction } = useAuditLog();
   const [period, setPeriod] = useState<FinancePeriod>('today');
   const [sheet, setSheet] = useState<SheetKind | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const tournamentTitle = (id: string) => tournaments.find((t) => t.id === id)?.title ?? id;
 
@@ -97,6 +100,28 @@ export function CashierTab() {
       : sheet === 'expected'
         ? 'Долгов нет'
         : 'Нет выданных билетов за период';
+
+  const handleDelete = async (tx: Transaction) => {
+    const isTicket = tx.type === 'ticket';
+    const ok = window.confirm(
+      isTicket
+        ? 'Удалить этот билет из базы? Действие необратимо.'
+        : 'Удалить эту транзакцию из базы? Действие необратимо.',
+    );
+    if (!ok) return;
+    setDeletingId(tx.id);
+    const removed = await removeTransaction(tx.id);
+    setDeletingId(null);
+    if (!removed) return;
+    logAction({
+      actionType: isTicket ? 'Удалил билет' : 'Удалил транзакцию',
+      targetUserId: tx.userId,
+      targetUserName: playerNickname(tx.userId),
+      targetTournamentId: tx.tournamentId,
+      targetTournamentName: tournamentTitle(tx.tournamentId),
+      details: `${TRANSACTION_TYPE_LABEL[tx.type]}. ${formatRub(tx.amount)}. ${TRANSACTION_STATUS_LABEL[tx.status]}`,
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -262,6 +287,12 @@ export function CashierTab() {
                       tx={tx}
                       tournamentTitle={tournamentTitle(tx.tournamentId)}
                       onSettle={sheet === 'expected' ? () => markPaid([tx.id]) : undefined}
+                      onDelete={
+                        sheet === 'revenue' || sheet === 'tickets'
+                          ? () => void handleDelete(tx)
+                          : undefined
+                      }
+                      deleting={deletingId === tx.id}
                     />
                   ))}
                 </div>
@@ -305,10 +336,14 @@ function TransactionCard({
   tx,
   tournamentTitle,
   onSettle,
+  onDelete,
+  deleting = false,
 }: {
   tx: Transaction;
   tournamentTitle: string;
   onSettle?: () => void;
+  onDelete?: () => void;
+  deleting?: boolean;
 }) {
   const amountColor = tx.status === 'unpaid' ? '#f87171' : '#F2D8A7';
   const stamp = ledgerTimestamp(tx);
@@ -347,6 +382,21 @@ function TransactionCard({
         >
           <Check size={16} strokeWidth={2.6} />
           Погасить долг
+        </button>
+      ) : null}
+      {onDelete ? (
+        <button
+          type="button"
+          disabled={deleting}
+          onClick={onDelete}
+          className="w-full mt-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-800 text-white active:scale-[0.98] disabled:opacity-50 transition-transform"
+          style={{
+            background: 'rgba(127,29,29,0.85)',
+            border: '1px solid rgba(239,68,68,0.45)',
+          }}
+        >
+          <Trash2 size={15} strokeWidth={2.4} />
+          {deleting ? 'Удаление…' : tx.type === 'ticket' ? 'Удалить билет' : 'Удалить транзакцию'}
         </button>
       ) : null}
     </div>

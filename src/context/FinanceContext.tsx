@@ -42,7 +42,7 @@ interface FinanceContextValue {
   ) => void;
   addTicket: (tournamentId: string, userId: string, comment: string) => void;
   markPaid: (transactionIds: string[]) => void;
-  removeTransaction: (transactionId: string) => void;
+  removeTransaction: (transactionId: string) => Promise<boolean>;
   markPlayerPaid: (tournamentId: string, userId: string) => void;
   markAllUnpaidForPlayer: (userId: string) => void;
   unpaidForPlayer: (tournamentId: string, userId: string) => Transaction[];
@@ -206,15 +206,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  const removeTransaction = useCallback((transactionId: string) => {
-    void deleteTransactionRow(transactionId)
-      .then(() => {
-        setTransactions((prev) => prev.filter((tx) => tx.id !== transactionId));
-      })
-      .catch((error) => {
-        console.error(error);
-        window.alert(error instanceof Error ? error.message : 'Не удалось удалить транзакцию');
-      });
+  const removeTransaction = useCallback(async (transactionId: string): Promise<boolean> => {
+    try {
+      await deleteTransactionRow(transactionId);
+      setTransactions((prev) => prev.filter((tx) => tx.id !== transactionId));
+      return true;
+    } catch (error) {
+      console.error(error);
+      window.alert(error instanceof Error ? error.message : 'Не удалось удалить транзакцию');
+      return false;
+    }
   }, []);
 
   const unpaidForPlayer = useCallback(
