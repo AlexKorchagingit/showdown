@@ -28,7 +28,7 @@ import {
   secondsUntilLateRegEnd,
   secondsUntilNextBreak,
 } from '../../data/blindStructures';
-import { calculatePayouts } from '../../data/prizeStructure';
+import { calculatePayouts, itmSharePercent } from '../../data/prizeStructure';
 import { asset } from '../../lib/assets';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
@@ -249,7 +249,7 @@ export function AdminBlindsTimer() {
               {hasEntries ? (
                 <>
                   <p className="text-xs font-700 uppercase tracking-[0.14em] text-white/40 mb-3">
-                    В призах: {payouts.length} чел. (30%)
+                    В призах: {payouts.length} чел. ({itmSharePercent()}%)
                   </p>
                   {payouts.length === 0 ? (
                     <p className="text-sm font-600 text-white/40">Нет призовых мест</p>

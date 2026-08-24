@@ -1,7 +1,7 @@
 import type { Participant } from '../types/tournament';
 
 /** Extra season rating awarded per knockout in a bounty tournament. */
-export const KNOCKOUT_BOUNTY_POINTS = 200;
+export const KNOCKOUT_BOUNTY_POINTS = 100;
 
 export function knockoutBountyPoints(knockouts?: number, isBounty = true): number {
   if (!isBounty) return 0;
@@ -20,10 +20,17 @@ export type CalculatedPayout = {
   points: number;
 };
 
-/** ITM = 30% of the field, rounded up. */
+/** Share of the field that is in the money, rounded up. */
+export const ITM_FIELD_SHARE = 0.35;
+
+export function itmSharePercent(): number {
+  return Math.round(ITM_FIELD_SHARE * 100);
+}
+
+/** ITM = 35% of the field, rounded up. */
 export function itmPlaceCount(totalPlayers: number): number {
   if (totalPlayers <= 0) return 0;
-  return Math.ceil(totalPlayers * 0.3);
+  return Math.ceil(totalPlayers * ITM_FIELD_SHARE);
 }
 
 const PAYOUT_TEMPLATES: Record<number, number[]> = {
@@ -56,7 +63,7 @@ function sharesForPlaces(placeCount: number): number[] {
 }
 
 /**
- * 30% ITM payout table. `points` are `Math.round(guarantee * share)`;
+ * 35% ITM payout table. `points` are `Math.round(guarantee * share)`;
  * first place absorbs leftover rounding so the pool is conserved.
  */
 export function calculatePayouts(totalPlayers: number, guarantee: number): CalculatedPayout[] {
@@ -76,7 +83,7 @@ export function calculatePayouts(totalPlayers: number, guarantee: number): Calcu
   return rows;
 }
 
-/** Rating points awarded for a finishing place from the 30% ITM table. */
+/** Rating points awarded for a finishing place from the 35% ITM table. */
 export function ratingPointsForPlace(
   place: number,
   guarantee: number,

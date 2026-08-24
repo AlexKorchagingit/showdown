@@ -15,6 +15,8 @@ import {
   applyPlaceToParticipant,
   calculatePayouts,
   closeTournamentWithPayouts,
+  itmSharePercent,
+  KNOCKOUT_BOUNTY_POINTS,
   parseKnockoutCount,
   swapParticipantPlaces,
 } from '../../data/prizeStructure';
@@ -222,11 +224,11 @@ export function AdminTournamentFinance() {
     const preview =
       payouts.length === 0
         ? 'Призовых мест нет.'
-        : `В призах: ${payouts.length} чел. (30%)\n${payouts
+        : `В призах: ${payouts.length} чел. (${itmSharePercent()}%)\n${payouts
             .map((row) => `${row.place}-е место — ${row.points.toLocaleString('ru-RU')} очков`)
             .join('\n')}`;
     const bountyNote = bountyEvent
-      ? '\n\nНокаут-турнир: к очкам за место добавится 200 за каждый нокаут. Рубины: 75% от выплаты за место + 100 за нокаут.'
+      ? `\n\nНокаут-турнир: к очкам за место добавится ${KNOCKOUT_BOUNTY_POINTS} за каждый нокаут. Рубины: 75% от выплаты за место + 100 за нокаут.`
       : '';
     if (
       !window.confirm(
