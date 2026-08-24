@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
@@ -128,9 +128,12 @@ function AuthenticatedApp({
   const navigate = useNavigate();
   const { account, isLoading } = useUser();
   const ready = Boolean(account) && !isLoading && !showSplash;
+  const landedHomeRef = useRef(false);
 
   useEffect(() => {
-    if (!account || isLoading) return;
+    if (!account || isLoading || showSplash) return;
+    if (landedHomeRef.current) return;
+    landedHomeRef.current = true;
     navigate('/', { replace: true });
   }, [account, isLoading, showSplash, navigate]);
 
