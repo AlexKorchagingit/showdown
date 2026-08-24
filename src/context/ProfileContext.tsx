@@ -14,6 +14,7 @@ import {
   avatarUrlForChar,
 } from '../data/shopItems';
 import type { UserData } from '../lib/userStorage';
+import { addLog } from '../lib/logApi';
 
 const EMPTY_PROFILE: UserData = {
   nickname: '',
@@ -100,7 +101,19 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         coins: data.coins - item.price,
         ownedItems: [...data.ownedItems, itemId],
       });
-      return Boolean(next);
+      if (!next) return false;
+      const kind = item.type === 'bg' ? 'фона' : 'персонажа';
+      await addLog({
+        admin_id: next.id,
+        admin_email: next.email,
+        admin_name: next.nickname,
+        action_type: 'Списал рубины',
+        target_user_id: next.id,
+        target_user_email: next.email,
+        target_user_name: next.nickname,
+        details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
+      });
+      return true;
     },
     [data.coins, data.ownedItems, patchAccount],
   );

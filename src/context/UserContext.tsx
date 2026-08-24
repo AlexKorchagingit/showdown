@@ -97,19 +97,16 @@ export function UserProvider({ email, children }: { email: string; children: Rea
       input: Omit<AddLogInput, 'admin_id' | 'admin_email' | 'admin_name'> & Partial<AddLogInput>,
     ) => {
       return insertClubLog({
-        admin_id: input.admin_id ?? account?.id ?? readSessionUserId() ?? null,
         admin_email: input.admin_email ?? account?.email ?? email,
         admin_name: input.admin_name ?? account?.nickname ?? '',
         action_type: input.action_type,
-        target_user_id: input.target_user_id ?? null,
         target_user_email: input.target_user_email ?? null,
         target_user_name: input.target_user_name ?? null,
-        target_tournament_id: input.target_tournament_id ?? null,
         target_tournament_name: input.target_tournament_name ?? null,
         details: input.details ?? null,
       });
     },
-    [account?.email, account?.id, account?.nickname, email],
+    [account?.email, account?.nickname, email],
   );
 
   const value = useMemo<UserContextValue>(

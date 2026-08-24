@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { CompactHeader } from '../../components/CompactHeader';
 import { MigrateToDatabaseButton } from '../../components/admin/MigrateToDatabaseButton';
@@ -7,8 +7,7 @@ import { isSuperAdmin, useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
-import { supabase } from '../../lib/supabase';
-import { logFromRow, type LogRow } from '../../lib/supabaseMap';
+import { fetchLogs, getLastLogError } from '../../lib/logApi';
 import { formatLegalDateTime, formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
 import type { ActionLog } from '../../types/auditLog';
 
@@ -37,47 +36,32 @@ function inAuditPeriod(timestamp: number, period: AuditPeriod, now = new Date())
   return timestamp >= periodStart(period, now).getTime() && timestamp <= now.getTime() + 60_000;
 }
 
-function asLogRow(data: unknown): LogRow | null {
-  if (!data || typeof data !== 'object' || !('id' in data) || !('action_type' in data)) return null;
-  return data as LogRow;
-}
-
 export function AdminLogsScreen() {
   const { email, clubUsers } = useUser();
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<LogsTab>('general');
   const [period, setPeriod] = useState<AuditPeriod>('all');
+  const appBuild = import.meta.env.VITE_APP_BUILD || 'dev';
+
+  const loadFromDatabase = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const rows = await fetchLogs();
+      setLogs(rows);
+    } catch (error) {
+      setLogs([]);
+      setLoadError(error instanceof Error ? error.message : 'Не удалось прочитать public.logs');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    void (async () => {
-      const { data, error } = await supabase
-        .from('logs')
-        .select('*')
-        .order('timestamp', { ascending: false });
-      if (error) {
-        console.error('SUPABASE LOG ERROR:', error);
-        if (!cancelled) {
-          setLogs([]);
-          setIsLoading(false);
-        }
-        return;
-      }
-      if (cancelled) return;
-      setLogs(
-        (data ?? []).flatMap((item) => {
-          const row = asLogRow(item);
-          return row ? [logFromRow(row)] : [];
-        }),
-      );
-      setIsLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadFromDatabase();
+  }, [loadFromDatabase]);
 
   const isSuperAdminUser = isSuperAdmin(email);
   const filtered = useMemo(
@@ -110,7 +94,7 @@ export function AdminLogsScreen() {
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
       <CompactHeader
-        title="Журнал действий"
+        title="Журнал (база)"
         backTo="/profile"
         right={
           tab === 'general' ? (
@@ -135,6 +119,40 @@ export function AdminLogsScreen() {
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
         <MigrateToDatabaseButton />
+
+        <div
+          className="rounded-xl p-3 mb-4 space-y-1.5"
+          style={{ background: '#1E1612', border: '1px solid rgba(217,153,98,0.22)' }}
+        >
+          <p className="text-[12px] font-700" style={{ color: '#F2D8A7' }}>
+            Строк в public.logs: {logs.length}
+          </p>
+          <p className="text-[11px] font-500" style={{ color: '#6B6360' }}>
+            Сборка: {appBuild}
+          </p>
+          {loadError ? (
+            <p className="text-[12px] font-600" style={{ color: '#f87171' }}>
+              Ошибка чтения: {loadError}
+            </p>
+          ) : null}
+          {getLastLogError() ? (
+            <p className="text-[12px] font-600" style={{ color: '#f87171' }}>
+              Ошибка записи: {getLastLogError()}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void loadFromDatabase()}
+            className="h-8 px-3 rounded-lg text-[11px] font-800 uppercase tracking-wide"
+            style={{
+              background: 'rgba(217,153,98,0.14)',
+              border: '1px solid rgba(217,153,98,0.4)',
+              color: '#F2D8A7',
+            }}
+          >
+            Обновить из базы
+          </button>
+        </div>
 
         <div
           className="grid grid-cols-2 gap-1 rounded-xl p-1 mb-4"
@@ -188,8 +206,9 @@ export function AdminLogsScreen() {
             {isLoading && filtered.length === 0 ? (
               <ScreenLoading label="Загрузка журнала…" />
             ) : filtered.length === 0 ? (
-              <p className="text-[13px] px-1" style={{ color: '#6B6360' }}>
-                Нет записей за выбранный период
+              <p className="text-[13px] px-1 leading-relaxed" style={{ color: '#6B6360' }}>
+                В таблице logs нет строк за этот период. Если действие только что было в старом
+                журнале — полностью закройте Mini App в Telegram и откройте снова.
               </p>
             ) : (
               filtered.map((log) => {

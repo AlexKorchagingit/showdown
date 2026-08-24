@@ -15,13 +15,13 @@ interface AuditLogContextValue {
   logs: ActionLog[];
   isLoading: boolean;
   refreshLogs: () => Promise<void>;
-  logAction: (draft: LogActionDraft) => Promise<void>;
+  logAction: (draft: LogActionDraft) => Promise<boolean>;
 }
 
 const AuditLogContext = createContext<AuditLogContextValue | null>(null);
 
 export function AuditLogProvider({ children }: { children: ReactNode }) {
-  const { email, userId, account } = useUser();
+  const { email, account } = useUser();
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,21 +45,19 @@ export function AuditLogProvider({ children }: { children: ReactNode }) {
   const logAction = useCallback(
     async (draft: LogActionDraft) => {
       const ok = await addLog({
-        admin_id: userId || account?.id || null,
         admin_email: email,
         admin_name: account?.nickname ?? '',
         action_type: draft.actionType,
-        target_user_id: draft.targetUserId ?? null,
         target_user_email: draft.targetUserEmail ?? null,
         target_user_name: draft.targetUserName ?? null,
-        target_tournament_id: draft.targetTournamentId ?? null,
         target_tournament_name: draft.targetTournamentName ?? null,
         details: draft.details ?? null,
       });
-      if (!ok) return;
+      if (!ok) return false;
       await refreshLogs();
+      return true;
     },
-    [account?.id, account?.nickname, email, refreshLogs, userId],
+    [account?.nickname, email, refreshLogs],
   );
 
   const value = useMemo(
