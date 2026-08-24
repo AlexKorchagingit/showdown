@@ -226,6 +226,14 @@ export function saveUserData(email: string, data: UserData) {
   writeKey(userDataKey(email), JSON.stringify(data));
 }
 
+/** Drop the cached profile so a deleted account cannot revive from localStorage. */
+export function clearUserData(email: string) {
+  if (!email) return;
+  const normalized = normalizeEmail(email);
+  removeKey(userDataKey(normalized));
+  removeKey(`${PREVIOUS_KEY_PREFIX}${normalized}`);
+}
+
 const USER_DATA_PREFIX = 'userData_';
 
 export function listStoredUsers(): Array<{ email: string; data: UserData }> {

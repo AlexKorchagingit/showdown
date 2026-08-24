@@ -4,14 +4,14 @@ import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
 import { SLOGAN_PLACEHOLDER } from '../lib/userStorage';
-import { clearSession } from '../lib/session';
+import { endLocalSession } from '../lib/session';
 
 interface Props {
   userEmail: string;
 }
 
 function handleLogout() {
-  clearSession();
+  endLocalSession();
   window.location.reload();
 }
 

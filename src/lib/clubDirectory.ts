@@ -12,6 +12,11 @@ export function upsertClubDirectory(user: MappedUser) {
   else directory.push(user);
 }
 
+export function removeClubDirectory(userId: string) {
+  if (!userId) return;
+  directory = directory.filter((row) => row.id !== userId);
+}
+
 export function getClubDirectory(): MappedUser[] {
   return directory;
 }

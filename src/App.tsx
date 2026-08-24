@@ -29,11 +29,11 @@ import { AdminLogsScreen } from './pages/admin/AdminLogsScreen';
 import { TournamentProvider } from './context/TournamentContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { ProfileProvider } from './context/ProfileContext';
-import { UserProvider } from './context/UserContext';
+import { UserProvider, useUser } from './context/UserContext';
 import { AuditLogProvider } from './context/AuditLogContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
-import { readSessionEmail } from './lib/session';
+import { endLocalSession, readSessionEmail } from './lib/session';
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
@@ -108,6 +108,46 @@ function AppLayout({ userEmail }: AppLayoutProps) {
   );
 }
 
+function SplashShell() {
+  return (
+    <div className={shellClass}>
+      <div className={columnClass} style={{ height: '100dvh' }}>
+        <SplashScreen />
+      </div>
+    </div>
+  );
+}
+
+function AuthenticatedApp({
+  userEmail,
+  showSplash,
+}: {
+  userEmail: string;
+  showSplash: boolean;
+}) {
+  const { account, isLoading } = useUser();
+
+  if (showSplash || isLoading || !account) {
+    return <SplashShell />;
+  }
+
+  return (
+    <div className={shellClass}>
+      <AuditLogProvider>
+        <ProfileProvider>
+          <TournamentProvider>
+            <FinanceProvider>
+              <BlindsProvider>
+                <AppLayout userEmail={userEmail} />
+              </BlindsProvider>
+            </FinanceProvider>
+          </TournamentProvider>
+        </ProfileProvider>
+      </AuditLogProvider>
+    </div>
+  );
+}
+
 export default function App() {
   const [userEmail, setUserEmail] = useState(
     () => readSessionEmail(),
@@ -144,6 +184,12 @@ export default function App() {
     setIsAuthenticated(true);
   };
 
+  const handleAccountInvalid = () => {
+    endLocalSession(userEmail);
+    setUserEmail('');
+    setIsAuthenticated(false);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className={shellClass}>
@@ -154,31 +200,9 @@ export default function App() {
     );
   }
 
-  if (showSplash) {
-    return (
-      <div className={shellClass}>
-        <div className={columnClass} style={{ height: '100dvh' }}>
-          <SplashScreen />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={shellClass}>
-      <UserProvider email={userEmail}>
-        <AuditLogProvider>
-          <ProfileProvider>
-            <TournamentProvider>
-              <FinanceProvider>
-                <BlindsProvider>
-                  <AppLayout userEmail={userEmail} />
-                </BlindsProvider>
-              </FinanceProvider>
-            </TournamentProvider>
-          </ProfileProvider>
-        </AuditLogProvider>
-      </UserProvider>
-    </div>
+    <UserProvider email={userEmail} onAccountInvalid={handleAccountInvalid}>
+      <AuthenticatedApp userEmail={userEmail} showSplash={showSplash} />
+    </UserProvider>
   );
 }

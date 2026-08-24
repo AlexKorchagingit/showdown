@@ -5,7 +5,7 @@ import {
   FREE_ITEM_IDS,
   avatarUrlForChar,
 } from '../data/shopItems';
-import { getClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
+import { getClubDirectory, removeClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
 import { writeSession } from './session';
 import { supabase } from './supabase';
 import { userFromRow, userToRow, type MappedUser, type UserRow } from './supabaseMap';
@@ -22,21 +22,53 @@ function asUserRow(data: unknown): UserRow | null {
   return row as UserRow;
 }
 
-export async function fetchUserById(userId: string): Promise<MappedUser | null> {
-  if (!userId) return null;
-  const { data, error } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
-  if (error || !data) return null;
+export type UserLookupResult =
+  | { status: 'found'; user: MappedUser }
+  | { status: 'missing' }
+  | { status: 'error'; message: string };
+
+function lookupFromQuery(
+  data: unknown,
+  error: { message?: string } | null,
+): UserLookupResult {
+  if (error) return { status: 'error', message: error.message || 'Не удалось загрузить пользователя' };
+  if (!data) return { status: 'missing' };
   const row = asUserRow(data);
-  return row ? userFromRow(row) : null;
+  if (!row) return { status: 'error', message: 'Некорректная запись пользователя' };
+  return { status: 'found', user: userFromRow(row) };
+}
+
+export async function lookupUserById(userId: string): Promise<UserLookupResult> {
+  if (!userId) return { status: 'missing' };
+  const { data, error } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+  return lookupFromQuery(data, error);
+}
+
+export async function lookupUserByEmail(email: string): Promise<UserLookupResult> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return { status: 'missing' };
+  const { data, error } = await supabase.from('users').select('*').eq('email', normalized).maybeSingle();
+  return lookupFromQuery(data, error);
+}
+
+/** Resolve the signed-in account. Network errors stay `error` so we do not log people out offline. */
+export async function lookupSessionAccount(userId: string, email: string): Promise<UserLookupResult> {
+  if (userId) {
+    const byId = await lookupUserById(userId);
+    if (byId.status === 'found' || byId.status === 'error') return byId;
+  }
+  if (email) return lookupUserByEmail(email);
+  return { status: 'missing' };
+}
+
+export async function fetchUserById(userId: string): Promise<MappedUser | null> {
+  const result = await lookupUserById(userId);
+  return result.status === 'found' ? result.user : null;
 }
 
 export async function fetchUserByEmail(email: string): Promise<MappedUser | null> {
-  const normalized = normalizeEmail(email);
-  if (!normalized) return null;
-  const { data, error } = await supabase.from('users').select('*').eq('email', normalized).maybeSingle();
-  if (error || !data) return null;
-  const row = asUserRow(data);
-  return row ? userFromRow(row) : null;
+  const result = await lookupUserByEmail(email);
+  return result.status === 'found' ? result.user : null;
 }
 
 export async function fetchClubUsers(): Promise<MappedUser[]> {
@@ -105,7 +137,10 @@ export async function loginOrRegisterUser(
 
 export async function deleteUserRow(userId: string): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
   const { error } = await supabase.from('users').delete().eq('id', userId);
-  if (!error) return { ok: true };
+  if (!error) {
+    removeClubDirectory(userId);
+    return { ok: true };
+  }
   return { ok: false, code: error.code, message: error.message };
 }
 

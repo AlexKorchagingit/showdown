@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -11,17 +12,19 @@ import { ADMIN_EMAIL, isSuperAdmin } from '../lib/admin';
 import { getClubDirectory } from '../lib/clubDirectory';
 import {
   fetchClubUsers,
-  fetchUserByEmail,
-  fetchUserById,
+  lookupSessionAccount,
   mappedUserToPatch,
   updateUserRow,
   type MappedUser,
 } from '../lib/userApi';
 import { addLog as insertClubLog, type AddLogInput } from '../lib/logApi';
-import { readSessionUserId, writeSession } from '../lib/session';
+import { endLocalSession, readSessionUserId, writeSession } from '../lib/session';
+import { supabase } from '../lib/supabase';
 
 export { ADMIN_EMAIL, isSuperAdmin };
 export { addLog } from '../lib/logApi';
+
+const SESSION_POLL_MS = 10_000;
 
 export function isClubAdmin(email: string, account?: MappedUser | null): boolean {
   if (isSuperAdmin(email)) return true;
@@ -46,37 +49,97 @@ interface UserContextValue {
 
 const UserContext = createContext<UserContextValue | null>(null);
 
-export function UserProvider({ email, children }: { email: string; children: ReactNode }) {
+export function UserProvider({
+  email,
+  children,
+  onAccountInvalid,
+}: {
+  email: string;
+  children: ReactNode;
+  onAccountInvalid?: () => void;
+}) {
   const [account, setAccount] = useState<MappedUser | null>(null);
   const [clubUsers, setClubUsers] = useState<MappedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const onInvalidRef = useRef(onAccountInvalid);
+  onInvalidRef.current = onAccountInvalid;
+  const kickedRef = useRef(false);
+
+  const kickDeletedAccount = useCallback(() => {
+    if (kickedRef.current) return;
+    kickedRef.current = true;
+    setAccount(null);
+    endLocalSession(email);
+    onInvalidRef.current?.();
+  }, [email]);
 
   const refreshClubUsers = useCallback(async () => {
     const users = await fetchClubUsers();
     setClubUsers(users);
   }, []);
 
+  const enforceSession = useCallback(async (): Promise<boolean> => {
+    if (kickedRef.current) return false;
+    const result = await lookupSessionAccount(readSessionUserId(), email);
+    if (result.status === 'error') return true;
+    if (result.status === 'missing') {
+      kickDeletedAccount();
+      return false;
+    }
+    writeSession(email || result.user.email, result.user.id);
+    setAccount(result.user);
+    return true;
+  }, [email, kickDeletedAccount]);
+
   const refreshAccount = useCallback(async () => {
     setIsLoading(true);
     try {
-      const savedId = readSessionUserId();
-      const loaded =
-        (savedId ? await fetchUserById(savedId) : null) ?? (await fetchUserByEmail(email));
-      if (loaded) {
-        writeSession(email || loaded.email, loaded.id);
-        setAccount(loaded);
-      } else {
-        setAccount(null);
-      }
-      await refreshClubUsers();
+      const ok = await enforceSession();
+      if (ok) await refreshClubUsers();
     } finally {
       setIsLoading(false);
     }
-  }, [email, refreshClubUsers]);
+  }, [enforceSession, refreshClubUsers]);
 
   useEffect(() => {
+    kickedRef.current = false;
     void refreshAccount();
   }, [refreshAccount]);
+
+  useEffect(() => {
+    const verify = () => {
+      void enforceSession();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') verify();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', verify);
+    const timer = window.setInterval(verify, SESSION_POLL_MS);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', verify);
+      window.clearInterval(timer);
+    };
+  }, [enforceSession]);
+
+  useEffect(() => {
+    const userId = account?.id || readSessionUserId();
+    if (!userId) return;
+    const channel = supabase
+      .channel(`session-user-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'users', filter: `id=eq.${userId}` },
+        () => {
+          kickDeletedAccount();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [account?.id, kickDeletedAccount]);
 
   const patchAccount = useCallback(
     async (changes: Partial<MappedUser>) => {
