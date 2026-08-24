@@ -57,7 +57,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
 
   if (isBlindsTimer) {
     return (
-      <div className="w-full h-[100dvh] overflow-visible bg-[#0A0908]">
+      <div className="w-full h-[100dvh] overflow-hidden bg-[#0A0908]">
         <AdminBlindsTimer />
         <RubyBonusHost />
       </div>

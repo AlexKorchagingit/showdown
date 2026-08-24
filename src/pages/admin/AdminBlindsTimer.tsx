@@ -41,8 +41,8 @@ import {
 
 const SETTINGS_ROUTE = '/admin/blinds/settings';
 const CIRCLE_SIZE = 420;
-const STROKE = 12;
-const RADIUS = 192;
+const STROKE = 10;
+const RADIUS = 194;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const GLASS =
   'bg-white/[0.03] border border-white/[0.05] rounded-2xl p-5 backdrop-blur-sm';
@@ -234,8 +234,8 @@ export function AdminBlindsTimer() {
     : `Level ${levelNumber}`;
 
   return (
-    <div className="relative h-full w-full min-h-0 text-white bg-[#0A0908] overflow-visible">
-      <div className="relative flex w-full h-full items-stretch gap-4 overflow-visible p-6 md:p-8 pb-28">
+    <div className="relative h-full w-full min-h-0 overflow-hidden text-white bg-[#0A0908]">
+      <div className="relative flex h-full w-full min-h-0 items-stretch gap-4 overflow-hidden p-6 md:p-8 pb-28">
         <div className="w-[240px] md:w-[280px] shrink-0 flex flex-col min-h-0">
           <section className={`${GLASS} flex-1 min-h-0 overflow-y-auto`}>
             <p className="text-sm md:text-lg font-800 uppercase tracking-[0.16em] text-[#D99962]">
@@ -293,7 +293,7 @@ export function AdminBlindsTimer() {
           </section>
         </div>
 
-        <div className="w-[220px] md:w-[260px] shrink-0 flex flex-col gap-4 min-h-0 min-w-0 overflow-visible">
+        <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-hidden md:w-[260px]">
           {hasEntries && (
             <section className={`${GLASS} text-center min-w-0`}>
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
@@ -319,119 +319,125 @@ export function AdminBlindsTimer() {
           </section>
 
           {chipleader && (
-          <div className="relative z-[1] mt-auto overflow-visible flex flex-col min-w-0">
-            <section className="relative mt-32 overflow-visible bg-white/[0.03] border border-white/[0.05] rounded-2xl text-center min-w-0">
+            <div className="relative z-[1] mt-auto flex w-full min-w-0 shrink-0 flex-col items-center">
               <img
                 src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
                 alt=""
-                className="relative z-30 mx-auto block h-[320px] w-auto max-w-none -mt-32 object-contain object-bottom pointer-events-none"
+                className="relative z-20 -mb-3 block h-32 w-auto max-w-[170%] object-contain object-bottom pointer-events-none"
               />
-              <div className="relative z-10 px-5 pb-4 pt-1">
-                <p className="text-sm md:text-base font-800 uppercase tracking-[0.28em] text-[#D99962]">
+              <section className="relative z-10 w-full min-w-0 overflow-hidden rounded-2xl border border-white/[0.05] bg-white/[0.03] px-4 pb-3 pt-2 text-center backdrop-blur-sm">
+                <p className="text-[11px] font-800 uppercase tracking-[0.28em] text-[#D99962] md:text-xs">
                   CHIPLEADER
                 </p>
-                <p className="text-xl md:text-2xl font-black text-white leading-tight mt-1 truncate w-full px-2 text-center">
+                <p className="mt-0.5 w-full truncate px-1 text-center text-lg font-black leading-tight text-white md:text-xl">
                   {chipleader.nickname}
                 </p>
-                <FitText className="text-[#D99962]">
+                <FitText maxPx={32} className="text-[#D99962]">
                   {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
                 </FitText>
-              </div>
-            </section>
-          </div>
+              </section>
+            </div>
           )}
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col items-center px-1 pt-4 min-h-0">
-          <p className="inline-block text-2xl font-800 uppercase tracking-widest mt-8 bg-gradient-to-r from-[#8C4C27] via-[#F2D8A7] to-[#D99962] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center px-1 pt-0">
+          <p className="mt-1 inline-block bg-gradient-to-r from-[#8C4C27] via-[#F2D8A7] to-[#D99962] bg-[length:200%_auto] bg-clip-text text-xl font-800 uppercase tracking-widest text-transparent animate-gradient md:text-2xl">
             SHOWDOWN
           </p>
-          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-wide text-center mt-2 leading-tight text-[#D99962]">
+          <h1 className="mt-1 text-center text-2xl font-black uppercase leading-tight tracking-wide text-[#D99962] md:text-3xl">
             {eventTitle}
           </h1>
 
-          <div className="relative flex-1 w-full min-h-0 flex items-center justify-center">
-          <div className="relative w-[min(100%,38rem)] max-h-full aspect-square">
-            <svg
-              viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
-              className="w-full h-full -rotate-90 pointer-events-none"
-              aria-hidden
-            >
-              <defs>
-                <filter id="timer-glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              <circle
-                cx={CIRCLE_SIZE / 2}
-                cy={CIRCLE_SIZE / 2}
-                r={RADIUS}
-                fill="none"
-                stroke="rgba(255,255,255,0.08)"
-                strokeWidth={STROKE}
-              />
-              <circle
-                cx={CIRCLE_SIZE / 2}
-                cy={CIRCLE_SIZE / 2}
-                r={RADIUS}
-                fill="none"
-                stroke="#D99962"
-                strokeWidth={STROKE}
-                strokeLinecap="round"
-                strokeDasharray={CIRCUMFERENCE}
-                strokeDashoffset={dashOffset}
-                filter="url(#timer-glow)"
-                className="transition-all duration-1000 linear"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 pointer-events-none">
-              {isBreak ? (
-                <>
-                  <p className="text-5xl md:text-7xl font-black uppercase tracking-[0.14em] text-white leading-none">
-                    ПЕРЕРЫВ
-                  </p>
-                  <p className="text-[5.2rem] md:text-[8rem] font-black leading-none tabular-nums mt-4 drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                    {formatClock(secondsLeft)}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <span className="bg-[#D99962]/20 text-[#D99962] px-5 py-1.5 rounded-full text-lg md:text-xl font-bold tracking-widest uppercase">
-                    {levelBadge}
-                  </span>
-                  <p className="text-5xl md:text-7xl font-black text-white mt-3 leading-none">{blindsLabel}</p>
-                  <p className="text-2xl md:text-3xl font-700 mt-1 text-[#F2D8A7]">{anteLabel}</p>
-                  <p className="text-[5.2rem] md:text-[8rem] font-black leading-none tabular-nums mt-2 drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                    {formatClock(secondsLeft)}
-                  </p>
-                </>
-              )}
-            </div>
-            <button
-              type="button"
-              className="absolute left-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
-              aria-label="Минус одна минута"
-              onClick={() => adjustSeconds(-60)}
-            />
-            <button
-              type="button"
-              className="absolute right-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
-              aria-label="Плюс одна минута"
-              onClick={() => adjustSeconds(60)}
-            />
-          </div>
-          </div>
-
-          <p className="text-2xl font-bold text-white/70 -mt-4 pb-1">
+          <p className="mt-3 mb-1 text-center text-lg font-bold text-white/70 md:text-xl">
             Next Blinds:{' '}
             <span className="text-[#D99962]">
               {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
             </span>
           </p>
+
+          <div className="relative flex min-h-0 w-full flex-1 items-center justify-center">
+            <div className="relative aspect-square w-[min(100%,26rem)] max-h-full">
+              <svg
+                viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
+                className="pointer-events-none h-full w-full -rotate-90"
+                aria-hidden
+              >
+                <defs>
+                  <filter id="timer-glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <circle
+                  cx={CIRCLE_SIZE / 2}
+                  cy={CIRCLE_SIZE / 2}
+                  r={RADIUS}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeWidth={STROKE}
+                />
+                <circle
+                  cx={CIRCLE_SIZE / 2}
+                  cy={CIRCLE_SIZE / 2}
+                  r={RADIUS}
+                  fill="none"
+                  stroke="#D99962"
+                  strokeWidth={STROKE}
+                  strokeLinecap="round"
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeDashoffset={dashOffset}
+                  filter="url(#timer-glow)"
+                  className="transition-all duration-1000 linear"
+                />
+              </svg>
+              {/* Inscribed square inside the ring so copy cannot spill into the corners. */}
+              <div
+                className="pointer-events-none absolute inset-[20%] flex flex-col items-center justify-center overflow-hidden px-1 text-center"
+                style={{ containerType: 'inline-size' }}
+              >
+                {isBreak ? (
+                  <>
+                    <p className="text-[clamp(1rem,11cqi,1.85rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
+                      ПЕРЕРЫВ
+                    </p>
+                    <p className="mt-2 text-[clamp(2rem,24cqi,3.6rem)] font-black leading-none tabular-nums drop-shadow-[0_0_16px_rgba(217,153,98,0.5)]">
+                      {formatClock(secondsLeft)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span className="rounded-full bg-[#D99962]/20 px-3 py-0.5 text-[clamp(0.65rem,4.4cqi,0.9rem)] font-bold uppercase tracking-widest text-[#D99962]">
+                      {levelBadge}
+                    </span>
+                    <p className="mt-1.5 max-w-full px-0.5 text-[clamp(1rem,10.5cqi,2rem)] font-black leading-[1.05] text-white">
+                      {blindsLabel}
+                    </p>
+                    <p className="mt-1 text-[clamp(0.75rem,5.5cqi,1.1rem)] font-700 text-[#F2D8A7]">
+                      {anteLabel}
+                    </p>
+                    <p className="mt-1.5 text-[clamp(2rem,24cqi,3.6rem)] font-black leading-none tabular-nums drop-shadow-[0_0_16px_rgba(217,153,98,0.5)]">
+                      {formatClock(secondsLeft)}
+                    </p>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                className="absolute left-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
+                aria-label="Минус одна минута"
+                onClick={() => adjustSeconds(-60)}
+              />
+              <button
+                type="button"
+                className="absolute right-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
+                aria-label="Плюс одна минута"
+                onClick={() => adjustSeconds(60)}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="w-64 md:w-80 shrink-0 flex flex-col items-end gap-4">
