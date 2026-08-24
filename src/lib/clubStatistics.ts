@@ -22,7 +22,7 @@ export type ClubStatistics = {
   averageCheck: number;
   debtorPercent: number;
   biggestCheck: { amount: number; nickname: string; tournament: string };
-  attendanceChart: { id: string; label: string; title: string; players: number }[];
+  attendanceChart: { id: string; label: string; tick: string; title: string; players: number }[];
   topAttendance: ClubLeader[];
   topFinalists: ClubLeader[];
   topBounty: ClubLeader[];

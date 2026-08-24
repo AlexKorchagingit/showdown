@@ -7,6 +7,8 @@ export type StatsPeriod = 'week' | 'month' | 'all';
 export type AttendanceChartRow = {
   id: string;
   label: string;
+  /** Short X-axis tick; month uses the day number so all 28–31 columns fit. */
+  tick: string;
   title: string;
   players: number;
 };
@@ -137,12 +139,20 @@ export function buildAttendanceChart(
       slot.players += players;
       if (tournament.title.trim()) slot.titles.push(tournament.title.trim());
     }
-    return [...byDay.entries()].map(([id, slot]) => ({
-      id,
-      label: formatAttendanceDate(id, now),
-      title: slot.titles.join(' · '),
-      players: slot.players,
-    }));
+    return [...byDay.entries()].map(([id, slot]) => {
+      const parsed = parseTournamentDay(id);
+      const tick =
+        period === 'month' && parsed
+          ? String(parsed.getDate())
+          : formatAttendanceDate(id, now);
+      return {
+        id,
+        label: formatAttendanceDate(id, now),
+        tick,
+        title: slot.titles.join(' · '),
+        players: slot.players,
+      };
+    });
   }
 
   const sorted = [...rows].sort((a, b) => compareByStart(a.tournament, b.tournament));
@@ -157,6 +167,7 @@ export function buildAttendanceChart(
     return {
       id: tournament.id,
       label: (dateCounts.get(date) ?? 0) > 1 && time ? `${date} ${time}` : date,
+      tick: (dateCounts.get(date) ?? 0) > 1 && time ? `${date} ${time}` : date,
       title: tournament.title,
       players,
     };

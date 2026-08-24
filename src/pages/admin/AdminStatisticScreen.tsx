@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -229,7 +230,7 @@ export function AdminStatisticScreen() {
           <p className="px-3 text-[11px] font-700 uppercase tracking-[0.16em] mb-2" style={{ color: '#8c8c88' }}>
             Посещаемость
           </p>
-          <div className="h-52">
+          <div className={period === 'month' ? 'h-60' : 'h-52'}>
             {stats.attendanceChart.length === 0 ? (
               <p className="text-center text-[13px] pt-16" style={{ color: '#6B6360' }}>
                 Нет турниров за период
@@ -237,27 +238,29 @@ export function AdminStatisticScreen() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  key={`${period}-${format}`}
+                  key={`${period}-${format}-${stats.attendanceChart.length}`}
                   data={stats.attendanceChart}
-                  margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+                  barCategoryGap={period === 'month' ? 2 : 8}
+                  margin={{ top: 8, right: 4, left: 0, bottom: period === 'month' ? 2 : 4 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                   <XAxis
+                    type="category"
                     dataKey="id"
+                    allowDuplicatedCategory={false}
+                    interval={0}
                     tickFormatter={(id: string) =>
-                      stats.attendanceChart.find((row) => row.id === id)?.label ?? id
+                      stats.attendanceChart.find((row) => row.id === id)?.tick ?? id
                     }
-                    tick={{ fill: '#8c8c88', fontSize: 10 }}
+                    tick={{
+                      fill: '#8c8c88',
+                      fontSize: period === 'month' ? 8 : 10,
+                    }}
                     axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
                     tickLine={false}
-                    interval={
-                      stats.attendanceChart.length > 12
-                        ? Math.ceil(stats.attendanceChart.length / 8) - 1
-                        : 0
-                    }
-                    angle={stats.attendanceChart.length > 8 ? -28 : 0}
-                    textAnchor={stats.attendanceChart.length > 8 ? 'end' : 'middle'}
-                    height={stats.attendanceChart.length > 8 ? 48 : 28}
+                    angle={period === 'all' && stats.attendanceChart.length > 8 ? -28 : 0}
+                    textAnchor={period === 'all' && stats.attendanceChart.length > 8 ? 'end' : 'middle'}
+                    height={period === 'all' && stats.attendanceChart.length > 8 ? 48 : 28}
                   />
                   <YAxis
                     allowDecimals={false}
@@ -284,7 +287,21 @@ export function AdminStatisticScreen() {
                     }}
                     formatter={(value) => [`${Number(value ?? 0)} чел.`, 'Игроки']}
                   />
-                  <Bar dataKey="players" fill="#D99962" radius={[6, 6, 0, 0]} />
+                  <Bar
+                    dataKey="players"
+                    maxBarSize={period === 'month' ? 10 : 36}
+                    minPointSize={period === 'all' ? 0 : 3}
+                    radius={period === 'month' ? [2, 2, 0, 0] : [6, 6, 0, 0]}
+                  >
+                    {stats.attendanceChart.map((row) => (
+                      <Cell
+                        key={row.id}
+                        fill={
+                          row.players > 0 ? '#D99962' : 'rgba(217,153,98,0.18)'
+                        }
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
