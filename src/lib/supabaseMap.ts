@@ -317,6 +317,7 @@ export function participantToRow(
 export function participantFromRow(row: ParticipantRow): Participant {
   return {
     id: row.user_id || row.id,
+    userId: row.user_id,
     nickname: row.nickname,
     rating: asNumber(row.rating),
     place: row.place ?? undefined,
@@ -330,6 +331,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
 export function resetCopiedParticipant(player: Participant): Participant {
   return {
     id: player.id,
+    userId: player.userId,
     nickname: player.nickname,
     rating: player.rating,
     equippedAvatar: player.equippedAvatar,

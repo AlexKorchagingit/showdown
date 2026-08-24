@@ -10,18 +10,14 @@ import { compareByStart, isFinished } from '../lib/tournamentStatus';
 import { asset } from '../lib/assets';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
-import { CURRENT_USER_RATING } from '../types/player';
 import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useProfile } from '../context/ProfileContext';
+import { useUser } from '../context/UserContext';
+import { clubRatingPlayers } from '../lib/clubRating';
+import type { RatingPlayer } from '../types/player';
 import type { Tournament } from '../types/tournament';
 
 // ─── Mock state ───────────────────────────────────────────────────────────────
-
-const PODIUM = [
-  { rank: 2, id: '2', name: 'Дмитрий В.',   points: 3850, glowColor: '#9ca3af' },
-  { rank: 1, id: '1', name: 'Александр К.', points: 4200, glowColor: '#D99962' },
-  { rank: 3, id: '3', name: 'Михаил С.',    points: 3610, glowColor: '#b87333' },
-];
 
 const TELEGRAM_URL = 'https://t.me/showdown_bryansk';
 const INSTAGRAM_URL = 'https://www.instagram.com/showdown_br?igsh=MW1peWJjbGZma3NmaA==';
@@ -285,7 +281,15 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
 }
 
 // ─── Podium ───────────────────────────────────────────────────────────────────
-function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
+const TOP3_GLOW: Record<number, string> = {
+  1: '#D99962',
+  2: '#9ca3af',
+  3: '#b87333',
+};
+
+type PodiumEntry = RatingPlayer & { rank: number; glowColor: string };
+
+function PodiumPlayer({ player }: { player: PodiumEntry }) {
   const isFirst = player.rank === 1;
   const blockH = { 1: 76, 2: 52, 3: 38 }[player.rank as 1 | 2 | 3];
   const blockClass = {
@@ -304,9 +308,10 @@ function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
       <div className={`relative rounded-full ${avatarGlow}`}>
         <PlayerAvatar
           playerId={player.id}
-          nickname={player.name}
+          nickname={player.nickname}
           size="md"
           glowColor={player.glowColor}
+          className="w-10 h-10"
         />
       </div>
       <p
@@ -314,7 +319,7 @@ function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
           isFirst ? 'text-[#F2D8A7]' : 'text-white/80'
         }`}
       >
-        {player.name.split(' ')[0]}
+        {player.nickname.split(' ')[0]}
       </p>
       <p
         className={`text-[12px] font-700 ${isFirst ? 'text-[#D99962]' : 'text-white'}`}
@@ -331,8 +336,24 @@ function PodiumPlayer({ player }: { player: (typeof PODIUM)[number] }) {
   );
 }
 
+function podiumLayout(players: RatingPlayer[]): PodiumEntry[] {
+  const top = players.slice(0, 3).map((player, index) => ({
+    ...player,
+    rank: index + 1,
+    glowColor: TOP3_GLOW[index + 1] ?? '#D99962',
+  }));
+  return [top[1], top[0], top[2]].filter((row): row is PodiumEntry => Boolean(row));
+}
+
 function RatingSection({ onNavigate }: { onNavigate: () => void }) {
   const { nickname, equippedAvatar } = useProfile();
+  const { userId, clubUsers } = useUser();
+  const { tournaments } = useTournaments();
+  const players = clubRatingPlayers(clubUsers, tournaments);
+  const podium = podiumLayout(players);
+  const meIndex = players.findIndex((player) => player.id === userId);
+  const me = meIndex >= 0 ? players[meIndex] : null;
+  const meRank = meIndex >= 0 ? meIndex + 1 : players.length + 1;
 
   return (
     <div className="space-y-4">
@@ -342,9 +363,11 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         <ChevronRight size={19} style={{ color: '#D99962' }} strokeWidth={2.5} />
       </button>
 
-      <div className="flex items-end justify-center gap-3 px-2">
-        {PODIUM.map((p) => <PodiumPlayer key={p.rank} player={p} />)}
-      </div>
+      {podium.length > 0 ? (
+        <div className="flex items-end justify-center gap-3 px-2">
+          {podium.map((p) => <PodiumPlayer key={p.id} player={p} />)}
+        </div>
+      ) : null}
 
       {/* Current user — warm gradient + gold border */}
       <div
@@ -356,16 +379,16 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
         }}
       >
         <span className="text-[14px] font-800 w-10 shrink-0" style={{ color: '#D99962' }}>
-          #{CURRENT_USER_RATING.rank}
+          #{meRank}
         </span>
-        <PlayerAvatar src={equippedAvatar} playerId="me" nickname={nickname} size="sm" />
+        <PlayerAvatar src={equippedAvatar} playerId="me" nickname={nickname} size="md" className="w-10 h-10" />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-700 truncate text-white">
-            {nickname.trim() || CURRENT_USER_RATING.nickname}
+            {nickname.trim() || me?.nickname || 'Вы'}
           </p>
         </div>
         <p className="text-[13px] font-bold tracking-wide shrink-0 text-black">
-          {CURRENT_USER_RATING.points.toLocaleString('ru-RU')}
+          {(me?.points ?? 0).toLocaleString('ru-RU')}
         </p>
       </div>
     </div>

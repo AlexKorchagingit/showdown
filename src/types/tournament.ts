@@ -1,5 +1,7 @@
 export interface Participant {
   id: string;
+  /** Real `users.id` when the seat is bound to a club account; null for guests. */
+  userId?: string | null;
   nickname: string;
   rating: number;
   /** Finishing place (1 = winner). Set when tournament results are entered. */

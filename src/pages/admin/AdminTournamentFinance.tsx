@@ -26,6 +26,7 @@ import {
 import { formatTxDateTime } from '../../lib/transactionDisplay';
 import { PlayerNameLink } from '../../components/PlayerNameLink';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
+import { TimerRunningBadge } from '../../components/TimerRunningBadge';
 import type { TournamentDealer } from '../../types/tournament';
 import { ALL_PARTICIPANTS } from '../../data/participants';
 import { CURRENT_USER_RATING } from '../../types/player';
@@ -518,16 +519,12 @@ export function AdminTournamentFinance() {
           />
         </div>
 
-        <p className="text-center text-[13px] font-600 uppercase tracking-wide" style={{ color: '#D99962' }}>
-          {tournament.title}
-        </p>
-        {isRunning && linkedTournamentId === tournament.id ? (
-          <div className="flex justify-center">
-            <span className="text-green-400 bg-green-500/20 px-2 py-1 rounded text-sm">
-              Таймер запущен
-            </span>
-          </div>
-        ) : null}
+        <div className="flex items-center gap-3 min-w-0 px-1">
+          <h2 className="text-[13px] font-600 uppercase tracking-wide truncate" style={{ color: '#D99962' }}>
+            {tournament.title}
+          </h2>
+          {isRunning && linkedTournamentId === tournament.id ? <TimerRunningBadge /> : null}
+        </div>
 
         {!tournament.isClosed && (
           <div>

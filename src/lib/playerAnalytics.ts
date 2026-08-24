@@ -30,12 +30,12 @@ export type PlayerGameHistoryRow = {
   startDate: string;
 };
 
-function participantUserId(participant: Participant & { userId?: string }): string {
+function participantUserId(participant: Participant): string {
   return String(participant.userId ?? participant.id ?? '').trim();
 }
 
 function participantMatches(
-  participant: Participant & { userId?: string },
+  participant: Participant,
   userIds: Set<string>,
   nickname?: string,
 ): boolean {

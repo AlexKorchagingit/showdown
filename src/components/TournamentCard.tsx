@@ -2,10 +2,12 @@ import { ChevronRight, Clock } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { isFinished } from '../lib/tournamentStatus';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
+import { TimerRunningBadge } from './TimerRunningBadge';
 
 interface Props {
   tournament: Tournament;
   onClick: (tournament: Tournament) => void;
+  timerRunning?: boolean;
 }
 
 function occupiedSeatsClass(occupiedSeats: number): string {
@@ -14,7 +16,7 @@ function occupiedSeatsClass(occupiedSeats: number): string {
   return 'text-white';
 }
 
-export function TournamentCard({ tournament, onClick }: Props) {
+export function TournamentCard({ tournament, onClick, timerRunning = false }: Props) {
   const { title, startDate, startTime, totalSeats, participants } = tournament;
 
   const occupiedSeats = participants.length;
@@ -99,6 +101,12 @@ export function TournamentCard({ tournament, onClick }: Props) {
         aria-hidden
         className="absolute z-20 bottom-3 right-3 pointer-events-none text-white/30"
       />
+
+      {timerRunning ? (
+        <div className="absolute z-30 top-3 right-3">
+          <TimerRunningBadge />
+        </div>
+      ) : null}
     </button>
   );
 }

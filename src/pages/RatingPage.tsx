@@ -5,8 +5,9 @@ import { PlayerNameLink } from '../components/PlayerNameLink';
 import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
-import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL, type RatingPlayer } from '../types/player';
-import { findClubUser } from '../lib/clubDirectory';
+import { useTournaments } from '../context/TournamentContext';
+import type { RatingPlayer } from '../types/player';
+import { clubRatingPlayers } from '../lib/clubRating';
 
 type RatingTab = 'general' | 'seasonal';
 type MetricColumn = 'tournaments' | 'wins' | 'knockouts';
@@ -46,33 +47,22 @@ function initialFrom(nickname: string): string {
   return trimmed ? trimmed[0]!.toUpperCase() : '?';
 }
 
-function nicknamesForAccount(email: string, profileNickname: string): string[] {
-  const names = new Set<string>();
-  const profile = profileNickname.trim().toLowerCase();
-  if (profile) names.add(profile);
-  const account = findClubUser({ email });
-  if (account) names.add(account.nickname.toLowerCase());
-  return [...names];
-}
-
 function findCurrentEntry(
   players: RatingPlayer[],
-  email: string,
-  profileNickname: string,
+  userId: string,
+  nickname: string,
 ): { player: RatingPlayer; rank: number } {
-  const aliases = nicknamesForAccount(email, profileNickname);
-  const index = players.findIndex((player) => aliases.includes(player.nickname.toLowerCase()));
+  const index = players.findIndex((player) => player.id === userId);
   if (index >= 0) {
     return { player: players[index], rank: index + 1 };
   }
 
-  const account = findClubUser({ email });
-  const nickname = profileNickname.trim() || account?.nickname || 'Вы';
+  const name = nickname.trim() || 'Вы';
   return {
     player: {
-      id: 'me',
-      nickname,
-      initial: initialFrom(nickname),
+      id: userId || 'me',
+      nickname: name,
+      initial: initialFrom(name),
       points: 0,
       played: 0,
       won: 0,
@@ -197,8 +187,9 @@ function PlayerRow({
 }
 
 export function RatingPage() {
-  const { email } = useUser();
+  const { userId, clubUsers } = useUser();
   const { nickname } = useProfile();
+  const { tournaments } = useTournaments();
   const [activeTab, setActiveTab] = useState<RatingTab>('general');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [activeColumn, setActiveColumn] = useState<MetricColumn>('tournaments');
@@ -214,14 +205,19 @@ export function RatingPage() {
   const prevMonth = () => setSelectedMonth((m) => (m === 0 ? 11 : m - 1));
   const nextMonth = () => setSelectedMonth((m) => (m === 11 ? 0 : m + 1));
 
-  const players: RatingPlayer[] =
-    activeTab === 'general'
-      ? MOCK_PLAYERS_GENERAL
-      : (MOCK_PLAYERS_SEASONAL[selectedMonth] ?? []);
+  const players = useMemo(
+    () =>
+      clubRatingPlayers(
+        clubUsers,
+        tournaments,
+        activeTab === 'seasonal' ? selectedMonth : undefined,
+      ),
+    [clubUsers, tournaments, activeTab, selectedMonth],
+  );
 
   const me = useMemo(
-    () => findCurrentEntry(players, email, nickname),
-    [players, email, nickname],
+    () => findCurrentEntry(players, userId, nickname),
+    [players, userId, nickname],
   );
 
   return (

@@ -15,6 +15,7 @@ import {
 } from '../lib/tournamentStatus';
 import { knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
+import { clubUserIdSet, isRegisteredClubSeat } from '../lib/clubRating';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { formatTxDateTime } from '../lib/transactionDisplay';
 
@@ -145,7 +146,7 @@ function formatDealerHours(hours: number, minutes = 0): string {
 export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { isRegistered, toggleRegistration, tournaments, refreshParticipants, isLoading } = useTournaments();
   const { getDealerHours } = useFinance();
-  const { isAdmin } = useUser();
+  const { isAdmin, clubUsers } = useUser();
 
   useEffect(() => {
     void refreshParticipants(tournament.id);
@@ -159,9 +160,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   });
 
   const tournamentFinished = hasFinished(live);
-  const participants = tournamentFinished
+  const knownIds = clubUserIdSet(clubUsers);
+  const participants = (tournamentFinished
     ? sortByPlace(live.participants)
-    : sortByRating(live.participants);
+    : sortByRating(live.participants)
+  ).filter((p) => isRegisteredClubSeat(p, knownIds));
   const occupiedSeats = live.participants.length;
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
   const playingDealers = live.participants
@@ -287,7 +290,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <h3 className="text-sm font-bold text-white uppercase">
-                  Участники ({occupiedSeats}/{live.totalSeats})
+                  Участники ({participants.length}/{live.totalSeats})
                 </h3>
                 <span className="text-sm text-gray-400 text-right mt-1">
                   {tournamentFinished ? 'Очки' : 'Рейтинг сезона'}

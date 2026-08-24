@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useTournaments } from '../../../context/TournamentContext';
+import { useBlinds } from '../../../context/BlindsContext';
 import { TournamentCard } from '../../../components/TournamentCard';
 import { compareByStart, isFinished } from '../../../lib/tournamentStatus';
 
 export function TournamentsFinanceTab() {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
+  const { isRunning, linkedTournamentId } = useBlinds();
 
   const sorted = [...tournaments].sort((a, b) => {
     const aFinished = isFinished(a);
@@ -30,6 +32,7 @@ export function TournamentsFinanceTab() {
         >
           <TournamentCard
             tournament={tournament}
+            timerRunning={isRunning && linkedTournamentId === tournament.id}
             onClick={(t) => navigate(`/admin/finance/tournaments/${t.id}`)}
           />
         </div>

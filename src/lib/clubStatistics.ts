@@ -98,7 +98,7 @@ export function parseFinishingPlace(raw: unknown): number | null {
   return null;
 }
 
-function participantUserId(participant: Participant & { userId?: string }): string {
+function participantUserId(participant: Participant): string {
   return String(participant.userId ?? participant.id ?? '').trim();
 }
 

@@ -207,6 +207,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
 export function AdminTournamentsScreen() {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
+  const { isRunning, linkedTournamentId } = useBlinds();
   const [tab, setTab] = useState<Tab>('all');
 
   // Upcoming first (soonest at the top), finished ones below in reverse order
@@ -267,6 +268,7 @@ export function AdminTournamentsScreen() {
                   >
                     <TournamentCard
                       tournament={tournament}
+                      timerRunning={isRunning && linkedTournamentId === tournament.id}
                       onClick={(t) => navigate(`/admin/tournaments/${t.id}`)}
                     />
                   </div>

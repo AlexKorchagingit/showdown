@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { CompactHeader } from '../../components/CompactHeader';
-import { MigrateToDatabaseButton } from '../../components/admin/MigrateToDatabaseButton';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { isSuperAdmin, useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
@@ -134,8 +133,6 @@ export function AdminLogsScreen() {
         className="flex-1 scrollable px-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
-        <MigrateToDatabaseButton />
-
         <div
           className="grid grid-cols-2 gap-1 rounded-xl p-1 mb-4"
           style={{ background: '#1E1612' }}
