@@ -158,6 +158,29 @@ function AuthenticatedApp({
   );
 }
 
+function bootTelegramWebApp() {
+  try {
+    WebApp.ready();
+  } catch {
+    /* Telegram WebApp is missing in a regular browser */
+  }
+  try {
+    WebApp.expand();
+  } catch {
+    /* expand() is unsupported outside Telegram */
+  }
+  try {
+    WebApp.setHeaderColor('#110b09');
+  } catch {
+    /* setHeaderColor is missing or unsupported */
+  }
+  try {
+    WebApp.setBackgroundColor('#110b09');
+  } catch {
+    /* setBackgroundColor is missing or unsupported */
+  }
+}
+
 export default function App() {
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState(
@@ -171,12 +194,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    try {
-      WebApp.ready();
-      WebApp.expand();
-      WebApp.setHeaderColor('#110b09');
-      WebApp.setBackgroundColor('#110b09');
-    } catch { /* Outside Telegram */ }
+    bootTelegramWebApp();
   }, []);
 
   useEffect(() => {
