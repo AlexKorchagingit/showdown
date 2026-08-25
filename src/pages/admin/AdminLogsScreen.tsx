@@ -6,7 +6,7 @@ import { isSuperAdmin, useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
-import { supabase } from '../../lib/supabase';
+import { supabase, logSupabaseError } from '../../lib/supabase';
 import { logFromRow, type LogRow } from '../../lib/supabaseMap';
 import { formatLegalDateTime, formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
 import type { ActionLog } from '../../types/auditLog';
@@ -57,7 +57,7 @@ export function AdminLogsScreen() {
         .select('*')
         .order('timestamp', { ascending: false });
       if (error) {
-        console.error('SUPABASE LOG ERROR:', error);
+        logSupabaseError(error, 'admin logs');
         if (!cancelled) {
           setLogs([]);
           setIsLoading(false);

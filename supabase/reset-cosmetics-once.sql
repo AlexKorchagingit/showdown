@@ -10,6 +10,6 @@ set
   owned_items = array['cosmetics-reset-v2', 'char_base', 'bg_base']::text[],
   equipped_char = 'char_base',
   equipped_bg = 'bg_base',
-  equipped_avatar = array['/showdown/avatars/default_cat.png', 'char_base', 'bg_base']::text[],
+  equipped_avatar = array['/avatars/default_cat.png', 'char_base', 'bg_base']::text[],
   pending_notifications = '[]'::jsonb
 where not ('cosmetics-reset-v2' = any (owned_items));

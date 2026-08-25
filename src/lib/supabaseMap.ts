@@ -3,6 +3,7 @@ import type { Transaction, TransactionStatus, TransactionType } from '../types/f
 import type { Participant, Tournament, TournamentDealer, TournamentStaffMember } from '../types/tournament';
 import type { PendingNotification, UserData } from './userStorage';
 import { avatarUrlForChar, DEFAULT_BG_ID, DEFAULT_CHARACTER_ID } from '../data/shopItems';
+import { asset } from './assets';
 
 /** Postgres `users` row. */
 export type UserRow = {
@@ -139,7 +140,7 @@ function asNotifications(value: unknown): PendingNotification[] {
 export function equippedAvatarFromRow(row: Pick<UserRow, 'equipped_char' | 'equipped_avatar'>): string {
   const first = row.equipped_avatar?.[0];
   if (first && (first.startsWith('http') || first.startsWith('/') || first.includes('/avatars/'))) {
-    return first;
+    return asset(first);
   }
   return avatarUrlForChar(row.equipped_char || first || DEFAULT_CHARACTER_ID);
 }
@@ -236,7 +237,7 @@ export function tournamentFromRow(row: TournamentRow, participants: Participant[
   return {
     id: row.id,
     title: row.title,
-    imageUrl: asString(row.image_url),
+    imageUrl: asset(asString(row.image_url)),
     address: asString(row.address),
     startDate: asString(row.start_date),
     startTime: asString(row.start_time, '19:00'),
@@ -445,7 +446,7 @@ export function participantFromJoinedRow(row: JoinedParticipantRow): Participant
     ...base,
     nickname: joined.nickname?.trim() || base.nickname,
     rating: typeof joined.rating === 'number' ? joined.rating : base.rating,
-    equippedAvatar: avatarFromJoin || base.equippedAvatar,
+    equippedAvatar: avatarFromJoin ? asset(avatarFromJoin) : base.equippedAvatar,
   };
 }
 

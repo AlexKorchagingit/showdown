@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, logSupabaseError } from './supabase';
 import { logFromRow, type LogRow } from './supabaseMap';
 import type { ActionLog } from '../types/auditLog';
 
@@ -34,7 +34,7 @@ export async function fetchLogs(): Promise<ActionLog[]> {
     .order('timestamp', { ascending: false });
 
   if (error) {
-    console.error('SUPABASE LOG ERROR:', error);
+    logSupabaseError(error, 'logs');
     throw new Error(error.message);
   }
 
@@ -64,8 +64,7 @@ export async function addLog(input: AddLogInput): Promise<boolean> {
 
   const { error } = await supabase.from('logs').insert([payload]);
   if (!error) return true;
-
-  console.error('SUPABASE LOG ERROR:', error);
+  logSupabaseError(error, 'insert log');
 
   const fkFailed = Boolean(
     payload.admin_id || payload.target_user_id || payload.target_tournament_id,
@@ -81,7 +80,7 @@ export async function addLog(input: AddLogInput): Promise<boolean> {
     },
   ]);
   if (retryError) {
-    console.error('SUPABASE LOG ERROR:', retryError);
+    logSupabaseError(retryError, 'logs retry');
     return false;
   }
   return true;

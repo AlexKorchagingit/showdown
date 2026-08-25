@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, logSupabaseError } from './supabase';
 import {
   participantFromJoinedRow,
   participantRowId,
@@ -14,12 +14,8 @@ import {
 import type { Participant, Tournament } from '../types/tournament';
 import { getClubDirectory } from './clubDirectory';
 
-/** Nested user preview: rating lives on `participants`, but the lobby asks for it on `users`. */
-const PARTICIPANT_SELECTS = [
-  '*, users(nickname, rating, equipped_avatar)',
-  '*, users(nickname, equipped_avatar)',
-  '*',
-] as const;
+/** Nested user preview. Rating lives on `participants`, not `users`. */
+const PARTICIPANT_SELECT_WITH_USER = '*, users (nickname, equipped_avatar, equipped_char)';
 
 function asTournamentRow(data: unknown): TournamentRow | null {
   if (!data || typeof data !== 'object' || !('id' in data)) return null;
@@ -27,15 +23,20 @@ function asTournamentRow(data: unknown): TournamentRow | null {
 }
 
 async function selectParticipants(tournamentId?: string): Promise<JoinedParticipantRow[]> {
-  let lastError: string | undefined;
-  for (const select of PARTICIPANT_SELECTS) {
-    let query = supabase.from('participants').select(select as '*');
-    if (tournamentId) query = query.eq('tournament_id', tournamentId);
-    const { data, error } = await query;
-    if (!error && data) return data as unknown as JoinedParticipantRow[];
-    lastError = error?.message;
+  let query = supabase.from('participants').select(PARTICIPANT_SELECT_WITH_USER);
+  if (tournamentId) query = query.eq('tournament_id', tournamentId);
+  const { data, error } = await query;
+  if (!error && data) return data as unknown as JoinedParticipantRow[];
+  logSupabaseError(error, 'participants embed users');
+
+  let fallback = supabase.from('participants').select('*');
+  if (tournamentId) fallback = fallback.eq('tournament_id', tournamentId);
+  const retry = await fallback;
+  if (retry.error || !retry.data) {
+    logSupabaseError(retry.error, 'participants');
+    throw new Error(retry.error?.message || error?.message || 'Не удалось загрузить участников');
   }
-  throw new Error(lastError || 'Не удалось загрузить участников');
+  return retry.data as unknown as JoinedParticipantRow[];
 }
 
 function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participant[]> {
@@ -55,6 +56,7 @@ export async function fetchTournaments(): Promise<Tournament[]> {
     .order('start_date', { ascending: false });
 
   if (error || !data) {
+    logSupabaseError(error, 'tournaments');
     throw new Error(error?.message || 'Не удалось загрузить турниры');
   }
 
@@ -76,7 +78,10 @@ export async function insertTournament(tournament: Tournament): Promise<Tourname
     .insert(tournamentToRow(tournament))
     .select('*')
     .single();
-  if (error || !data) throw new Error(error?.message || 'Не удалось создать турнир');
+  if (error || !data) {
+    logSupabaseError(error, 'insert tournament');
+    throw new Error(error?.message || 'Не удалось создать турнир');
+  }
   const parsed = asTournamentRow(data);
   return parsed ? tournamentFromRow(parsed, []) : { ...tournament, participants: [] };
 }
@@ -86,12 +91,18 @@ export async function updateTournamentRow(tournament: Tournament): Promise<void>
     .from('tournaments')
     .update(tournamentToRow(tournament))
     .eq('id', tournament.id);
-  if (error) throw new Error(error.message);
+  if (error) {
+    logSupabaseError(error, 'update tournament');
+    throw new Error(error.message);
+  }
 }
 
 export async function deleteTournamentRow(tournamentId: string): Promise<void> {
   const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    logSupabaseError(error, 'delete tournament');
+    throw new Error(error.message);
+  }
 }
 
 function isFkError(error: { code?: string; message?: string }): boolean {
@@ -111,12 +122,12 @@ export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
   const { error } = await supabase.from('participants').insert(payload);
   if (!error) return;
   if (isUniqueError(error)) return;
-  console.error('Participant Insert Error:', error, payload);
+  logSupabaseError(error, 'insert participant');
   if (payload.user_id && isFkError(error)) {
     const retry: ParticipantRow = { ...payload, user_id: null };
     const second = await supabase.from('participants').insert(retry);
     if (!second.error || isUniqueError(second.error)) return;
-    console.error('Participant Insert Error:', second.error, retry);
+    logSupabaseError(second.error, 'insert participant retry');
     throw new Error(second.error.message);
   }
   throw new Error(error.message);
@@ -125,7 +136,7 @@ export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
 async function fetchKnownUserIds(): Promise<Set<string>> {
   const { data, error } = await supabase.from('users').select('id');
   if (error) {
-    console.error('Participant Insert Error:', error);
+    logSupabaseError(error, 'users id list');
     return new Set(getClubDirectory().map((user) => user.id));
   }
   return new Set(
@@ -147,12 +158,12 @@ async function upsertOneParticipantRow(row: ParticipantRow): Promise<void> {
   };
   const { error } = await supabase.from('participants').upsert(payload, { onConflict: 'id' });
   if (!error) return;
-  console.error('Participant Insert Error:', error, payload);
+  logSupabaseError(error, 'upsert participant');
   if (isFkError(error) && payload.user_id) {
     const retry: ParticipantRow = { ...payload, user_id: null };
     const second = await supabase.from('participants').upsert(retry, { onConflict: 'id' });
     if (!second.error) return;
-    console.error('Participant Insert Error:', second.error, retry);
+    logSupabaseError(second.error, 'upsert participant retry');
     throw new Error(second.error.message);
   }
   throw new Error(error.message);
@@ -208,7 +219,7 @@ async function insertSeatRows(
       inserted += 1;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      console.error('Participant Insert Error:', lastError, row);
+      logSupabaseError(lastError, 'insert participant batch');
     }
   }
   if (inserted === 0 && rows.length > 0 && lastError) throw lastError;
@@ -223,7 +234,7 @@ export async function removeParticipantSeat(
 
   const byId = await supabase.from('participants').delete().in('id', ids);
   if (byId.error) {
-    console.error('Participant Delete Error:', byId.error, { tournamentId, player, ids });
+    logSupabaseError(byId.error, 'delete participant by id');
     throw new Error(byId.error.message);
   }
 
@@ -234,7 +245,7 @@ export async function removeParticipantSeat(
       .eq('tournament_id', tournamentId)
       .eq('user_id', userId);
     if (byUser.error) {
-      console.error('Participant Delete Error:', byUser.error, { tournamentId, userId });
+      logSupabaseError(byUser.error, 'delete participant by user');
       throw new Error(byUser.error.message);
     }
   }
@@ -256,6 +267,7 @@ export async function clearParticipantPlace(tournamentId: string, playerId: stri
     .eq('user_id', playerId)
     .select('id');
   if (bySeat.error || (bySeat.data?.length ?? 0) === 0) {
+    logSupabaseError(bySeat.error ?? byId.error, 'clear participant place');
     throw new Error(bySeat.error?.message || byId.error?.message || 'Не удалось сбросить место');
   }
 }
@@ -266,7 +278,10 @@ export async function deleteParticipantSeat(tournamentId: string, userId: string
     .delete()
     .eq('tournament_id', tournamentId)
     .eq('user_id', userId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    logSupabaseError(error, 'delete participant seat');
+    throw new Error(error.message);
+  }
   await supabase.from('participants').delete().eq('id', participantRowId(tournamentId, userId));
   await supabase.from('participants').delete().eq('id', participantRowId(tournamentId, 'me'));
 }
@@ -293,7 +308,7 @@ export async function syncParticipantRows(
   try {
     baseline = await fetchParticipants(tournamentId);
   } catch (error) {
-    console.error(error);
+    logSupabaseError(error instanceof Error ? error : { message: String(error) }, 'sync participants fetch');
   }
 
   const previousById = new Map(baseline.map((player) => [player.id, player]));

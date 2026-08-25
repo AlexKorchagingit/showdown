@@ -24,10 +24,10 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build:pages
+      - run: npm run build
         env:
-          VITE_SUPABASE_URL: https://bgazyafuihjxrzfspmrf.supabase.co
-          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJnYXp5YWZ1aWhqeHJ6ZnNwbXJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNDQwMzgsImV4cCI6MjEwMjgyMDAzOH0.Rv9Im7z3-ghzjVvtB_utgFVyP32G4XFX_zlU4IDwL7w
+          VITE_SUPABASE_URL: https://api.showdown-br.ru
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg3NjEwMzgyLCJleHAiOjE5NDUyOTAzODJ9.NDeUXNS9PhAqBhPtcQC20cDeisKShG-rxlJYzL7gu6k
       - run: cp dist/index.html dist/404.html && touch dist/.nojekyll
 
       # Repo Pages source is the legacy `gh-pages` branch (not Actions artifact deploy).

@@ -50,8 +50,13 @@ src/
 
 ```bash
 npm install
+cp .env.example .env.local   # fill VITE_SUPABASE_ANON_KEY
 npm run dev
 ```
+
+Frontend talks to `https://api.showdown-br.ru`. Static files are served from the domain root (`/logo-final.webp`, `/avatars/…`), not `/showdown/`.
+
+The first registered account (and `anaak-01@mail.ru`) is granted `is_admin`, so an empty database can create tournaments immediately.
 
 ## Build
 

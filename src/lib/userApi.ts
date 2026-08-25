@@ -8,7 +8,7 @@ import {
 } from '../data/shopItems';
 import { getClubDirectory, removeClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
 import { writeSession } from './session';
-import { supabase } from './supabase';
+import { supabase, logSupabaseError } from './supabase';
 import { userFromRow, userToRow, type MappedUser, type UserRow } from './supabaseMap';
 import { STARTING_COINS, generateNickname } from './userStorage';
 
@@ -32,7 +32,10 @@ function lookupFromQuery(
   data: unknown,
   error: { message?: string } | null,
 ): UserLookupResult {
-  if (error) return { status: 'error', message: error.message || 'Не удалось загрузить пользователя' };
+  if (error) {
+    logSupabaseError(error, 'users lookup');
+    return { status: 'error', message: error.message || 'Не удалось загрузить пользователя' };
+  }
   if (!data) return { status: 'missing' };
   const row = asUserRow(data);
   if (!row) return { status: 'error', message: 'Некорректная запись пользователя' };
@@ -74,13 +77,25 @@ export async function fetchUserByEmail(email: string): Promise<MappedUser | null
 
 export async function fetchClubUsers(): Promise<MappedUser[]> {
   const { data, error } = await supabase.from('users').select('*').order('nickname', { ascending: true });
-  if (error || !data) return [];
+  if (error || !data) {
+    logSupabaseError(error, 'club users');
+    return [];
+  }
   const users = data.flatMap((item) => {
     const row = asUserRow(item);
     return row ? [userFromRow(row)] : [];
   });
   setClubDirectory(users);
   return users;
+}
+
+async function countClubUsers(): Promise<number | null> {
+  const { count, error } = await supabase.from('users').select('id', { count: 'exact', head: true });
+  if (error) {
+    logSupabaseError(error, 'users count');
+    return null;
+  }
+  return count ?? 0;
 }
 
 export async function loginOrRegisterUser(
@@ -93,11 +108,17 @@ export async function loginOrRegisterUser(
     let next = existing;
     const isNew = Boolean(agreementsAcceptedAt && !existing.agreementsAcceptedAt);
     if (isNew && agreementsAcceptedAt) {
-      await supabase
+      const { error } = await supabase
         .from('users')
         .update({ agreements_accepted_at: agreementsAcceptedAt })
         .eq('id', existing.id);
+      if (error) logSupabaseError(error, 'agreements update');
       next = { ...existing, agreementsAcceptedAt };
+    }
+    const soleUser = (await countClubUsers()) === 1;
+    if (!next.isAdmin && (isSuperAdmin(normalized) || soleUser)) {
+      const promoted = await updateUserRow(next.id, { is_admin: true });
+      if (promoted) next = promoted;
     }
     writeSession(normalized, next.id);
     upsertClubDirectory(next);
@@ -105,11 +126,13 @@ export async function loginOrRegisterUser(
   }
 
   const nickname = generateNickname();
+  const emptyClub = (await countClubUsers()) === 0;
+  const makeAdmin = isSuperAdmin(normalized) || emptyClub;
   const { id: _generatedId, ...insertRow } = userToRow({
     id: 'pending',
     email: normalized,
     nickname,
-    isAdmin: isSuperAdmin(normalized),
+    isAdmin: makeAdmin,
     coins: STARTING_COINS,
     agreementsAcceptedAt,
     ownedItems: cosmeticsResetOwnedItems(),
@@ -120,6 +143,7 @@ export async function loginOrRegisterUser(
 
   const { data, error } = await supabase.from('users').insert(insertRow).select('*').single();
   if (error || !data) {
+    logSupabaseError(error, 'insert user');
     const raced = await fetchUserByEmail(normalized);
     if (raced) {
       writeSession(normalized, raced.id);
@@ -141,16 +165,23 @@ export async function deleteUserRow(userId: string): Promise<{ ok: true } | { ok
     .from('participants')
     .update({ user_id: null })
     .eq('user_id', userId);
-  if (unlinkError) return { ok: false, code: unlinkError.code, message: unlinkError.message };
+  if (unlinkError) {
+    logSupabaseError(unlinkError, 'unlink participant user');
+    return { ok: false, code: unlinkError.code, message: unlinkError.message };
+  }
 
   const { error: txError } = await supabase.from('transactions').delete().eq('user_id', userId);
-  if (txError) return { ok: false, code: txError.code, message: txError.message };
+  if (txError) {
+    logSupabaseError(txError, 'delete user transactions');
+    return { ok: false, code: txError.code, message: txError.message };
+  }
 
   const { error } = await supabase.from('users').delete().eq('id', userId);
   if (!error) {
     removeClubDirectory(userId);
     return { ok: true };
   }
+  logSupabaseError(error, 'delete user');
   return { ok: false, code: error.code, message: error.message };
 }
 
@@ -159,7 +190,10 @@ export async function updateUserRow(
   patch: Record<string, unknown>,
 ): Promise<MappedUser | null> {
   const { data, error } = await supabase.from('users').update(patch).eq('id', userId).select('*').single();
-  if (error || !data) return null;
+  if (error || !data) {
+    logSupabaseError(error, 'update user');
+    return null;
+  }
   const row = asUserRow(data);
   if (!row) return null;
   const mapped = userFromRow(row);
@@ -214,7 +248,10 @@ export async function applyCosmeticsResetToAllUsers(): Promise<{ updated: number
   if (cosmeticsResetInFlight) return cosmeticsResetInFlight;
   cosmeticsResetInFlight = (async () => {
     const { data, error } = await supabase.from('users').select('*');
-    if (error || !data) return { updated: 0, ok: false };
+    if (error || !data) {
+      logSupabaseError(error, 'cosmetics reset');
+      return { updated: 0, ok: false };
+    }
     const targets = data.flatMap((item) => {
       const row = asUserRow(item);
       if (!row) return [];
