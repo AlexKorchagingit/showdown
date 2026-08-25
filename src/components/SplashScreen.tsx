@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { asset } from '../lib/assets';
 
 export function SplashScreen() {
   return (
@@ -23,7 +22,7 @@ export function SplashScreen() {
       />
 
       <motion.img
-        src={asset("/final_big.webp")}
+        src="/final_big.webp"
         alt="Showdown"
         className="relative z-10 object-contain w-3/4 max-w-[330px] h-auto -mt-28"
         initial={{ opacity: 0, scale: 0.75 }}

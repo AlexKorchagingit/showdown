@@ -29,7 +29,6 @@ import {
   secondsUntilNextBreak,
 } from '../../data/blindStructures';
 import { calculatePayouts, itmSharePercent } from '../../data/prizeStructure';
-import { asset } from '../../lib/assets';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import {
@@ -445,7 +444,7 @@ export function AdminBlindsTimer() {
 
         <div className="w-64 md:w-80 shrink-0 flex flex-col items-end gap-4">
           <img
-            src={asset('/SD.png')}
+            src="/SD.png"
             alt="Showdown"
             className="h-40 md:h-56 w-auto object-contain opacity-90 self-end"
           />

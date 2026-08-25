@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
-import { asset } from '../lib/assets';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { PlayerAvatar } from '../components/PlayerAvatar';
@@ -156,7 +155,7 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
     >
       <div className="flex items-center gap-3">
         <img
-          src={asset("/logo-final.webp")}
+          src="/logo-final.webp"
           alt="Showdown"
           className="h-16 w-auto object-contain"
           style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }}

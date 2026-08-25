@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
-import { asset } from '../lib/assets';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
 import { addLog } from '../lib/logApi';
 import { loginOrRegisterUser } from '../lib/userApi';
@@ -274,7 +273,7 @@ export function LoginScreen({ onLogin }: Props) {
       />
 
       <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center mb-20">
-        <img src={asset("/logo-final.webp")} alt="Showdown" className="h-64 w-auto mb-8" />
+        <img src="/logo-final.webp" alt="Showdown" className="h-64 w-auto mb-8" />
         <h1 className="text-3xl font-black text-[#110b09] mb-8 uppercase tracking-wide">
           {step === 'consent' ? 'Регистрация' : 'Вход'}
         </h1>
