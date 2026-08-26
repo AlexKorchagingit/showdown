@@ -133,6 +133,27 @@ function finishLogin(user: MappedUser, isNew: boolean): { user: MappedUser; isNe
   return { user, isNew };
 }
 
+/** True when this email already has a club row — returning users skip consent. */
+export async function emailAccountExists(email: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return false;
+
+  let result: { status: number; body: unknown };
+  try {
+    result = await loginFetch(
+      `/rest/v1/users?email=eq.${encodeURIComponent(normalized)}&select=id&limit=1`,
+      { method: 'GET' },
+    );
+  } catch (error) {
+    failLogin(error, 'Не удалось проверить почту');
+  }
+
+  if (result.status < 200 || result.status >= 300) {
+    failLogin(result.body, postgrestMessage(result.body, result.status));
+  }
+  return Array.isArray(result.body) && result.body.length > 0;
+}
+
 async function lookupUserByEmailRest(email: string): Promise<MappedUser | null> {
   let result: { status: number; body: unknown };
   try {
@@ -153,23 +174,6 @@ async function lookupUserByEmailRest(email: string): Promise<MappedUser | null> 
     return mapUser(result.body);
   } catch (error) {
     failLogin(error, 'Некорректная запись пользователя');
-  }
-}
-
-async function patchAgreements(userId: string, acceptedAt: string): Promise<void> {
-  let result: { status: number; body: unknown };
-  try {
-    result = await loginFetch(`/rest/v1/users?id=eq.${encodeURIComponent(userId)}`, {
-      method: 'PATCH',
-      headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ agreements_accepted_at: acceptedAt }),
-    });
-  } catch (error) {
-    logLoginFatal(error);
-    return;
-  }
-  if (result.status < 200 || result.status >= 300) {
-    logLoginFatal({ stage: 'agreements update', status: result.status, body: result.body });
   }
 }
 
@@ -213,6 +217,14 @@ async function clubIsEmpty(): Promise<boolean> {
 }
 
 async function insertUser(email: string, agreementsAcceptedAt?: string): Promise<MappedUser> {
+  const acceptedAt = agreementsAcceptedAt?.trim();
+  if (!acceptedAt) {
+    failLogin(
+      new Error('agreements required'),
+      'Примите соглашения, чтобы зарегистрироваться',
+    );
+  }
+
   let makeAdmin = isSuperAdmin(email);
   if (!makeAdmin) {
     try {
@@ -229,7 +241,7 @@ async function insertUser(email: string, agreementsAcceptedAt?: string): Promise
     nickname: generateNickname(),
     isAdmin: makeAdmin,
     coins: STARTING_COINS,
-    agreementsAcceptedAt,
+    agreementsAcceptedAt: acceptedAt,
     ownedItems: cosmeticsResetOwnedItems(),
     equippedChar: DEFAULT_CHARACTER_ID,
     equippedBg: DEFAULT_BG_ID,
@@ -293,15 +305,6 @@ export async function loginOrRegisterUser(
 
     if (existing) {
       let next = existing;
-      const isNew = Boolean(agreementsAcceptedAt && !existing.agreementsAcceptedAt);
-      if (isNew && agreementsAcceptedAt) {
-        try {
-          await patchAgreements(existing.id, agreementsAcceptedAt);
-          next = { ...existing, agreementsAcceptedAt };
-        } catch (error) {
-          logLoginFatal(error);
-        }
-      }
       if (!next.isAdmin && isSuperAdmin(normalized)) {
         try {
           const promoted = await promoteAdmin(next.id);
@@ -310,7 +313,7 @@ export async function loginOrRegisterUser(
           logLoginFatal(error);
         }
       }
-      return finishLogin(next, isNew);
+      return finishLogin(next, false);
     }
 
     let created: MappedUser;

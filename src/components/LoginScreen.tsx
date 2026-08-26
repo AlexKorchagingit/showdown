@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'r
 import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
-import { loginOrRegisterUser } from '../lib/loginAccount';
+import { emailAccountExists, loginOrRegisterUser } from '../lib/loginAccount';
 import { LegalImageModal } from './LegalImageModal';
 import { BrandLogo } from './BrandLogo';
 
@@ -75,16 +75,23 @@ function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
   localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
 }
 
+function savePendingEmail(targetEmail: string, step: 'email' | 'consent') {
+  localStorage.setItem('temp_auth_email', targetEmail.trim().toLowerCase());
+  localStorage.setItem('temp_auth_step', step);
+  localStorage.removeItem('temp_auth_code');
+  localStorage.removeItem('temp_auth_expire');
+}
+
 async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
   try {
     const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
     if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
-    const acceptedAt = agreementsAcceptedAt || readAgreementsAt() || new Date().toISOString();
+    const acceptedAt = (agreementsAcceptedAt || readAgreementsAt()).trim();
 
     let user: Awaited<ReturnType<typeof loginOrRegisterUser>>['user'];
     let isNew = false;
     try {
-      const result = await loginOrRegisterUser(normalized, acceptedAt);
+      const result = await loginOrRegisterUser(normalized, acceptedAt || undefined);
       user = result.user;
       isNew = result.isNew;
     } catch (error) {
@@ -159,8 +166,8 @@ export function LoginScreen({ onLogin }: Props) {
 
   const [step, setStep] = useState<Step>(() => {
     if (restoredStep === 'code') return 'code';
-    if (restoredAgreements) return 'email';
-    return 'consent';
+    if (restoredStep === 'consent') return 'consent';
+    return 'email';
   });
   const [email, setEmail] = useState(() => readTempAuthValue('temp_auth_email'));
   const [generatedCode, setGeneratedCode] = useState(() => readTempAuthValue('temp_auth_code'));
@@ -179,7 +186,7 @@ export function LoginScreen({ onLogin }: Props) {
   onLoginRef.current = onLogin;
 
   const isEmailValid = EMAIL_REGEX.test(email.trim());
-  const canGetCode = Boolean(agreementsAcceptedAt) && isEmailValid && !isLoading;
+  const canContinueEmail = isEmailValid && !isLoading;
 
   useEffect(() => {
     if (readTempAuthValue('temp_auth_step') !== 'code') return;
@@ -226,15 +233,53 @@ export function LoginScreen({ onLogin }: Props) {
   }, []);
 
   const handleAcceptAll = () => {
+    if (isLoading || !isEmailValid) return;
     const timestamp = new Date().toISOString();
     setAgreementsAcceptedAt(timestamp);
     writeAgreementsAt(timestamp);
-    setStep('email');
+    void sendCode(email, 60);
   };
 
-  const handleGetCode = () => {
-    if (!canGetCode) return;
-    sendCode(email, 60);
+  const goToEmailStep = () => {
+    clearTempAuth();
+    clearAgreementsAt();
+    setAgreementsAcceptedAt('');
+    setStep('email');
+    setOtp(['', '', '', '']);
+    setTimer(0);
+    setIsSuccess(false);
+    setLoginError('');
+    verifiedRef.current = false;
+    if (email.trim()) savePendingEmail(email, 'email');
+  };
+
+  const handleContinueEmail = () => {
+    if (!canContinueEmail) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    setEmail(normalizedEmail);
+    setIsLoading(true);
+    setLoginError('');
+
+    void (async () => {
+      try {
+        const exists = await emailAccountExists(normalizedEmail);
+        if (exists) {
+          setAgreementsAcceptedAt('');
+          clearAgreementsAt();
+          await sendCode(normalizedEmail, 60);
+          return;
+        }
+        savePendingEmail(normalizedEmail, 'consent');
+        setAgreementsAcceptedAt('');
+        clearAgreementsAt();
+        setStep('consent');
+      } catch (error) {
+        console.error('LOGIN FATAL ERROR:', error);
+        setLoginError(error instanceof Error ? error.message : 'Не удалось проверить почту');
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   };
 
   const handleResend = () => {
@@ -345,31 +390,7 @@ export function LoginScreen({ onLogin }: Props) {
         </h1>
 
         <AnimatePresence mode="wait">
-          {step === 'consent' ? (
-            <motion.div
-              key="consent-step"
-              className="w-full"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="rounded-2xl border border-[#E8C547]/25 bg-[#231A16] p-4 shadow-[inset_0_1px_0_rgba(232,197,71,0.12)]">
-                <ConsentCopy onOpen={setActiveDocument} />
-                <button
-                  type="button"
-                  onClick={handleAcceptAll}
-                  className="mt-4 h-12 w-full rounded-xl text-[15px] font-700 tracking-wide text-[#0A0908] active:scale-[0.98]"
-                  style={{
-                    background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                    boxShadow: '0 0 16px rgba(217,153,98,0.28)',
-                  }}
-                >
-                  Принять все и продолжить
-                </button>
-              </div>
-            </motion.div>
-          ) : step === 'email' ? (
+          {step === 'email' ? (
             <motion.div
               key="email-step"
               className="w-full"
@@ -382,6 +403,9 @@ export function LoginScreen({ onLogin }: Props) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleContinueEmail();
+                }}
                 placeholder="example@mail.com"
                 autoComplete="email"
                 className="bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 w-full mb-3 outline-none focus:border-[#D99962]/60 transition-colors"
@@ -389,15 +413,15 @@ export function LoginScreen({ onLogin }: Props) {
 
               <button
                 type="button"
-                onClick={handleGetCode}
-                disabled={!canGetCode}
+                onClick={handleContinueEmail}
+                disabled={!canContinueEmail}
                 className={`w-full py-3.5 rounded-xl text-[15px] font-700 tracking-wide transition-all active:scale-[0.98] ${
-                  canGetCode
+                  canContinueEmail
                     ? 'text-[#0A0908]'
                     : 'opacity-50 cursor-not-allowed bg-[#463129] text-white/50'
                 }`}
                 style={
-                  canGetCode
+                  canContinueEmail
                     ? {
                         background: 'linear-gradient(to right, #8C4C27, #D99962)',
                         boxShadow: '0 0 16px rgba(217,153,98,0.28)',
@@ -405,11 +429,47 @@ export function LoginScreen({ onLogin }: Props) {
                     : undefined
                 }
               >
-                {isLoading ? 'Отправка…' : 'Получить код'}
+                {isLoading ? 'Подождите…' : 'Продолжить'}
               </button>
               {loginError ? (
                 <p className="text-[13px] font-600 text-red-700 text-center mt-3">{loginError}</p>
               ) : null}
+            </motion.div>
+          ) : step === 'consent' ? (
+            <motion.div
+              key="consent-step"
+              className="w-full"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="rounded-2xl border border-[#E8C547]/25 bg-[#231A16] p-4 shadow-[inset_0_1px_0_rgba(232,197,71,0.12)]">
+                <p className="text-[12px] font-600 text-[#F4E4BC]/70 mb-3">
+                  {email.trim().toLowerCase()}
+                </p>
+                <ConsentCopy onOpen={setActiveDocument} />
+                <button
+                  type="button"
+                  onClick={handleAcceptAll}
+                  disabled={isLoading}
+                  className="mt-4 h-12 w-full rounded-xl text-[15px] font-700 tracking-wide text-[#0A0908] active:scale-[0.98] disabled:opacity-50"
+                  style={{
+                    background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                    boxShadow: '0 0 16px rgba(217,153,98,0.28)',
+                  }}
+                >
+                  {isLoading ? 'Отправка…' : 'Принять все и продолжить'}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={goToEmailStep}
+                disabled={isLoading}
+                className="mt-6 w-full text-[12px] font-600 text-[#463129] active:opacity-60 disabled:opacity-40"
+              >
+                ← Изменить email
+              </button>
             </motion.div>
           ) : (
             <motion.div
@@ -475,15 +535,7 @@ export function LoginScreen({ onLogin }: Props) {
 
               <button
                 type="button"
-                onClick={() => {
-                  clearTempAuth();
-                  setStep(agreementsAcceptedAt ? 'email' : 'consent');
-                  setOtp(['', '', '', '']);
-                  setTimer(0);
-                  setIsSuccess(false);
-                  setLoginError('');
-                  verifiedRef.current = false;
-                }}
+                onClick={goToEmailStep}
                 disabled={isSuccess}
                 className="mt-6 text-[12px] font-600 text-[#463129] active:opacity-60 disabled:opacity-40"
               >
