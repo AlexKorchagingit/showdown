@@ -2,6 +2,13 @@ import { ALL_PARTICIPANTS } from '../data/participants';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL, type RatingPlayer } from '../types/player';
 import { findClubUser, findClubUserByIdOrNick, getClubDirectory } from './clubDirectory';
 
+/** Settings store `YYYY-MM-DD`; show as `DD.MM.YYYY` without a timezone shift. */
+export function formatBirthDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (match) return `${match[3]}.${match[2]}.${match[1]}`;
+  return iso.trim();
+}
+
 /** Best-effort nickname lookup for finance rows and public profiles. */
 export function playerNickname(userId: string): string {
   const fromClub = findClubUserByIdOrNick(userId);

@@ -39,6 +39,15 @@ async function selectParticipants(tournamentId?: string): Promise<JoinedParticip
   return retry.data as unknown as JoinedParticipantRow[];
 }
 
+async function selectParticipantsSafe(tournamentId?: string): Promise<JoinedParticipantRow[]> {
+  try {
+    return await selectParticipants(tournamentId);
+  } catch (error) {
+    logSupabaseError(error instanceof Error ? error : { message: String(error) }, 'participants');
+    return [];
+  }
+}
+
 function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participant[]> {
   const grouped = new Map<string, Participant[]>();
   for (const row of rows) {
@@ -50,17 +59,17 @@ function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participan
 }
 
 export async function fetchTournaments(): Promise<Tournament[]> {
-  const { data, error } = await supabase
-    .from('tournaments')
-    .select('*')
-    .order('start_date', { ascending: false });
+  const [{ data, error }, participantRows] = await Promise.all([
+    supabase.from('tournaments').select('*').order('start_date', { ascending: false }),
+    selectParticipantsSafe(),
+  ]);
 
   if (error || !data) {
     logSupabaseError(error, 'tournaments');
     throw new Error(error?.message || 'Не удалось загрузить турниры');
   }
 
-  const grouped = groupParticipants(await selectParticipants());
+  const grouped = groupParticipants(participantRows);
   return data.flatMap((item) => {
     const row = asTournamentRow(item);
     if (!row) return [];

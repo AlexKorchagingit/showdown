@@ -5,6 +5,7 @@ import { ScreenLoading } from '../../components/ScreenLoading';
 import { ADMIN_EMAIL, useUser } from '../../context/UserContext';
 import { useAuditLog } from '../../context/AuditLogContext';
 import { CompactHeader } from '../../components/CompactHeader';
+import { formatBirthDate } from '../../lib/playerName';
 import { deleteUserRow, updateUserRow } from '../../lib/userApi';
 
 export function AdminUsersScreen() {
@@ -101,6 +102,16 @@ export function AdminUsersScreen() {
                     <p className="text-[12px] font-500 truncate" style={{ color: '#8c8c88' }}>
                       {user.email}
                     </p>
+                    {user.slogan.trim() ? (
+                      <p className="text-[12px] font-500 italic mt-0.5 truncate" style={{ color: '#c8a38e' }}>
+                        «{user.slogan.trim()}»
+                      </p>
+                    ) : null}
+                    {user.birthDate.trim() ? (
+                      <p className="text-[11px] font-600 mt-0.5" style={{ color: '#8c8c88' }}>
+                        Дата рождения: {formatBirthDate(user.birthDate)}
+                      </p>
+                    ) : null}
                     {isLocked && (
                       <p className="text-[11px] font-600 mt-0.5" style={{ color: '#D99962' }}>
                         Главный администратор

@@ -112,13 +112,17 @@ export function UserProvider({
       const ok = await enforceSession();
       if (!ok) return;
       if (!cosmeticsResetDoneRef.current) {
-        try {
-          const reset = await applyCosmeticsResetToAllUsers();
-          if (reset.ok) cosmeticsResetDoneRef.current = true;
-          if (reset.updated > 0) await enforceSession();
-        } catch (error) {
-          console.error(error);
-        }
+        void applyCosmeticsResetToAllUsers()
+          .then(async (reset) => {
+            if (reset.ok) cosmeticsResetDoneRef.current = true;
+            if (reset.updated > 0) {
+              await enforceSession();
+              await refreshClubUsers();
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+          });
       }
       await refreshClubUsers();
     } catch (error) {
@@ -175,7 +179,7 @@ export function UserProvider({
       const patch = mappedUserToPatch(changes);
       if (Object.keys(patch).length === 0) return account;
       const next = await updateUserRow(account.id, patch);
-      if (!next) return account;
+      if (!next) return null;
       setAccount(next);
       setClubUsers((prev) => prev.map((user) => (user.id === next.id ? next : user)));
       return next;
@@ -203,20 +207,38 @@ export function UserProvider({
     [account?.email, account?.id, account?.nickname, email],
   );
 
+  const isAdmin = isClubAdmin(email, account);
+  const visibleClubUsers = useMemo(() => {
+    if (isAdmin) return clubUsers;
+    return clubUsers.map((user) =>
+      user.birthDate ? { ...user, birthDate: '' } : user,
+    );
+  }, [clubUsers, isAdmin]);
+
   const value = useMemo<UserContextValue>(
     () => ({
       email: account?.email || email,
       userId: account?.id || readSessionUserId(),
-      isAdmin: isClubAdmin(email, account),
+      isAdmin,
       isLoading,
       account,
-      clubUsers,
+      clubUsers: visibleClubUsers,
       patchAccount,
       refreshAccount,
       refreshClubUsers,
       addLog,
     }),
-    [account, addLog, clubUsers, email, isLoading, patchAccount, refreshAccount, refreshClubUsers],
+    [
+      account,
+      addLog,
+      email,
+      isAdmin,
+      isLoading,
+      patchAccount,
+      refreshAccount,
+      refreshClubUsers,
+      visibleClubUsers,
+    ],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

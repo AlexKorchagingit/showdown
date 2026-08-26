@@ -130,7 +130,7 @@ function ItemCard({
 
   // Backgrounds are shown edge to edge with the control floating on the artwork
   const card = isBackground ? (
-    <button type="button" onClick={onSelect} disabled={locked} className={cardClass}>
+    <button type="button" onClick={onSelect} className={cardClass}>
       <img
         src={item.image}
         alt={item.name}
@@ -139,7 +139,7 @@ function ItemCard({
       <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90%] z-10">{status}</span>
     </button>
   ) : (
-    <button type="button" onClick={onSelect} disabled={locked} className={`${cardClass} flex flex-col`}>
+    <button type="button" onClick={onSelect} className={`${cardClass} flex flex-col`}>
       <div className="relative min-h-0 flex-1 overflow-hidden bg-[#1d0b07]">
         <img
           src={item.image}
@@ -165,6 +165,7 @@ export function ShopScreen() {
   const { email, userId, addLog } = useUser();
   const [tab, setTab] = useState<ShopItemType>('character');
   const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
+  const [buyingId, setBuyingId] = useState<string | null>(null);
 
   const items = shopItemsOfType(tab);
 
@@ -237,29 +238,45 @@ export function ShopScreen() {
           >
             {items.map((item) => {
               const owned = isOwned(item.id);
+              const affordable = coins >= item.price;
               return (
                 <ItemCard
                   key={item.id}
                   item={item}
                   owned={owned}
                   equipped={isEquipped(item.id)}
-                  affordable={coins >= item.price}
-                    onSelect={() => {
+                  affordable={affordable}
+                  onSelect={() => {
                       void (async () => {
                         if (owned) {
                           equipItem(item.id);
                           return;
                         }
-                        const bought = await buyItem(item.id);
-                        if (!bought) return;
-                        const kind = item.type === 'bg' ? 'фона' : 'персонажа';
-                        await addLog({
-                          action_type: 'Списал рубины',
-                          target_user_id: userId,
-                          target_user_email: email,
-                          target_user_name: nickname,
-                          details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
-                        });
+                        if (!affordable) {
+                          window.alert(
+                            `Недостаточно рубинов. Нужно ${item.price.toLocaleString('ru-RU')}, у вас ${coins.toLocaleString('ru-RU')}.`,
+                          );
+                          return;
+                        }
+                        if (buyingId) return;
+                        setBuyingId(item.id);
+                        try {
+                          const bought = await buyItem(item.id);
+                          if (!bought) {
+                            window.alert('Не удалось купить. Проверьте интернет и попробуйте ещё раз.');
+                            return;
+                          }
+                          const kind = item.type === 'bg' ? 'фона' : 'персонажа';
+                          await addLog({
+                            action_type: 'Списал рубины',
+                            target_user_id: userId,
+                            target_user_email: email,
+                            target_user_name: nickname,
+                            details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
+                          });
+                        } finally {
+                          setBuyingId(null);
+                        }
                       })();
                     }}
                 />

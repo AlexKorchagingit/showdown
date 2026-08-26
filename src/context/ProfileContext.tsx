@@ -7,8 +7,10 @@ import {
 } from 'react';
 import { useUser } from './UserContext';
 import {
+  COSMETICS_RESET_TOKEN,
   DEFAULT_BG_ID,
   DEFAULT_CHARACTER_ID,
+  FREE_ITEM_IDS,
   findShopItem,
   resolveImage,
   avatarUrlForChar,
@@ -96,13 +98,24 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (!item) return false;
       if (data.ownedItems.includes(itemId)) return true;
       if (data.coins < item.price) return false;
+      const ownedItems = [
+        ...new Set([
+          COSMETICS_RESET_TOKEN,
+          ...FREE_ITEM_IDS,
+          ...data.ownedItems,
+          itemId,
+        ]),
+      ];
       const next = await patchAccount({
         coins: data.coins - item.price,
-        ownedItems: [...data.ownedItems, itemId],
+        ownedItems,
+        ...(item.type === 'character'
+          ? { equippedChar: itemId, equippedBg: data.equippedBg }
+          : { equippedBg: itemId, equippedChar: data.equippedChar }),
       });
-      return Boolean(next);
+      return Boolean(next?.ownedItems.includes(itemId));
     },
-    [data.coins, data.ownedItems, patchAccount],
+    [data.coins, data.equippedBg, data.equippedChar, data.ownedItems, patchAccount],
   );
 
   const addCoins = useCallback(
