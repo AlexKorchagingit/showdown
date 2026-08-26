@@ -19,7 +19,6 @@ import {
   type MappedUser,
 } from '../lib/userApi';
 import { addLog as insertClubLog, type AddLogInput } from '../lib/logApi';
-import { REQUEST_TIMEOUT_MS, withTimeout } from '../lib/network';
 import { endLocalSession, readSessionUserId, writeSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 
@@ -67,8 +66,6 @@ export function UserProvider({
   onInvalidRef.current = onAccountInvalid;
   const kickedRef = useRef(false);
   const cosmeticsResetDoneRef = useRef(false);
-  const accountRef = useRef<MappedUser | null>(null);
-  accountRef.current = account;
 
   const kickDeletedAccount = useCallback(() => {
     if (kickedRef.current) return;
@@ -80,27 +77,20 @@ export function UserProvider({
 
   const refreshClubUsers = useCallback(async () => {
     try {
-      const users = await withTimeout(fetchClubUsers(), REQUEST_TIMEOUT_MS);
+      const users = await fetchClubUsers();
       setClubUsers(users);
     } catch (error) {
-      console.error('LOGIN FATAL ERROR:', error);
+      console.error(error);
       setClubUsers([]);
     }
   }, []);
 
-  const enforceSession = useCallback(async (kickOnError = false): Promise<boolean> => {
+  const enforceSession = useCallback(async (): Promise<boolean> => {
     if (kickedRef.current) return false;
     try {
-      const result = await withTimeout(
-        lookupSessionAccount(readSessionUserId(), email),
-        REQUEST_TIMEOUT_MS,
-      );
+      const result = await lookupSessionAccount(readSessionUserId(), email);
       if (result.status === 'error') {
-        console.error('LOGIN FATAL ERROR:', result.message);
-        if (kickOnError) {
-          kickDeletedAccount();
-          return false;
-        }
+        console.error(result.message);
         return true;
       }
       if (result.status === 'missing') {
@@ -111,11 +101,7 @@ export function UserProvider({
       setAccount(result.user);
       return true;
     } catch (error) {
-      console.error('LOGIN FATAL ERROR:', error);
-      if (kickOnError) {
-        kickDeletedAccount();
-        return false;
-      }
+      console.error(error);
       return true;
     }
   }, [email, kickDeletedAccount]);
@@ -123,43 +109,30 @@ export function UserProvider({
   const refreshAccount = useCallback(async () => {
     setIsLoading(true);
     try {
-      const ok = await enforceSession(true);
+      const ok = await enforceSession();
       if (!ok) return;
-      void (async () => {
+      if (!cosmeticsResetDoneRef.current) {
         try {
-          if (!cosmeticsResetDoneRef.current) {
-            const reset = await withTimeout(applyCosmeticsResetToAllUsers(), REQUEST_TIMEOUT_MS);
-            if (reset.ok) cosmeticsResetDoneRef.current = true;
-            if (reset.updated > 0) await enforceSession(false);
-          }
+          const reset = await applyCosmeticsResetToAllUsers();
+          if (reset.ok) cosmeticsResetDoneRef.current = true;
+          if (reset.updated > 0) await enforceSession();
         } catch (error) {
-          console.error('LOGIN FATAL ERROR:', error);
+          console.error(error);
         }
-        await refreshClubUsers();
-      })();
+      }
+      await refreshClubUsers();
     } catch (error) {
-      console.error('LOGIN FATAL ERROR:', error);
-      kickDeletedAccount();
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
-  }, [enforceSession, kickDeletedAccount, refreshClubUsers]);
+  }, [enforceSession, refreshClubUsers]);
 
   useEffect(() => {
     kickedRef.current = false;
     cosmeticsResetDoneRef.current = false;
     void refreshAccount();
   }, [refreshAccount]);
-
-  useEffect(() => {
-    const watchdog = window.setTimeout(() => {
-      setIsLoading(false);
-      if (!accountRef.current && !kickedRef.current) {
-        kickDeletedAccount();
-      }
-    }, REQUEST_TIMEOUT_MS);
-    return () => window.clearTimeout(watchdog);
-  }, [kickDeletedAccount]);
 
   useEffect(() => {
     const verify = () => {

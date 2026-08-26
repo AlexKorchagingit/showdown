@@ -20,7 +20,6 @@ import {
 } from '../lib/tournamentApi';
 import { participantToRow, resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { clubUserIdSet, countRegisteredClubSeats, isRegisteredClubSeat } from '../lib/clubRating';
-import { REQUEST_TIMEOUT_MS, withTimeout } from '../lib/network';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -67,16 +66,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     setIsLoading(true);
     setLoadError(null);
     try {
-      const rows = await withTimeout(
-        loadTournaments(),
-        REQUEST_TIMEOUT_MS,
-        'Не удалось загрузить турниры. Проверьте интернет.',
-      );
+      const rows = await loadTournaments();
       setTournaments(rows);
     } catch (error) {
       console.error(error);
       setTournaments([]);
-      setLoadError('Не удалось загрузить турниры. Проверьте интернет.');
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : 'Не удалось загрузить турниры. Проверьте интернет.',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -88,11 +87,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const refreshParticipants = useCallback(async (tournamentId: string) => {
     try {
-      const participants = await withTimeout(
-        fetchParticipants(tournamentId),
-        REQUEST_TIMEOUT_MS,
-        'Не удалось загрузить участников. Проверьте интернет.',
-      );
+      const participants = await fetchParticipants(tournamentId);
       setTournaments((prev) =>
         prev.map((tournament) =>
           tournament.id === tournamentId ? { ...tournament, participants } : tournament,

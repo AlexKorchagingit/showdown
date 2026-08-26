@@ -14,7 +14,6 @@ import {
   updateDealerHoursRows,
   updateTransactions,
 } from '../lib/financeApi';
-import { REQUEST_TIMEOUT_MS, withTimeout } from '../lib/network';
 import {
   DEFAULT_ENTRY_FEE,
   type Transaction,
@@ -72,7 +71,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     void (async () => {
       setIsLoading(true);
       try {
-        const rows = await withTimeout(fetchTransactions(), REQUEST_TIMEOUT_MS);
+        const rows = await fetchTransactions();
         if (cancelled) return;
         setTransactions(rows);
         setDealerHoursMap(seedDealerHours(rows));

@@ -1,5 +1,4 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
-import { REQUEST_TIMEOUT_MS } from './network';
 
 export const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -8,38 +7,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-/**
- * Cross-origin PostgREST (`showdown-br.ru` → `api.showdown-br.ru`).
- * `credentials: 'omit'` keeps the request non-credentialed so CORS does not
- * require `Access-Control-Allow-Credentials`. Extra client-info headers are
- * stripped so the preflight Allow-Headers list stays small.
- */
-function fetchWithoutAuthSession(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const stall = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  const parent = init?.signal;
-  if (parent) {
-    if (parent.aborted) controller.abort();
-    else parent.addEventListener('abort', () => controller.abort(), { once: true });
-  }
-
-  const headers = new Headers(init?.headers);
-  headers.delete('X-Client-Info');
-  headers.delete('x-client-info');
-
-  return fetch(input, {
-    ...init,
-    credentials: 'omit',
-    cache: 'no-store',
-    mode: 'cors',
-    signal: controller.signal,
-    headers,
-  }).finally(() => clearTimeout(stall));
+if (supabaseUrl.includes(':8000')) {
+  throw new Error('VITE_SUPABASE_URL must be https://api.showdown-br.ru without port 8000');
 }
 
 /**
- * Club data uses the anon key as a public PostgREST client.
- * Login itself does not go through this client — see `loginAccount.ts`.
+ * Club data uses the anon key as a public PostgREST client — not Supabase Auth.
+ * `accessToken` skips GoTrue `getSession()` so the client does not wait on Auth.
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   accessToken: async () => supabaseAnonKey,
@@ -47,22 +21,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false,
-    storage: {
-      getItem: () => null,
-      setItem: () => {},
-      removeItem: () => {},
-    },
-  },
-  db: {
-    timeout: REQUEST_TIMEOUT_MS,
-    retry: false,
-  },
-  global: {
-    fetch: fetchWithoutAuthSession,
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
-    },
   },
 });
 
