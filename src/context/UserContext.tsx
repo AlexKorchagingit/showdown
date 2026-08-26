@@ -184,20 +184,38 @@ export function UserProvider({
     [account?.email, account?.id, account?.nickname, email],
   );
 
+  const isAdmin = isClubAdmin(email, account);
+  const visibleClubUsers = useMemo(() => {
+    if (isAdmin) return clubUsers;
+    return clubUsers.map((user) =>
+      user.birthDate ? { ...user, birthDate: '' } : user,
+    );
+  }, [clubUsers, isAdmin]);
+
   const value = useMemo<UserContextValue>(
     () => ({
       email: account?.email || email,
       userId: account?.id || readSessionUserId(),
-      isAdmin: isClubAdmin(email, account),
+      isAdmin,
       isLoading,
       account,
-      clubUsers,
+      clubUsers: visibleClubUsers,
       patchAccount,
       refreshAccount,
       refreshClubUsers,
       addLog,
     }),
-    [account, addLog, clubUsers, email, isLoading, patchAccount, refreshAccount, refreshClubUsers],
+    [
+      account,
+      addLog,
+      email,
+      isAdmin,
+      isLoading,
+      patchAccount,
+      refreshAccount,
+      refreshClubUsers,
+      visibleClubUsers,
+    ],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

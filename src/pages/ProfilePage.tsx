@@ -33,6 +33,13 @@ const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962]
 const GOLD_NUM =
   `font-black ${GOLD_TEXT} drop-shadow-[0_0_8px_rgba(217,153,98,0.8)]`;
 
+/** Settings store `YYYY-MM-DD`; show as `DD.MM.YYYY` without a timezone shift. */
+function formatBirthDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (match) return `${match[3]}.${match[2]}.${match[1]}`;
+  return iso.trim();
+}
+
 export function ProfilePage() {
   const navigate = useNavigate();
   const { playerId } = useParams<{ playerId?: string }>();
@@ -56,21 +63,27 @@ export function ProfilePage() {
     : characterImage;
   const displayBackground = readOnly ? resolveImage(DEFAULT_BG_ID, 'bg') : backgroundImage;
 
-  const trimmedSlogan = readOnly ? '' : slogan.trim();
+  const viewedUser = useMemo(() => {
+    const needle = (readOnly ? playerId : userId)?.trim() ?? '';
+    if (!needle) return undefined;
+    const lower = needle.toLowerCase();
+    return clubUsers.find(
+      (user) =>
+        user.id === needle ||
+        user.email.trim().toLowerCase() === lower ||
+        user.nickname.trim().toLowerCase() === lower,
+    );
+  }, [readOnly, playerId, userId, clubUsers]);
+
+  const trimmedSlogan = (readOnly ? viewedUser?.slogan ?? '' : slogan).trim();
+  const viewedBirthDate =
+    readOnly && isAdmin ? (viewedUser?.birthDate ?? '').trim() : '';
   const achievementsPath = readOnly && playerId
     ? `/achievements/${encodeURIComponent(playerId)}`
     : '/achievements';
 
-  const subjectUserId = useMemo(() => {
-    const needle = (readOnly ? playerId : userId)?.trim() ?? '';
-    if (!needle) return '';
-    const match = clubUsers.find(
-      (user) =>
-        user.id === needle ||
-        user.email.trim().toLowerCase() === needle.toLowerCase(),
-    );
-    return match?.id ?? needle;
-  }, [readOnly, playerId, userId, clubUsers]);
+  const subjectUserId =
+    viewedUser?.id ?? ((readOnly ? playerId : userId)?.trim() ?? '');
 
   const statsPlayerId = subjectUserId || (readOnly ? playerId : userId) || '';
 
@@ -159,11 +172,16 @@ export function ProfilePage() {
 
         <div className={readOnly ? 'min-w-0' : 'pr-10 min-w-0'}>
           <h1 className={`text-2xl font-black leading-tight ${GOLD_TEXT}`}>{displayNickname}</h1>
-          {trimmedSlogan && (
+          {trimmedSlogan ? (
             <p className="text-white/70 italic text-sm font-light mt-1 leading-snug text-wrap break-words whitespace-normal line-clamp-2">
               «{trimmedSlogan}»
             </p>
-          )}
+          ) : null}
+          {viewedBirthDate ? (
+            <p className="text-white/55 text-xs font-medium mt-1 tracking-wide">
+              Дата рождения: {formatBirthDate(viewedBirthDate)}
+            </p>
+          ) : null}
         </div>
 
         <button
