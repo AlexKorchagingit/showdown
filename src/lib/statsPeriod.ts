@@ -1,4 +1,4 @@
-import { startOfDay } from './financePeriod';
+import { formatIsoDay, startOfDay } from './financePeriod';
 import { compareByStart } from './tournamentStatus';
 import type { Tournament } from '../types/tournament';
 
@@ -17,13 +17,6 @@ export type AttendanceSeed = {
   tournament: Pick<Tournament, 'id' | 'title' | 'startDate' | 'startTime'>;
   players: number;
 };
-
-function isoDay(day: Date): string {
-  const year = day.getFullYear();
-  const month = String(day.getMonth() + 1).padStart(2, '0');
-  const date = String(day.getDate()).padStart(2, '0');
-  return `${year}-${month}-${date}`;
-}
 
 function eachDayInclusive(start: Date, end: Date): Date[] {
   const days: Date[] = [];
@@ -100,6 +93,47 @@ export function tournamentInPeriod(
   return ts >= bounds.start.getTime() && ts <= bounds.end.getTime();
 }
 
+/**
+ * Inclusive filter by tournament start calendar day (`YYYY-MM-DD`).
+ * Empty `from` / `to` leave that side unbounded. If `from` is after `to`, the bounds swap.
+ */
+export function tournamentInDateRange(
+  startDate: string,
+  fromIsoDay: string | null | undefined,
+  toIsoDay: string | null | undefined,
+): boolean {
+  const day = parseTournamentDay(startDate);
+  if (!day) return false;
+
+  let fromRaw = (fromIsoDay ?? '').trim();
+  let toRaw = (toIsoDay ?? '').trim();
+  if (fromRaw && toRaw && fromRaw > toRaw) {
+    const swapped = fromRaw;
+    fromRaw = toRaw;
+    toRaw = swapped;
+  }
+
+  if (fromRaw) {
+    const from = parseTournamentDay(fromRaw);
+    if (from && day.getTime() < from.getTime()) return false;
+  }
+  if (toRaw) {
+    const to = parseTournamentDay(toRaw);
+    if (to && day.getTime() > to.getTime()) return false;
+  }
+  return true;
+}
+
+export function filterTournamentsByStartDate<T extends Pick<Tournament, 'startDate'>>(
+  tournaments: T[],
+  fromIsoDay: string | null | undefined,
+  toIsoDay: string | null | undefined,
+): T[] {
+  return tournaments.filter((tournament) =>
+    tournamentInDateRange(tournament.startDate, fromIsoDay, toIsoDay),
+  );
+}
+
 export function filterStatisticTournaments(
   tournaments: Tournament[],
   period: StatsPeriod,
@@ -128,12 +162,12 @@ export function buildAttendanceChart(
   if (bounds) {
     const byDay = new Map<string, { players: number; titles: string[] }>();
     for (const day of eachDayInclusive(bounds.start, bounds.end)) {
-      byDay.set(isoDay(day), { players: 0, titles: [] });
+      byDay.set(formatIsoDay(day), { players: 0, titles: [] });
     }
     for (const { tournament, players } of rows) {
       const day = parseTournamentDay(tournament.startDate);
       if (!day) continue;
-      const key = isoDay(day);
+      const key = formatIsoDay(day);
       const slot = byDay.get(key);
       if (!slot) continue;
       slot.players += players;

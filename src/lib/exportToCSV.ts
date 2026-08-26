@@ -1,7 +1,10 @@
 import type { ActionLog } from '../types/auditLog';
 import type { Transaction } from '../types/finance';
 import { TRANSACTION_STATUS_LABEL, TRANSACTION_TYPE_LABEL } from '../types/finance';
+import type { Tournament } from '../types/tournament';
+import { formatIsoDay } from './financePeriod';
 import { formatTxDate, formatTxTime, ledgerTimestamp } from './transactionDisplay';
+import { compareByStart } from './tournamentStatus';
 
 function csvEscape(value: string | number | boolean): string {
   const raw = String(value ?? '');
@@ -77,4 +80,51 @@ export function exportAuditLogsToCSV(
     ];
   });
   downloadCsv(filename, headers, rows);
+}
+
+function formatExportDate(startDate: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec((startDate ?? '').trim());
+  if (!match) return (startDate ?? '').trim() || '—';
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
+function formatExportTime(startTime: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec((startTime ?? '').trim());
+  if (!match) return (startTime ?? '').trim() || '—';
+  return `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
+}
+
+function formatExportFeatures(features: string[] | undefined): string {
+  return (features ?? [])
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join('; ');
+}
+
+export function tournamentExportFilename(
+  fromIsoDay: string,
+  toIsoDay: string,
+  now = new Date(),
+): string {
+  const from = fromIsoDay.trim();
+  const to = toIsoDay.trim();
+  if (from && to) return `showdown-tournaments-${from}-${to}.csv`;
+  if (from) return `showdown-tournaments-from-${from}.csv`;
+  if (to) return `showdown-tournaments-until-${to}.csv`;
+  return `showdown-tournaments-${formatIsoDay(now)}.csv`;
+}
+
+/** Download tournament rows as Excel-friendly CSV (UTF-8 BOM). */
+export function exportTournamentsToCSV(
+  tournaments: Pick<Tournament, 'title' | 'startDate' | 'startTime' | 'features'>[],
+  filename?: string,
+) {
+  const headers = ['Название', 'Дата', 'Время начала', 'Особенности'];
+  const rows = [...tournaments].sort(compareByStart).map((tournament) => [
+    tournament.title.trim(),
+    formatExportDate(tournament.startDate),
+    formatExportTime(tournament.startTime),
+    formatExportFeatures(tournament.features),
+  ]);
+  downloadCsv(filename ?? tournamentExportFilename('', ''), headers, rows);
 }

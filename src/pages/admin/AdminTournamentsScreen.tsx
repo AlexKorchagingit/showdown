@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { useTournaments } from '../../context/TournamentContext';
 import { TournamentCard } from '../../components/TournamentCard';
 import { CompactHeader } from '../../components/CompactHeader';
@@ -9,6 +9,9 @@ import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { compareByStart, isFinished } from '../../lib/tournamentStatus';
+import { exportTournamentsToCSV, tournamentExportFilename } from '../../lib/exportToCSV';
+import { formatIsoDay, startOfDay } from '../../lib/financePeriod';
+import { filterTournamentsByStartDate, statsPeriodBounds } from '../../lib/statsPeriod';
 import { asset } from '../../lib/assets';
 import { DEFAULT_TOTAL_SEATS, type Tournament } from '../../types/tournament';
 import { useBlinds } from '../../context/BlindsContext';
@@ -27,6 +30,130 @@ const LABEL_CLASS =
   'block text-[11px] font-700 uppercase tracking-[0.18em] mb-2 text-[#D99962]';
 
 const CLUB_ADDRESS = 'г. Брянск, Проспект Ленина, 2';
+
+type ExportPresetId = 'today' | 'week' | 'month' | 'all';
+type ExportPreset = ExportPresetId | 'custom';
+
+const EXPORT_PRESETS: { id: ExportPresetId; label: string }[] = [
+  { id: 'today', label: 'Сегодня' },
+  { id: 'week', label: 'Неделя' },
+  { id: 'month', label: 'Месяц' },
+  { id: 'all', label: 'Все время' },
+];
+
+function initialMonthRange(now = new Date()): { from: string; to: string } {
+  const bounds = statsPeriodBounds('month', now);
+  if (!bounds) return { from: '', to: '' };
+  return { from: formatIsoDay(bounds.start), to: formatIsoDay(bounds.end) };
+}
+
+function TournamentExportBar({ tournaments }: { tournaments: Tournament[] }) {
+  const month = initialMonthRange();
+  const [preset, setPreset] = useState<ExportPreset>('month');
+  const [fromDate, setFromDate] = useState(month.from);
+  const [toDate, setToDate] = useState(month.to);
+
+  const applyPreset = (next: ExportPresetId) => {
+    setPreset(next);
+    const now = new Date();
+    if (next === 'all') {
+      setFromDate('');
+      setToDate('');
+      return;
+    }
+    if (next === 'today') {
+      const day = formatIsoDay(startOfDay(now));
+      setFromDate(day);
+      setToDate(day);
+      return;
+    }
+    const bounds = statsPeriodBounds(next, now);
+    if (!bounds) return;
+    setFromDate(formatIsoDay(bounds.start));
+    setToDate(formatIsoDay(bounds.end));
+  };
+
+  const exportRows = useMemo(
+    () => filterTournamentsByStartDate(tournaments, fromDate, toDate),
+    [tournaments, fromDate, toDate],
+  );
+
+  return (
+    <section
+      className="rounded-2xl p-3 space-y-3"
+      style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
+    >
+      <p className="text-[11px] font-700 uppercase tracking-[0.16em]" style={{ color: '#D99962' }}>
+        Выгрузка в Excel
+      </p>
+      <div className="grid grid-cols-4 gap-1 rounded-xl p-1" style={{ background: '#1E1612' }}>
+        {EXPORT_PRESETS.map(({ id, label }) => {
+          const active = preset === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => applyPreset(id)}
+              className="py-2.5 rounded-lg text-[11px] font-700 leading-tight transition-colors"
+              style={{
+                background: active ? 'linear-gradient(to right, #8C4C27, #D99962)' : 'transparent',
+                color: active ? '#0A0908' : '#6B6360',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <section>
+          <label className={LABEL_CLASS}>С</label>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(event) => {
+              setPreset('custom');
+              setFromDate(event.target.value);
+            }}
+            className={`${FIELD_CLASS} [color-scheme:dark]`}
+          />
+        </section>
+        <section>
+          <label className={LABEL_CLASS}>По</label>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(event) => {
+              setPreset('custom');
+              setToDate(event.target.value);
+            }}
+            className={`${FIELD_CLASS} [color-scheme:dark]`}
+          />
+        </section>
+      </div>
+      <button
+        type="button"
+        disabled={exportRows.length === 0}
+        onClick={() =>
+          exportTournamentsToCSV(exportRows, tournamentExportFilename(fromDate, toDate))
+        }
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-700 text-[#0A0908] active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+        style={{
+          background: 'linear-gradient(to right, #8C4C27, #D99962)',
+          boxShadow: exportRows.length === 0 ? undefined : '0 0 16px rgba(217,153,98,0.28)',
+        }}
+      >
+        <Download size={17} strokeWidth={2.4} />
+        Экспорт в Excel (CSV)
+      </button>
+      <p className="text-[12px] px-0.5" style={{ color: '#8c8c88' }}>
+        {exportRows.length === 0
+          ? 'Нет турниров за выбранный период'
+          : `К выгрузке: ${exportRows.length}`}
+      </p>
+    </section>
+  );
+}
 
 interface CreateForm {
   title: string;
@@ -261,6 +388,7 @@ export function AdminTournamentsScreen() {
           >
             {tab === 'all' ? (
               <div className="space-y-3">
+                <TournamentExportBar tournaments={tournaments} />
                 {sortedTournaments.map((tournament) => (
                   <div
                     key={tournament.id}
