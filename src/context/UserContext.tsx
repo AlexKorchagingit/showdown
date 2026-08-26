@@ -19,6 +19,7 @@ import {
   type MappedUser,
 } from '../lib/userApi';
 import { addLog as insertClubLog, type AddLogInput } from '../lib/logApi';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../lib/network';
 import { endLocalSession, readSessionUserId, writeSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 
@@ -66,6 +67,8 @@ export function UserProvider({
   onInvalidRef.current = onAccountInvalid;
   const kickedRef = useRef(false);
   const cosmeticsResetDoneRef = useRef(false);
+  const accountRef = useRef<MappedUser | null>(null);
+  accountRef.current = account;
 
   const kickDeletedAccount = useCallback(() => {
     if (kickedRef.current) return;
@@ -76,44 +79,87 @@ export function UserProvider({
   }, [email]);
 
   const refreshClubUsers = useCallback(async () => {
-    const users = await fetchClubUsers();
-    setClubUsers(users);
+    try {
+      const users = await withTimeout(fetchClubUsers(), REQUEST_TIMEOUT_MS);
+      setClubUsers(users);
+    } catch (error) {
+      console.error('LOGIN FATAL ERROR:', error);
+      setClubUsers([]);
+    }
   }, []);
 
-  const enforceSession = useCallback(async (): Promise<boolean> => {
+  const enforceSession = useCallback(async (kickOnError = false): Promise<boolean> => {
     if (kickedRef.current) return false;
-    const result = await lookupSessionAccount(readSessionUserId(), email);
-    if (result.status === 'error') return true;
-    if (result.status === 'missing') {
-      kickDeletedAccount();
-      return false;
+    try {
+      const result = await withTimeout(
+        lookupSessionAccount(readSessionUserId(), email),
+        REQUEST_TIMEOUT_MS,
+      );
+      if (result.status === 'error') {
+        console.error('LOGIN FATAL ERROR:', result.message);
+        if (kickOnError) {
+          kickDeletedAccount();
+          return false;
+        }
+        return true;
+      }
+      if (result.status === 'missing') {
+        kickDeletedAccount();
+        return false;
+      }
+      writeSession(email || result.user.email, result.user.id);
+      setAccount(result.user);
+      return true;
+    } catch (error) {
+      console.error('LOGIN FATAL ERROR:', error);
+      if (kickOnError) {
+        kickDeletedAccount();
+        return false;
+      }
+      return true;
     }
-    writeSession(email || result.user.email, result.user.id);
-    setAccount(result.user);
-    return true;
   }, [email, kickDeletedAccount]);
 
   const refreshAccount = useCallback(async () => {
     setIsLoading(true);
     try {
-      const ok = await enforceSession();
+      const ok = await enforceSession(true);
       if (!ok) return;
-      if (!cosmeticsResetDoneRef.current) {
-        const reset = await applyCosmeticsResetToAllUsers();
-        if (reset.ok) cosmeticsResetDoneRef.current = true;
-        if (reset.updated > 0) await enforceSession();
-      }
-      await refreshClubUsers();
+      void (async () => {
+        try {
+          if (!cosmeticsResetDoneRef.current) {
+            const reset = await withTimeout(applyCosmeticsResetToAllUsers(), REQUEST_TIMEOUT_MS);
+            if (reset.ok) cosmeticsResetDoneRef.current = true;
+            if (reset.updated > 0) await enforceSession(false);
+          }
+        } catch (error) {
+          console.error('LOGIN FATAL ERROR:', error);
+        }
+        await refreshClubUsers();
+      })();
+    } catch (error) {
+      console.error('LOGIN FATAL ERROR:', error);
+      kickDeletedAccount();
     } finally {
       setIsLoading(false);
     }
-  }, [enforceSession, refreshClubUsers]);
+  }, [enforceSession, kickDeletedAccount, refreshClubUsers]);
 
   useEffect(() => {
     kickedRef.current = false;
     cosmeticsResetDoneRef.current = false;
     void refreshAccount();
   }, [refreshAccount]);
+
+  useEffect(() => {
+    const watchdog = window.setTimeout(() => {
+      setIsLoading(false);
+      if (!accountRef.current && !kickedRef.current) {
+        kickDeletedAccount();
+      }
+    }, REQUEST_TIMEOUT_MS);
+    return () => window.clearTimeout(watchdog);
+  }, [kickDeletedAccount]);
 
   useEffect(() => {
     const verify = () => {

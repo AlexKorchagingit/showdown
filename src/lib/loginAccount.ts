@@ -14,7 +14,7 @@ const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 /** Stall abort only. HTTP/RLS errors reject as soon as the response arrives. */
-const LOGIN_STALL_MS = 8_000;
+const LOGIN_STALL_MS = 5_000;
 
 function logLoginFatal(error: unknown): void {
   console.error('LOGIN FATAL ERROR:', error);

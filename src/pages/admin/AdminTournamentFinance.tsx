@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, Gem, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
 import { ScreenLoading } from '../../components/ScreenLoading';
+import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { CURRENT_USER_ID, useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useAuditLog } from '../../context/AuditLogContext';
@@ -67,7 +68,7 @@ function FadingHoursDelta({ flash }: { flash?: { delta: number; token: number } 
 export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tournaments, updateTournament, isLoading } = useTournaments();
+  const { tournaments, updateTournament, isLoading, loadError, fetchTournaments } = useTournaments();
   const { logAction } = useAuditLog();
   const { email: currentEmail, userId, clubUsers } = useUser();
   const { addCoins } = useProfile();
@@ -124,6 +125,13 @@ export function AdminTournamentFinance() {
     return (
       <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
         <ScreenLoading label="Загрузка турнира…" />
+      </div>
+    );
+  }
+  if (!tournament && loadError) {
+    return (
+      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+        <FetchErrorCard message={loadError} onRetry={() => void fetchTournaments()} />
       </div>
     );
   }

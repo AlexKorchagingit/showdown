@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
+import { FetchErrorCard } from '../components/FetchErrorCard';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { BrandLogo } from '../components/BrandLogo';
@@ -476,7 +477,7 @@ function InfoGrid({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function HomePage() {
   const navigate = useNavigate();
-  const { tournaments } = useTournaments();
+  const { tournaments, isLoading, loadError, fetchTournaments } = useTournaments();
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isSocialsOpen, setIsSocialsOpen] = useState(false);
 
@@ -488,14 +489,16 @@ export function HomePage() {
       <Header onOpenSocials={() => setIsSocialsOpen(true)} />
       <div className="flex-1 scrollable" style={{ paddingBottom: '0.5rem' }}>
         <div className="px-5 pt-5 space-y-6">
-          {nextTournament && (
+          {loadError && !nextTournament && !isLoading ? (
+            <FetchErrorCard message={loadError} onRetry={() => void fetchTournaments()} />
+          ) : nextTournament ? (
             <HeroCard
               tournament={nextTournament}
               onPress={() =>
                 navigate(`/tournaments/${nextTournament.id}`, { state: { from: '/' } })
               }
             />
-          )}
+          ) : null}
 
           <RatingSection onNavigate={() => navigate('/rating')} />
           <InfoGrid

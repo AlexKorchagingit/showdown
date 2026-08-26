@@ -34,6 +34,7 @@ import { AuditLogProvider } from './context/AuditLogContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 import { endLocalSession, readSessionEmail } from './lib/session';
+import { REQUEST_TIMEOUT_MS } from './lib/network';
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
@@ -121,14 +122,27 @@ function SplashShell() {
 function AuthenticatedApp({
   userEmail,
   showSplash,
+  onBootFailed,
 }: {
   userEmail: string;
   showSplash: boolean;
+  onBootFailed: () => void;
 }) {
   const navigate = useNavigate();
   const { account, isLoading } = useUser();
   const ready = Boolean(account) && !isLoading && !showSplash;
   const landedHomeRef = useRef(false);
+  const accountRef = useRef(account);
+  accountRef.current = account;
+  const onBootFailedRef = useRef(onBootFailed);
+  onBootFailedRef.current = onBootFailed;
+
+  useEffect(() => {
+    const watchdog = window.setTimeout(() => {
+      if (!accountRef.current) onBootFailedRef.current();
+    }, REQUEST_TIMEOUT_MS);
+    return () => window.clearTimeout(watchdog);
+  }, []);
 
   useEffect(() => {
     if (!account || isLoading || showSplash) return;
@@ -233,7 +247,11 @@ export default function App() {
 
   return (
     <UserProvider email={userEmail} onAccountInvalid={handleAccountInvalid}>
-      <AuthenticatedApp userEmail={userEmail} showSplash={showSplash} />
+      <AuthenticatedApp
+        userEmail={userEmail}
+        showSplash={showSplash}
+        onBootFailed={handleAccountInvalid}
+      />
     </UserProvider>
   );
 }

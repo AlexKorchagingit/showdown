@@ -20,6 +20,7 @@ import {
 } from '../lib/tournamentApi';
 import { participantToRow, resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { clubUserIdSet, countRegisteredClubSeats, isRegisteredClubSeat } from '../lib/clubRating';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../lib/network';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -27,6 +28,7 @@ export const CURRENT_USER_ID = 'me';
 interface TournamentContextValue {
   tournaments: Tournament[];
   isLoading: boolean;
+  loadError: string | null;
   fetchTournaments: () => Promise<void>;
   refreshParticipants: (tournamentId: string) => Promise<void>;
   toggleRegistration: (tournamentId: string) => Promise<void>;
@@ -47,9 +49,10 @@ function isSeatOfUser(player: Participant, userId: string): boolean {
 }
 
 export function TournamentProvider({ children }: { children: React.ReactNode }) {
-  const { account, userId, clubUsers, isLoading: userLoading } = useUser();
+  const { account, userId, clubUsers } = useUser();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const resolveUserId = useCallback(
     (player: Participant): string | null => {
@@ -62,12 +65,18 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const fetchTournaments = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
-      const rows = await loadTournaments();
+      const rows = await withTimeout(
+        loadTournaments(),
+        REQUEST_TIMEOUT_MS,
+        'Не удалось загрузить турниры. Проверьте интернет.',
+      );
       setTournaments(rows);
     } catch (error) {
       console.error(error);
       setTournaments([]);
+      setLoadError('Не удалось загрузить турниры. Проверьте интернет.');
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +88,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const refreshParticipants = useCallback(async (tournamentId: string) => {
     try {
-      const participants = await fetchParticipants(tournamentId);
+      const participants = await withTimeout(
+        fetchParticipants(tournamentId),
+        REQUEST_TIMEOUT_MS,
+        'Не удалось загрузить участников. Проверьте интернет.',
+      );
       setTournaments((prev) =>
         prev.map((tournament) =>
           tournament.id === tournamentId ? { ...tournament, participants } : tournament,
@@ -280,7 +293,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const value = useMemo<TournamentContextValue>(
     () => ({
       tournaments,
-      isLoading: isLoading || userLoading,
+      isLoading,
+      loadError,
       fetchTournaments,
       refreshParticipants,
       toggleRegistration,
@@ -296,12 +310,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       duplicateTournament,
       fetchTournaments,
       isLoading,
+      loadError,
       isRegistered,
       refreshParticipants,
       toggleRegistration,
       tournaments,
       updateTournament,
-      userLoading,
     ],
   );
 

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { addLog, fetchLogs } from '../lib/logApi';
+import { REQUEST_TIMEOUT_MS, withTimeout } from '../lib/network';
 import { useUser } from './UserContext';
 import type { ActionLog, LogActionDraft } from '../types/auditLog';
 
@@ -28,7 +29,7 @@ export function AuditLogProvider({ children }: { children: ReactNode }) {
   const refreshLogs = useCallback(async () => {
     setIsLoading(true);
     try {
-      const rows = await fetchLogs();
+      const rows = await withTimeout(fetchLogs(), REQUEST_TIMEOUT_MS);
       setLogs(rows);
     } catch (error) {
       console.error('SUPABASE LOG ERROR:', error);

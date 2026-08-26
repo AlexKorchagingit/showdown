@@ -5,13 +5,14 @@ import type { Tournament } from '../types/tournament';
 import { TournamentCard } from '../components/TournamentCard';
 import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
+import { FetchErrorCard } from '../components/FetchErrorCard';
 
 type Tab = 'upcoming' | 'finished';
 
 const TAB_ORDER: Tab[] = ['upcoming', 'finished'];
 
 export function TournamentsPage() {
-  const { tournaments, isLoading } = useTournaments();
+  const { tournaments, isLoading, loadError, fetchTournaments } = useTournaments();
   const navigate        = useNavigate();
 
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
@@ -93,6 +94,8 @@ export function TournamentsPage() {
                   Загрузка турниров…
                 </p>
               </div>
+            ) : loadError && filtered.length === 0 ? (
+              <FetchErrorCard message={loadError} onRetry={() => void fetchTournaments()} />
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3">
                 <span className="text-4xl opacity-10 text-white">♠</span>

@@ -8,6 +8,7 @@ import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../ty
 import { useTournaments } from '../../context/TournamentContext';
 import { useUser } from '../../context/UserContext';
 import { ScreenLoading } from '../../components/ScreenLoading';
+import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentStatus';
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
@@ -610,13 +611,20 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
 export function AdminTournamentEditor() {
   const { id } = useParams<{ id: string }>();
-  const { tournaments, isLoading } = useTournaments();
+  const { tournaments, isLoading, loadError, fetchTournaments } = useTournaments();
 
   const tournament = tournaments.find((t) => t.id === id);
   if (!tournament && isLoading) {
     return (
       <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
         <ScreenLoading label="Загрузка турнира…" />
+      </div>
+    );
+  }
+  if (!tournament && loadError) {
+    return (
+      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+        <FetchErrorCard message={loadError} onRetry={() => void fetchTournaments()} />
       </div>
     );
   }
