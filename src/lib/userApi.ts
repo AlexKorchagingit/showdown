@@ -89,13 +89,13 @@ export async function fetchClubUsers(): Promise<MappedUser[]> {
   return users;
 }
 
-async function countClubUsers(): Promise<number | null> {
-  const { count, error } = await supabase.from('users').select('id', { count: 'exact', head: true });
-  if (error) {
+async function clubHasAtMostOneUser(): Promise<boolean> {
+  const { data, error } = await supabase.from('users').select('id').limit(2);
+  if (error || !data) {
     logSupabaseError(error, 'users count');
-    return null;
+    return false;
   }
-  return count ?? 0;
+  return data.length <= 1;
 }
 
 export async function loginOrRegisterUser(
@@ -120,8 +120,7 @@ export async function loginOrRegisterUser(
       if (error) logSupabaseError(error, 'agreements update');
       next = { ...existing.user, agreementsAcceptedAt };
     }
-    const soleUser = (await countClubUsers()) === 1;
-    if (!next.isAdmin && (isSuperAdmin(normalized) || soleUser)) {
+    if (!next.isAdmin && (isSuperAdmin(normalized) || (await clubHasAtMostOneUser()))) {
       const promoted = await updateUserRow(next.id, { is_admin: true });
       if (promoted) next = promoted;
     }
@@ -131,8 +130,7 @@ export async function loginOrRegisterUser(
   }
 
   const nickname = generateNickname();
-  const emptyClub = (await countClubUsers()) === 0;
-  const makeAdmin = isSuperAdmin(normalized) || emptyClub;
+  const makeAdmin = isSuperAdmin(normalized) || (await clubHasAtMostOneUser());
   const { id: _generatedId, ...insertRow } = userToRow({
     id: 'pending',
     email: normalized,

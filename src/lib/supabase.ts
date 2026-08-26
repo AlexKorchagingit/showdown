@@ -7,7 +7,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * The app uses the anon key as a public PostgREST client — not Supabase Auth.
+ * Default `getSession()` waits on GoTrue init and can hang in Telegram WebView
+ * (localStorage / URL hash / auth recover), so login never finishes.
+ */
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  accessToken: async () => supabaseAnonKey,
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+});
 
 /** Print the PostgREST body (column missing, bad embed, …) instead of a bare HTTP 400. */
 export function logSupabaseError(error: PostgrestError | { message?: string } | null, context?: string) {
