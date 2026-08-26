@@ -14,6 +14,15 @@ function csvEscape(value: string | number | boolean, delimiter = ','): string {
   return raw;
 }
 
+function triggerDownload(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function downloadCsv(
   filename: string,
   headers: string[],
@@ -24,17 +33,36 @@ function downloadCsv(
     headers.map((value) => csvEscape(value, delimiter)).join(delimiter),
     ...rows.map((row) => row.map((value) => csvEscape(value, delimiter)).join(delimiter)),
   ];
-  // `sep=` makes Excel (including ru-RU, where `;` is the list separator) keep columns aligned.
-  const sepLine = delimiter === ';' ? `sep=${delimiter}\n` : '';
-  const blob = new Blob([`\uFEFF${sepLine}${lines.join('\n')}`], {
+  const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], {
     type: 'text/csv;charset=utf-8;',
   });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  triggerDownload(filename, blob);
+}
+
+/**
+ * Excel on Russian Windows treats a UTF-8 file that starts with `sep=;` as ANSI (CP1251),
+ * which turns «Название» into «РќР°Р·РІР°РЅРёРµ». UTF-16 LE with BOM is unambiguous.
+ */
+function downloadExcelCsv(
+  filename: string,
+  headers: string[],
+  rows: (string | number | boolean)[][],
+) {
+  const delimiter = ';';
+  const lines = [
+    headers.map((value) => csvEscape(value, delimiter)).join(delimiter),
+    ...rows.map((row) => row.map((value) => csvEscape(value, delimiter)).join(delimiter)),
+  ];
+  const text = lines.join('\r\n');
+  const bytes = new Uint8Array(2 + text.length * 2);
+  bytes[0] = 0xff;
+  bytes[1] = 0xfe;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    bytes[2 + i * 2] = code & 0xff;
+    bytes[2 + i * 2 + 1] = code >>> 8;
+  }
+  triggerDownload(filename, new Blob([bytes], { type: 'text/csv;charset=utf-16le;' }));
 }
 
 export interface ExportToCSVResolvers {
@@ -123,7 +151,7 @@ export function tournamentExportFilename(
   return `showdown-tournaments-${formatIsoDay(now)}.csv`;
 }
 
-/** Download tournament rows as Excel-friendly CSV (UTF-8 BOM). */
+/** Download tournament rows as Excel CSV (UTF-16 LE, semicolon columns). */
 export function exportTournamentsToCSV(
   tournaments: Pick<Tournament, 'title' | 'startDate' | 'startTime' | 'features'>[],
   filename?: string,
@@ -135,5 +163,5 @@ export function exportTournamentsToCSV(
     formatExportTime(tournament.startTime),
     formatExportFeatures(tournament.features),
   ]);
-  downloadCsv(filename ?? tournamentExportFilename('', ''), headers, rows, ';');
+  downloadExcelCsv(filename ?? tournamentExportFilename('', ''), headers, rows);
 }
