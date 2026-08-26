@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'r
 import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
-import { addLog } from '../lib/logApi';
-import { loginOrRegisterUser } from '../lib/userApi';
+import { loginOrRegisterUser } from '../lib/loginAccount';
 import { LegalImageModal } from './LegalImageModal';
 import { BrandLogo } from './BrandLogo';
 
@@ -76,48 +75,49 @@ function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
   localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error(message)), ms);
-    promise.then(
-      (value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        window.clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
-
 async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
-  const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
-  if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
-  const acceptedAt = agreementsAcceptedAt || readAgreementsAt() || new Date().toISOString();
-  const { user, isNew } = await withTimeout(
-    loginOrRegisterUser(normalized, acceptedAt),
-    20_000,
-    'Сервер не отвечает. Проверьте сеть и попробуйте ещё раз.',
-  );
+  try {
+    const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
+    if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
+    const acceptedAt = agreementsAcceptedAt || readAgreementsAt() || new Date().toISOString();
 
-  if (isNew) {
-    void addLog({
-      admin_id: user.id,
-      admin_email: normalized,
-      admin_name: user.nickname,
-      action_type: 'Согласия приняты (электронная подпись)',
-      target_user_id: user.id,
-      target_user_email: normalized,
-      target_user_name: user.nickname,
-      details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${user.agreementsAcceptedAt ?? acceptedAt}`,
-    });
+    let user: Awaited<ReturnType<typeof loginOrRegisterUser>>['user'];
+    let isNew = false;
+    try {
+      const result = await loginOrRegisterUser(normalized, acceptedAt);
+      user = result.user;
+      isNew = result.isNew;
+    } catch (error) {
+      console.error('LOGIN FATAL ERROR:', error);
+      throw error;
+    }
+
+    if (isNew) {
+      void import('../lib/logApi')
+        .then(({ addLog }) =>
+          addLog({
+            admin_id: user.id,
+            admin_email: normalized,
+            admin_name: user.nickname,
+            action_type: 'Согласия приняты (электронная подпись)',
+            target_user_id: user.id,
+            target_user_email: normalized,
+            target_user_name: user.nickname,
+            details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${user.agreementsAcceptedAt ?? acceptedAt}`,
+          }),
+        )
+        .catch((error) => {
+          console.error('LOGIN FATAL ERROR:', error);
+        });
+    }
+
+    clearTempAuth();
+    clearAgreementsAt();
+    onLogin(user.email);
+  } catch (error) {
+    console.error('LOGIN FATAL ERROR:', error);
+    throw error;
   }
-
-  clearTempAuth();
-  clearAgreementsAt();
-  onLogin(user.email);
 }
 
 function ConsentCopy({ onOpen }: { onOpen: (document: ClubLegalDocument) => void }) {
@@ -272,6 +272,7 @@ export function LoginScreen({ onLogin }: Props) {
       agreementsAcceptedAt || readAgreementsAt(),
       onLoginRef.current,
     ).catch((error) => {
+      console.error('LOGIN FATAL ERROR:', error);
       verifiedRef.current = false;
       setIsSuccess(false);
       setOtp(['', '', '', '']);

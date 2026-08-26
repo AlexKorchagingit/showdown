@@ -1,4 +1,3 @@
-import { isSuperAdmin } from './admin';
 import {
   COSMETICS_RESET_TOKEN,
   DEFAULT_BG_ID,
@@ -7,10 +6,9 @@ import {
   cosmeticsResetOwnedItems,
 } from '../data/shopItems';
 import { getClubDirectory, removeClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
-import { writeSession } from './session';
 import { supabase, logSupabaseError } from './supabase';
-import { userFromRow, userToRow, type MappedUser, type UserRow } from './supabaseMap';
-import { STARTING_COINS, generateNickname } from './userStorage';
+import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
+import { STARTING_COINS } from './userStorage';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -89,79 +87,7 @@ export async function fetchClubUsers(): Promise<MappedUser[]> {
   return users;
 }
 
-async function clubHasAtMostOneUser(): Promise<boolean> {
-  const { data, error } = await supabase.from('users').select('id').limit(2);
-  if (error || !data) {
-    logSupabaseError(error, 'users count');
-    return false;
-  }
-  return data.length <= 1;
-}
-
-export async function loginOrRegisterUser(
-  email: string,
-  agreementsAcceptedAt?: string,
-): Promise<{ user: MappedUser; isNew: boolean }> {
-  const normalized = normalizeEmail(email);
-  if (!normalized) throw new Error('Не указан email');
-
-  const existing = await lookupUserByEmail(normalized);
-  if (existing.status === 'error') {
-    throw new Error(existing.message || 'Не удалось проверить аккаунт');
-  }
-  if (existing.status === 'found') {
-    let next = existing.user;
-    const isNew = Boolean(agreementsAcceptedAt && !existing.user.agreementsAcceptedAt);
-    if (isNew && agreementsAcceptedAt) {
-      const { error } = await supabase
-        .from('users')
-        .update({ agreements_accepted_at: agreementsAcceptedAt })
-        .eq('id', existing.user.id);
-      if (error) logSupabaseError(error, 'agreements update');
-      next = { ...existing.user, agreementsAcceptedAt };
-    }
-    if (!next.isAdmin && (isSuperAdmin(normalized) || (await clubHasAtMostOneUser()))) {
-      const promoted = await updateUserRow(next.id, { is_admin: true });
-      if (promoted) next = promoted;
-    }
-    writeSession(normalized, next.id);
-    upsertClubDirectory(next);
-    return { user: next, isNew };
-  }
-
-  const nickname = generateNickname();
-  const makeAdmin = isSuperAdmin(normalized) || (await clubHasAtMostOneUser());
-  const { id: _generatedId, ...insertRow } = userToRow({
-    id: 'pending',
-    email: normalized,
-    nickname,
-    isAdmin: makeAdmin,
-    coins: STARTING_COINS,
-    agreementsAcceptedAt,
-    ownedItems: cosmeticsResetOwnedItems(),
-    equippedChar: DEFAULT_CHARACTER_ID,
-    equippedBg: DEFAULT_BG_ID,
-    equippedAvatar: [avatarUrlForChar(DEFAULT_CHARACTER_ID), DEFAULT_CHARACTER_ID, DEFAULT_BG_ID],
-  });
-
-  const { data, error } = await supabase.from('users').insert(insertRow).select('*').single();
-  if (error || !data) {
-    logSupabaseError(error, 'insert user');
-    const raced = await fetchUserByEmail(normalized);
-    if (raced) {
-      writeSession(normalized, raced.id);
-      upsertClubDirectory(raced);
-      return { user: raced, isNew: false };
-    }
-    throw new Error(error?.message || 'Не удалось создать пользователя');
-  }
-  const created = asUserRow(data);
-  if (!created) throw new Error('Не удалось создать пользователя');
-  const mapped = userFromRow(created);
-  writeSession(normalized, mapped.id);
-  upsertClubDirectory(mapped);
-  return { user: mapped, isNew: true };
-}
+export { loginOrRegisterUser } from './loginAccount';
 
 export async function deleteUserRow(userId: string): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
   const { error: unlinkError } = await supabase

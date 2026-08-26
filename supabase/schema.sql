@@ -176,6 +176,8 @@ create trigger participants_set_updated_at
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security — open read/write for now (tighten later)
+-- Login uses the anon key against public.users (no Supabase Auth session).
+-- Keep GRANT + policy for anon SELECT/INSERT/UPDATE or email OTP login will 401/403.
 -- ---------------------------------------------------------------------------
 alter table public.users enable row level security;
 alter table public.tournaments enable row level security;

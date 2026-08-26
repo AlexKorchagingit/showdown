@@ -1,16 +1,33 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+const QUERY_STALL_MS = 8_000;
+
+function fetchWithoutAuthSession(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const stall = setTimeout(() => controller.abort(), QUERY_STALL_MS);
+  const parent = init?.signal;
+  if (parent) {
+    if (parent.aborted) controller.abort();
+    else parent.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+
+  return fetch(input, {
+    ...init,
+    credentials: 'omit',
+    signal: controller.signal,
+  }).finally(() => clearTimeout(stall));
+}
+
 /**
- * The app uses the anon key as a public PostgREST client — not Supabase Auth.
- * Default `getSession()` waits on GoTrue init and can hang in Telegram WebView
- * (localStorage / URL hash / auth recover), so login never finishes.
+ * Club data uses the anon key as a public PostgREST client.
+ * Login itself does not go through this client — see `loginAccount.ts`.
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   accessToken: async () => supabaseAnonKey,
@@ -18,6 +35,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false,
+    storage: {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    },
+  },
+  db: {
+    timeout: QUERY_STALL_MS,
+    retry: false,
+  },
+  global: {
+    fetch: fetchWithoutAuthSession,
   },
 });
 
