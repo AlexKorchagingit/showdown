@@ -24,7 +24,7 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build
+      - run: npm run build:pages
         env:
           VITE_SUPABASE_URL: https://api.showdown-br.ru
           VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg3NjEwMzgyLCJleHAiOjE5NDUyOTAzODJ9.NDeUXNS9PhAqBhPtcQC20cDeisKShG-rxlJYzL7gu6k

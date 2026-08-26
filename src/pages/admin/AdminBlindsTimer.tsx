@@ -30,6 +30,7 @@ import {
 } from '../../data/blindStructures';
 import { calculatePayouts, itmSharePercent } from '../../data/prizeStructure';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
+import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import {
   autoAvgStack,
@@ -444,7 +445,7 @@ export function AdminBlindsTimer() {
 
         <div className="w-64 md:w-80 shrink-0 flex flex-col items-end gap-4">
           <img
-            src="/SD.png"
+            src={asset('/SD.png')}
             alt="Showdown"
             className="h-40 md:h-56 w-auto object-contain opacity-90 self-end"
           />

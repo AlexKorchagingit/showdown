@@ -9,6 +9,7 @@ import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished } from '../lib/tournamentStatus';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
+import { BrandLogo } from '../components/BrandLogo';
 import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
@@ -154,9 +155,7 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
       style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
     >
       <div className="flex items-center gap-3">
-        <img
-          src="/logo-final.webp"
-          alt="Showdown"
+        <BrandLogo
           className="h-16 w-auto object-contain"
           style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }}
         />

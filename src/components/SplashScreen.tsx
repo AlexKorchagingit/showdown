@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { asset } from '../lib/assets';
 
 export function SplashScreen() {
   return (
@@ -22,12 +23,18 @@ export function SplashScreen() {
       />
 
       <motion.img
-        src="/final_big.webp"
+        src={asset('/final_big.webp')}
         alt="Showdown"
         className="relative z-10 object-contain w-3/4 max-w-[330px] h-auto -mt-28"
         initial={{ opacity: 0, scale: 0.75 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.55, ease: [0.34, 1.56, 0.64, 1] }}
+        onError={(event) => {
+          const image = event.currentTarget;
+          const fallback = asset('/logo-final.png');
+          if (image.src.endsWith(fallback) || image.src.includes('logo-final.png')) return;
+          image.src = fallback;
+        }}
       />
 
       <style>{`
