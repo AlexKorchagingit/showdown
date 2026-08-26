@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
@@ -208,11 +208,11 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
-  const handleLogin = (email: string) => {
-    setUserEmail(email.trim().toLowerCase());
+  const handleLogin = useCallback((nextEmail: string) => {
+    setUserEmail(nextEmail.trim().toLowerCase());
     setIsAuthenticated(true);
     navigate('/', { replace: true });
-  };
+  }, [navigate]);
 
   const handleAccountInvalid = () => {
     endLocalSession(userEmail);

@@ -103,17 +103,22 @@ export async function loginOrRegisterUser(
   agreementsAcceptedAt?: string,
 ): Promise<{ user: MappedUser; isNew: boolean }> {
   const normalized = normalizeEmail(email);
-  const existing = await fetchUserByEmail(normalized);
-  if (existing) {
-    let next = existing;
-    const isNew = Boolean(agreementsAcceptedAt && !existing.agreementsAcceptedAt);
+  if (!normalized) throw new Error('Не указан email');
+
+  const existing = await lookupUserByEmail(normalized);
+  if (existing.status === 'error') {
+    throw new Error(existing.message || 'Не удалось проверить аккаунт');
+  }
+  if (existing.status === 'found') {
+    let next = existing.user;
+    const isNew = Boolean(agreementsAcceptedAt && !existing.user.agreementsAcceptedAt);
     if (isNew && agreementsAcceptedAt) {
       const { error } = await supabase
         .from('users')
         .update({ agreements_accepted_at: agreementsAcceptedAt })
-        .eq('id', existing.id);
+        .eq('id', existing.user.id);
       if (error) logSupabaseError(error, 'agreements update');
-      next = { ...existing, agreementsAcceptedAt };
+      next = { ...existing.user, agreementsAcceptedAt };
     }
     const soleUser = (await countClubUsers()) === 1;
     if (!next.isAdmin && (isSuperAdmin(normalized) || soleUser)) {

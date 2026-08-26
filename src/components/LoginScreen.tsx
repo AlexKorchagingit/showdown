@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'react';
 import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
@@ -28,12 +28,17 @@ const TEMP_AUTH_KEYS = [
   'temp_auth_expire',
 ] as const;
 
-function readTempAuthStep(): string | null {
+function readTempAuthValue(key: string): string {
   try {
-    return localStorage.getItem('temp_auth_step');
+    return localStorage.getItem(key) || '';
   } catch {
-    return null;
+    return '';
   }
+}
+
+function readTempAuthStep(): string | null {
+  const step = readTempAuthValue('temp_auth_step');
+  return step || null;
 }
 
 function readAgreementsAt(): string {
@@ -65,19 +70,40 @@ function clearTempAuth() {
 }
 
 function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
-  localStorage.setItem('temp_auth_email', targetEmail.trim());
+  localStorage.setItem('temp_auth_email', targetEmail.trim().toLowerCase());
   localStorage.setItem('temp_auth_code', code);
   localStorage.setItem('temp_auth_step', 'code');
   localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
-  const normalized = email.trim().toLowerCase();
-  const acceptedAt = agreementsAcceptedAt || new Date().toISOString();
-  const { user, isNew } = await loginOrRegisterUser(normalized, acceptedAt);
+  const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
+  if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
+  const acceptedAt = agreementsAcceptedAt || readAgreementsAt() || new Date().toISOString();
+  const { user, isNew } = await withTimeout(
+    loginOrRegisterUser(normalized, acceptedAt),
+    20_000,
+    'Сервер не отвечает. Проверьте сеть и попробуйте ещё раз.',
+  );
 
   if (isNew) {
-    await addLog({
+    void addLog({
       admin_id: user.id,
       admin_email: normalized,
       admin_name: user.nickname,
@@ -136,49 +162,54 @@ export function LoginScreen({ onLogin }: Props) {
     if (restoredAgreements) return 'email';
     return 'consent';
   });
-  const [email, setEmail]                 = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
+  const [email, setEmail] = useState(() => readTempAuthValue('temp_auth_email'));
+  const [generatedCode, setGeneratedCode] = useState(() => readTempAuthValue('temp_auth_code'));
   const [isLoading, setIsLoading]         = useState(false);
   const [timer, setTimer]                 = useState(0);
   const [otp, setOtp]                     = useState(['', '', '', '']);
   const [otpError, setOtpError]           = useState(false);
   const [isSuccess, setIsSuccess]         = useState(false);
+  const [loginError, setLoginError]       = useState('');
   const [agreementsAcceptedAt, setAgreementsAcceptedAt] = useState(restoredAgreements);
   const [activeDocument, setActiveDocument] = useState<ClubLegalDocument | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifiedRef = useRef(false);
+  const onLoginRef = useRef(onLogin);
+  onLoginRef.current = onLogin;
 
   const isEmailValid = EMAIL_REGEX.test(email.trim());
   const canGetCode = Boolean(agreementsAcceptedAt) && isEmailValid && !isLoading;
 
   useEffect(() => {
-    const savedStep = localStorage.getItem('temp_auth_step');
-    if (savedStep !== 'code') return;
+    if (readTempAuthValue('temp_auth_step') !== 'code') return;
 
-    setEmail(localStorage.getItem('temp_auth_email') || '');
-    setGeneratedCode(localStorage.getItem('temp_auth_code') || '');
+    setEmail(readTempAuthValue('temp_auth_email'));
+    setGeneratedCode(readTempAuthValue('temp_auth_code'));
     setStep('code');
     setAgreementsAcceptedAt((current) => current || readAgreementsAt());
 
-    const expireTime = Number(localStorage.getItem('temp_auth_expire') || 0);
+    const expireTime = Number(readTempAuthValue('temp_auth_expire') || 0);
     const timeLeft = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
     setTimer(timeLeft);
   }, []);
 
   const sendCode = useCallback(async (targetEmail: string, nextTimer: number) => {
+    const normalizedEmail = targetEmail.trim().toLowerCase();
     const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setEmail(normalizedEmail);
     setGeneratedCode(code);
     setIsLoading(true);
+    setLoginError('');
 
     try {
       await emailjs.send(
         EMAILJS_SERVICE,
         EMAILJS_TEMPLATE,
-        { to_email: targetEmail.trim(), code },
+        { to_email: normalizedEmail, code },
         EMAILJS_PUBLIC,
       );
-      saveTempAuth(targetEmail.trim(), code, nextTimer);
+      saveTempAuth(normalizedEmail, code, nextTimer);
       setStep('code');
       setTimer(nextTimer);
       setOtp(['', '', '', '']);
@@ -188,7 +219,7 @@ export function LoginScreen({ onLogin }: Props) {
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
       console.error(err);
-      alert('Ошибка отправки. Проверьте почту.');
+      setLoginError('Не удалось отправить код. Проверьте почту и попробуйте ещё раз.');
     } finally {
       setIsLoading(false);
     }
@@ -213,47 +244,80 @@ export function LoginScreen({ onLogin }: Props) {
 
   useEffect(() => {
     if (timer <= 0) return;
-    const id = setInterval(() => setTimer((t) => t - 1), 1000);
-    return () => clearInterval(id);
+    const id = window.setInterval(() => setTimer((t) => t - 1), 1000);
+    return () => window.clearInterval(id);
   }, [timer]);
 
   useEffect(() => {
-    if (step !== 'code' || verifiedRef.current) return;
+    if (step !== 'code' || verifiedRef.current || isSuccess) return;
 
     const codeString = otp.join('');
     if (codeString.length < 4) return;
 
-    if (codeString === generatedCode) {
-      verifiedRef.current = true;
-      setIsSuccess(true);
-      const successTimer = setTimeout(() => {
-        void completeLogin(email, agreementsAcceptedAt, onLogin).catch((error) => {
-          verifiedRef.current = false;
-          setIsSuccess(false);
-          window.alert(error instanceof Error ? error.message : 'Не удалось войти');
-        });
-      }, 1000);
-      return () => clearTimeout(successTimer);
+    const expected = (generatedCode || readTempAuthValue('temp_auth_code')).trim();
+    if (!expected) return;
+    if (codeString !== expected) {
+      setOtpError(true);
+      setOtp(['', '', '', '']);
+      inputRefs.current[0]?.focus();
+      const id = window.setTimeout(() => setOtpError(false), 1000);
+      return () => window.clearTimeout(id);
     }
 
-    setOtpError(true);
-    setOtp(['', '', '', '']);
-    inputRefs.current[0]?.focus();
+    verifiedRef.current = true;
+    setIsSuccess(true);
+    setLoginError('');
+    void completeLogin(
+      email || readTempAuthValue('temp_auth_email'),
+      agreementsAcceptedAt || readAgreementsAt(),
+      onLoginRef.current,
+    ).catch((error) => {
+      verifiedRef.current = false;
+      setIsSuccess(false);
+      setOtp(['', '', '', '']);
+      setLoginError(error instanceof Error ? error.message : 'Не удалось войти');
+      inputRefs.current[0]?.focus();
+    });
+  }, [otp, generatedCode, step, email, agreementsAcceptedAt, isSuccess]);
 
-    const id = setTimeout(() => setOtpError(false), 1000);
-    return () => clearTimeout(id);
-  }, [otp, generatedCode, step, email, onLogin, agreementsAcceptedAt]);
+  const applyOtpDigits = (index: number, raw: string) => {
+    if (isSuccess) return;
+    setLoginError('');
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) {
+      setOtp((prev) => {
+        const next = [...prev];
+        next[index] = '';
+        return next;
+      });
+      return;
+    }
+
+    const filled = digits.length >= 4 ? digits.slice(0, 4).split('') : null;
+    if (filled) {
+      setOtp(filled);
+      inputRefs.current[3]?.focus();
+      return;
+    }
+
+    setOtp((prev) => {
+      const next = [...prev];
+      for (let offset = 0; offset < digits.length && index + offset < 4; offset += 1) {
+        next[index + offset] = digits[offset];
+      }
+      return next;
+    });
+    const nextFocus = Math.min(index + digits.length, 3);
+    inputRefs.current[nextFocus]?.focus();
+  };
 
   const handleOtpChange = (index: number, value: string) => {
-    if (isSuccess || !/^\d?$/.test(value)) return;
+    applyOtpDigits(index, value);
+  };
 
-    const next = [...otp];
-    next[index] = value;
-    setOtp(next);
-
-    if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
-    }
+  const handleOtpPaste = (index: number, event: ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    applyOtpDigits(index, event.clipboardData.getData('text'));
   };
 
   const handleOtpKeyDown = (index: number, key: string) => {
@@ -342,6 +406,9 @@ export function LoginScreen({ onLogin }: Props) {
               >
                 {isLoading ? 'Отправка…' : 'Получить код'}
               </button>
+              {loginError ? (
+                <p className="text-[13px] font-600 text-red-700 text-center mt-3">{loginError}</p>
+              ) : null}
             </motion.div>
           ) : (
             <motion.div
@@ -364,10 +431,12 @@ export function LoginScreen({ onLogin }: Props) {
                     ref={(el) => { inputRefs.current[i] = el; }}
                     type="text"
                     inputMode="numeric"
-                    maxLength={1}
+                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                    maxLength={i === 0 ? 4 : 1}
                     value={digit}
                     readOnly={isSuccess}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
+                    onPaste={(e) => handleOtpPaste(i, e)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e.key)}
                     className={`w-14 h-14 rounded-xl text-2xl font-bold text-center outline-none bg-[#231A16] text-white transition-colors duration-300 ${
                       isSuccess
@@ -380,6 +449,12 @@ export function LoginScreen({ onLogin }: Props) {
                   />
                 ))}
               </div>
+
+              {isSuccess ? (
+                <p className="text-[13px] font-600 text-[#110b09] mb-4">Входим…</p>
+              ) : loginError ? (
+                <p className="text-[13px] font-600 text-red-700 text-center mb-4 px-2">{loginError}</p>
+              ) : null}
 
               <button
                 type="button"
@@ -405,6 +480,7 @@ export function LoginScreen({ onLogin }: Props) {
                   setOtp(['', '', '', '']);
                   setTimer(0);
                   setIsSuccess(false);
+                  setLoginError('');
                   verifiedRef.current = false;
                 }}
                 disabled={isSuccess}
