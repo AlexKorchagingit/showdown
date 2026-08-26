@@ -6,18 +6,27 @@ import { formatIsoDay } from './financePeriod';
 import { formatTxDate, formatTxTime, ledgerTimestamp } from './transactionDisplay';
 import { compareByStart } from './tournamentStatus';
 
-function csvEscape(value: string | number | boolean): string {
+function csvEscape(value: string | number | boolean, delimiter = ','): string {
   const raw = String(value ?? '');
-  if (/[",\n]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`;
+  if (raw.includes('"') || raw.includes('\n') || raw.includes('\r') || raw.includes(delimiter)) {
+    return `"${raw.replace(/"/g, '""')}"`;
+  }
   return raw;
 }
 
-function downloadCsv(filename: string, headers: string[], rows: (string | number | boolean)[][]) {
+function downloadCsv(
+  filename: string,
+  headers: string[],
+  rows: (string | number | boolean)[][],
+  delimiter = ',',
+) {
   const lines = [
-    headers.map(csvEscape).join(','),
-    ...rows.map((row) => row.map(csvEscape).join(',')),
+    headers.map((value) => csvEscape(value, delimiter)).join(delimiter),
+    ...rows.map((row) => row.map((value) => csvEscape(value, delimiter)).join(delimiter)),
   ];
-  const blob = new Blob([`\uFEFF${lines.join('\n')}`], {
+  // `sep=` makes Excel (including ru-RU, where `;` is the list separator) keep columns aligned.
+  const sepLine = delimiter === ';' ? `sep=${delimiter}\n` : '';
+  const blob = new Blob([`\uFEFF${sepLine}${lines.join('\n')}`], {
     type: 'text/csv;charset=utf-8;',
   });
   const url = URL.createObjectURL(blob);
@@ -96,9 +105,9 @@ function formatExportTime(startTime: string): string {
 
 function formatExportFeatures(features: string[] | undefined): string {
   return (features ?? [])
-    .map((item) => item.trim())
+    .map((item) => item.trim().replace(/\s+/g, ' '))
     .filter(Boolean)
-    .join('; ');
+    .join(', ');
 }
 
 export function tournamentExportFilename(
@@ -126,5 +135,5 @@ export function exportTournamentsToCSV(
     formatExportTime(tournament.startTime),
     formatExportFeatures(tournament.features),
   ]);
-  downloadCsv(filename ?? tournamentExportFilename('', ''), headers, rows);
+  downloadCsv(filename ?? tournamentExportFilename('', ''), headers, rows, ';');
 }
