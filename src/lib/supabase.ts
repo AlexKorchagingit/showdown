@@ -1,4 +1,5 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
+import { createTimeoutFetch } from './network';
 
 export const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -17,6 +18,9 @@ if (supabaseUrl.includes(':8000')) {
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   accessToken: async () => supabaseAnonKey,
+  global: {
+    fetch: createTimeoutFetch(12000),
+  },
   auth: {
     persistSession: false,
     autoRefreshToken: false,

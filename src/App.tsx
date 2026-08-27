@@ -4,6 +4,7 @@ import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
 import { LoginScreen } from './components/LoginScreen';
 import { SplashScreen } from './components/SplashScreen';
+import { FetchErrorCard } from './components/FetchErrorCard';
 import { HomePage } from './pages/HomePage';
 import { TournamentsPage } from './pages/TournamentsPage';
 import { TournamentDetailRoute } from './pages/TournamentDetailRoute';
@@ -34,6 +35,7 @@ import { AuditLogProvider } from './context/AuditLogContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 import { endLocalSession, readSessionEmail } from './lib/session';
+import { resolveStartupView } from './lib/startupState';
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
@@ -126,19 +128,36 @@ function AuthenticatedApp({
   showSplash: boolean;
 }) {
   const navigate = useNavigate();
-  const { account, isLoading } = useUser();
-  const ready = Boolean(account) && !isLoading && !showSplash;
+  const { account, isLoading, refreshAccount } = useUser();
+  const startupView = resolveStartupView({
+    showSplash,
+    isLoading,
+    hasAccount: Boolean(account),
+  });
   const landedHomeRef = useRef(false);
 
   useEffect(() => {
-    if (!account || isLoading || showSplash) return;
+    if (!account || startupView !== 'ready') return;
     if (landedHomeRef.current) return;
     landedHomeRef.current = true;
     navigate('/', { replace: true });
-  }, [account, isLoading, showSplash, navigate]);
+  }, [account, startupView, navigate]);
 
-  if (!ready) {
+  if (startupView === 'loading') {
     return <SplashShell />;
+  }
+
+  if (startupView === 'error') {
+    return (
+      <div className={shellClass}>
+        <div className={`${columnClass} flex min-h-screen items-center justify-center bg-[#0A0908]`}>
+          <FetchErrorCard
+            message="Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз."
+            onRetry={() => void refreshAccount()}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
