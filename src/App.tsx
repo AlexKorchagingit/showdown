@@ -1,32 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
 import { LoginScreen } from './components/LoginScreen';
 import { SplashScreen } from './components/SplashScreen';
 import { FetchErrorCard } from './components/FetchErrorCard';
-import { HomePage } from './pages/HomePage';
-import { TournamentsPage } from './pages/TournamentsPage';
-import { TournamentDetailRoute } from './pages/TournamentDetailRoute';
-import { RatingPage } from './pages/RatingPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { SettingsPage } from './pages/SettingsPage';
-import { ShopScreen } from './pages/ShopScreen';
-import { AboutClubScreen } from './pages/AboutClubScreen';
-import { QnAScreen } from './pages/QnAScreen';
-import { AchievementsScreen } from './pages/AchievementsScreen';
-import { AdminUsersScreen } from './pages/admin/AdminUsersScreen';
-import { AdminTournamentsScreen } from './pages/admin/AdminTournamentsScreen';
-import { AdminTournamentEditor } from './pages/admin/AdminTournamentEditor';
-import { AdminBlindsSettings } from './pages/admin/AdminBlindsSettings';
-import { AdminBlindsTimer } from './pages/admin/AdminBlindsTimer';
-import { AdminAchievementsUsers } from './pages/admin/AdminAchievementsUsers';
-import { AdminAchievementsEditor } from './pages/admin/AdminAchievementsEditor';
-import { AdminFinanceScreen } from './pages/admin/AdminFinanceScreen';
-import { AdminTournamentFinance } from './pages/admin/AdminTournamentFinance';
-import { AdminRubyScreen } from './pages/admin/AdminRubyScreen';
-import { AdminStatisticScreen } from './pages/admin/AdminStatisticScreen';
-import { AdminLogsScreen } from './pages/admin/AdminLogsScreen';
 import { TournamentProvider } from './context/TournamentContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { ProfileProvider } from './context/ProfileContext';
@@ -36,6 +14,29 @@ import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 import { endLocalSession, readSessionEmail } from './lib/session';
 import { resolveStartupView } from './lib/startupState';
+
+const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+const TournamentsPage = lazy(() => import('./pages/TournamentsPage').then((module) => ({ default: module.TournamentsPage })));
+const TournamentDetailRoute = lazy(() => import('./pages/TournamentDetailRoute').then((module) => ({ default: module.TournamentDetailRoute })));
+const RatingPage = lazy(() => import('./pages/RatingPage').then((module) => ({ default: module.RatingPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
+const ShopScreen = lazy(() => import('./pages/ShopScreen').then((module) => ({ default: module.ShopScreen })));
+const AboutClubScreen = lazy(() => import('./pages/AboutClubScreen').then((module) => ({ default: module.AboutClubScreen })));
+const QnAScreen = lazy(() => import('./pages/QnAScreen').then((module) => ({ default: module.QnAScreen })));
+const AchievementsScreen = lazy(() => import('./pages/AchievementsScreen').then((module) => ({ default: module.AchievementsScreen })));
+const AdminUsersScreen = lazy(() => import('./pages/admin/AdminUsersScreen').then((module) => ({ default: module.AdminUsersScreen })));
+const AdminTournamentsScreen = lazy(() => import('./pages/admin/AdminTournamentsScreen').then((module) => ({ default: module.AdminTournamentsScreen })));
+const AdminTournamentEditor = lazy(() => import('./pages/admin/AdminTournamentEditor').then((module) => ({ default: module.AdminTournamentEditor })));
+const AdminBlindsSettings = lazy(() => import('./pages/admin/AdminBlindsSettings').then((module) => ({ default: module.AdminBlindsSettings })));
+const AdminBlindsTimer = lazy(() => import('./pages/admin/AdminBlindsTimer').then((module) => ({ default: module.AdminBlindsTimer })));
+const AdminAchievementsUsers = lazy(() => import('./pages/admin/AdminAchievementsUsers').then((module) => ({ default: module.AdminAchievementsUsers })));
+const AdminAchievementsEditor = lazy(() => import('./pages/admin/AdminAchievementsEditor').then((module) => ({ default: module.AdminAchievementsEditor })));
+const AdminFinanceScreen = lazy(() => import('./pages/admin/AdminFinanceScreen').then((module) => ({ default: module.AdminFinanceScreen })));
+const AdminTournamentFinance = lazy(() => import('./pages/admin/AdminTournamentFinance').then((module) => ({ default: module.AdminTournamentFinance })));
+const AdminRubyScreen = lazy(() => import('./pages/admin/AdminRubyScreen').then((module) => ({ default: module.AdminRubyScreen })));
+const AdminStatisticScreen = lazy(() => import('./pages/admin/AdminStatisticScreen').then((module) => ({ default: module.AdminStatisticScreen })));
+const AdminLogsScreen = lazy(() => import('./pages/admin/AdminLogsScreen').then((module) => ({ default: module.AdminLogsScreen })));
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
@@ -73,7 +74,8 @@ function AppLayout({ userEmail }: AppLayoutProps) {
         style={{ paddingBottom: contentPaddingBottom }}
       >
         <div className="h-full">
-          <Routes>
+          <Suspense fallback={<SplashScreen />}>
+            <Routes>
             <Route path="/"                  element={<HomePage />} />
             <Route path="/tournaments"       element={<TournamentsPage />} />
             <Route path="/tournaments/:id"   element={<TournamentDetailRoute />} />
@@ -100,7 +102,8 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/admin/achievements/users"      element={<AdminAchievementsUsers />} />
             <Route path="/admin/achievements/edit/:userId" element={<AdminAchievementsEditor />} />
             <Route path="*"                  element={<Navigate to="/" replace />} />
-          </Routes>
+            </Routes>
+          </Suspense>
         </div>
       </div>
 
