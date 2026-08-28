@@ -3,6 +3,7 @@ import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
 import { emailAccountExists, loginOrRegisterUser } from '../lib/loginAccount';
+import { requestErrorMessage } from '../lib/network';
 import { LegalImageModal } from './LegalImageModal';
 import { BrandLogo } from './BrandLogo';
 
@@ -275,7 +276,7 @@ export function LoginScreen({ onLogin }: Props) {
         setStep('consent');
       } catch (error) {
         console.error('LOGIN FATAL ERROR:', error);
-        setLoginError(error instanceof Error ? error.message : 'Не удалось проверить почту');
+        setLoginError(requestErrorMessage(error, 'Не удалось проверить почту. Попробуйте ещё раз.'));
       } finally {
         setIsLoading(false);
       }
@@ -321,7 +322,7 @@ export function LoginScreen({ onLogin }: Props) {
       verifiedRef.current = false;
       setIsSuccess(false);
       setOtp(['', '', '', '']);
-      setLoginError(error instanceof Error ? error.message : 'Не удалось войти');
+      setLoginError(requestErrorMessage(error, 'Не удалось войти. Попробуйте ещё раз.'));
       inputRefs.current[0]?.focus();
     });
   }, [otp, generatedCode, step, email, agreementsAcceptedAt, isSuccess]);

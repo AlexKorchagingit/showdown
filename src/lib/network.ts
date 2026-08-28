@@ -7,6 +7,16 @@ export class RequestTimeoutError extends Error {
   }
 }
 
+export function requestErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof RequestTimeoutError || (error instanceof Error && error.name === 'RequestTimeoutError')) {
+    return 'Сервер отвечает дольше обычного. Проверьте интернет и попробуйте ещё раз.';
+  }
+  if (error instanceof TypeError) {
+    return 'Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз.';
+  }
+  return fallback;
+}
+
 export function createTimeoutFetch(timeoutMs: number, fetchImpl: FetchLike = fetch): FetchLike {
   return async (input, init = {}) => {
     const controller = new AbortController();

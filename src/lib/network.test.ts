@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTimeoutFetch, RequestTimeoutError } from './network';
+import { createTimeoutFetch, requestErrorMessage, RequestTimeoutError } from './network';
 
 describe('createTimeoutFetch', () => {
   afterEach(() => {
@@ -39,5 +39,19 @@ describe('createTimeoutFetch', () => {
     controller.abort(new DOMException('Caller cancelled', 'AbortError'));
 
     await expect(result).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});
+
+describe('requestErrorMessage', () => {
+  it('hides timeout implementation details from the user', () => {
+    expect(requestErrorMessage(new RequestTimeoutError(12000), 'Не удалось войти')).toBe(
+      'Сервер отвечает дольше обычного. Проверьте интернет и попробуйте ещё раз.',
+    );
+  });
+
+  it('uses the operation fallback for an unknown error', () => {
+    expect(requestErrorMessage(new Error('internal detail'), 'Не удалось проверить почту')).toBe(
+      'Не удалось проверить почту',
+    );
   });
 });
