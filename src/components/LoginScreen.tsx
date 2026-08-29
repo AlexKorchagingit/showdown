@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'react';
-import emailjs from '@emailjs/browser';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
 import { emailAccountExists, loginOrRegisterUser } from '../lib/loginAccount';
 import { requestErrorMessage } from '../lib/network';
+import { OtpApiError, requestLoginCode, verifyLoginCode } from '../lib/otpApi';
 import { LegalImageModal } from './LegalImageModal';
 import { BrandLogo } from './BrandLogo';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const EMAILJS_SERVICE  = 'service_hqlexio';
-const EMAILJS_TEMPLATE = 'template_p9ku19k';
-const EMAILJS_PUBLIC   = '8qsxWxs3kjE1X4ka6';
 const AGREEMENTS_KEY = 'temp_auth_agreements_at';
 const CONSENT_TEXT =
   'Продолжая регистрацию, вы даете согласие на обработку персональных данных, получение информационных рассылок и использование локального хранилища.';
@@ -69,9 +66,9 @@ function clearTempAuth() {
   TEMP_AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
-function saveTempAuth(targetEmail: string, code: string, timerSeconds: number) {
+function saveTempAuth(targetEmail: string, timerSeconds: number) {
   localStorage.setItem('temp_auth_email', targetEmail.trim().toLowerCase());
-  localStorage.setItem('temp_auth_code', code);
+  localStorage.removeItem('temp_auth_code');
   localStorage.setItem('temp_auth_step', 'code');
   localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
 }
@@ -171,7 +168,6 @@ export function LoginScreen({ onLogin }: Props) {
     return 'email';
   });
   const [email, setEmail] = useState(() => readTempAuthValue('temp_auth_email'));
-  const [generatedCode, setGeneratedCode] = useState(() => readTempAuthValue('temp_auth_code'));
   const [isLoading, setIsLoading]         = useState(false);
   const [timer, setTimer]                 = useState(0);
   const [otp, setOtp]                     = useState(['', '', '', '']);
@@ -192,8 +188,13 @@ export function LoginScreen({ onLogin }: Props) {
   useEffect(() => {
     if (readTempAuthValue('temp_auth_step') !== 'code') return;
 
+    if (readTempAuthValue('temp_auth_code')) {
+      clearTempAuth();
+      setStep('email');
+      return;
+    }
+
     setEmail(readTempAuthValue('temp_auth_email'));
-    setGeneratedCode(readTempAuthValue('temp_auth_code'));
     setStep('code');
     setAgreementsAcceptedAt((current) => current || readAgreementsAt());
 
@@ -204,20 +205,13 @@ export function LoginScreen({ onLogin }: Props) {
 
   const sendCode = useCallback(async (targetEmail: string, nextTimer: number) => {
     const normalizedEmail = targetEmail.trim().toLowerCase();
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
     setEmail(normalizedEmail);
-    setGeneratedCode(code);
     setIsLoading(true);
     setLoginError('');
 
     try {
-      await emailjs.send(
-        EMAILJS_SERVICE,
-        EMAILJS_TEMPLATE,
-        { to_email: normalizedEmail, code },
-        EMAILJS_PUBLIC,
-      );
-      saveTempAuth(normalizedEmail, code, nextTimer);
+      await requestLoginCode(normalizedEmail);
+      saveTempAuth(normalizedEmail, nextTimer);
       setStep('code');
       setTimer(nextTimer);
       setOtp(['', '', '', '']);
@@ -227,7 +221,11 @@ export function LoginScreen({ onLogin }: Props) {
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err) {
       console.error(err);
-      setLoginError('Не удалось отправить код. Проверьте почту и попробуйте ещё раз.');
+      setLoginError(
+        err instanceof OtpApiError
+          ? err.message
+          : requestErrorMessage(err, 'Не удалось отправить код. Попробуйте ещё раз.'),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -300,32 +298,51 @@ export function LoginScreen({ onLogin }: Props) {
     const codeString = otp.join('');
     if (codeString.length < 4) return;
 
-    const expected = (generatedCode || readTempAuthValue('temp_auth_code')).trim();
-    if (!expected) return;
-    if (codeString !== expected) {
-      setOtpError(true);
-      setOtp(['', '', '', '']);
-      inputRefs.current[0]?.focus();
-      const id = window.setTimeout(() => setOtpError(false), 1000);
-      return () => window.clearTimeout(id);
-    }
-
     verifiedRef.current = true;
-    setIsSuccess(true);
+    setIsLoading(true);
     setLoginError('');
-    void completeLogin(
-      email || readTempAuthValue('temp_auth_email'),
-      agreementsAcceptedAt || readAgreementsAt(),
-      onLoginRef.current,
-    ).catch((error) => {
-      console.error('LOGIN FATAL ERROR:', error);
-      verifiedRef.current = false;
-      setIsSuccess(false);
-      setOtp(['', '', '', '']);
-      setLoginError(requestErrorMessage(error, 'Не удалось войти. Попробуйте ещё раз.'));
-      inputRefs.current[0]?.focus();
-    });
-  }, [otp, generatedCode, step, email, agreementsAcceptedAt, isSuccess]);
+    let cancelled = false;
+
+    void verifyLoginCode(email || readTempAuthValue('temp_auth_email'), codeString)
+      .then(async (verified) => {
+        if (cancelled) return;
+        if (!verified) {
+          verifiedRef.current = false;
+          setOtpError(true);
+          setOtp(['', '', '', '']);
+          inputRefs.current[0]?.focus();
+          window.setTimeout(() => setOtpError(false), 1000);
+          return;
+        }
+
+        await completeLogin(
+          email || readTempAuthValue('temp_auth_email'),
+          agreementsAcceptedAt || readAgreementsAt(),
+          onLoginRef.current,
+        );
+        if (!cancelled) setIsSuccess(true);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('LOGIN FATAL ERROR:', error);
+        verifiedRef.current = false;
+        setIsSuccess(false);
+        setOtp(['', '', '', '']);
+        setLoginError(
+          error instanceof OtpApiError
+            ? error.message
+            : requestErrorMessage(error, 'Не удалось войти. Попробуйте ещё раз.'),
+        );
+        inputRefs.current[0]?.focus();
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [otp, step, email, agreementsAcceptedAt, isSuccess]);
 
   const applyOtpDigits = (index: number, raw: string) => {
     if (isSuccess) return;

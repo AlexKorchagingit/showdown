@@ -147,6 +147,25 @@ create index if not exists logs_target_user_id_idx on public.logs (target_user_i
 create index if not exists logs_target_tournament_id_idx on public.logs (target_tournament_id);
 
 -- ---------------------------------------------------------------------------
+-- login_otp_requests  (server-only, HMAC hashes; never exposed to anon)
+-- ---------------------------------------------------------------------------
+create table if not exists public.login_otp_requests (
+  email text primary key,
+  code_hash text not null,
+  request_ip_hash text not null,
+  requested_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  attempt_count integer not null default 0 check (attempt_count between 0 and 5)
+);
+
+create index if not exists login_otp_requests_ip_time_idx
+  on public.login_otp_requests (request_ip_hash, requested_at desc);
+
+alter table public.login_otp_requests enable row level security;
+revoke all on table public.login_otp_requests from public, anon, authenticated;
+grant all on table public.login_otp_requests to service_role;
+
+-- ---------------------------------------------------------------------------
 -- updated_at
 -- ---------------------------------------------------------------------------
 create or replace function public.set_updated_at()
