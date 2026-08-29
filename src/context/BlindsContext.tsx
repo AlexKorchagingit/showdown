@@ -6,6 +6,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from 'react';
 import {
@@ -20,10 +21,30 @@ import {
   playLevelUp,
   unlockBlindsAudio,
 } from '../lib/blindsAudio';
+import { supabase } from '../lib/supabase';
+import {
+  TIMER_SESSION_CACHE_KEY,
+  TIMER_SESSION_CHANNEL,
+  TIMER_SESSION_LOG_ID,
+  TIMER_SESSION_ROW_ID,
+  computeLiveClock,
+  durationsFromStructure,
+  emptyTimerSnapshot,
+  freezeTimerSnapshot,
+  parseTimerSnapshot,
+  readTimerSessionCache,
+  writeTimerSessionCache,
+  type TimerSnapshot,
+} from '../lib/timerSession';
+import {
+  loadTimerSession,
+  queueTimerSessionSave,
+  timerSessionStorageMode,
+} from '../lib/timerSessionApi';
 
 interface BlindsState {
   structures: BlindStructure[];
-  activeStructureId: string | null;
+  snapshot: TimerSnapshot;
   levelIndex: number;
   secondsLeft: number;
   isRunning: boolean;
@@ -39,48 +60,45 @@ interface BlindsState {
 type BlindsAction =
   | { type: 'add'; structure: BlindStructure }
   | { type: 'replace'; structure: BlindStructure }
-  | { type: 'ensure'; structureId: string }
-  | { type: 'setRunning'; value: boolean }
-  | { type: 'restart' }
-  | { type: 'skip'; delta: -1 | 1 }
-  | { type: 'adjust'; delta: number }
-  | { type: 'tick'; elapsed: number }
-  | { type: 'linkTournament'; tournamentId: string | null }
-  | { type: 'setAvgStack'; value: number | null }
-  | { type: 'setChipleader'; userId: string | null }
-  | { type: 'setTotalEntries'; value: number | null }
-  | { type: 'setRebuyCount'; value: number | null }
-  | { type: 'setChipleaderStack'; value: number | null };
+  | { type: 'commit'; snapshot: TimerSnapshot; now: number; silent?: boolean }
+  | { type: 'tick'; now: number };
 
 function findStructure(state: BlindsState, id: string | null): BlindStructure | undefined {
   if (!id) return undefined;
   return state.structures.find((s) => s.id === id);
 }
 
-function fullDuration(state: BlindsState, index = state.levelIndex): number {
-  const structure = findStructure(state, state.activeStructureId);
-  return durationSeconds(structure?.levels[index]);
-}
-
-function clampIndex(state: BlindsState, index: number): number {
-  const structure = findStructure(state, state.activeStructureId);
-  const last = Math.max(0, (structure?.levels.length ?? 1) - 1);
-  return Math.min(last, Math.max(0, index));
+function applySnapshot(
+  state: BlindsState,
+  snapshot: TimerSnapshot,
+  now: number,
+  silent = false,
+): BlindsState {
+  const live = computeLiveClock(snapshot, now);
+  const leveledUp = !silent && live.levelIndex > state.levelIndex;
+  return {
+    ...state,
+    snapshot,
+    levelIndex: live.levelIndex,
+    secondsLeft: live.secondsLeft,
+    isRunning: live.isRunning,
+    linkedTournamentId: snapshot.tournamentId,
+    avgStackOverride: snapshot.avgStackOverride,
+    chipleaderId: snapshot.chipleaderId,
+    totalEntries: snapshot.totalEntries,
+    rebuyCount: snapshot.rebuyCount,
+    chipleaderStack: snapshot.chipleaderStack,
+    levelUpNonce: leveledUp ? state.levelUpNonce + 1 : state.levelUpNonce,
+  };
 }
 
 function afterStructureChange(state: BlindsState, next: BlindStructure): BlindsState {
   const structures = state.structures.map((s) => (s.id === next.id ? next : s));
   const synced: BlindsState = { ...state, structures };
-
-  if (state.activeStructureId !== next.id) return synced;
-
-  const levelIndex = clampIndex(synced, state.levelIndex);
-  const maxSeconds = durationSeconds(next.levels[levelIndex]);
-  return {
-    ...synced,
-    levelIndex,
-    secondsLeft: Math.min(state.secondsLeft, maxSeconds),
-  };
+  if (state.snapshot.structureId !== next.id) return synced;
+  const durations = durationsFromStructure(next);
+  const snapshot: TimerSnapshot = { ...state.snapshot, levelDurations: durations };
+  return applySnapshot(synced, snapshot, Date.now(), true);
 }
 
 function reducer(state: BlindsState, action: BlindsAction): BlindsState {
@@ -89,101 +107,51 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
       return { ...state, structures: [...state.structures, action.structure] };
     case 'replace':
       return afterStructureChange(state, action.structure);
-    case 'ensure': {
-      const structure = findStructure(state, action.structureId);
-      if (!structure) return state;
-      if (state.activeStructureId === action.structureId) return state;
-      return {
-        ...state,
-        activeStructureId: action.structureId,
-        levelIndex: 0,
-        secondsLeft: durationSeconds(structure.levels[0]),
-        isRunning: false,
-      };
-    }
-    case 'setRunning':
-      return { ...state, isRunning: action.value };
-    case 'restart':
-      return { ...state, secondsLeft: fullDuration(state), isRunning: false };
-    case 'adjust':
-      return { ...state, secondsLeft: Math.max(0, state.secondsLeft + action.delta) };
-    case 'skip': {
-      const structure = findStructure(state, state.activeStructureId);
-      if (!structure) return state;
-      const nextIndex = clampIndex(state, state.levelIndex + action.delta);
-      if (nextIndex === state.levelIndex) {
-        if (action.delta < 0) {
-          return { ...state, secondsLeft: fullDuration(state), isRunning: false };
-        }
+    case 'commit':
+      return applySnapshot(state, action.snapshot, action.now, action.silent);
+    case 'tick': {
+      const live = computeLiveClock(state.snapshot, action.now);
+      if (
+        !live.isRunning &&
+        !state.isRunning &&
+        live.levelIndex === state.levelIndex &&
+        live.secondsLeft === state.secondsLeft
+      ) {
         return state;
       }
-      return {
-        ...state,
-        levelIndex: nextIndex,
-        secondsLeft: durationSeconds(structure.levels[nextIndex]),
-      };
+      return applySnapshot(state, state.snapshot, action.now);
     }
-    case 'tick': {
-      if (!state.isRunning) return state;
-      const structure = findStructure(state, state.activeStructureId);
-      if (!structure) return { ...state, isRunning: false };
-
-      let left = state.secondsLeft - action.elapsed;
-      let index = state.levelIndex;
-      let running = true;
-
-      while (left <= 0 && running) {
-        if (index >= structure.levels.length - 1) {
-          left = 0;
-          running = false;
-          break;
-        }
-        index += 1;
-        left += durationSeconds(structure.levels[index]);
-      }
-
-      const leveledUp = index > state.levelIndex;
-
-      return {
-        ...state,
-        secondsLeft: left,
-        levelIndex: index,
-        isRunning: running,
-        levelUpNonce: leveledUp ? state.levelUpNonce + 1 : state.levelUpNonce,
-      };
-    }
-    case 'linkTournament':
-      return {
-        ...state,
-        linkedTournamentId: action.tournamentId,
-        chipleaderId: action.tournamentId === state.linkedTournamentId ? state.chipleaderId : null,
-        chipleaderStack:
-          action.tournamentId === state.linkedTournamentId ? state.chipleaderStack : null,
-      };
-    case 'setAvgStack':
-      return { ...state, avgStackOverride: action.value };
-    case 'setChipleader':
-      return {
-        ...state,
-        chipleaderId: action.userId,
-        chipleaderStack: action.userId === state.chipleaderId ? state.chipleaderStack : null,
-      };
-    case 'setTotalEntries':
-      return { ...state, totalEntries: action.value };
-    case 'setRebuyCount':
-      return { ...state, rebuyCount: action.value };
-    case 'setChipleaderStack':
-      return { ...state, chipleaderStack: action.value };
     default:
       return state;
   }
 }
 
+function bootState(): BlindsState {
+  const snapshot = readTimerSessionCache() ?? emptyTimerSnapshot();
+  const live = computeLiveClock(snapshot);
+  return {
+    structures: seedBlindStructures(),
+    snapshot,
+    levelIndex: live.levelIndex,
+    secondsLeft: live.secondsLeft,
+    isRunning: live.isRunning,
+    linkedTournamentId: snapshot.tournamentId,
+    avgStackOverride: snapshot.avgStackOverride,
+    chipleaderId: snapshot.chipleaderId,
+    totalEntries: snapshot.totalEntries,
+    rebuyCount: snapshot.rebuyCount,
+    chipleaderStack: snapshot.chipleaderStack,
+    levelUpNonce: 0,
+  };
+}
+
 interface BlindsContextValue {
+  timerReady: boolean;
   structures: BlindStructure[];
   activeStructureId: string | null;
   levelIndex: number;
   secondsLeft: number;
+  levelDurationSeconds: number;
   isRunning: boolean;
   activeStructure: BlindStructure | undefined;
   addStructure: (structure: BlindStructure) => void;
@@ -210,37 +178,148 @@ interface BlindsContextValue {
 
 const BlindsContext = createContext<BlindsContextValue | null>(null);
 
-export function BlindsProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, () => ({
-    structures: seedBlindStructures(),
-    activeStructureId: null,
-    levelIndex: 0,
-    secondsLeft: 20 * 60,
-    isRunning: false,
-    linkedTournamentId: null,
-    avgStackOverride: null,
-    chipleaderId: null,
-    totalEntries: null,
-    rebuyCount: null,
-    chipleaderStack: null,
-    levelUpNonce: 0,
-  }));
+function openTimerChannel(): BroadcastChannel | null {
+  try {
+    if (typeof BroadcastChannel === 'undefined') return null;
+    return new BroadcastChannel(TIMER_SESSION_CHANNEL);
+  } catch {
+    return null;
+  }
+}
 
+export function BlindsProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(reducer, undefined, bootState);
+  const [timerReady, setTimerReady] = useState(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const readyRef = useRef(false);
+  const lastWriteIdRef = useRef(state.snapshot.writeId);
+  const persistTimerRef = useRef<number | null>(null);
   const prevNonceRef = useRef(0);
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
+  const publish = useCallback((snapshot: TimerSnapshot, persist: 'now' | 'debounce' | 'none') => {
+    lastWriteIdRef.current = snapshot.writeId;
+    writeTimerSessionCache(snapshot);
+    try {
+      channelRef.current?.postMessage(snapshot);
+    } catch {
+      /* channel closed */
+    }
+    if (persist === 'none') return;
+    if (persistTimerRef.current) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    if (persist === 'debounce') {
+      persistTimerRef.current = window.setTimeout(() => {
+        persistTimerRef.current = null;
+        queueTimerSessionSave(snapshot);
+      }, 400);
+      return;
+    }
+    queueTimerSessionSave(snapshot);
+  }, []);
+
+  const commit = useCallback(
+    (patch: Partial<TimerSnapshot>, options?: { persist?: 'now' | 'debounce' | 'none'; silent?: boolean }) => {
+      const now = Date.now();
+      const snapshot = freezeTimerSnapshot(stateRef.current.snapshot, patch, now);
+      dispatch({ type: 'commit', snapshot, now, silent: options?.silent });
+      publish(snapshot, options?.persist ?? 'now');
+    },
+    [publish],
+  );
+
+  const applyRemote = useCallback((snapshot: TimerSnapshot, silent: boolean) => {
+    if (snapshot.writeId === lastWriteIdRef.current) return;
+    const local = stateRef.current.snapshot;
+    if (snapshot.revision < local.revision) return;
+    if (snapshot.revision === local.revision && snapshot.updatedAt < local.updatedAt) return;
+    lastWriteIdRef.current = snapshot.writeId;
+    writeTimerSessionCache(snapshot);
+    dispatch({ type: 'commit', snapshot, now: Date.now(), silent });
+  }, []);
 
   useEffect(() => {
-    if (!state.isRunning) return;
+    let cancelled = false;
+    const channel = openTimerChannel();
+    channelRef.current = channel;
+    if (channel) {
+      channel.onmessage = (event) => {
+        const snapshot = parseTimerSnapshot(event.data);
+        if (snapshot) applyRemote(snapshot, true);
+      };
+    }
 
-    let last = Date.now();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== TIMER_SESSION_CACHE_KEY || !event.newValue) return;
+      const snapshot = parseTimerSnapshot(event.newValue);
+      if (snapshot) applyRemote(snapshot, true);
+    };
+    window.addEventListener('storage', onStorage);
+
+    void (async () => {
+      try {
+        const remote = await loadTimerSession();
+        if (cancelled) return;
+        if (remote) applyRemote(remote, true);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (!cancelled) {
+          readyRef.current = true;
+          setTimerReady(true);
+        }
+      }
+    })();
+
+    const poll = window.setInterval(() => {
+      void loadTimerSession()
+        .then((remote) => {
+          if (remote) applyRemote(remote, true);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }, 2500);
+
+    let realtime: ReturnType<typeof supabase.channel> | null = null;
+    void timerSessionStorageMode().then((mode) => {
+      if (cancelled) return;
+      realtime = supabase
+        .channel('blinds-timer-session')
+        .on(
+          'postgres_changes',
+          mode === 'table'
+            ? { event: '*', schema: 'public', table: 'timer_sessions', filter: `id=eq.${TIMER_SESSION_ROW_ID}` }
+            : { event: '*', schema: 'public', table: 'logs', filter: `id=eq.${TIMER_SESSION_LOG_ID}` },
+          (payload) => {
+            const row = payload.new as { payload?: unknown; details?: unknown } | undefined;
+            const snapshot = parseTimerSnapshot(row?.payload ?? row?.details);
+            if (snapshot) applyRemote(snapshot, true);
+          },
+        )
+        .subscribe();
+    });
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('storage', onStorage);
+      window.clearInterval(poll);
+      if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+      channel?.close();
+      channelRef.current = null;
+      if (realtime) void supabase.removeChannel(realtime);
+    };
+  }, [applyRemote]);
+
+  useEffect(() => {
     const id = window.setInterval(() => {
-      const now = Date.now();
-      const elapsed = (now - last) / 1000;
-      last = now;
-      dispatch({ type: 'tick', elapsed });
+      dispatch({ type: 'tick', now: Date.now() });
     }, 250);
-
     return () => window.clearInterval(id);
-  }, [state.isRunning]);
+  }, []);
 
   useEffect(() => {
     if (state.levelUpNonce === 0 || state.levelUpNonce === prevNonceRef.current) return;
@@ -269,45 +348,187 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     [state.structures],
   );
 
-  const ensureTimer = useCallback((structureId: string | null) => {
-    if (structureId) dispatch({ type: 'ensure', structureId });
-  }, []);
+  const ensureTimer = useCallback(
+    (structureId: string | null) => {
+      if (!structureId || !readyRef.current) return;
+      const current = stateRef.current;
+      const live = computeLiveClock(current.snapshot);
+      if (current.snapshot.structureId === structureId) return;
+      if (live.isRunning) return;
+      const structure = current.structures.find((row) => row.id === structureId);
+      if (!structure) return;
+      const durations = durationsFromStructure(structure);
+      commit(
+        {
+          structureId,
+          levelIndex: 0,
+          secondsLeft: durations[0] ?? 20 * 60,
+          isRunning: false,
+          levelDurations: durations,
+        },
+        { persist: 'now', silent: true },
+      );
+    },
+    [commit],
+  );
 
-  const setRunning = useCallback((value: boolean) => {
-    if (value) unlockBlindsAudio();
-    dispatch({ type: 'setRunning', value });
-  }, []);
+  const setRunning = useCallback(
+    (value: boolean) => {
+      if (value) unlockBlindsAudio();
+      commit({ isRunning: value });
+    },
+    [commit],
+  );
+
+  const restartLevel = useCallback(() => {
+    const current = stateRef.current;
+    const live = computeLiveClock(current.snapshot);
+    const duration = current.snapshot.levelDurations[live.levelIndex] ?? 20 * 60;
+    commit({
+      levelIndex: live.levelIndex,
+      secondsLeft: duration,
+      isRunning: false,
+    });
+  }, [commit]);
+
+  const skipLevel = useCallback(
+    (delta: -1 | 1) => {
+      const current = stateRef.current;
+      const live = computeLiveClock(current.snapshot);
+      const last = Math.max(0, current.snapshot.levelDurations.length - 1);
+      const nextIndex = Math.min(last, Math.max(0, live.levelIndex + delta));
+      if (nextIndex === live.levelIndex) {
+        if (delta < 0) {
+          commit({
+            secondsLeft: current.snapshot.levelDurations[nextIndex] ?? live.secondsLeft,
+            isRunning: false,
+          });
+        }
+        return;
+      }
+      commit({
+        levelIndex: nextIndex,
+        secondsLeft: current.snapshot.levelDurations[nextIndex] ?? 20 * 60,
+      });
+    },
+    [commit],
+  );
+
+  const adjustSeconds = useCallback(
+    (delta: number) => {
+      const live = computeLiveClock(stateRef.current.snapshot);
+      commit({ secondsLeft: Math.max(0, live.secondsLeft + delta) });
+    },
+    [commit],
+  );
+
+  const setLinkedTournament = useCallback(
+    (tournamentId: string | null) => {
+      const current = stateRef.current.snapshot;
+      commit({
+        tournamentId,
+        chipleaderId: tournamentId === current.tournamentId ? current.chipleaderId : null,
+        chipleaderStack: tournamentId === current.tournamentId ? current.chipleaderStack : null,
+      });
+    },
+    [commit],
+  );
+
+  const setAvgStackOverride = useCallback(
+    (value: number | null) => {
+      commit({ avgStackOverride: value }, { persist: 'debounce' });
+    },
+    [commit],
+  );
+
+  const setChipleader = useCallback(
+    (userId: string | null) => {
+      const current = stateRef.current.snapshot;
+      commit({
+        chipleaderId: userId,
+        chipleaderStack: userId === current.chipleaderId ? current.chipleaderStack : null,
+      });
+    },
+    [commit],
+  );
+
+  const setTotalEntries = useCallback(
+    (value: number | null) => {
+      commit({ totalEntries: value }, { persist: 'debounce' });
+    },
+    [commit],
+  );
+
+  const setRebuyCount = useCallback(
+    (value: number | null) => {
+      commit({ rebuyCount: value }, { persist: 'debounce' });
+    },
+    [commit],
+  );
+
+  const setChipleaderStack = useCallback(
+    (value: number | null) => {
+      commit({ chipleaderStack: value }, { persist: 'debounce' });
+    },
+    [commit],
+  );
+
+  const activeStructure = findStructure(state, state.snapshot.structureId);
+  const levelDurationSeconds =
+    state.snapshot.levelDurations[state.levelIndex] ??
+    durationSeconds(activeStructure?.levels[state.levelIndex], activeStructure?.levelDuration);
 
   const value = useMemo<BlindsContextValue>(
     () => ({
+      timerReady,
       structures: state.structures,
-      activeStructureId: state.activeStructureId,
+      activeStructureId: state.snapshot.structureId,
       levelIndex: state.levelIndex,
       secondsLeft: state.secondsLeft,
+      levelDurationSeconds,
       isRunning: state.isRunning,
-      activeStructure: findStructure(state, state.activeStructureId),
+      activeStructure,
       addStructure,
       updateStructure,
       updateLevels,
       ensureTimer,
       setRunning,
-      restartLevel: () => dispatch({ type: 'restart' }),
-      skipLevel: (delta) => dispatch({ type: 'skip', delta }),
-      adjustSeconds: (delta) => dispatch({ type: 'adjust', delta }),
+      restartLevel,
+      skipLevel,
+      adjustSeconds,
       linkedTournamentId: state.linkedTournamentId,
       avgStackOverride: state.avgStackOverride,
       chipleaderId: state.chipleaderId,
       totalEntries: state.totalEntries,
       rebuyCount: state.rebuyCount,
       chipleaderStack: state.chipleaderStack,
-      setLinkedTournament: (tournamentId) => dispatch({ type: 'linkTournament', tournamentId }),
-      setAvgStackOverride: (value) => dispatch({ type: 'setAvgStack', value }),
-      setChipleader: (userId) => dispatch({ type: 'setChipleader', userId }),
-      setTotalEntries: (value) => dispatch({ type: 'setTotalEntries', value }),
-      setRebuyCount: (value) => dispatch({ type: 'setRebuyCount', value }),
-      setChipleaderStack: (value) => dispatch({ type: 'setChipleaderStack', value }),
+      setLinkedTournament,
+      setAvgStackOverride,
+      setChipleader,
+      setTotalEntries,
+      setRebuyCount,
+      setChipleaderStack,
     }),
-    [state, addStructure, updateStructure, updateLevels, ensureTimer, setRunning],
+    [
+      timerReady,
+      state,
+      levelDurationSeconds,
+      activeStructure,
+      addStructure,
+      updateStructure,
+      updateLevels,
+      ensureTimer,
+      setRunning,
+      restartLevel,
+      skipLevel,
+      adjustSeconds,
+      setLinkedTournament,
+      setAvgStackOverride,
+      setChipleader,
+      setTotalEntries,
+      setRebuyCount,
+      setChipleaderStack,
+    ],
   );
 
   return <BlindsContext.Provider value={value}>{children}</BlindsContext.Provider>;

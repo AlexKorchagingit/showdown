@@ -1,6 +1,7 @@
 import { supabase, logSupabaseError } from './supabase';
 import { logFromRow, type LogRow } from './supabaseMap';
 import type { ActionLog } from '../types/auditLog';
+import { TIMER_SESSION_LOG_ACTION, TIMER_SESSION_LOG_ID } from './timerSession';
 
 function asLogRow(data: unknown): LogRow | null {
   if (!data || typeof data !== 'object' || !('id' in data) || !('action_type' in data)) return null;
@@ -40,7 +41,9 @@ export async function fetchLogs(): Promise<ActionLog[]> {
 
   return (data ?? []).flatMap((item) => {
     const row = asLogRow(item);
-    return row ? [logFromRow(row)] : [];
+    if (!row) return [];
+    if (row.id === TIMER_SESSION_LOG_ID || row.action_type === TIMER_SESSION_LOG_ACTION) return [];
+    return [logFromRow(row)];
   });
 }
 

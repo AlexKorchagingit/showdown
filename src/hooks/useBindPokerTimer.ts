@@ -13,6 +13,7 @@ export function useBindPokerTimer() {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const {
+    timerReady,
     structures,
     ensureTimer,
     setLinkedTournament,
@@ -23,6 +24,7 @@ export function useBindPokerTimer() {
 
   const bindTournament = useCallback(
     (tournamentId: string | null) => {
+      if (!timerReady) return;
       const switching = tournamentId !== linkedTournamentId;
       if (switching) setLinkedTournament(tournamentId);
       if (!tournamentId) return;
@@ -42,6 +44,7 @@ export function useBindPokerTimer() {
       setTotalEntries,
       linkedTournamentId,
       activeStructureId,
+      timerReady,
     ],
   );
 

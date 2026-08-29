@@ -12,6 +12,7 @@ import {
   SkipForward,
   X,
 } from 'lucide-react';
+import { ScreenLoading } from '../../components/ScreenLoading';
 import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { FitText } from '../../components/FitText';
 import { useBlinds } from '../../context/BlindsContext';
@@ -20,7 +21,6 @@ import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { resolveStructureForTournament } from '../../lib/timerTournament';
 import {
-  durationSeconds,
   formatBlinds,
   formatEta,
   isBreakLevel,
@@ -84,10 +84,13 @@ export function AdminBlindsTimer() {
   const { equippedChar } = useProfile();
   const { tournaments } = useTournaments();
   const {
+    timerReady,
     structures,
     activeStructure,
+    activeStructureId,
     levelIndex,
     secondsLeft,
+    levelDurationSeconds,
     isRunning,
     ensureTimer,
     setRunning,
@@ -128,18 +131,21 @@ export function AdminBlindsTimer() {
     activeStructure;
 
   useEffect(() => {
+    if (!timerReady) return;
     if (tournamentIdParam) {
       bindTournament(tournamentIdParam);
       return;
     }
     if (structureIdParam) {
       ensureTimer(structureIdParam);
+      if (isRunning) return;
       const linked = tournaments.find((row) => row.id === linkedTournamentId);
       const usesThisLadder =
         resolveStructureForTournament(linked, structures)?.id === structureIdParam;
       if (linkedTournamentId && !usesThisLadder) bindTournament(null);
     }
   }, [
+    timerReady,
     tournamentIdParam,
     structureIdParam,
     bindTournament,
@@ -147,6 +153,7 @@ export function AdminBlindsTimer() {
     tournaments,
     linkedTournamentId,
     structures,
+    isRunning,
   ]);
 
   useEffect(() => {
@@ -199,20 +206,26 @@ export function AdminBlindsTimer() {
 
   useEffect(() => {
     if (!chipleaderId || !tournament) return;
+    if (tournament.participants.length === 0) return;
     const stillSeated = tournament.participants.some(
       (p) => p.id === chipleaderId && typeof p.place !== 'number',
     );
     if (!stillSeated) setChipleader(null);
   }, [chipleaderId, tournament, setChipleader]);
 
-  if (!structure) return <Navigate to={SETTINGS_ROUTE} replace />;
+  if (!timerReady) {
+    return (
+      <div className="relative h-full w-full min-h-0 overflow-hidden text-white bg-[#0A0908]">
+        <ScreenLoading label="Загрузка таймера…" />
+      </div>
+    );
+  }
 
-  const currentLevel = structure.levels[levelIndex];
-  const nextLevel = structure.levels[levelIndex + 1];
-  const levelSeconds = durationSeconds(
-    currentLevel,
-    currentLevel?.durationMinutes ?? structure.levelDuration,
-  );
+  if (!structure && !activeStructureId) return <Navigate to={SETTINGS_ROUTE} replace />;
+
+  const currentLevel = structure?.levels[levelIndex];
+  const nextLevel = structure?.levels[levelIndex + 1];
+  const levelSeconds = Math.max(1, levelDurationSeconds);
   const percent = Math.min(100, Math.max(0, (secondsLeft / Math.max(1, levelSeconds)) * 100));
   const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
   const isBreak = isBreakLevel(currentLevel);
@@ -503,7 +516,7 @@ export function AdminBlindsTimer() {
         <ControlButton
           label="Следующий уровень"
           onClick={() => skipLevel(1)}
-          disabled={levelIndex >= structure.levels.length - 1}
+          disabled={levelIndex >= (structure?.levels.length ?? 1) - 1}
         >
           <SkipForward size={22} strokeWidth={2.2} />
         </ControlButton>
