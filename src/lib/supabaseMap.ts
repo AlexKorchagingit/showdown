@@ -338,9 +338,10 @@ export function participantToRow(
 }
 
 export function participantFromRow(row: ParticipantRow): Participant {
+  const bound = sanitizeParticipantUserId(row.user_id);
   return {
-    id: row.user_id || row.id,
-    userId: row.user_id,
+    id: bound || unwrapParticipantSeatKey(row.tournament_id, row.id),
+    userId: bound,
     nickname: row.nickname,
     rating: asNumber(row.rating),
     place: row.place ?? undefined,

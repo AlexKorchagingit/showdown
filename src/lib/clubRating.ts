@@ -1,5 +1,6 @@
 import type { Participant, Tournament } from '../types/tournament';
 import type { RatingPlayer } from '../types/player';
+import { guestUsersFromTournaments, isUnboundGuestSeat } from './guestPlayer';
 import type { MappedUser } from './supabaseMap';
 import { sanitizeParticipantUserId } from './supabaseMap';
 import { collectPlayerGameHistory, summarizePlayerGameHistory } from './playerAnalytics';
@@ -27,6 +28,23 @@ export function countRegisteredClubSeats(
   knownIds: Set<string>,
 ): number {
   return registeredClubSeats(participants, knownIds).length;
+}
+
+/** Club accounts plus nick-only `guest-…` seats (shown in lobby / occupancy). */
+export function lobbySeatedPlayers(
+  participants: Participant[],
+  knownIds: Set<string>,
+): Participant[] {
+  return participants.filter(
+    (player) => isRegisteredClubSeat(player, knownIds) || isUnboundGuestSeat(player),
+  );
+}
+
+export function countOccupiedLobbySeats(
+  participants: Participant[],
+  knownIds: Set<string>,
+): number {
+  return lobbySeatedPlayers(participants, knownIds).length;
 }
 
 function initialFrom(nickname: string): string {
@@ -58,13 +76,15 @@ export function ratingPlayerFromUser(
   };
 }
 
-/** Same people as admin Users, ranked by results in closed events. */
+/** Club accounts plus nick-only seats, ranked by results in closed events. */
 export function clubRatingPlayers(
   users: MappedUser[],
   tournaments: Tournament[],
   month?: number,
 ): RatingPlayer[] {
-  return users
+  const knownIds = clubUserIdSet(users);
+  const guests = guestUsersFromTournaments(tournaments).filter((guest) => !knownIds.has(guest.id));
+  return [...users, ...guests]
     .map((user) => ratingPlayerFromUser(user, tournaments, month))
     .sort(
       (a, b) =>

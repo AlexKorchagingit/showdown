@@ -19,7 +19,7 @@ import {
   updateTournamentRow,
 } from '../lib/tournamentApi';
 import { participantToRow, resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
-import { clubUserIdSet, countRegisteredClubSeats, isRegisteredClubSeat } from '../lib/clubRating';
+import { clubUserIdSet, countOccupiedLobbySeats, lobbySeatedPlayers } from '../lib/clubRating';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -44,7 +44,11 @@ interface TournamentContextValue {
 const TournamentContext = createContext<TournamentContextValue | null>(null);
 
 function isSeatOfUser(player: Participant, userId: string): boolean {
-  return player.id === userId || player.id === CURRENT_USER_ID;
+  return (
+    player.id === userId ||
+    player.userId === userId ||
+    player.id === CURRENT_USER_ID
+  );
 }
 
 export function TournamentProvider({ children }: { children: React.ReactNode }) {
@@ -55,6 +59,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const resolveUserId = useCallback(
     (player: Participant): string | null => {
+      const bound = sanitizeParticipantUserId(player.userId ?? '');
+      if (bound) return bound;
       if (player.id === CURRENT_USER_ID) return sanitizeParticipantUserId(userId);
       if (player.id.includes(':')) return null;
       return sanitizeParticipantUserId(player.id);
@@ -144,7 +150,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         const knownIds = clubUserIdSet(clubUsers);
         const occupied =
           knownIds.size > 0
-            ? countRegisteredClubSeats(liveSeats, knownIds)
+            ? countOccupiedLobbySeats(liveSeats, knownIds)
             : liveSeats.length;
         if (occupied >= tournament.totalSeats) {
           window.alert('Свободных мест нет');
@@ -253,9 +259,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         }
         const knownIds = clubUserIdSet(clubUsers);
         copiedSeats = (
-          knownIds.size > 0
-            ? seats.filter((player) => isRegisteredClubSeat(player, knownIds))
-            : seats
+          knownIds.size > 0 ? lobbySeatedPlayers(seats, knownIds) : seats
         ).map(resetCopiedParticipant);
       }
 

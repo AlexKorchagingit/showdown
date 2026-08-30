@@ -19,14 +19,14 @@ import {
   type Transaction,
   type TransactionType,
 } from '../types/finance';
+import { sanitizeParticipantUserId } from '../lib/supabaseMap';
 
 function dealerKey(tournamentId: string, userId: string) {
   return `${tournamentId}:${userId}`;
 }
 
 function resolveLedgerUserId(userId: string): string | null {
-  if (!userId || userId === 'me') return null;
-  return userId;
+  return sanitizeParticipantUserId(userId);
 }
 
 interface FinanceContextValue {

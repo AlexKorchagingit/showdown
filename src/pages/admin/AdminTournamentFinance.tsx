@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, Gem, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, Gem, Link2, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { CURRENT_USER_ID, useTournaments } from '../../context/TournamentContext';
@@ -30,11 +30,18 @@ import { formatTxDateTime } from '../../lib/transactionDisplay';
 import { PlayerNameLink } from '../../components/PlayerNameLink';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { TimerRunningBadge } from '../../components/TimerRunningBadge';
-import type { TournamentDealer } from '../../types/tournament';
+import type { Participant, TournamentDealer } from '../../types/tournament';
 import { playerEmail } from '../../lib/systemPlayers';
 import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
+import {
+  GUEST_NICKNAME_MAX,
+  guestParticipantId,
+  isUnboundGuestSeat,
+  normalizeGuestNickname,
+} from '../../lib/guestPlayer';
 import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnalytics';
 import { creditRubiesToBalance } from '../../lib/rubyGrants';
+import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
 import { clearParticipantPlace } from '../../lib/tournamentApi';
 import { seasonPointsByUserId } from '../../lib/clubRating';
 
@@ -91,6 +98,9 @@ export function AdminTournamentFinance() {
   const [dealerHours, setDealerHours] = useState('');
   const [hourFlash, setHourFlash] = useState<Record<string, { delta: number; token: number }>>({});
   const [addOpen, setAddOpen] = useState(false);
+  const [guestNickOpen, setGuestNickOpen] = useState(false);
+  const [guestNick, setGuestNick] = useState('');
+  const [linkingId, setLinkingId] = useState<string | null>(null);
   const [tournamentComment, setTournamentComment] = useState('');
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingRef = useRef(false);
@@ -150,9 +160,22 @@ export function AdminTournamentFinance() {
   const nonPlayingDealers = tournament.dealers ?? [];
   const takenIds = new Set(tournament.participants.map((p) => p.id));
   const takenNicks = new Set(tournament.participants.map((p) => p.nickname.toLowerCase()));
-  const availablePlayers = clubUsers.filter(
-    (user) => !takenIds.has(user.id) && !takenNicks.has(user.nickname.toLowerCase()),
+  const seatedUserIds = new Set(
+    tournament.participants.flatMap((p) => {
+      const uid = sanitizeParticipantUserId(p.userId ?? p.id);
+      return uid ? [uid] : [];
+    }),
   );
+  const availablePlayers = clubUsers.filter(
+    (user) => !takenIds.has(user.id) && !seatedUserIds.has(user.id) && !takenNicks.has(user.nickname.toLowerCase()),
+  );
+  const bindCandidates = clubUsers.filter(
+    (user) => !takenIds.has(user.id) && !seatedUserIds.has(user.id),
+  );
+  const linkingPlayer = linkingId
+    ? tournament.participants.find((p) => p.id === linkingId)
+    : undefined;
+  const pickerUsers = linkingId ? bindCandidates : availablePlayers;
 
   const flashHours = (key: string, delta: number) => {
     setHourFlash((prev) => ({ ...prev, [key]: { delta, token: Date.now() } }));
@@ -275,6 +298,7 @@ export function AdminTournamentFinance() {
       const rubyTotal = settled.reduce((sum, row) => sum + (row.rubiesAwarded ?? 0), 0);
 
       for (const participant of settled) {
+        if (isUnboundGuestSeat(participant)) continue;
         const amount = participant.rubiesAwarded ?? 0;
         if (amount <= 0) continue;
         const email =
@@ -375,29 +399,129 @@ export function AdminTournamentFinance() {
     }
   };
 
-  const addPlayerToTournament = (id: string, nickname: string) => {
-    if (tournament.participants.some((p) => p.id === id || p.nickname === nickname)) return;
-    if (tournament.participants.length >= tournament.totalSeats) return;
-    updateTournament(tournament.id, {
-      participants: [
-        ...tournament.participants,
-        {
-          id,
-          nickname,
-          rating: seasonPointsByUserId(clubUsers, tournaments).get(id) ?? 0,
-          userId: id,
-        },
-      ],
+  const addPlayerToTournament = (id: string, nickname: string, options?: { guest?: boolean }) => {
+    const guest = options?.guest === true;
+    if (linkingId && !guest) {
+      bindGuestToUser(linkingId, id, nickname);
+      return;
+    }
+    if (
+      tournament.participants.some(
+        (p) =>
+          p.id === id ||
+          sanitizeParticipantUserId(p.userId ?? '') === id ||
+          p.nickname.trim().toLowerCase() === nickname.trim().toLowerCase(),
+      )
+    ) {
+      return;
+    }
+
+    let place: number | undefined;
+    if (tournament.isClosed || tournament.resultsEntered) {
+      const suggested = tournament.participants.length + 1;
+      const raw = window.prompt(`Какое место занял ${nickname}?`, String(suggested));
+      if (raw === null) return;
+      const parsed = Math.floor(Number(String(raw).trim().replace(',', '.')));
+      place = Number.isFinite(parsed) && parsed >= 1 ? parsed : suggested;
+    }
+
+    const nextPlayer: Participant = {
+      id,
+      nickname: nickname.trim(),
+      rating: guest ? 0 : (seasonPointsByUserId(clubUsers, tournaments).get(id) ?? 0),
+      userId: guest ? null : id,
+      ...(typeof place === 'number' ? { place } : {}),
+      ...(tournament.rubiesDistributed ? { rubiesAwarded: 0 } : {}),
+    };
+    const nextParticipants = [...tournament.participants, nextPlayer];
+    void updateTournament(tournament.id, {
+      participants: nextParticipants,
+      ...(nextParticipants.length > tournament.totalSeats
+        ? { totalSeats: nextParticipants.length }
+        : {}),
     });
     logAction({
       actionType: 'Добавил игрока',
-      targetUserId: id,
-      targetUserEmail: playerEmail(id, nickname),
+      targetUserId: guest ? undefined : id,
+      targetUserEmail: guest ? undefined : playerEmail(id, nickname),
       targetUserName: nickname,
       targetTournamentId: tournament.id,
       targetTournamentName: tournament.title,
+      details: guest ? 'Ник без аккаунта' : undefined,
     });
     setAddOpen(false);
+    setGuestNickOpen(false);
+    setGuestNick('');
+    setLinkingId(null);
+  };
+
+  const addGuestByNickname = () => {
+    const nickname = normalizeGuestNickname(guestNick);
+    if (!nickname) {
+      window.alert(`Введите ник игрока (от 2 до ${GUEST_NICKNAME_MAX} символов)`);
+      return;
+    }
+    const existingClub = clubUsers.find(
+      (user) => user.nickname.trim().toLowerCase() === nickname.toLowerCase(),
+    );
+    if (existingClub) {
+      addPlayerToTournament(existingClub.id, existingClub.nickname);
+      return;
+    }
+    if (
+      tournament.participants.some(
+        (p) => p.nickname.trim().toLowerCase() === nickname.toLowerCase(),
+      )
+    ) {
+      window.alert('Игрок с таким ником уже в турнире');
+      return;
+    }
+    const id = guestParticipantId(
+      nickname,
+      tournament.participants.map((p) => p.id),
+    );
+    addPlayerToTournament(id, nickname, { guest: true });
+  };
+
+  const bindGuestToUser = (guestSeatId: string, userId: string, nickname: string) => {
+    const guest = tournament.participants.find((p) => p.id === guestSeatId);
+    const user = clubUsers.find((row) => row.id === userId);
+    if (!guest || !user) return;
+    if (
+      tournament.participants.some((p) => {
+        if (p.id === guestSeatId) return false;
+        const uid = sanitizeParticipantUserId(p.userId ?? p.id);
+        return uid === userId || p.id === userId;
+      })
+    ) {
+      window.alert('Этот игрок уже в турнире');
+      return;
+    }
+    void updateTournament(tournament.id, {
+      participants: tournament.participants.map((p) =>
+        p.id === guestSeatId
+          ? {
+              ...p,
+              id: user.id,
+              userId: user.id,
+              nickname: user.nickname,
+              equippedAvatar: user.equippedAvatar,
+            }
+          : p,
+      ),
+    });
+    logAction({
+      actionType: 'Привязал игрока',
+      targetUserId: user.id,
+      targetUserEmail: user.email || playerEmail(user.id, user.nickname),
+      targetUserName: user.nickname,
+      targetTournamentId: tournament.id,
+      targetTournamentName: tournament.title,
+      details: `${guest.nickname} → ${nickname || user.nickname}`,
+    });
+    setLinkingId(null);
+    setAddOpen(false);
+    setGuestNickOpen(false);
   };
 
   const removePlayerFromTournament = (playerId: string) => {
@@ -538,67 +662,138 @@ export function AdminTournamentFinance() {
           {isRunning && linkedTournamentId === tournament.id ? <TimerRunningBadge /> : null}
         </div>
 
-        {!tournament.isClosed && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setAddOpen((open) => !open)}
-              className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-800 active:scale-[0.98] transition-transform"
-              style={{
-                background: 'rgba(217,153,98,0.12)',
-                border: '1px solid rgba(217,153,98,0.4)',
-                color: '#F2D8A7',
-              }}
-            >
-              <UserPlus size={16} strokeWidth={2.3} />
-              + Добавить игрока
-            </button>
-            <AnimatePresence initial={false}>
-              {addOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.22 }}
-                  className="overflow-hidden"
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              setAddOpen((open) => {
+                const next = !open;
+                if (!next) {
+                  setGuestNickOpen(false);
+                  setGuestNick('');
+                  setLinkingId(null);
+                }
+                return next;
+              });
+            }}
+            className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-800 active:scale-[0.98] transition-transform"
+            style={{
+              background: 'rgba(217,153,98,0.12)',
+              border: '1px solid rgba(217,153,98,0.4)',
+              color: '#F2D8A7',
+            }}
+          >
+            <UserPlus size={16} strokeWidth={2.3} />
+            {linkingPlayer ? `Привязать «${linkingPlayer.nickname}»` : '+ Добавить игрока'}
+          </button>
+          <AnimatePresence initial={false}>
+            {addOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden"
+              >
+                <div
+                  className="mt-2 max-h-64 scrollable space-y-1.5 rounded-xl p-2"
+                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
                 >
-                  <div
-                    className="mt-2 max-h-52 scrollable space-y-1.5 rounded-xl p-2"
-                    style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
-                  >
-                    {availablePlayers.length === 0 ? (
-                      <p className="text-center text-[12px] py-3" style={{ color: '#6B6360' }}>
-                        Все пользователи уже в турнире
-                      </p>
-                    ) : (
-                      availablePlayers.map((user) => (
-                        <button
-                          key={user.id}
-                          type="button"
-                          onClick={() => addPlayerToTournament(user.id, user.nickname)}
-                          className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg active:scale-[0.98]"
-                          style={{ background: '#231A16' }}
-                        >
-                          <span className="min-w-0 text-left">
-                            <span className="block text-[13px] font-700 text-white truncate">
-                              {user.nickname}
-                            </span>
-                            {user.email ? (
-                              <span className="block text-[10px] text-[#8c8c88] truncate">
-                                {user.email}
-                              </span>
-                            ) : null}
+                  {linkingPlayer ? (
+                    <p className="px-2 pt-1 pb-0.5 text-[11px] font-600" style={{ color: '#A39B98' }}>
+                      Выберите пользователя системы для ника «{linkingPlayer.nickname}»
+                    </p>
+                  ) : null}
+                  {pickerUsers.length === 0 ? (
+                    <p className="text-center text-[12px] py-3" style={{ color: '#6B6360' }}>
+                      {linkingPlayer
+                        ? 'Нет свободных пользователей для привязки'
+                        : 'Все пользователи уже в турнире'}
+                    </p>
+                  ) : (
+                    pickerUsers.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => addPlayerToTournament(user.id, user.nickname)}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg active:scale-[0.98]"
+                        style={{ background: '#231A16' }}
+                      >
+                        <span className="min-w-0 text-left">
+                          <span className="block text-[13px] font-700 text-white truncate">
+                            {user.nickname}
                           </span>
+                          {user.email ? (
+                            <span className="block text-[10px] text-[#8c8c88] truncate">
+                              {user.email}
+                            </span>
+                          ) : null}
+                        </span>
+                        {linkingPlayer ? (
+                          <Link2 size={15} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                        ) : (
                           <Plus size={15} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                        )}
+                      </button>
+                    ))
+                  )}
+                  {!linkingPlayer ? (
+                    <div
+                      className="pt-1.5 mt-1"
+                      style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                    >
+                      {guestNickOpen ? (
+                        <form
+                          className="flex gap-2"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            addGuestByNickname();
+                          }}
+                        >
+                          <input
+                            value={guestNick}
+                            onChange={(e) => setGuestNick(e.target.value)}
+                            maxLength={GUEST_NICKNAME_MAX}
+                            placeholder="Ник игрока"
+                            autoFocus
+                            className="flex-1 min-w-0 h-10 rounded-lg px-3 text-[13px] text-white outline-none"
+                            style={{
+                              background: '#231A16',
+                              border: '1px solid rgba(217,153,98,0.35)',
+                            }}
+                          />
+                          <button
+                            type="submit"
+                            className="h-10 px-3 rounded-lg text-[12px] font-800 shrink-0"
+                            style={{
+                              background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                              color: '#0A0908',
+                            }}
+                          >
+                            Ок
+                          </button>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setGuestNickOpen(true)}
+                          className="w-full h-10 rounded-lg text-[12px] font-800 active:scale-[0.98]"
+                          style={{
+                            background: 'rgba(217,153,98,0.12)',
+                            border: '1px solid rgba(217,153,98,0.35)',
+                            color: '#F2D8A7',
+                          }}
+                        >
+                          Добавить ник игрока
                         </button>
-                      ))
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {tournament.isClosed ? (
           <div
@@ -641,6 +836,7 @@ export function AdminTournamentFinance() {
         ) : (
           <div className="space-y-3">
             {filtered.map((player) => {
+              const unboundGuest = isUnboundGuestSeat(player);
               const unpaid = unpaidForPlayer(tournament.id, player.id);
               const unpaidTotal = unpaidTotalForPlayer(tournament.id, player.id);
               const tickets = transactions.filter(
@@ -653,12 +849,11 @@ export function AdminTournamentFinance() {
               const dealerLoggedAt = getDealerLoggedAt(tournament.id, player.id);
               const hasLocalDebt = unpaid.length > 0;
               const hasDebt = hasGlobalUnpaidDebt(transactions, player.id);
-              const canRemove = !tournament.isClosed;
               const eliminated = typeof player.place === 'number';
               const placedIdx = placedOrdered.findIndex((p) => p.id === player.id);
               const canMoveUp = eliminated && placedIdx > 0;
               const canMoveDown = eliminated && placedIdx >= 0 && placedIdx < placedOrdered.length - 1;
-              const email = playerEmail(player.id, player.nickname);
+              const email = unboundGuest ? undefined : playerEmail(player.id, player.nickname);
 
               return (
                 <div
@@ -691,6 +886,10 @@ export function AdminTournamentFinance() {
                       </div>
                       {email ? (
                         <p className="text-[10px] text-[#8c8c88] truncate">{email}</p>
+                      ) : unboundGuest ? (
+                        <p className="text-[10px] truncate" style={{ color: '#D99962' }}>
+                          Ник без аккаунта
+                        </p>
                       ) : null}
                       {eliminated && (
                         <p className="text-[12px] font-800 mt-0.5" style={{ color: '#D99962' }}>
@@ -724,20 +923,37 @@ export function AdminTournamentFinance() {
                     >
                       <MessageSquare size={16} style={{ color: '#D99962' }} />
                     </button>
-                    {canRemove && (
+                    {unboundGuest && (
                       <button
                         type="button"
-                        onClick={() => removePlayerFromTournament(player.id)}
+                        onClick={() => {
+                          setLinkingId(player.id);
+                          setAddOpen(true);
+                          setGuestNickOpen(false);
+                        }}
                         className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                         style={{
-                          background: 'rgba(239,68,68,0.12)',
-                          border: '1px solid rgba(239,68,68,0.35)',
+                          background: 'rgba(217,153,98,0.12)',
+                          border: '1px solid rgba(217,153,98,0.35)',
                         }}
-                        aria-label="Удалить из турнира"
+                        aria-label="Привязать к пользователю"
+                        title="Привязать к пользователю"
                       >
-                        <X size={16} strokeWidth={2.4} style={{ color: '#f87171' }} />
+                        <Link2 size={16} style={{ color: '#D99962' }} />
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => removePlayerFromTournament(player.id)}
+                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        background: 'rgba(239,68,68,0.12)',
+                        border: '1px solid rgba(239,68,68,0.35)',
+                      }}
+                      aria-label="Удалить из турнира"
+                    >
+                      <X size={16} strokeWidth={2.4} style={{ color: '#f87171' }} />
+                    </button>
                     {eliminated && (
                       <div className="flex flex-col shrink-0 -my-1">
                         <button
@@ -810,6 +1026,29 @@ export function AdminTournamentFinance() {
                     </div>
                   )}
 
+                  {unboundGuest ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-600 leading-snug" style={{ color: '#A39B98' }}>
+                        Счёт, билет и дилер-часы появятся после привязки к пользователю системы.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLinkingId(player.id);
+                          setAddOpen(true);
+                          setGuestNickOpen(false);
+                        }}
+                        className="w-full py-2.5 rounded-xl text-[12px] font-800 active:scale-[0.98] transition-transform"
+                        style={{
+                          background: 'rgba(217,153,98,0.12)',
+                          border: '1px solid rgba(217,153,98,0.35)',
+                          color: '#F2D8A7',
+                        }}
+                      >
+                        Привязать к пользователю
+                      </button>
+                    </div>
+                  ) : (
                   <div className={`grid gap-1.5 ${allowsAddon ? 'grid-cols-4' : 'grid-cols-3'}`}>
                     {chargeActions.map(({ type, label }) => (
                       <button
@@ -839,8 +1078,9 @@ export function AdminTournamentFinance() {
                       Билет
                     </button>
                   </div>
+                  )}
 
-                  {!eliminated && !tournament.isClosed && (
+                  {!eliminated && (
                     <button
                       type="button"
                       onClick={() => eliminatePlayer(player.id)}
@@ -869,6 +1109,8 @@ export function AdminTournamentFinance() {
                     </button>
                   )}
 
+                  {unboundGuest ? null : (
+                  <>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[11px] font-600" style={{ color: '#8c8c88' }}>
                       Дилер-часы:
@@ -919,6 +1161,8 @@ export function AdminTournamentFinance() {
                       {formatTxDateTime(dealerLoggedAt)}
                     </p>
                   ) : null}
+                  </>
+                  )}
                   </div>
 
                   {tournament.isClosed ? (

@@ -17,7 +17,7 @@ import { knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructu
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import {
   clubUserIdSet,
-  registeredClubSeats,
+  lobbySeatedPlayers,
   seasonPointsByUserId,
   withClubSeasonRating,
 } from '../lib/clubRating';
@@ -170,7 +170,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     () => seasonPointsByUserId(clubUsers, tournaments),
     [clubUsers, tournaments],
   );
-  const seated = registeredClubSeats(live.participants, knownIds).map((player) =>
+  const seated = lobbySeatedPlayers(live.participants, knownIds).map((player) =>
     withClubSeasonRating(player, seasonById),
   );
   const participants = tournamentFinished ? sortByPlace(seated) : sortByRating(seated);

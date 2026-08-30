@@ -1,5 +1,7 @@
 import { itmPlaceCount, knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { calculateRubies, isBountyEvent } from './calculateRubies';
+import { guestSeatKey } from './guestPlayer';
+import { sanitizeParticipantUserId } from './supabaseMap';
 import { formatTxDate } from './transactionDisplay';
 import type { Transaction } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
@@ -36,11 +38,10 @@ function participantMatches(
   participant: Participant,
   userIds: Set<string>,
 ): boolean {
-  const boundId = String(participant.userId ?? '').trim();
-  if (boundId) return userIds.has(boundId);
-  const seatId = String(participant.id ?? '').trim();
-  if (!seatId || seatId.includes(':')) return false;
-  return userIds.has(seatId);
+  const boundId = sanitizeParticipantUserId(participant.userId ?? '');
+  if (boundId && userIds.has(boundId)) return true;
+  const seatId = guestSeatKey(participant.id);
+  return Boolean(seatId) && userIds.has(seatId);
 }
 
 function findPlayerInTournament(

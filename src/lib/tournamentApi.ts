@@ -298,6 +298,7 @@ export async function deleteParticipantSeat(tournamentId: string, userId: string
 function sameSeat(left: Participant, right: Participant): boolean {
   return (
     left.id === right.id &&
+    (left.userId ?? '') === (right.userId ?? '') &&
     left.nickname === right.nickname &&
     left.rating === right.rating &&
     left.place === right.place &&

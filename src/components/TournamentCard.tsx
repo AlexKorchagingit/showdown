@@ -4,7 +4,7 @@ import { isFinished } from '../lib/tournamentStatus';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { TimerRunningBadge } from './TimerRunningBadge';
 import { useUser } from '../context/UserContext';
-import { clubUserIdSet, countRegisteredClubSeats } from '../lib/clubRating';
+import { clubUserIdSet, countOccupiedLobbySeats } from '../lib/clubRating';
 
 interface Props {
   tournament: Tournament;
@@ -22,7 +22,7 @@ export function TournamentCard({ tournament, onClick, timerRunning = false }: Pr
   const { title, startDate, startTime, totalSeats, participants } = tournament;
   const { clubUsers } = useUser();
 
-  const occupiedSeats = countRegisteredClubSeats(participants, clubUserIdSet(clubUsers));
+  const occupiedSeats = countOccupiedLobbySeats(participants, clubUserIdSet(clubUsers));
   const isPast = isFinished(tournament);
 
   const dateObj = new Date(startDate);

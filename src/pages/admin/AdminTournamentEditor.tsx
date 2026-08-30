@@ -17,7 +17,7 @@ import { BlindStructurePicker } from '../../components/admin/BlindStructurePicke
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
-import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countRegisteredClubSeats } from '../../lib/clubRating';
+import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countOccupiedLobbySeats } from '../../lib/clubRating';
 import { CopyTournamentModal } from '../../components/admin/CopyTournamentModal';
 
 const CARD_STYLE = {
@@ -334,7 +334,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
   const isFinished = hasFinished(tournament);
   const occupiedSeats = tournament.participants.length;
-  const copyPlayerCount = countRegisteredClubSeats(
+  const copyPlayerCount = countOccupiedLobbySeats(
     tournament.participants,
     clubUserIdSet(clubUsers),
   );
