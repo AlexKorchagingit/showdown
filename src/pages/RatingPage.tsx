@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlayerNameLink } from '../components/PlayerNameLink';
@@ -8,9 +8,14 @@ import { useUser } from '../context/UserContext';
 import { useTournaments } from '../context/TournamentContext';
 import type { RatingPlayer } from '../types/player';
 import { clubRatingPlayers } from '../lib/clubRating';
+import {
+  readRatingView,
+  writeRatingView,
+  type RatingMetricColumn,
+  type RatingTab,
+} from '../lib/ratingViewState';
 
-type RatingTab = 'general' | 'seasonal';
-type MetricColumn = 'tournaments' | 'wins' | 'knockouts';
+type MetricColumn = RatingMetricColumn;
 
 const MONTHS = [
   'Январь','Февраль','Март','Апрель','Май','Июнь',
@@ -80,7 +85,7 @@ function ColumnSelector({
   onChange: (column: MetricColumn) => void;
 }) {
   return (
-    <div className="flex items-center gap-1" role="tablist" aria-label="Показатель таблицы">
+    <div className="flex items-center gap-0" role="tablist" aria-label="Показатель таблицы">
       {COLUMN_TABS.map(({ id, label }) => {
         const isActive = active === id;
         return (
@@ -92,8 +97,8 @@ function ColumnSelector({
             onClick={() => onChange(id)}
             className={
               isActive
-                ? 'bg-[#D99962] text-[#110b09] text-xs font-bold rounded-lg px-2 py-1'
-                : 'text-xs text-[#8c8c88] hover:text-white px-2 py-1'
+                ? 'bg-[#D99962] text-[#110b09] text-[11px] font-bold rounded-md px-1.5 py-1'
+                : 'text-[11px] text-[#8c8c88] hover:text-white px-1.5 py-1'
             }
           >
             {label}
@@ -190,20 +195,42 @@ export function RatingPage() {
   const { userId, clubUsers } = useUser();
   const { nickname } = useProfile();
   const { tournaments } = useTournaments();
-  const [activeTab, setActiveTab] = useState<RatingTab>('general');
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const [activeColumn, setActiveColumn] = useState<MetricColumn>('tournaments');
+  const savedView = useRef(readRatingView()).current;
+  const [activeTab, setActiveTab] = useState<RatingTab>(savedView.tab);
+  const [selectedMonth, setSelectedMonth] = useState<number>(savedView.month);
+  const [activeColumn, setActiveColumn] = useState<MetricColumn>(savedView.column);
   const directionRef = useRef<number>(1);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const restoredScroll = useRef(false);
 
   const handleTabChange = (tab: RatingTab) => {
     if (tab === activeTab) return;
     directionRef.current = tab === 'seasonal' ? 1 : -1;
-    if (tab === 'seasonal') setSelectedMonth(new Date().getMonth());
+    const month = tab === 'seasonal' ? new Date().getMonth() : selectedMonth;
+    if (tab === 'seasonal') setSelectedMonth(month);
     setActiveTab(tab);
+    writeRatingView({ tab, month, scrollTop: 0 });
   };
 
-  const prevMonth = () => setSelectedMonth((m) => (m === 0 ? 11 : m - 1));
-  const nextMonth = () => setSelectedMonth((m) => (m === 11 ? 0 : m + 1));
+  const prevMonth = () => {
+    setSelectedMonth((m) => {
+      const month = m === 0 ? 11 : m - 1;
+      writeRatingView({ month, scrollTop: 0 });
+      return month;
+    });
+  };
+  const nextMonth = () => {
+    setSelectedMonth((m) => {
+      const month = m === 11 ? 0 : m + 1;
+      writeRatingView({ month, scrollTop: 0 });
+      return month;
+    });
+  };
+
+  const setColumn = (column: MetricColumn) => {
+    setActiveColumn(column);
+    writeRatingView({ column });
+  };
 
   const players = useMemo(
     () =>
@@ -219,6 +246,19 @@ export function RatingPage() {
     () => findCurrentEntry(players, userId, nickname),
     [players, userId, nickname],
   );
+
+  useLayoutEffect(() => {
+    const node = scrollRef.current;
+    if (!node || restoredScroll.current || players.length === 0) return;
+    const top = readRatingView().scrollTop;
+    restoredScroll.current = true;
+    if (top <= 0) return;
+    node.scrollTop = top;
+    const frame = requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = top;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [players.length, activeTab, selectedMonth]);
 
   return (
     <div className="relative flex flex-col h-full bg-obsidian">
@@ -286,12 +326,10 @@ export function RatingPage() {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-start mr-auto min-w-0">
-            <ColumnSelector active={activeColumn} onChange={setActiveColumn} />
-          </div>
+        <div className="flex items-center justify-end gap-0">
+          <ColumnSelector active={activeColumn} onChange={setColumn} />
           <span
-            className="shrink-0 text-[10px] font-800 uppercase tracking-wider"
+            className="shrink-0 text-[10px] font-800 uppercase tracking-wider pl-0.5"
             style={{ color: '#D99962' }}
           >
             Рейтинг
@@ -302,6 +340,7 @@ export function RatingPage() {
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait" initial={false} custom={directionRef.current}>
           <motion.div
+            ref={scrollRef}
             key={activeTab + (activeTab === 'seasonal' ? `-${selectedMonth}` : '')}
             custom={directionRef.current}
             variants={{
@@ -313,7 +352,17 @@ export function RatingPage() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            onPointerDown={() => {
+              const node = scrollRef.current;
+              if (node) writeRatingView({ scrollTop: node.scrollTop });
+            }}
+            onScroll={() => {
+              const node = scrollRef.current;
+              if (!node) return;
+              writeRatingView({ scrollTop: node.scrollTop });
+            }}
             className="absolute inset-0 scrollable pb-28"
+            style={{ overflowAnchor: 'none' }}
           >
             {players.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3">
