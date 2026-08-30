@@ -6,12 +6,22 @@ export type BlindLevel = {
   durationMinutes: number;
   isBreak?: boolean;
   isLateRegEnd?: boolean;
+  /** Optional note shown on the timer during this break (chip race, color-up, …). */
+  comment?: string;
 };
+
+export const BREAK_COMMENT_MAX = 80;
 
 /** Breaks never display 0/0; a 0 small-blind is treated as a break for old records. */
 export function isBreakLevel(level: BlindLevel | undefined): boolean {
   if (!level) return false;
   return level.isBreak === true || level.smallBlind === 0;
+}
+
+export function breakComment(level: BlindLevel | undefined): string {
+  if (!level || !isBreakLevel(level)) return '';
+  const note = level.comment?.trim() ?? '';
+  return note.slice(0, BREAK_COMMENT_MAX);
 }
 
 export type TournamentStructure = {
@@ -278,10 +288,14 @@ export const BLIND_STRUCTURES: BlindStructure[] = [
 ];
 
 function cloneLevel(level: BlindLevel): BlindLevel {
-  if (level.isBreak === true || level.smallBlind === 0) {
-    return { ...level, isBreak: true };
-  }
-  return { ...level };
+  const comment = breakComment(level);
+  const next: BlindLevel =
+    level.isBreak === true || level.smallBlind === 0
+      ? { ...level, isBreak: true }
+      : { ...level };
+  if (comment) next.comment = comment;
+  else delete next.comment;
+  return next;
 }
 
 function withBreakBlinds(levels: BlindLevel[]): BlindLevel[] {
@@ -379,7 +393,7 @@ export function findBlindStructure(id: string | null): BlindStructure | undefine
 
 export function formatBlinds(level: BlindLevel | undefined): string {
   if (!level) return '—';
-  if (isBreakLevel(level)) return 'ПЕРЕРЫВ';
+  if (isBreakLevel(level)) return breakComment(level) || 'ПЕРЕРЫВ';
   const base = `${level.smallBlind.toLocaleString('ru-RU')}/${level.bigBlind.toLocaleString('ru-RU')}`;
   return level.ante > 0 ? `${base} (${level.ante.toLocaleString('ru-RU')})` : base;
 }
@@ -421,6 +435,14 @@ export function secondsUntilNextBreak(
   secondsLeft: number,
 ): number | null {
   return secondsUntilMatch(levels, levelIndex, secondsLeft, (level) => isBreakLevel(level));
+}
+
+/** The next upcoming break after the current level, if any. */
+export function upcomingBreakLevel(
+  levels: BlindLevel[],
+  levelIndex: number,
+): BlindLevel | undefined {
+  return levels.find((level, index) => index > levelIndex && isBreakLevel(level));
 }
 
 /** Remaining seconds until the `isLateRegEnd` level starts. Null if none exists. */

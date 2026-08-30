@@ -8,8 +8,10 @@ import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { formatTournamentHeldOn, openTournaments } from '../../lib/timerTournament';
 import {
+  BREAK_COMMENT_MAX,
   buildLevels,
   DEFAULT_PAYOUTS,
+  breakComment,
   isBreakLevel,
   renumberLevels,
   structureDurationLabel,
@@ -150,8 +152,11 @@ function CreateStructureForm({ onCreate }: { onCreate: (form: CreateForm) => voi
 }
 
 function levelTitle(level: BlindLevel): string {
-  if (isBreakLevel(level) && level.isLateRegEnd) return 'ПЕРЕРЫВ · закрытие реги';
-  if (isBreakLevel(level)) return 'ПЕРЕРЫВ';
+  const note = breakComment(level);
+  if (isBreakLevel(level) && level.isLateRegEnd) {
+    return note ? `ПЕРЕРЫВ · закрытие реги · ${note}` : 'ПЕРЕРЫВ · закрытие реги';
+  }
+  if (isBreakLevel(level)) return note ? `ПЕРЕРЫВ · ${note}` : 'ПЕРЕРЫВ';
   if (level.isLateRegEnd) return `Уровень ${level.level} · закрытие реги`;
   return `Уровень ${level.level}`;
 }
@@ -273,6 +278,7 @@ function LevelEditor({
                           smallBlind: level.smallBlind || 100,
                           bigBlind: level.bigBlind || 200,
                           ante: level.ante || 200,
+                          comment: undefined,
                         },
                   );
                 }}
@@ -304,6 +310,19 @@ function LevelEditor({
                   type="number"
                   value={level.durationMinutes}
                   onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
+              <label className="block">
+                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                  Комментарий
+                </span>
+                <input
+                  type="text"
+                  value={level.comment ?? ''}
+                  maxLength={BREAK_COMMENT_MAX}
+                  placeholder="Например: Вывод 100 номинала"
+                  onChange={(e) => patchLevel(index, { comment: e.target.value })}
                   className={FIELD_CLASS}
                 />
               </label>

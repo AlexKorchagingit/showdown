@@ -21,12 +21,14 @@ import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { resolveStructureForTournament } from '../../lib/timerTournament';
 import {
+  breakComment,
   formatBlinds,
   formatEta,
   isBreakLevel,
   isLateRegClosed,
   secondsUntilLateRegEnd,
   secondsUntilNextBreak,
+  upcomingBreakLevel,
 } from '../../data/blindStructures';
 import { calculatePayouts, itmSharePercent } from '../../data/prizeStructure';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
@@ -181,6 +183,10 @@ export function AdminBlindsTimer() {
         : null,
     [structure, levelIndex, secondsLeft],
   );
+  const nextBreakNote = useMemo(
+    () => (structure ? breakComment(upcomingBreakLevel(structure.levels, levelIndex)) : ''),
+    [structure, levelIndex],
+  );
   const timeToLateRegEnd = useMemo(
     () =>
       structure
@@ -229,6 +235,7 @@ export function AdminBlindsTimer() {
   const percent = Math.min(100, Math.max(0, (secondsLeft / Math.max(1, levelSeconds)) * 100));
   const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
   const isBreak = isBreakLevel(currentLevel);
+  const currentBreakNote = breakComment(currentLevel);
   const levelNumber = currentLevel?.level ?? levelIndex + 1;
   const blindsLabel = isBreak
     ? 'Перерыв'
@@ -412,6 +419,11 @@ export function AdminBlindsTimer() {
                     <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
                       ПЕРЕРЫВ
                     </p>
+                    {currentBreakNote ? (
+                      <p className="mt-2 max-w-full px-1 text-[clamp(0.95rem,8cqi,1.85rem)] font-800 leading-snug text-[#F2D8A7]">
+                        {currentBreakNote}
+                      </p>
+                    ) : null}
                     <p className="mt-2 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                       {formatClock(secondsLeft)}
                     </p>
@@ -471,6 +483,11 @@ export function AdminBlindsTimer() {
                 <p className="text-xl md:text-2xl font-black tabular-nums text-white mt-1">
                   {formatEta(timeToNextBreak)}
                 </p>
+                {nextBreakNote ? (
+                  <p className="mt-1 text-base md:text-lg font-700 leading-snug text-[#F2D8A7]">
+                    {nextBreakNote}
+                  </p>
+                ) : null}
               </div>
             )}
             {lateRegClosed ? (
