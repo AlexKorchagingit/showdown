@@ -6,7 +6,7 @@ import { CompactHeader } from '../../components/CompactHeader';
 import { useBlinds } from '../../context/BlindsContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
-import { openTournaments } from '../../lib/timerTournament';
+import { formatTournamentHeldOn, openTournaments } from '../../lib/timerTournament';
 import {
   buildLevels,
   DEFAULT_PAYOUTS,
@@ -588,6 +588,9 @@ export function AdminBlindsSettings() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-bold text-white truncate">{tournament.title}</p>
+                    <p className="text-[12px] font-700 capitalize truncate" style={{ color: '#D99962' }}>
+                      {formatTournamentHeldOn(tournament.startDate, tournament.startTime)}
+                    </p>
                     <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
                       {tournament.participants.length} игр. · {tournament.blindStructure}
                       {tournament.isBounty ? ' · bounty' : ''}

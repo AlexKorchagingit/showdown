@@ -43,3 +43,13 @@ export function tournamentsUsingStructure(
     return tournament.blindStructure.trim() === structure.name;
   });
 }
+
+/** Event day + start time, timezone-stable (`YYYY-MM-DD` at noon). */
+export function formatTournamentHeldOn(startDate: string, startTime: string): string {
+  const day = new Date(`${startDate.trim().slice(0, 10)}T12:00:00`);
+  const dateLabel = Number.isNaN(day.getTime())
+    ? ''
+    : day.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const time = startTime.trim();
+  return [dateLabel, time].filter(Boolean).join(' · ') || '—';
+}
