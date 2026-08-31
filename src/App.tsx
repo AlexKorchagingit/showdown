@@ -14,29 +14,31 @@ import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 import { endLocalSession, readSessionEmail } from './lib/session';
 import { resolveStartupView } from './lib/startupState';
+import { loadWithChunkRecovery } from './lib/chunkRecovery';
+import { ChunkLoadErrorBoundary } from './components/ChunkLoadErrorBoundary';
 
-const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
-const TournamentsPage = lazy(() => import('./pages/TournamentsPage').then((module) => ({ default: module.TournamentsPage })));
-const TournamentDetailRoute = lazy(() => import('./pages/TournamentDetailRoute').then((module) => ({ default: module.TournamentDetailRoute })));
-const RatingPage = lazy(() => import('./pages/RatingPage').then((module) => ({ default: module.RatingPage })));
-const ProfilePage = lazy(() => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
-const ShopScreen = lazy(() => import('./pages/ShopScreen').then((module) => ({ default: module.ShopScreen })));
-const AboutClubScreen = lazy(() => import('./pages/AboutClubScreen').then((module) => ({ default: module.AboutClubScreen })));
-const QnAScreen = lazy(() => import('./pages/QnAScreen').then((module) => ({ default: module.QnAScreen })));
-const AchievementsScreen = lazy(() => import('./pages/AchievementsScreen').then((module) => ({ default: module.AchievementsScreen })));
-const AdminUsersScreen = lazy(() => import('./pages/admin/AdminUsersScreen').then((module) => ({ default: module.AdminUsersScreen })));
-const AdminTournamentsScreen = lazy(() => import('./pages/admin/AdminTournamentsScreen').then((module) => ({ default: module.AdminTournamentsScreen })));
-const AdminTournamentEditor = lazy(() => import('./pages/admin/AdminTournamentEditor').then((module) => ({ default: module.AdminTournamentEditor })));
-const AdminBlindsSettings = lazy(() => import('./pages/admin/AdminBlindsSettings').then((module) => ({ default: module.AdminBlindsSettings })));
-const AdminBlindsTimer = lazy(() => import('./pages/admin/AdminBlindsTimer').then((module) => ({ default: module.AdminBlindsTimer })));
-const AdminAchievementsUsers = lazy(() => import('./pages/admin/AdminAchievementsUsers').then((module) => ({ default: module.AdminAchievementsUsers })));
-const AdminAchievementsEditor = lazy(() => import('./pages/admin/AdminAchievementsEditor').then((module) => ({ default: module.AdminAchievementsEditor })));
-const AdminFinanceScreen = lazy(() => import('./pages/admin/AdminFinanceScreen').then((module) => ({ default: module.AdminFinanceScreen })));
-const AdminTournamentFinance = lazy(() => import('./pages/admin/AdminTournamentFinance').then((module) => ({ default: module.AdminTournamentFinance })));
-const AdminRubyScreen = lazy(() => import('./pages/admin/AdminRubyScreen').then((module) => ({ default: module.AdminRubyScreen })));
-const AdminStatisticScreen = lazy(() => import('./pages/admin/AdminStatisticScreen').then((module) => ({ default: module.AdminStatisticScreen })));
-const AdminLogsScreen = lazy(() => import('./pages/admin/AdminLogsScreen').then((module) => ({ default: module.AdminLogsScreen })));
+const HomePage = lazy(() => loadWithChunkRecovery(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage }))));
+const TournamentsPage = lazy(() => loadWithChunkRecovery(() => import('./pages/TournamentsPage').then((module) => ({ default: module.TournamentsPage }))));
+const TournamentDetailRoute = lazy(() => loadWithChunkRecovery(() => import('./pages/TournamentDetailRoute').then((module) => ({ default: module.TournamentDetailRoute }))));
+const RatingPage = lazy(() => loadWithChunkRecovery(() => import('./pages/RatingPage').then((module) => ({ default: module.RatingPage }))));
+const ProfilePage = lazy(() => loadWithChunkRecovery(() => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage }))));
+const SettingsPage = lazy(() => loadWithChunkRecovery(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage }))));
+const ShopScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/ShopScreen').then((module) => ({ default: module.ShopScreen }))));
+const AboutClubScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/AboutClubScreen').then((module) => ({ default: module.AboutClubScreen }))));
+const QnAScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/QnAScreen').then((module) => ({ default: module.QnAScreen }))));
+const AchievementsScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/AchievementsScreen').then((module) => ({ default: module.AchievementsScreen }))));
+const AdminUsersScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminUsersScreen').then((module) => ({ default: module.AdminUsersScreen }))));
+const AdminTournamentsScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminTournamentsScreen').then((module) => ({ default: module.AdminTournamentsScreen }))));
+const AdminTournamentEditor = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminTournamentEditor').then((module) => ({ default: module.AdminTournamentEditor }))));
+const AdminBlindsSettings = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminBlindsSettings').then((module) => ({ default: module.AdminBlindsSettings }))));
+const AdminBlindsTimer = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminBlindsTimer').then((module) => ({ default: module.AdminBlindsTimer }))));
+const AdminAchievementsUsers = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminAchievementsUsers').then((module) => ({ default: module.AdminAchievementsUsers }))));
+const AdminAchievementsEditor = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminAchievementsEditor').then((module) => ({ default: module.AdminAchievementsEditor }))));
+const AdminFinanceScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminFinanceScreen').then((module) => ({ default: module.AdminFinanceScreen }))));
+const AdminTournamentFinance = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminTournamentFinance').then((module) => ({ default: module.AdminTournamentFinance }))));
+const AdminRubyScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminRubyScreen').then((module) => ({ default: module.AdminRubyScreen }))));
+const AdminStatisticScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminStatisticScreen').then((module) => ({ default: module.AdminStatisticScreen }))));
+const AdminLogsScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminLogsScreen').then((module) => ({ default: module.AdminLogsScreen }))));
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
@@ -74,8 +76,9 @@ function AppLayout({ userEmail }: AppLayoutProps) {
         style={{ paddingBottom: contentPaddingBottom }}
       >
         <div className="h-full">
-          <Suspense fallback={<SplashScreen />}>
-            <Routes>
+          <ChunkLoadErrorBoundary>
+            <Suspense fallback={<SplashScreen />}>
+              <Routes>
             <Route path="/"                  element={<HomePage />} />
             <Route path="/tournaments"       element={<TournamentsPage />} />
             <Route path="/tournaments/:id"   element={<TournamentDetailRoute />} />
@@ -102,8 +105,9 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/admin/achievements/users"      element={<AdminAchievementsUsers />} />
             <Route path="/admin/achievements/edit/:userId" element={<AdminAchievementsEditor />} />
             <Route path="*"                  element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+              </Routes>
+            </Suspense>
+          </ChunkLoadErrorBoundary>
         </div>
       </div>
 

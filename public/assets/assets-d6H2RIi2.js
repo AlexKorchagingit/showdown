@@ -1,0 +1,1 @@
+function e(e){let t=e.trim();if(!t)return``;if(/^https?:\/\//i.test(t)||t.startsWith(`data:`))return t;let n=t.replace(/^\/+/,``).replace(/^showdown\//,``);return`${`/`.endsWith(`/`)?`/`:`//`}${n}`}export{e as t};
