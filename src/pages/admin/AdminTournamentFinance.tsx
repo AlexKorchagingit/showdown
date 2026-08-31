@@ -39,7 +39,7 @@ import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnal
 import { creditRubiesToBalance } from '../../lib/rubyGrants';
 import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
 import { clearParticipantPlace } from '../../lib/tournamentApi';
-import { cashierPlayers } from '../../lib/tournamentArrival';
+import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
@@ -148,7 +148,7 @@ export function AdminTournamentFinance() {
     : CHARGE_ACTIONS.filter((action) => action.type !== 'addon');
   const field = cashierPlayers(tournament.participants);
   const placedOrdered = sortByPlace(field.filter((p) => typeof p.place === 'number'));
-  const remainingInPlay = field.filter((p) => typeof p.place !== 'number').length;
+  const remainingInPlay = cashierStillPlaying(tournament.participants).length;
   const closeBlocked = remainingInPlay > 1;
   const nonPlayingDealers = tournament.dealers ?? [];
   const takenIds = new Set(tournament.participants.map((p) => p.id));

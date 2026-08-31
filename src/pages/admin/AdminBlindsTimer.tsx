@@ -34,6 +34,7 @@ import { calculatePayouts, itmSharePercent } from '../../data/prizeStructure';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
+import { supabase } from '../../lib/supabase';
 import {
   autoAvgStack,
   nicknamesByPlace,
@@ -84,7 +85,7 @@ export function AdminBlindsTimer() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { equippedChar } = useProfile();
-  const { tournaments } = useTournaments();
+  const { tournaments, refreshParticipants } = useTournaments();
   const {
     timerReady,
     structures,
@@ -168,9 +169,37 @@ export function AdminBlindsTimer() {
     };
   }, []);
 
+  const liveTournamentId = tournamentIdParam ?? linkedTournamentId;
+  useEffect(() => {
+    if (!liveTournamentId) return;
+    void refreshParticipants(liveTournamentId);
+    const poll = window.setInterval(() => {
+      void refreshParticipants(liveTournamentId);
+    }, 2500);
+    const channel = supabase
+      .channel(`timer-cashier-${liveTournamentId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'participants',
+          filter: `tournament_id=eq.${liveTournamentId}`,
+        },
+        () => {
+          void refreshParticipants(liveTournamentId);
+        },
+      )
+      .subscribe();
+    return () => {
+      window.clearInterval(poll);
+      void supabase.removeChannel(channel);
+    };
+  }, [liveTournamentId, refreshParticipants]);
+
   const structure = resolvedStructure;
   const tournament = boundTournament;
-  const { remaining } = tournamentPlayerCounts(tournament);
+  const { remaining, registered } = tournamentPlayerCounts(tournament);
   const avgStack = avgStackOverride ?? autoAvgStack(tournament);
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
@@ -200,23 +229,21 @@ export function AdminBlindsTimer() {
   );
 
   const prizePool = tournament?.guarantee ?? structure?.guarantee ?? 0;
-  const hasEntries = totalEntries != null;
-  const fieldSize = hasEntries ? totalEntries : 0;
+  const fieldSize = tournament ? registered : (totalEntries ?? 0);
+  const hasEntries = fieldSize > 0;
   const payouts = useMemo(
     () => (hasEntries ? calculatePayouts(fieldSize, prizePool) : []),
     [hasEntries, fieldSize, prizePool],
   );
-  const hasField = Boolean(tournament && tournament.participants.length > 0);
+  const hasField = registered > 0;
   const activePlayersCount = hasField ? remaining : Number.POSITIVE_INFINITY;
   const eliminatedNickByPlace = useMemo(() => nicknamesByPlace(tournament), [tournament]);
 
   useEffect(() => {
     if (!chipleaderId || !tournament) return;
-    if (tournament.participants.length === 0) return;
-    const stillSeated = tournament.participants.some(
-      (p) => p.id === chipleaderId && typeof p.place !== 'number',
-    );
-    if (!stillSeated) setChipleader(null);
+    if (!remainingPlayers(tournament).some((p) => p.id === chipleaderId)) {
+      setChipleader(null);
+    }
   }, [chipleaderId, tournament, setChipleader]);
 
   if (!timerReady) {
@@ -314,14 +341,14 @@ export function AdminBlindsTimer() {
         </div>
 
         <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-visible md:w-[260px]">
-          {hasEntries && (
+          {(tournament || totalEntries != null) && (
             <section className={`${GLASS} text-center min-w-0`}>
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
                 В ИГРЕ
               </p>
               <FitText className="text-white mt-2">
                 {remaining}
-                <span className="text-white/35"> / {totalEntries}</span>
+                <span className="text-white/35"> / {tournament ? registered : totalEntries}</span>
               </FitText>
               {rebuyCount != null && rebuyCount > 0 && (
                 <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>

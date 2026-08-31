@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cashierFieldSize,
   cashierPlayers,
+  cashierStillPlaying,
   finishedLobbyPlayers,
   hasArrivedWithoutPlace,
   isArrivedPlayer,
@@ -36,6 +37,7 @@ describe('tournament arrival', () => {
       player('still-here', { arrived: true }),
     ];
     expect(cashierPlayers(participants).map((row) => row.id)).toEqual(['winner', 'still-here']);
+    expect(cashierStillPlaying(participants).map((row) => row.id)).toEqual(['still-here']);
   });
 
   it('lists only cashier bust-outs for a closed lobby', () => {

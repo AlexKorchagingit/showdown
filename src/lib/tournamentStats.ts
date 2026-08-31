@@ -1,8 +1,10 @@
 import type { Participant, Tournament } from '../types/tournament';
+import { cashierPlayers, cashierStillPlaying } from './tournamentArrival';
 
+/** Players still in the cashier field (checked in, no finishing place). */
 export function remainingPlayers(tournament: Tournament | undefined): Participant[] {
   if (!tournament) return [];
-  return tournament.participants.filter((p) => typeof p.place !== 'number');
+  return cashierStillPlaying(tournament.participants);
 }
 
 /** Nickname of the player who finished each assigned place. */
@@ -22,7 +24,7 @@ export function tournamentPlayerCounts(tournament: Tournament | undefined): {
   remaining: number;
   registered: number;
 } {
-  const registered = tournament?.participants.length ?? 0;
+  const registered = tournament ? cashierPlayers(tournament.participants).length : 0;
   return { remaining: remainingPlayers(tournament).length, registered };
 }
 

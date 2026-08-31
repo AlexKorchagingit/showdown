@@ -15,6 +15,13 @@ export function cashierPlayers(participants: Participant[]): Participant[] {
   );
 }
 
+/** Cashier seats that have not been given a finishing place yet. */
+export function cashierStillPlaying(participants: Participant[]): Participant[] {
+  return cashierPlayers(participants).filter(
+    (player) => typeof player.place !== 'number' || player.place < 1,
+  );
+}
+
 export function cashierFieldSize(tournament: Pick<Tournament, 'participants'>): number {
   return cashierPlayers(tournament.participants).length;
 }

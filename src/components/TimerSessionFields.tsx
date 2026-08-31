@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useBlinds } from '../context/BlindsContext';
 import { useTournaments } from '../context/TournamentContext';
 import { useBindPokerTimer } from '../hooks/useBindPokerTimer';
-import { autoAvgStack, remainingPlayers } from '../lib/tournamentStats';
+import { autoAvgStack, remainingPlayers, tournamentPlayerCounts } from '../lib/tournamentStats';
 import { openTournaments, timerPathForStructure, timerPathForTournament } from '../lib/timerTournament';
 
 const FIELD_CLASS =
@@ -34,6 +34,7 @@ export function TimerSessionFields() {
   const onTimerPage = location.pathname === '/admin/blinds/timer';
   const tournament = tournaments.find((row) => row.id === linkedTournamentId);
   const remaining = remainingPlayers(tournament);
+  const { registered: cashierField } = tournamentPlayerCounts(tournament);
   const autoStack = autoAvgStack(tournament);
 
   const selectable = (() => {
@@ -81,6 +82,12 @@ export function TimerSessionFields() {
           ))}
         </select>
       </label>
+
+      {tournament ? (
+        <p className="text-[11px] font-600 text-white/50">
+          Касса: {cashierField} · в игре: {remaining.length}
+        </p>
+      ) : null}
 
       <label className="block">
         <span className={LABEL_CLASS}>Всего входов (Игроки)</span>
