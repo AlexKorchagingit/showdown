@@ -411,39 +411,41 @@ export function AdminBlindsTimer() {
               </svg>
               {/* Clip to the inner ring so type can be large without leaving the circle. */}
               <div
-                className="pointer-events-none absolute inset-[5%] flex flex-col items-center justify-center overflow-hidden rounded-full px-4 text-center"
+                className="pointer-events-none absolute inset-[5%] overflow-hidden rounded-full px-4 text-center"
                 style={{ containerType: 'inline-size' }}
               >
-                {isBreak ? (
-                  <>
-                    <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
-                      ПЕРЕРЫВ
-                    </p>
-                    {currentBreakNote ? (
-                      <p className="mt-2 max-w-full px-1 text-[clamp(0.95rem,8cqi,1.85rem)] font-800 leading-snug text-[#F2D8A7]">
-                        {currentBreakNote}
+                <div className="flex h-full w-full origin-center scale-95 flex-col items-center justify-center">
+                  {isBreak ? (
+                    <>
+                      <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
+                        ПЕРЕРЫВ
                       </p>
-                    ) : null}
-                    <p className="mt-2 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                      {formatClock(secondsLeft)}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <span className="rounded-full bg-[#D99962]/20 px-5 py-1 text-[clamp(1.05rem,11cqi,2rem)] font-bold uppercase tracking-widest text-[#D99962]">
-                      {levelBadge}
-                    </span>
-                    <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
-                      {blindsLabel}
-                    </p>
-                    <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
-                      {anteLabel}
-                    </p>
-                    <p className="mt-1.5 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                      {formatClock(secondsLeft)}
-                    </p>
-                  </>
-                )}
+                      {currentBreakNote ? (
+                        <p className="mt-2 max-w-full px-1 text-[clamp(0.95rem,8cqi,1.85rem)] font-800 leading-snug text-[#F2D8A7]">
+                          {currentBreakNote}
+                        </p>
+                      ) : null}
+                      <p className="mt-2 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                        {formatClock(secondsLeft)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="rounded-full bg-[#D99962]/20 px-5 py-1 text-[clamp(1.05rem,11cqi,2rem)] font-bold uppercase tracking-widest text-[#D99962]">
+                        {levelBadge}
+                      </span>
+                      <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
+                        {blindsLabel}
+                      </p>
+                      <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
+                        {anteLabel}
+                      </p>
+                      <p className="mt-1.5 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                        {formatClock(secondsLeft)}
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
               <button
                 type="button"
@@ -460,7 +462,7 @@ export function AdminBlindsTimer() {
             </div>
           </div>
 
-          <p className="mt-2 mb-1 shrink-0 text-center text-lg font-bold text-white/70 md:text-xl">
+          <p className="mt-2.5 mb-1.5 shrink-0 text-center text-[1.24rem] font-bold leading-snug text-white/70 md:text-[1.38rem]">
             Next Blinds:{' '}
             <span className="text-[#D99962]">
               {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
