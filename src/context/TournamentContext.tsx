@@ -182,19 +182,23 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       const current = tournaments.find((row) => row.id === tournamentId);
       if (!current) return;
       const next = { ...current, ...patch };
+      setTournaments((prev) => prev.map((row) => (row.id === tournamentId ? next : row)));
       try {
         await updateTournamentRow(next);
         if (patch.participants) {
-          next.participants = await syncParticipantRows(
+          const synced = await syncParticipantRows(
             tournamentId,
             current.participants,
             patch.participants,
             resolveUserId,
           );
+          setTournaments((prev) =>
+            prev.map((row) => (row.id === tournamentId ? { ...next, participants: synced } : row)),
+          );
         }
-        setTournaments((prev) => prev.map((row) => (row.id === tournamentId ? next : row)));
       } catch (error) {
         console.error(error);
+        setTournaments((prev) => prev.map((row) => (row.id === tournamentId ? current : row)));
         window.alert(error instanceof Error ? error.message : 'Не удалось сохранить турнир');
       }
     },

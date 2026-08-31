@@ -255,8 +255,8 @@ function ParticipantsEditor({
                 className="flex items-center gap-3 px-5 py-3"
                 style={{
                   borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  background: arrived ? 'rgba(34,197,94,0.16)' : undefined,
-                  boxShadow: arrived ? 'inset 0 0 0 1px rgba(34,197,94,0.35)' : undefined,
+                  background: arrived ? 'rgba(34,197,94,0.28)' : undefined,
+                  boxShadow: arrived ? 'inset 4px 0 0 #4ade80' : undefined,
                 }}
               >
                 <button

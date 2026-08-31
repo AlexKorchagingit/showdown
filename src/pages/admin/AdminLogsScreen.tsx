@@ -7,6 +7,12 @@ import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
 import { supabase, logSupabaseError } from '../../lib/supabase';
+import { TIMER_SESSION_LOG_ACTION, TIMER_SESSION_LOG_ID } from '../../lib/timerSession';
+import { BLIND_STRUCTURES_LOG_ACTION, BLIND_STRUCTURES_LOG_ID } from '../../lib/blindStructuresSync';
+import {
+  PARTICIPANT_ARRIVALS_LOG_ACTION,
+  PARTICIPANT_ARRIVALS_LOG_ID,
+} from '../../lib/participantArrivals';
 import { logFromRow, type LogRow } from '../../lib/supabaseMap';
 import { formatLegalDateTime, formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
 import type { ActionLog } from '../../types/auditLog';
@@ -41,6 +47,17 @@ function asLogRow(data: unknown): LogRow | null {
   return data as LogRow;
 }
 
+function isInternalStorageLog(row: LogRow): boolean {
+  return (
+    row.id === TIMER_SESSION_LOG_ID ||
+    row.action_type === TIMER_SESSION_LOG_ACTION ||
+    row.id === BLIND_STRUCTURES_LOG_ID ||
+    row.action_type === BLIND_STRUCTURES_LOG_ACTION ||
+    row.id === PARTICIPANT_ARRIVALS_LOG_ID ||
+    row.action_type === PARTICIPANT_ARRIVALS_LOG_ACTION
+  );
+}
+
 export function AdminLogsScreen() {
   const { email, clubUsers } = useUser();
   const [logs, setLogs] = useState<ActionLog[]>([]);
@@ -68,7 +85,8 @@ export function AdminLogsScreen() {
       setLogs(
         (data ?? []).flatMap((item) => {
           const row = asLogRow(item);
-          return row ? [logFromRow(row)] : [];
+          if (!row || isInternalStorageLog(row)) return [];
+          return [logFromRow(row)];
         }),
       );
       setIsLoading(false);

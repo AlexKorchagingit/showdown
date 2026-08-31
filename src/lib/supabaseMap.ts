@@ -335,7 +335,7 @@ export function participantToRow(
     knockouts: participant.knockouts ?? 0,
     rubies_awarded: typeof participant.rubiesAwarded === 'number' ? participant.rubiesAwarded : null,
     comment: participant.comment ?? null,
-    arrived: participant.arrived !== false,
+    arrived: participant.arrived === true,
   };
 }
 
@@ -350,7 +350,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
     knockouts: row.knockouts || undefined,
     rubiesAwarded: row.rubies_awarded ?? undefined,
     comment: row.comment || undefined,
-    arrived: row.arrived !== false,
+    arrived: row.arrived === true,
   };
 }
 

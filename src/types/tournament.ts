@@ -14,7 +14,7 @@ export interface Participant {
   comment?: string;
   /**
    * True once an admin ticks «пришёл» in the lobby.
-   * Missing on old rows — treated as already arrived so the cashier stays filled.
+   * Missing / false = signed up, not in the cashier yet.
    */
   arrived?: boolean;
   /** Head-shot from the joined `users.equipped_avatar` column. */

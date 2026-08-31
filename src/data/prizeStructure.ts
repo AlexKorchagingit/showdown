@@ -110,6 +110,7 @@ export function applyPlaceToParticipant(
     ...participant,
     place: newPlace,
     rating: participant.rating - oldPts + newPts,
+    arrived: typeof newPlace === 'number' && newPlace >= 1 ? true : participant.arrived,
   };
 }
 

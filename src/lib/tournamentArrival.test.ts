@@ -13,8 +13,8 @@ function player(id: string, patch: Partial<Participant> = {}): Participant {
 }
 
 describe('tournament arrival', () => {
-  it('treats a missing arrived flag as already in the cashier', () => {
-    expect(isArrivedPlayer(player('a'))).toBe(true);
+  it('treats a missing arrived flag as not in the cashier', () => {
+    expect(isArrivedPlayer(player('a'))).toBe(false);
     expect(isArrivedPlayer(player('b', { arrived: true }))).toBe(true);
     expect(isArrivedPlayer(player('c', { arrived: false }))).toBe(false);
   });
@@ -25,8 +25,17 @@ describe('tournament arrival', () => {
       player('signed-up', { arrived: false }),
       player('legacy'),
     ];
-    expect(cashierPlayers(participants).map((row) => row.id)).toEqual(['showed', 'legacy']);
-    expect(cashierFieldSize({ participants } as Tournament)).toBe(2);
+    expect(cashierPlayers(participants).map((row) => row.id)).toEqual(['showed']);
+    expect(cashierFieldSize({ participants } as Tournament)).toBe(1);
+  });
+
+  it('still lists finishers who already have a place', () => {
+    const participants = [
+      player('winner', { place: 1 }),
+      player('no-show', { arrived: false }),
+      player('still-here', { arrived: true }),
+    ];
+    expect(cashierPlayers(participants).map((row) => row.id)).toEqual(['winner', 'still-here']);
   });
 
   it('lists only cashier bust-outs for a closed lobby', () => {

@@ -13,6 +13,8 @@ import {
 } from './supabaseMap';
 import type { Participant, Tournament } from '../types/tournament';
 import { getClubDirectory } from './clubDirectory';
+import { applyArrivalOverlay } from './participantArrivals';
+import { loadArrivalSnapshot, persistTournamentArrivals } from './participantArrivalsApi';
 
 /** Nested user preview. Rating lives on `participants`, not `users`. */
 const PARTICIPANT_SELECT_WITH_USER = '*, users (nickname, equipped_avatar, equipped_char)';
@@ -58,6 +60,10 @@ function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participan
   return grouped;
 }
 
+async function withArrivals(tournamentId: string, players: Participant[]): Promise<Participant[]> {
+  return applyArrivalOverlay(tournamentId, players, await loadArrivalSnapshot());
+}
+
 export async function fetchTournaments(): Promise<Tournament[]> {
   const [{ data, error }, participantRows] = await Promise.all([
     supabase.from('tournaments').select('*').order('start_date', { ascending: false }),
@@ -70,15 +76,19 @@ export async function fetchTournaments(): Promise<Tournament[]> {
   }
 
   const grouped = groupParticipants(participantRows);
+  const overlay = await loadArrivalSnapshot();
   return data.flatMap((item) => {
     const row = asTournamentRow(item);
     if (!row) return [];
-    return [tournamentFromRow(row, grouped.get(row.id) ?? [])];
+    return [tournamentFromRow(row, applyArrivalOverlay(row.id, grouped.get(row.id) ?? [], overlay))];
   });
 }
 
 export async function fetchParticipants(tournamentId: string): Promise<Participant[]> {
-  return (await selectParticipants(tournamentId)).map(participantFromJoinedRow);
+  return withArrivals(
+    tournamentId,
+    (await selectParticipants(tournamentId)).map(participantFromJoinedRow),
+  );
 }
 
 export async function insertTournament(tournament: Tournament): Promise<Tournament> {
@@ -332,7 +342,8 @@ function sameSeat(left: Participant, right: Participant): boolean {
     left.place === right.place &&
     (left.knockouts ?? 0) === (right.knockouts ?? 0) &&
     left.rubiesAwarded === right.rubiesAwarded &&
-    left.comment === right.comment
+    left.comment === right.comment &&
+    (left.arrived === true) === (right.arrived === true)
   );
 }
 
@@ -374,5 +385,6 @@ export async function syncParticipantRows(
     );
   }
 
+  await persistTournamentArrivals(tournamentId, next);
   return fetchParticipants(tournamentId);
 }

@@ -3,6 +3,10 @@ import { logFromRow, type LogRow } from './supabaseMap';
 import type { ActionLog } from '../types/auditLog';
 import { TIMER_SESSION_LOG_ACTION, TIMER_SESSION_LOG_ID } from './timerSession';
 import { BLIND_STRUCTURES_LOG_ACTION, BLIND_STRUCTURES_LOG_ID } from './blindStructuresSync';
+import {
+  PARTICIPANT_ARRIVALS_LOG_ACTION,
+  PARTICIPANT_ARRIVALS_LOG_ID,
+} from './participantArrivals';
 
 function asLogRow(data: unknown): LogRow | null {
   if (!data || typeof data !== 'object' || !('id' in data) || !('action_type' in data)) return null;
@@ -45,6 +49,9 @@ export async function fetchLogs(): Promise<ActionLog[]> {
     if (!row) return [];
     if (row.id === TIMER_SESSION_LOG_ID || row.action_type === TIMER_SESSION_LOG_ACTION) return [];
     if (row.id === BLIND_STRUCTURES_LOG_ID || row.action_type === BLIND_STRUCTURES_LOG_ACTION) return [];
+    if (row.id === PARTICIPANT_ARRIVALS_LOG_ID || row.action_type === PARTICIPANT_ARRIVALS_LOG_ACTION) {
+      return [];
+    }
     return [logFromRow(row)];
   });
 }
