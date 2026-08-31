@@ -414,7 +414,7 @@ export function AdminBlindsTimer() {
                 className="pointer-events-none absolute inset-[5%] overflow-hidden rounded-full px-4 text-center"
                 style={{ containerType: 'inline-size' }}
               >
-                <div className="flex h-full w-full origin-center scale-95 flex-col items-center justify-center">
+                <div className="flex h-full w-full origin-center scale-[0.855] flex-col items-center justify-center">
                   {isBreak ? (
                     <>
                       <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
