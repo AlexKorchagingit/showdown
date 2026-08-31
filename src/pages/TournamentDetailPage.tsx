@@ -21,6 +21,7 @@ import {
   seasonPointsByUserId,
   withClubSeasonRating,
 } from '../lib/clubRating';
+import { cashierFieldSize, finishedLobbyPlayers } from '../lib/tournamentArrival';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
 import { formatTxDateTime } from '../lib/transactionDisplay';
 
@@ -173,8 +174,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const seated = lobbySeatedPlayers(live.participants, knownIds).map((player) =>
     withClubSeasonRating(player, seasonById),
   );
-  const participants = tournamentFinished ? sortByPlace(seated) : sortByRating(seated);
-  const occupiedSeats = seated.length;
+  const visible = tournamentFinished ? finishedLobbyPlayers(seated) : seated;
+  const participants = tournamentFinished ? sortByPlace(visible) : sortByRating(visible);
+  const occupiedSeats = tournamentFinished ? participants.length : seated.length;
+  const fieldSize = Math.max(cashierFieldSize(live), participants.length);
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
   const playingDealers = live.participants
     .map((p) => ({ name: p.nickname, hours: getDealerHours(live.id, p.id) }))
@@ -313,7 +316,9 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </p>
               ) : participants.length === 0 ? (
                 <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
-                  Пока никто не зарегистрировался
+                  {tournamentFinished
+                    ? 'В кассе никого не выбыло'
+                    : 'Пока никто не зарегистрировался'}
                 </p>
               ) : (
                 <div>
@@ -327,7 +332,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                       ? ['#D99962', '#8c8c88', '#8C4C27'][p.place - 1] ?? null
                       : null;
                     const award = p.place != null
-                      ? ratingPointsForPlace(p.place, live.guarantee, live.participants.length)
+                      ? ratingPointsForPlace(p.place, live.guarantee, fieldSize)
                       : 0;
                     const knockouts = p.knockouts ?? 0;
                     const koBonus = knockoutBountyPoints(knockouts, live.isBounty === true);

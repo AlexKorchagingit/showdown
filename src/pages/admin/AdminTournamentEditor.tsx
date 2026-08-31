@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, Timer, Trash2, UserPlus, X,
+  ArrowLeft, Calendar, Check, Clock, ImagePlus, Link2, Star, Timer, Trash2, X,
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
@@ -19,6 +18,18 @@ import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countOccupiedLobbySeats } from '../../lib/clubRating';
 import { CopyTournamentModal } from '../../components/admin/CopyTournamentModal';
+import {
+  AddTournamentPlayerButton,
+  TournamentPlayerPicker,
+} from '../../components/admin/TournamentPlayerPicker';
+import {
+  GUEST_NICKNAME_MAX,
+  guestParticipantId,
+  isUnboundGuestSeat,
+  normalizeGuestNickname,
+} from '../../lib/guestPlayer';
+import { sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
+import { isArrivedPlayer } from '../../lib/tournamentArrival';
 
 const CARD_STYLE = {
   background: '#2A211D',
@@ -168,30 +179,54 @@ function EditableHero({
 function ParticipantsEditor({
   participants,
   totalSeats,
-  canAdd,
-  onAdd,
+  clubUsers,
+  addOpen,
+  linkingNickname,
+  pickerUsers,
+  onToggleAdd,
+  onPickUser,
+  onAddGuestNick,
+  onToggleArrived,
+  onBindGuest,
   onRemove,
 }: {
   participants: Participant[];
   totalSeats: number;
-  canAdd: boolean;
-  onAdd: (id: string, nickname: string) => void;
+  clubUsers: MappedUser[];
+  addOpen: boolean;
+  linkingNickname?: string;
+  pickerUsers: MappedUser[];
+  onToggleAdd: () => void;
+  onPickUser: (user: MappedUser) => void;
+  onAddGuestNick: (nickname: string) => void;
+  onToggleArrived: (id: string) => void;
+  onBindGuest: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
-  const { clubUsers } = useUser();
   const { tournaments } = useTournaments();
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  const takenNicknames = new Set(participants.map((p) => p.nickname));
-  const available = clubUsers.filter((u) => !takenNicknames.has(u.nickname));
   const seasonById = seasonPointsByUserId(clubUsers, tournaments);
   const ranked = sortByRating(participants.map((p) => withClubSeasonRating(p, seasonById)));
+  const emailById = new Map(clubUsers.map((user) => [user.id, user.email]));
 
   return (
     <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
+      <div className="px-5 pt-4 pb-3 space-y-3">
+        <AddTournamentPlayerButton
+          label={linkingNickname ? `Привязать «${linkingNickname}»` : '+ Добавить игрока'}
+          onClick={onToggleAdd}
+        />
+        <TournamentPlayerPicker
+          open={addOpen}
+          users={pickerUsers}
+          linkingNickname={linkingNickname}
+          onPickUser={onPickUser}
+          onAddGuestNick={linkingNickname ? undefined : onAddGuestNick}
+        />
+      </div>
+
       <div
-        className="flex items-center justify-between px-5 py-4"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        className="flex items-center justify-between px-5 py-3"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
       >
         <h3 className={SECTION_TITLE} style={{ color: '#F2D8A7' }}>
           Участники ({participants.length}/{totalSeats})
@@ -209,6 +244,10 @@ function ParticipantsEditor({
         <div>
           {ranked.map((p, idx) => {
             const isFinalTable = idx < 9;
+            const arrived = isArrivedPlayer(p);
+            const unboundGuest = isUnboundGuestSeat(p);
+            const uid = sanitizeParticipantUserId(p.userId ?? p.id);
+            const email = unboundGuest ? '' : ((uid && emailById.get(uid)) || '').trim();
 
             return (
               <div
@@ -216,8 +255,26 @@ function ParticipantsEditor({
                 className="flex items-center gap-3 px-5 py-3"
                 style={{
                   borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  background: arrived ? 'rgba(34,197,94,0.16)' : undefined,
+                  boxShadow: arrived ? 'inset 0 0 0 1px rgba(34,197,94,0.35)' : undefined,
                 }}
               >
+                <button
+                  type="button"
+                  onClick={() => onToggleArrived(p.id)}
+                  aria-pressed={arrived}
+                  aria-label={arrived ? `Снять отметку: ${p.nickname} пришёл` : `Отметить: ${p.nickname} пришёл`}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 active:scale-95"
+                  style={{
+                    background: arrived ? 'rgba(34,197,94,0.28)' : 'rgba(255,255,255,0.06)',
+                    border: arrived
+                      ? '1px solid rgba(74,222,128,0.7)'
+                      : '1px solid rgba(255,255,255,0.12)',
+                  }}
+                >
+                  <Check size={16} strokeWidth={2.8} style={{ color: arrived ? '#4ade80' : '#6B6360' }} />
+                </button>
+
                 <span
                   className="text-[11px] font-700 w-5 text-right shrink-0"
                   style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
@@ -227,9 +284,16 @@ function ParticipantsEditor({
 
                 <PlayerAvatar playerId={p.id} nickname={p.nickname} size="sm" />
 
-                <p className="flex-1 min-w-0 text-[13px] font-600 truncate text-white">
-                  {p.nickname}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
+                  {email ? (
+                    <p className="text-[11px] text-white/80 truncate">{email}</p>
+                  ) : unboundGuest ? (
+                    <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
+                      Ник без аккаунта
+                    </p>
+                  ) : null}
+                </div>
 
                 <span
                   className="text-[12px] font-700 block text-right min-w-[52px] shrink-0"
@@ -237,6 +301,21 @@ function ParticipantsEditor({
                 >
                   {p.rating.toLocaleString('ru-RU')}
                 </span>
+
+                {unboundGuest ? (
+                  <button
+                    type="button"
+                    onClick={() => onBindGuest(p.id)}
+                    aria-label={`Привязать ${p.nickname} к пользователю`}
+                    className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center active:scale-95"
+                    style={{
+                      background: 'rgba(217,153,98,0.12)',
+                      border: '1px solid rgba(217,153,98,0.35)',
+                    }}
+                  >
+                    <Link2 size={13} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                  </button>
+                ) : null}
 
                 <button
                   type="button"
@@ -255,67 +334,6 @@ function ParticipantsEditor({
           })}
         </div>
       )}
-
-      {/* Add participant — finished tournaments only */}
-      {canAdd && (
-        <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <button
-            type="button"
-            onClick={() => setPickerOpen((v) => !v)}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-700 active:scale-[0.98] transition-transform"
-            style={{
-              background: 'linear-gradient(to right, #2A211D, #463129)',
-              border: '1px solid rgba(217,153,98,0.35)',
-              color: '#D99962',
-            }}
-          >
-            <UserPlus size={16} strokeWidth={2.2} />
-            Добавить участника
-          </button>
-
-          <AnimatePresence initial={false}>
-            {pickerOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="pt-3 space-y-2">
-                  {available.length === 0 ? (
-                    <p className="text-[12px] font-500 py-2" style={{ color: '#6B6360' }}>
-                      Все пользователи уже добавлены
-                    </p>
-                  ) : (
-                    available.map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() => {
-                          onAdd(user.id, user.nickname);
-                          setPickerOpen(false);
-                        }}
-                        className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
-                        style={{ background: '#231A16', border: '1px solid rgba(255,255,255,0.06)' }}
-                      >
-                        <PlayerAvatar playerId={user.id} nickname={user.nickname} size="sm" />
-                        <div className="min-w-0 text-left flex-1">
-                          <p className="text-[13px] font-700 text-white truncate">{user.nickname}</p>
-                          <p className="text-[11px] font-500 truncate" style={{ color: '#8c8c88' }}>
-                            {user.email}
-                          </p>
-                        </div>
-                        <Plus size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />
-                      </button>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
     </div>
   );
 }
@@ -330,6 +348,8 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFinished = hasFinished(tournament);
@@ -338,6 +358,24 @@ function Editor({ tournament }: { tournament: Tournament }) {
     tournament.participants,
     clubUserIdSet(clubUsers),
   );
+  const takenIds = new Set(tournament.participants.map((p) => p.id));
+  const takenNicks = new Set(tournament.participants.map((p) => p.nickname.toLowerCase()));
+  const seatedUserIds = new Set(
+    tournament.participants.flatMap((p) => {
+      const uid = sanitizeParticipantUserId(p.userId ?? p.id);
+      return uid ? [uid] : [];
+    }),
+  );
+  const availablePlayers = clubUsers.filter(
+    (user) => !takenIds.has(user.id) && !seatedUserIds.has(user.id) && !takenNicks.has(user.nickname.toLowerCase()),
+  );
+  const bindCandidates = clubUsers.filter(
+    (user) => !takenIds.has(user.id) && !seatedUserIds.has(user.id),
+  );
+  const linkingPlayer = linkingId
+    ? tournament.participants.find((p) => p.id === linkingId)
+    : undefined;
+  const pickerUsers = linkingId ? bindCandidates : availablePlayers;
 
   // Revoke the temporary object URL when it is replaced or the editor unmounts
   useEffect(() => {
@@ -352,13 +390,99 @@ function Editor({ tournament }: { tournament: Tournament }) {
     setPhotoPreview(URL.createObjectURL(file));
   };
 
-  const addParticipant = (id: string, nickname: string) => {
+  const addParticipant = (id: string, nickname: string, options?: { guest?: boolean }) => {
+    const guest = options?.guest === true;
+    if (linkingId && !guest) {
+      const guestSeat = tournament.participants.find((p) => p.id === linkingId);
+      const user = clubUsers.find((row) => row.id === id);
+      if (!guestSeat || !user) return;
+      void patch({
+        participants: tournament.participants.map((p) =>
+          p.id === linkingId
+            ? {
+                ...p,
+                id: user.id,
+                userId: user.id,
+                nickname: user.nickname,
+                equippedAvatar: user.equippedAvatar,
+              }
+            : p,
+        ),
+      });
+      setLinkingId(null);
+      setAddOpen(false);
+      return;
+    }
+    if (
+      tournament.participants.some(
+        (p) =>
+          p.id === id ||
+          sanitizeParticipantUserId(p.userId ?? '') === id ||
+          p.nickname.trim().toLowerCase() === nickname.trim().toLowerCase(),
+      )
+    ) {
+      return;
+    }
     const seasonById = seasonPointsByUserId(clubUsers, tournaments);
+    const nextParticipants = [
+      ...tournament.participants,
+      {
+        id,
+        nickname: nickname.trim(),
+        rating: guest ? 0 : (seasonById.get(id) ?? 0),
+        userId: guest ? null : id,
+        arrived: false,
+      },
+    ];
     void patch({
-      participants: [
-        ...tournament.participants,
-        { id, nickname, rating: seasonById.get(id) ?? 0, userId: id },
-      ],
+      participants: nextParticipants,
+      ...(nextParticipants.length > tournament.totalSeats
+        ? { totalSeats: nextParticipants.length }
+        : {}),
+    });
+    setAddOpen(false);
+  };
+
+  const addGuestByNickname = (raw: string) => {
+    const nickname = normalizeGuestNickname(raw);
+    if (!nickname) {
+      window.alert(`Введите ник игрока (от 2 до ${GUEST_NICKNAME_MAX} символов)`);
+      return;
+    }
+    const existingClub = clubUsers.find(
+      (user) => user.nickname.trim().toLowerCase() === nickname.toLowerCase(),
+    );
+    if (existingClub) {
+      addParticipant(existingClub.id, existingClub.nickname);
+      return;
+    }
+    if (
+      tournament.participants.some(
+        (p) => p.nickname.trim().toLowerCase() === nickname.toLowerCase(),
+      )
+    ) {
+      window.alert('Игрок с таким ником уже в турнире');
+      return;
+    }
+    const id = guestParticipantId(
+      nickname,
+      tournament.participants.map((p) => p.id),
+    );
+    addParticipant(id, nickname, { guest: true });
+  };
+
+  const toggleArrived = (id: string) => {
+    const player = tournament.participants.find((p) => p.id === id);
+    if (!player) return;
+    const arrived = isArrivedPlayer(player);
+    if (arrived && typeof player.place === 'number') {
+      window.alert('Нельзя снять отметку: игрок уже выбыл в кассе');
+      return;
+    }
+    void patch({
+      participants: tournament.participants.map((p) =>
+        p.id === id ? { ...p, arrived: !arrived } : p,
+      ),
     });
   };
 
@@ -569,8 +693,24 @@ function Editor({ tournament }: { tournament: Tournament }) {
           <ParticipantsEditor
             participants={tournament.participants}
             totalSeats={tournament.totalSeats}
-            canAdd={isFinished}
-            onAdd={addParticipant}
+            clubUsers={clubUsers}
+            addOpen={addOpen}
+            linkingNickname={linkingPlayer?.nickname}
+            pickerUsers={pickerUsers}
+            onToggleAdd={() => {
+              setAddOpen((open) => {
+                const next = !open;
+                if (!next) setLinkingId(null);
+                return next;
+              });
+            }}
+            onPickUser={(user) => addParticipant(user.id, user.nickname)}
+            onAddGuestNick={addGuestByNickname}
+            onToggleArrived={toggleArrived}
+            onBindGuest={(id) => {
+              setLinkingId(id);
+              setAddOpen(true);
+            }}
             onRemove={removeParticipant}
           />
 

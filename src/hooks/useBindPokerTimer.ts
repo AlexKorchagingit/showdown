@@ -7,6 +7,7 @@ import {
   timerPathForStructure,
   timerPathForTournament,
 } from '../lib/timerTournament';
+import { cashierFieldSize } from '../lib/tournamentArrival';
 
 /** Bind the blinds timer to a TournamentContext row by id (never by title). */
 export function useBindPokerTimer() {
@@ -34,7 +35,7 @@ export function useBindPokerTimer() {
 
       const structure = resolveStructureForTournament(tournament, structures);
       if (structure && structure.id !== activeStructureId) ensureTimer(structure.id);
-      if (switching) setTotalEntries(tournament.participants.length);
+      if (switching) setTotalEntries(cashierFieldSize(tournament));
     },
     [
       tournaments,

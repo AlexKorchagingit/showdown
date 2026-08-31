@@ -122,15 +122,38 @@ function isUniqueError(error: { code?: string; message?: string }): boolean {
   return error.code === '23505' || /duplicate key|unique constraint/i.test(error.message ?? '');
 }
 
+function isMissingArrivedColumn(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const message = error.message ?? '';
+  return (
+    error.code === 'PGRST204' ||
+    error.code === '42703' ||
+    (/arrived/i.test(message) && /column|schema cache/i.test(message))
+  );
+}
+
+let omitArrivedColumn = false;
+
+function writeParticipantPayload(row: ParticipantRow): ParticipantRow {
+  if (!omitArrivedColumn) return row;
+  const { arrived: _arrived, ...rest } = row;
+  return rest;
+}
+
 export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
-  const payload: ParticipantRow = {
+  const payload: ParticipantRow = writeParticipantPayload({
     ...row,
     user_id: sanitizeParticipantUserId(row.user_id),
     nickname: row.nickname.trim() || 'Игрок',
-  };
+  });
   const { error } = await supabase.from('participants').insert(payload);
   if (!error) return;
   if (isUniqueError(error)) return;
+  if (!omitArrivedColumn && isMissingArrivedColumn(error)) {
+    omitArrivedColumn = true;
+    await insertParticipantRow(row);
+    return;
+  }
   logSupabaseError(error, 'insert participant');
   if (payload.user_id && isFkError(error)) {
     const retry: ParticipantRow = { ...payload, user_id: null };
@@ -160,13 +183,18 @@ function bindKnownUserId(candidate: string | null | undefined, realIds: Set<stri
 }
 
 async function upsertOneParticipantRow(row: ParticipantRow): Promise<void> {
-  const payload: ParticipantRow = {
+  const payload: ParticipantRow = writeParticipantPayload({
     ...row,
     user_id: sanitizeParticipantUserId(row.user_id),
     nickname: row.nickname.trim() || 'Игрок',
-  };
+  });
   const { error } = await supabase.from('participants').upsert(payload, { onConflict: 'id' });
   if (!error) return;
+  if (!omitArrivedColumn && isMissingArrivedColumn(error)) {
+    omitArrivedColumn = true;
+    await upsertOneParticipantRow(row);
+    return;
+  }
   logSupabaseError(error, 'upsert participant');
   if (isFkError(error) && payload.user_id) {
     const retry: ParticipantRow = { ...payload, user_id: null };

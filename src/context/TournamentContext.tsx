@@ -161,6 +161,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           id: userId,
           nickname: account.nickname,
           rating: 0,
+          userId,
+          arrived: false,
         };
         await insertParticipantRow(
           participantToRow(tournamentId, player, sanitizeParticipantUserId(userId)),

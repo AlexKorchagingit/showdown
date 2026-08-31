@@ -84,6 +84,7 @@ create table if not exists public.participants (
   knockouts integer not null default 0,
   rubies_awarded integer,
   comment text,
+  arrived boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint participants_place_positive check (place is null or place >= 1),

@@ -2,6 +2,7 @@ import { itmPlaceCount, knockoutBountyPoints, ratingPointsForPlace } from '../da
 import { calculateRubies, isBountyEvent } from './calculateRubies';
 import { guestSeatKey } from './guestPlayer';
 import { sanitizeParticipantUserId } from './supabaseMap';
+import { cashierPlayers, isArrivedPlayer } from './tournamentArrival';
 import { formatTxDate } from './transactionDisplay';
 import type { Transaction } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
@@ -65,8 +66,12 @@ export function collectPlayerGameHistory(
     if (!tournament.isClosed) continue;
     const participant = findPlayerInTournament(tournament, ids);
     if (!participant) continue;
+    if (typeof participant.place !== 'number' || participant.place < 1) continue;
 
-    const field = Math.max(tournament.participants.length, tournament.results?.length ?? 0);
+    const field = Math.max(
+      cashierPlayers(tournament.participants).length,
+      tournament.results?.length ?? 0,
+    );
     const place = typeof participant.place === 'number' ? participant.place : null;
     const knockouts = Math.max(0, Math.floor(Number(participant.knockouts) || 0));
     const ratingAwarded =
@@ -212,9 +217,12 @@ export function computePlayerAdminStats(
   const addons = mine.filter((tx) => tx.type === 'addon');
 
   const ids = new Set([playerId].filter(Boolean));
-  const played = tournaments.filter((tournament) =>
-    tournament.participants.some((participant) => participantMatches(participant, ids)),
-  );
+  const played = tournaments.filter((tournament) => {
+    const participant = tournament.participants.find((row) => participantMatches(row, ids));
+    if (!participant) return false;
+    if (typeof participant.place === 'number' && participant.place >= 1) return true;
+    return !tournament.isClosed && isArrivedPlayer(participant);
+  });
   const addonEligible = played.filter(tournamentOffersAddon);
   const addonDenom = addonEligible.length > 0 ? addonEligible.length : played.length;
   const avgRebuys = played.length === 0 ? 0 : rebuys.length / played.length;
@@ -224,7 +232,7 @@ export function computePlayerAdminStats(
     const participant = tournament.participants.find((row) =>
       participantMatches(row, ids),
     );
-    const field = tournament.participants.length;
+    const field = Math.max(cashierPlayers(tournament.participants).length, 0) || tournament.participants.length;
     return {
       id: tournament.id,
       title: tournament.title,
@@ -281,7 +289,7 @@ export function computePlayerAdminStats(
       participantMatches(row, ids),
     );
     if (!participant) continue;
-    const field = tournament.participants.length;
+    const field = Math.max(cashierPlayers(tournament.participants).length, 0) || tournament.participants.length;
     let points = 0;
     if (typeof participant.place === 'number') {
       points += ratingPointsForPlace(participant.place, tournament.guarantee, field);
