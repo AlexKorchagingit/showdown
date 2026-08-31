@@ -33,6 +33,13 @@ const GOLD_TEXT = 'text-transparent bg-clip-text bg-gradient-to-r from-[#D99962]
 const GOLD_NUM =
   `font-black ${GOLD_TEXT} drop-shadow-[0_0_8px_rgba(217,153,98,0.8)]`;
 
+/** Settings store `YYYY-MM-DD`; show as `DD.MM.YYYY` without a timezone shift. */
+function formatBirthDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (match) return `${match[3]}.${match[2]}.${match[1]}`;
+  return iso.trim();
+}
+
 export function ProfilePage() {
   const navigate = useNavigate();
   const { playerId } = useParams<{ playerId?: string }>();
