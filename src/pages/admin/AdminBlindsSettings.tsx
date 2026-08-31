@@ -12,11 +12,14 @@ import {
   buildLevels,
   DEFAULT_PAYOUTS,
   breakComment,
+  insertBreakAfter,
+  insertPlayingLevelAfter,
   isBreakLevel,
   renumberLevels,
   structureDurationLabel,
   type BlindLevel,
   type BlindStructure,
+  type LevelListChange,
 } from '../../data/blindStructures';
 
 const FIELD_CLASS =
@@ -166,7 +169,7 @@ function LevelEditor({
   onChange,
 }: {
   structure: BlindStructure;
-  onChange: (levels: BlindLevel[]) => void;
+  onChange: (levels: BlindLevel[], change?: LevelListChange) => void;
 }) {
   const patchLevel = (index: number, patch: Partial<BlindLevel>) => {
     onChange(
@@ -203,6 +206,7 @@ function LevelEditor({
           durationMinutes: lastPlaying?.durationMinutes ?? structure.levelDuration,
         },
       ]),
+      { insertedAt: structure.levels.length - 1 },
     );
   };
 
@@ -220,33 +224,34 @@ function LevelEditor({
           isBreak: true,
         },
       ]),
+      { insertedAt: structure.levels.length - 1 },
     );
   };
 
   const removeLevel = (index: number) => {
     if (structure.levels.length <= 1) return;
-    onChange(renumberLevels(structure.levels.filter((_, i) => i !== index)));
+    onChange(renumberLevels(structure.levels.filter((_, i) => i !== index)), { removedAt: index });
   };
 
   return (
     <div className="space-y-2">
       {structure.levels.map((level, index) => (
-        <div
-          key={`${level.level}-${index}-${isBreakLevel(level) ? 'b' : 'p'}-${level.isLateRegEnd ? 'lr' : ''}`}
-          className="rounded-xl p-3 space-y-2"
-          style={{
-            background: level.isLateRegEnd
-              ? 'rgba(244,63,94,0.10)'
-              : isBreakLevel(level)
-                ? 'rgba(34,197,94,0.08)'
-                : '#2A211D',
-            border: level.isLateRegEnd
-              ? '1px solid rgba(244,63,94,0.40)'
-              : isBreakLevel(level)
-                ? '1px solid rgba(34,197,94,0.35)'
-                : '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
+        <div key={`${level.level}-${index}-${isBreakLevel(level) ? 'b' : 'p'}-${level.isLateRegEnd ? 'lr' : ''}`}>
+          <div
+            className="rounded-xl p-3 space-y-2"
+            style={{
+              background: level.isLateRegEnd
+                ? 'rgba(244,63,94,0.10)'
+                : isBreakLevel(level)
+                  ? 'rgba(34,197,94,0.08)'
+                  : '#2A211D',
+              border: level.isLateRegEnd
+                ? '1px solid rgba(244,63,94,0.40)'
+                : isBreakLevel(level)
+                  ? '1px solid rgba(34,197,94,0.35)'
+                  : '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
           <div className="flex items-center justify-between">
             <p className="text-[12px] font-800 uppercase tracking-wide" style={{ color: '#D99962' }}>
               {levelTitle(level)}
@@ -349,6 +354,41 @@ function LevelEditor({
                   />
                 </label>
               ))}
+            </div>
+          )}
+          </div>
+          {index < structure.levels.length - 1 && (
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  onChange(insertPlayingLevelAfter(structure.levels, index), { insertedAt: index })
+                }
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-700"
+                style={{
+                  background: 'rgba(217,153,98,0.08)',
+                  border: '1px dashed rgba(217,153,98,0.35)',
+                  color: '#D99962',
+                }}
+              >
+                <Plus size={13} strokeWidth={2.4} />
+                Уровень ниже
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onChange(insertBreakAfter(structure.levels, index), { insertedAt: index })
+                }
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-700"
+                style={{
+                  background: 'rgba(34,197,94,0.08)',
+                  border: '1px dashed rgba(34,197,94,0.35)',
+                  color: '#86efac',
+                }}
+              >
+                <Plus size={13} strokeWidth={2.4} />
+                Перерыв ниже
+              </button>
             </div>
           )}
         </div>
@@ -463,12 +503,12 @@ export function AdminBlindsSettings() {
         >
           {isRunning && activeStructureId === editing.id && (
             <p className="text-[11px] font-600 mb-3 px-1" style={{ color: '#D99962' }}>
-              Таймер идёт. Изменения предстоящих уровней подхватятся сразу.
+              Таймер идёт. Изменения уровней сразу уходят на сервер и на часы.
             </p>
           )}
           <LevelEditor
             structure={editing}
-            onChange={(levels) => updateLevels(editing.id, levels)}
+            onChange={(levels, change) => updateLevels(editing.id, levels, change)}
           />
         </div>
       </div>

@@ -1,5 +1,6 @@
--- Live blinds timer snapshot shared by every admin device and browser tab.
--- Safe to re-run. The app also falls back to a hidden logs row if this table
+-- Live blinds timer snapshot (`id = live`) and club-wide blind structures
+-- (`id = blind-structures`) shared by every admin device and browser tab.
+-- Safe to re-run. The app also falls back to hidden logs rows if this table
 -- is not present yet.
 
 create table if not exists public.timer_sessions (
@@ -10,7 +11,9 @@ create table if not exists public.timer_sessions (
 );
 
 insert into public.timer_sessions (id, payload)
-values ('live', '{}'::jsonb)
+values
+  ('live', '{}'::jsonb),
+  ('blind-structures', '{}'::jsonb)
 on conflict (id) do nothing;
 
 drop trigger if exists timer_sessions_set_updated_at on public.timer_sessions;

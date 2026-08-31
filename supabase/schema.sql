@@ -232,7 +232,7 @@ grant all on table public.transactions to anon, authenticated;
 grant all on table public.logs to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- timer_sessions  (one live blinds clock for every admin device / tab)
+-- timer_sessions  (live blinds clock + club-wide blind structures)
 -- ---------------------------------------------------------------------------
 create table if not exists public.timer_sessions (
   id text primary key default 'live',
@@ -242,7 +242,9 @@ create table if not exists public.timer_sessions (
 );
 
 insert into public.timer_sessions (id, payload)
-values ('live', '{}'::jsonb)
+values
+  ('live', '{}'::jsonb),
+  ('blind-structures', '{}'::jsonb)
 on conflict (id) do nothing;
 
 drop trigger if exists timer_sessions_set_updated_at on public.timer_sessions;

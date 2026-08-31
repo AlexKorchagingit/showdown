@@ -49,8 +49,22 @@ export const DEFAULT_PAYOUTS: PrizePlace[] = [
   { place: 4, share: 8 },
 ];
 
-const STORAGE_KEY = 'showdown.blindStructures';
+export const BLIND_STRUCTURES_STORAGE_KEY = 'showdown.blindStructures';
+const STORAGE_KEY = BLIND_STRUCTURES_STORAGE_KEY;
 const STORAGE_VERSION = 'club-breaks-v4';
+
+export type BlindStructuresLocalMeta = {
+  revision: number;
+  writeId: string;
+  updatedAt: number;
+};
+
+export type LevelListChange = {
+  /** Index of the row the new level was inserted after (`-1` = prepend). */
+  insertedAt?: number;
+  /** Index of the removed row in the previous list. */
+  removedAt?: number;
+};
 
 type BlindStep = { sb: number; bb: number };
 
@@ -330,6 +344,22 @@ function catalogClone(): BlindStructure[] {
 interface StoredPayload {
   version: string;
   structures: BlindStructure[];
+  revision?: number;
+  writeId?: string;
+  updatedAt?: number;
+}
+
+const BOOT_META: BlindStructuresLocalMeta = {
+  revision: 0,
+  writeId: 'boot',
+  updatedAt: 0,
+};
+
+let cacheMeta: BlindStructuresLocalMeta = { ...BOOT_META };
+
+function asMetaNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, n) : fallback;
 }
 
 function readStore(): BlindStructure[] | null {
@@ -340,6 +370,11 @@ function readStore(): BlindStructure[] | null {
     if (!parsed || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.structures)) {
       return null;
     }
+    cacheMeta = {
+      revision: Math.trunc(asMetaNumber(parsed.revision, 0)),
+      writeId: typeof parsed.writeId === 'string' && parsed.writeId ? parsed.writeId : 'boot',
+      updatedAt: asMetaNumber(parsed.updatedAt, 0),
+    };
     return parsed.structures.map(cloneStructure);
   } catch {
     return null;
@@ -351,10 +386,13 @@ function writeStore(structures: BlindStructure[]) {
     const payload: StoredPayload = {
       version: STORAGE_VERSION,
       structures: structures.map(cloneStructure),
+      revision: cacheMeta.revision,
+      writeId: cacheMeta.writeId,
+      updatedAt: cacheMeta.updatedAt,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch {
-    /* storage unavailable */
+  } catch (error) {
+    console.warn('Could not persist blind structures locally', error);
   }
 }
 
@@ -365,6 +403,197 @@ function getStore(): BlindStructure[] {
   cache = readStore() ?? catalogClone();
   writeStore(cache);
   return cache;
+}
+
+export function readBlindStructuresLocalMeta(): BlindStructuresLocalMeta {
+  getStore();
+  return { ...cacheMeta };
+}
+
+export function persistBlindStructuresLocal(
+  structures: BlindStructure[],
+  meta: BlindStructuresLocalMeta,
+): void {
+  cache = structures.map(cloneStructure);
+  cacheMeta = { ...meta };
+  writeStore(cache);
+}
+
+function asFiniteNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function parseBlindLevel(raw: unknown): BlindLevel | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const smallBlind = Math.max(0, asFiniteNumber(row.smallBlind, 0));
+  const bigBlind = Math.max(0, asFiniteNumber(row.bigBlind, 0));
+  const isBreak = row.isBreak === true || smallBlind === 0;
+  const note = typeof row.comment === 'string' ? row.comment.trim().slice(0, BREAK_COMMENT_MAX) : '';
+  const level: BlindLevel = {
+    level: Math.max(0, Math.trunc(asFiniteNumber(row.level, 0))),
+    smallBlind,
+    bigBlind,
+    ante: Math.max(0, asFiniteNumber(row.ante, bigBlind)),
+    durationMinutes: Math.max(1, asFiniteNumber(row.durationMinutes, 20)),
+  };
+  if (isBreak) level.isBreak = true;
+  if (row.isLateRegEnd === true) level.isLateRegEnd = true;
+  if (note) level.comment = note;
+  return level;
+}
+
+export function parseBlindStructure(raw: unknown): BlindStructure | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  if (typeof row.id !== 'string' || !row.id.trim()) return null;
+  if (typeof row.name !== 'string' || !row.name.trim()) return null;
+  if (!Array.isArray(row.levels) || row.levels.length === 0) return null;
+  const levels = row.levels.flatMap((item) => {
+    const level = parseBlindLevel(item);
+    return level ? [level] : [];
+  });
+  if (!levels.length) return null;
+  const payouts = Array.isArray(row.payouts)
+    ? row.payouts.flatMap((item) => {
+        if (!item || typeof item !== 'object') return [];
+        const prize = item as Partial<PrizePlace>;
+        const place = Math.trunc(asFiniteNumber(prize.place, 0));
+        const share = asFiniteNumber(prize.share, 0);
+        if (place < 1) return [];
+        return [{ place, share }];
+      })
+    : DEFAULT_PAYOUTS.map((place) => ({ ...place }));
+  return cloneStructure({
+    id: row.id.trim(),
+    name: row.name.trim(),
+    levelDuration: Math.max(1, asFiniteNumber(row.levelDuration, 20)),
+    guarantee: Math.max(0, asFiniteNumber(row.guarantee, 0)),
+    levels,
+    payouts: payouts.length ? payouts : DEFAULT_PAYOUTS.map((place) => ({ ...place })),
+  });
+}
+
+export function parseBlindStructureList(raw: unknown): BlindStructure[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const list = raw.flatMap((item) => {
+    const structure = parseBlindStructure(item);
+    return structure ? [structure] : [];
+  });
+  return list.length ? list : null;
+}
+
+function levelSignature(level: BlindLevel): string {
+  return [
+    isBreakLevel(level) ? 'b' : 'p',
+    level.smallBlind,
+    level.bigBlind,
+    level.ante,
+    level.durationMinutes,
+    level.isLateRegEnd ? 'lr' : '',
+    breakComment(level),
+  ].join(':');
+}
+
+/** Detect a single inserted or removed row so the live clock can stay on the same rung. */
+export function inferLevelListChange(
+  prev: BlindLevel[],
+  next: BlindLevel[],
+): LevelListChange {
+  const prevSig = prev.map(levelSignature);
+  const nextSig = next.map(levelSignature);
+  if (next.length === prev.length + 1) {
+    let insertedAt: number | undefined;
+    for (let i = 0; i < next.length; i += 1) {
+      const without = [...nextSig.slice(0, i), ...nextSig.slice(i + 1)];
+      if (without.every((sig, j) => sig === prevSig[j])) {
+        insertedAt = i - 1;
+      }
+    }
+    if (insertedAt !== undefined) return { insertedAt };
+  }
+  if (next.length === prev.length - 1) {
+    let removedAt: number | undefined;
+    for (let i = 0; i < prev.length; i += 1) {
+      const without = [...prevSig.slice(0, i), ...prevSig.slice(i + 1)];
+      if (without.every((sig, j) => sig === nextSig[j])) {
+        removedAt = i;
+      }
+    }
+    if (removedAt !== undefined) return { removedAt };
+  }
+  return {};
+}
+
+function lastPlayingAtOrBefore(levels: BlindLevel[], index: number): BlindLevel | undefined {
+  for (let i = index; i >= 0; i -= 1) {
+    if (!isBreakLevel(levels[i])) return levels[i];
+  }
+  return levels.find((level) => !isBreakLevel(level));
+}
+
+export function insertPlayingLevelAfter(levels: BlindLevel[], afterIndex: number): BlindLevel[] {
+  const index = Math.min(Math.max(-1, Math.trunc(afterIndex)), levels.length - 1);
+  const template = lastPlayingAtOrBefore(levels, index);
+  const bigBlind = template?.bigBlind || 200;
+  const inserted: BlindLevel = {
+    level: 0,
+    smallBlind: template?.smallBlind || 100,
+    bigBlind,
+    ante: template?.ante || bigBlind,
+    durationMinutes: template?.durationMinutes ?? 20,
+  };
+  const next = [...levels];
+  next.splice(index + 1, 0, inserted);
+  return withBreakBlinds(renumberLevels(next));
+}
+
+export function insertBreakAfter(levels: BlindLevel[], afterIndex: number): BlindLevel[] {
+  const index = Math.min(Math.max(-1, Math.trunc(afterIndex)), levels.length - 1);
+  const upcoming = levels.slice(index + 1).find((level) => !isBreakLevel(level));
+  const previous = lastPlayingAtOrBefore(levels, index);
+  const source = upcoming ?? previous;
+  const inserted: BlindLevel = {
+    level: 0,
+    smallBlind: source?.smallBlind || 100,
+    bigBlind: source?.bigBlind || 200,
+    ante: source?.ante || source?.bigBlind || 200,
+    durationMinutes: 15,
+    isBreak: true,
+  };
+  const next = [...levels];
+  next.splice(index + 1, 0, inserted);
+  return withBreakBlinds(renumberLevels(next));
+}
+
+export function blindStructuresFingerprint(structures: BlindStructure[]): string {
+  return JSON.stringify(
+    structures.map((structure) => ({
+      id: structure.id,
+      name: structure.name,
+      levelDuration: structure.levelDuration,
+      guarantee: structure.guarantee,
+      levels: structure.levels.map((level) => ({
+        level: level.level,
+        smallBlind: level.smallBlind,
+        bigBlind: level.bigBlind,
+        ante: level.ante,
+        durationMinutes: level.durationMinutes,
+        isBreak: isBreakLevel(level),
+        isLateRegEnd: level.isLateRegEnd === true,
+        comment: breakComment(level),
+      })),
+      payouts: structure.payouts,
+    })),
+  );
+}
+
+let catalogFingerprint: string | null = null;
+
+export function isCatalogBlindStructures(structures: BlindStructure[]): boolean {
+  catalogFingerprint ??= blindStructuresFingerprint(catalogClone());
+  return blindStructuresFingerprint(structures) === catalogFingerprint;
 }
 
 export function seedBlindStructures(): BlindStructure[] {

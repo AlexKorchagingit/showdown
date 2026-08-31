@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   breakComment,
   formatBlinds,
+  inferLevelListChange,
+  insertBreakAfter,
+  insertPlayingLevelAfter,
+  isBreakLevel,
   upcomingBreakLevel,
   type BlindLevel,
 } from './blindStructures';
@@ -43,5 +47,32 @@ describe('break comments', () => {
   it('uses the break note as the Next Blinds label', () => {
     expect(formatBlinds(pause('Вывод 100 номинала'))).toBe('Вывод 100 номинала');
     expect(formatBlinds(pause())).toBe('ПЕРЕРЫВ');
+  });
+});
+
+describe('insert a level between existing rungs', () => {
+  it('inserts a playing level after the chosen row and keeps later blinds', () => {
+    const levels = [playing(1), playing(2), playing(3)];
+    const next = insertPlayingLevelAfter(levels, 1);
+    expect(next).toHaveLength(4);
+    expect(next[1]?.smallBlind).toBe(200);
+    expect(next[2]?.smallBlind).toBe(200);
+    expect(next[3]?.smallBlind).toBe(300);
+    expect(next.filter((level) => !isBreakLevel(level)).map((level) => level.level)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('inserts a break after the chosen row without rewriting later blinds', () => {
+    const levels = [playing(1), playing(2), playing(3)];
+    const next = insertBreakAfter(levels, 0);
+    expect(isBreakLevel(next[1])).toBe(true);
+    expect(next[2]?.smallBlind).toBe(200);
+    expect(next[2]?.level).toBe(2);
+  });
+
+  it('detects a single inserted or removed row', () => {
+    const prev = [playing(1), playing(2), playing(3)];
+    const inserted = insertPlayingLevelAfter(prev, 1);
+    expect(inferLevelListChange(prev, inserted)).toEqual({ insertedAt: 1 });
+    expect(inferLevelListChange(inserted, prev)).toEqual({ removedAt: 2 });
   });
 });

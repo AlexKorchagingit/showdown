@@ -1,4 +1,8 @@
-import { durationSeconds, type BlindStructure } from '../data/blindStructures';
+import {
+  durationSeconds,
+  type BlindStructure,
+  type LevelListChange,
+} from '../data/blindStructures';
 
 export const TIMER_SESSION_CACHE_KEY = 'showdown.timerSession';
 export const TIMER_SESSION_CHANNEL = 'showdown-timer-session';
@@ -151,6 +155,45 @@ export function computeLiveClock(snapshot: TimerSnapshot, nowMs = Date.now()): L
   }
 
   return { levelIndex: index, secondsLeft: left, isRunning: true };
+}
+
+function durationsEqual(left: number[], right: number[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+/**
+ * Keep the live clock on the same physical rung after the structure list changes.
+ * Insert-after-index `i` shifts later rungs; a duration edit of the current
+ * level only caps remaining time so it cannot exceed the new length.
+ */
+export function timerPatchForStructure(
+  snapshot: TimerSnapshot,
+  structure: BlindStructure,
+  change?: LevelListChange,
+  nowMs = Date.now(),
+): Partial<TimerSnapshot> | null {
+  const nextDurations = durationsFromStructure(structure);
+  const live = computeLiveClock(snapshot, nowMs);
+  let levelIndex = live.levelIndex;
+  if (typeof change?.insertedAt === 'number' && live.levelIndex > change.insertedAt) {
+    levelIndex += 1;
+  } else if (typeof change?.removedAt === 'number' && live.levelIndex > change.removedAt) {
+    levelIndex -= 1;
+  }
+  const last = Math.max(0, nextDurations.length - 1);
+  levelIndex = Math.min(last, Math.max(0, levelIndex));
+  const nextDuration = nextDurations[levelIndex] ?? 20 * 60;
+  const secondsLeft = Math.min(Math.max(0, live.secondsLeft), nextDuration);
+  const durationsChanged = !durationsEqual(nextDurations, snapshot.levelDurations);
+  const indexChanged = levelIndex !== live.levelIndex;
+  const capped = secondsLeft + 0.05 < live.secondsLeft;
+  if (!durationsChanged && !indexChanged && !capped) return null;
+  return {
+    levelIndex,
+    secondsLeft,
+    isRunning: live.isRunning && secondsLeft > 0,
+    levelDurations: nextDurations,
+  };
 }
 
 export function freezeTimerSnapshot(
