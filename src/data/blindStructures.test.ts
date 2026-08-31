@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   breakComment,
   formatBlinds,
+  formatNextBlinds,
   inferLevelListChange,
   insertBreakAfter,
   insertPlayingLevelAfter,
@@ -44,9 +45,13 @@ describe('break comments', () => {
     expect(upcomingBreakLevel(levels, 2)).toBeUndefined();
   });
 
-  it('uses the break note as the Next Blinds label', () => {
+  it('keeps the break note for formatBlinds, not for the Next Blinds line', () => {
     expect(formatBlinds(pause('Вывод 100 номинала'))).toBe('Вывод 100 номинала');
     expect(formatBlinds(pause())).toBe('ПЕРЕРЫВ');
+    expect(formatNextBlinds(pause('Вывод 100 номинала'))).toBe('Перерыв');
+    expect(formatNextBlinds(pause())).toBe('Перерыв');
+    expect(formatNextBlinds(playing(3))).toBe('300/600 (600)');
+    expect(formatNextBlinds(undefined)).toBe('финальный уровень');
   });
 });
 

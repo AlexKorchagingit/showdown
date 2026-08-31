@@ -627,6 +627,13 @@ export function formatBlinds(level: BlindLevel | undefined): string {
   return level.ante > 0 ? `${base} (${level.ante.toLocaleString('ru-RU')})` : base;
 }
 
+/** Label under the timer clock: denomination, or «Перерыв» when the next rung is a break. */
+export function formatNextBlinds(level: BlindLevel | undefined): string {
+  if (!level) return 'финальный уровень';
+  if (isBreakLevel(level)) return 'Перерыв';
+  return formatBlinds(level);
+}
+
 export function renumberLevels(levels: BlindLevel[]): BlindLevel[] {
   let n = 0;
   return levels.map((level) => {

@@ -22,7 +22,7 @@ import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { resolveStructureForTournament } from '../../lib/timerTournament';
 import {
   breakComment,
-  formatBlinds,
+  formatNextBlinds,
   formatEta,
   isBreakLevel,
   isLateRegClosed,
@@ -465,7 +465,7 @@ export function AdminBlindsTimer() {
           <p className="mt-2.5 mb-1.5 shrink-0 text-center text-[1.24rem] font-bold leading-snug text-white/70 md:text-[1.38rem]">
             Next Blinds:{' '}
             <span className="text-[#D99962]">
-              {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
+              {formatNextBlinds(nextLevel)}
             </span>
           </p>
         </div>
