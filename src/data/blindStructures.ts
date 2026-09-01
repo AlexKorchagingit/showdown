@@ -12,9 +12,10 @@ export type BlindLevel = {
 
 export const BREAK_COMMENT_MAX = 80;
 
-/** Breaks never display 0/0; a 0 small-blind is treated as a break for old records. */
+/** Breaks are explicit. A 0 small-blind is a break only for old rows without `isBreak: false`. */
 export function isBreakLevel(level: BlindLevel | undefined): boolean {
   if (!level) return false;
+  if (level.isBreak === false) return false;
   return level.isBreak === true || level.smallBlind === 0;
 }
 
@@ -302,13 +303,16 @@ export const BLIND_STRUCTURES: BlindStructure[] = [
 ];
 
 function cloneLevel(level: BlindLevel): BlindLevel {
-  const comment = breakComment(level);
-  const next: BlindLevel =
-    level.isBreak === true || level.smallBlind === 0
-      ? { ...level, isBreak: true }
-      : { ...level };
-  if (comment) next.comment = comment;
-  else delete next.comment;
+  const next: BlindLevel = { ...level };
+  if (isBreakLevel(level)) {
+    next.isBreak = true;
+    const comment = breakComment(level);
+    if (comment) next.comment = comment;
+    else delete next.comment;
+  } else {
+    next.isBreak = false;
+    delete next.comment;
+  }
   return next;
 }
 
@@ -429,7 +433,9 @@ export function parseBlindLevel(raw: unknown): BlindLevel | null {
   const row = raw as Record<string, unknown>;
   const smallBlind = Math.max(0, asFiniteNumber(row.smallBlind, 0));
   const bigBlind = Math.max(0, asFiniteNumber(row.bigBlind, 0));
-  const isBreak = row.isBreak === true || smallBlind === 0;
+  const explicitBreak = row.isBreak;
+  const isBreak =
+    explicitBreak === true || (explicitBreak !== false && smallBlind === 0);
   const note = typeof row.comment === 'string' ? row.comment.trim().slice(0, BREAK_COMMENT_MAX) : '';
   const level: BlindLevel = {
     level: Math.max(0, Math.trunc(asFiniteNumber(row.level, 0))),
@@ -438,7 +444,7 @@ export function parseBlindLevel(raw: unknown): BlindLevel | null {
     ante: Math.max(0, asFiniteNumber(row.ante, bigBlind)),
     durationMinutes: Math.max(1, asFiniteNumber(row.durationMinutes, 20)),
   };
-  if (isBreak) level.isBreak = true;
+  level.isBreak = isBreak;
   if (row.isLateRegEnd === true) level.isLateRegEnd = true;
   if (note) level.comment = note;
   return level;
@@ -543,6 +549,7 @@ export function insertPlayingLevelAfter(levels: BlindLevel[], afterIndex: number
     bigBlind,
     ante: template?.ante || bigBlind,
     durationMinutes: template?.durationMinutes ?? 20,
+    isBreak: false,
   };
   const next = [...levels];
   next.splice(index + 1, 0, inserted);

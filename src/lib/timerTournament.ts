@@ -1,5 +1,6 @@
 import type { BlindStructure } from '../data/blindStructures';
 import type { Tournament } from '../types/tournament';
+import { compareByStart } from './tournamentStatus';
 
 export const TIMER_ROUTE = '/admin/blinds/timer';
 
@@ -31,7 +32,7 @@ export function resolveStructureForTournament(
 }
 
 export function openTournaments(tournaments: Tournament[]): Tournament[] {
-  return tournaments.filter((tournament) => tournament.isClosed !== true);
+  return tournaments.filter((tournament) => tournament.isClosed !== true).sort(compareByStart);
 }
 
 export function tournamentsUsingStructure(

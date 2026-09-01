@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronRight, Download, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
@@ -15,6 +15,7 @@ import {
   breakComment,
   insertBreakAfter,
   insertPlayingLevelAfter,
+  inferLevelListChange,
   isBreakLevel,
   renumberLevels,
   structureDurationLabel,
@@ -27,6 +28,65 @@ const FIELD_CLASS =
   'w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#D99962]/60 transition-colors';
 const LABEL_CLASS =
   'block text-[10px] font-700 uppercase tracking-[0.16em] mb-1 text-[#D99962]';
+
+/** Digits only. Empty is allowed while editing; leaving the field stores 0. */
+function BlindAmountField({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (value: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+
+  const commitNumber = (raw: string) => {
+    if (raw.trim() === '') {
+      onCommit(0);
+      return;
+    }
+    const next = Number(raw);
+    onCommit(Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0);
+  };
+
+  const showZeroIfEmpty = () => {
+    if (text.trim() !== '') return;
+    setText('0');
+    onCommit(0);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={(event) => {
+        const raw = event.target.value.replace(/[^\d]/g, '');
+        setText(raw);
+        commitNumber(raw);
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (text.trim() === '') {
+          showZeroIfEmpty();
+          return;
+        }
+        const next = Number(text);
+        const safe = Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0;
+        setText(String(safe));
+        onCommit(safe);
+      }}
+      onMouseLeave={showZeroIfEmpty}
+      className={FIELD_CLASS}
+    />
+  );
+}
 
 interface CreateForm {
   name: string;
@@ -74,6 +134,112 @@ function StructuresHeaderButton({ onClick }: { onClick: () => void }) {
     >
       Структуры блайндов
     </button>
+  );
+}
+
+function StructureEditorScreen({
+  structure,
+  timerRunning,
+  onBack,
+  onTimer,
+  onSave,
+}: {
+  structure: BlindStructure;
+  timerRunning: boolean;
+  onBack: () => void;
+  onTimer: () => void;
+  onSave: (levels: BlindLevel[]) => void;
+}) {
+  const [draft, setDraft] = useState(structure.levels);
+
+  useEffect(() => {
+    setDraft(structure.levels);
+  }, [structure.id]);
+
+  const dirty =
+    JSON.stringify(
+      draft.map((level) => [
+        level.level,
+        level.smallBlind,
+        level.bigBlind,
+        level.ante,
+        level.durationMinutes,
+        level.isBreak === true,
+        level.isLateRegEnd === true,
+        level.comment ?? '',
+      ]),
+    ) !==
+    JSON.stringify(
+      structure.levels.map((level) => [
+        level.level,
+        level.smallBlind,
+        level.bigBlind,
+        level.ante,
+        level.durationMinutes,
+        level.isBreak === true,
+        level.isLateRegEnd === true,
+        level.comment ?? '',
+      ]),
+    );
+
+  const handleBack = () => {
+    if (dirty && !window.confirm('Есть несохранённые изменения. Выйти без сохранения?')) return;
+    onBack();
+  };
+
+  return (
+    <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+      <CompactHeader
+        title={structure.name}
+        onBack={handleBack}
+        right={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onTimer}
+              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide"
+              style={{
+                background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                color: '#0A0908',
+              }}
+            >
+              Таймер
+            </button>
+            <button
+              type="button"
+              disabled={!dirty}
+              onClick={() => onSave(draft)}
+              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: dirty ? 'linear-gradient(to right, #8C4C27, #D99962)' : '#514F4C',
+                color: dirty ? '#0A0908' : '#ffffff',
+              }}
+            >
+              Сохранить
+            </button>
+          </div>
+        }
+      />
+
+      <div
+        className="flex-1 scrollable px-3"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+      >
+        {timerRunning ? (
+          <p className="text-[11px] font-600 mb-3 px-1" style={{ color: '#D99962' }}>
+            Таймер идёт. Изменения попадут на часы только после «Сохранить».
+          </p>
+        ) : dirty ? (
+          <p className="text-[11px] font-600 mb-3 px-1" style={{ color: '#D99962' }}>
+            Изменения не применены, пока не нажмёте «Сохранить».
+          </p>
+        ) : null}
+        <LevelEditor
+          structure={{ ...structure, levels: draft }}
+          onChange={(levels) => setDraft(levels)}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -189,8 +355,13 @@ function LevelEditor({
     key: 'smallBlind' | 'bigBlind' | 'ante' | 'durationMinutes',
     raw: string,
   ) => {
-    const value = Number(raw);
-    patchLevel(index, { [key]: Number.isFinite(value) ? value : 0 });
+    const parsed = Number(raw);
+    const value = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+    const current = structure.levels[index];
+    patchLevel(index, {
+      [key]: value,
+      ...(current?.isBreak === true ? {} : { isBreak: false }),
+    });
   };
 
   const addLevel = () => {
@@ -205,6 +376,7 @@ function LevelEditor({
           bigBlind: nextBb,
           ante: nextBb,
           durationMinutes: lastPlaying?.durationMinutes ?? structure.levelDuration,
+          isBreak: false,
         },
       ]),
       { insertedAt: structure.levels.length - 1 },
@@ -340,21 +512,29 @@ function LevelEditor({
                   ['smallBlind', 'SB'],
                   ['bigBlind', 'BB'],
                   ['ante', 'Ante'],
-                  ['durationMinutes', 'Мин'],
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="min-w-0">
                   <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
                     {label}
                   </span>
-                  <input
-                    type="number"
+                  <BlindAmountField
                     value={level[key]}
-                    onChange={(e) => patchNumber(index, key, e.target.value)}
-                    className={FIELD_CLASS}
+                    onCommit={(value) => patchNumber(index, key, String(value))}
                   />
                 </label>
               ))}
+              <label className="min-w-0">
+                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                  Мин
+                </span>
+                <input
+                  type="number"
+                  value={level.durationMinutes}
+                  onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
             </div>
           )}
           </div>
@@ -479,40 +659,15 @@ export function AdminBlindsSettings() {
 
   if (editing) {
     return (
-      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-        <CompactHeader
-          title={editing.name}
-          onBack={backFromEditor}
-          right={
-            <button
-              type="button"
-              onClick={() => openTimerForStructure(editing.id)}
-              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide"
-              style={{
-                background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                color: '#0A0908',
-              }}
-            >
-              Таймер
-            </button>
-          }
-        />
-
-        <div
-          className="flex-1 scrollable px-3"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
-        >
-          {isRunning && activeStructureId === editing.id && (
-            <p className="text-[11px] font-600 mb-3 px-1" style={{ color: '#D99962' }}>
-              Таймер идёт. Изменения уровней сразу уходят на сервер и на часы.
-            </p>
-          )}
-          <LevelEditor
-            structure={editing}
-            onChange={(levels, change) => updateLevels(editing.id, levels, change)}
-          />
-        </div>
-      </div>
+      <StructureEditorScreen
+        structure={editing}
+        timerRunning={isRunning && activeStructureId === editing.id}
+        onBack={backFromEditor}
+        onTimer={() => openTimerForStructure(editing.id)}
+        onSave={(levels) =>
+          updateLevels(editing.id, levels, inferLevelListChange(editing.levels, levels))
+        }
+      />
     );
   }
 
