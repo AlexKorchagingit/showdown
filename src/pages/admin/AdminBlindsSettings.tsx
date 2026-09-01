@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
+import { ChevronRight, Download, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
 import { useBlinds } from '../../context/BlindsContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { formatTournamentHeldOn, openTournaments } from '../../lib/timerTournament';
+import { exportBlindStructuresToExcel } from '../../lib/exportBlindStructures';
 import {
   BREAK_COMMENT_MAX,
   buildLevels,
@@ -535,6 +536,21 @@ export function AdminBlindsSettings() {
           >
             <Plus size={17} strokeWidth={2.4} />
             Создать структуру
+          </button>
+
+          <button
+            type="button"
+            disabled={structures.length === 0}
+            onClick={() => exportBlindStructuresToExcel(structures, tournaments)}
+            className="w-full flex items-center justify-center gap-2 py-3 mb-4 rounded-xl text-[14px] font-800 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+            style={{
+              background: 'rgba(217,153,98,0.12)',
+              border: '1px solid rgba(217,153,98,0.35)',
+              color: '#F2D8A7',
+            }}
+          >
+            <Download size={17} strokeWidth={2.4} />
+            Выгрузить в Excel
           </button>
 
           <AnimatePresence initial={false}>
