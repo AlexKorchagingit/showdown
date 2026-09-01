@@ -342,7 +342,10 @@ function LevelEditor({
     onChange(
       renumberLevels(
         structure.levels.map((level, i) => {
-          if (i === index) return { ...level, ...patch };
+          if (i === index) {
+            const merged = { ...level, ...patch };
+            return { ...merged, ante: merged.bigBlind };
+          }
           if (patch.isLateRegEnd === true) return { ...level, isLateRegEnd: false };
           return level;
         }),
@@ -352,7 +355,7 @@ function LevelEditor({
 
   const patchNumber = (
     index: number,
-    key: 'smallBlind' | 'bigBlind' | 'ante' | 'durationMinutes',
+    key: 'smallBlind' | 'bigBlind' | 'durationMinutes',
     raw: string,
   ) => {
     const parsed = Number(raw);
@@ -392,7 +395,7 @@ function LevelEditor({
           level: 0,
           smallBlind: lastPlaying?.smallBlind || 100,
           bigBlind: lastPlaying?.bigBlind || 200,
-          ante: lastPlaying?.ante || lastPlaying?.bigBlind || 200,
+          ante: lastPlaying?.bigBlind || 200,
           durationMinutes: 15,
           isBreak: true,
         },
@@ -455,7 +458,7 @@ function LevelEditor({
                           isBreak: false,
                           smallBlind: level.smallBlind || 100,
                           bigBlind: level.bigBlind || 200,
-                          ante: level.ante || 200,
+                          ante: level.bigBlind || 200,
                           comment: undefined,
                         },
                   );
@@ -511,7 +514,6 @@ function LevelEditor({
                 [
                   ['smallBlind', 'SB'],
                   ['bigBlind', 'BB'],
-                  ['ante', 'Ante'],
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="min-w-0">
@@ -524,6 +526,19 @@ function LevelEditor({
                   />
                 </label>
               ))}
+              <label className="min-w-0">
+                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                  Ante
+                </span>
+                <input
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={String(level.bigBlind)}
+                  aria-label="Анте равно большому блайнду"
+                  className={`${FIELD_CLASS} opacity-70 cursor-default`}
+                />
+              </label>
               <label className="min-w-0">
                 <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
                   Мин

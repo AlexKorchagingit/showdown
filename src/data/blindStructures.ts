@@ -25,6 +25,11 @@ export function breakComment(level: BlindLevel | undefined): string {
   return note.slice(0, BREAK_COMMENT_MAX);
 }
 
+/** Club rule: ante always matches the big blind. */
+export function withAnteFromBigBlind<T extends Pick<BlindLevel, 'bigBlind' | 'ante'>>(level: T): T {
+  return { ...level, ante: Math.max(0, level.bigBlind) };
+}
+
 export type TournamentStructure = {
   id: string;
   name: string;
@@ -303,7 +308,7 @@ export const BLIND_STRUCTURES: BlindStructure[] = [
 ];
 
 function cloneLevel(level: BlindLevel): BlindLevel {
-  const next: BlindLevel = { ...level };
+  const next: BlindLevel = withAnteFromBigBlind({ ...level });
   if (isBreakLevel(level)) {
     next.isBreak = true;
     const comment = breakComment(level);
@@ -318,17 +323,20 @@ function cloneLevel(level: BlindLevel): BlindLevel {
 
 function withBreakBlinds(levels: BlindLevel[]): BlindLevel[] {
   return levels.map((level, index) => {
-    if (!isBreakLevel(level)) return level;
-    if (level.smallBlind > 0 && level.bigBlind > 0) return { ...level, isBreak: true };
+    if (!isBreakLevel(level)) return withAnteFromBigBlind(level);
+    if (level.smallBlind > 0 && level.bigBlind > 0) {
+      return withAnteFromBigBlind({ ...level, isBreak: true });
+    }
     const next = levels.slice(index + 1).find((row) => !isBreakLevel(row));
     const prev = levels.slice(0, index).reverse().find((row) => !isBreakLevel(row));
     const source = next ?? prev;
+    const bigBlind = source?.bigBlind || 200;
     return {
       ...level,
       isBreak: true,
       smallBlind: source?.smallBlind || 100,
-      bigBlind: source?.bigBlind || 200,
-      ante: source?.ante || source?.bigBlind || 200,
+      bigBlind,
+      ante: bigBlind,
     };
   });
 }
@@ -441,7 +449,7 @@ export function parseBlindLevel(raw: unknown): BlindLevel | null {
     level: Math.max(0, Math.trunc(asFiniteNumber(row.level, 0))),
     smallBlind,
     bigBlind,
-    ante: Math.max(0, asFiniteNumber(row.ante, bigBlind)),
+    ante: bigBlind,
     durationMinutes: Math.max(1, asFiniteNumber(row.durationMinutes, 20)),
   };
   level.isBreak = isBreak;
@@ -547,7 +555,7 @@ export function insertPlayingLevelAfter(levels: BlindLevel[], afterIndex: number
     level: 0,
     smallBlind: template?.smallBlind || 100,
     bigBlind,
-    ante: template?.ante || bigBlind,
+    ante: bigBlind,
     durationMinutes: template?.durationMinutes ?? 20,
     isBreak: false,
   };
@@ -565,7 +573,7 @@ export function insertBreakAfter(levels: BlindLevel[], afterIndex: number): Blin
     level: 0,
     smallBlind: source?.smallBlind || 100,
     bigBlind: source?.bigBlind || 200,
-    ante: source?.ante || source?.bigBlind || 200,
+    ante: source?.bigBlind || 200,
     durationMinutes: 15,
     isBreak: true,
   };
@@ -645,10 +653,10 @@ export function renumberLevels(levels: BlindLevel[]): BlindLevel[] {
   let n = 0;
   return levels.map((level) => {
     if (isBreakLevel(level)) {
-      return { ...level, isBreak: true, level: 0 };
+      return withAnteFromBigBlind({ ...level, isBreak: true, level: 0 });
     }
     n += 1;
-    return { ...level, level: n };
+    return withAnteFromBigBlind({ ...level, level: n });
   });
 }
 

@@ -9,6 +9,7 @@ import {
   isBreakLevel,
   parseBlindLevel,
   upcomingBreakLevel,
+  withAnteFromBigBlind,
   type BlindLevel,
 } from './blindStructures';
 
@@ -108,6 +109,7 @@ describe('insert a level between existing rungs', () => {
     expect(next[3]?.smallBlind).toBe(300);
     expect(next[2]?.isBreak).toBe(false);
     expect(next.filter((level) => !isBreakLevel(level)).map((level) => level.level)).toEqual([1, 2, 3, 4]);
+    expect(next[2]?.ante).toBe(next[2]?.bigBlind);
   });
 
   it('inserts a break after the chosen row without rewriting later blinds', () => {
@@ -116,6 +118,7 @@ describe('insert a level between existing rungs', () => {
     expect(isBreakLevel(next[1])).toBe(true);
     expect(next[2]?.smallBlind).toBe(200);
     expect(next[2]?.level).toBe(2);
+    expect(next[1]?.ante).toBe(next[1]?.bigBlind);
   });
 
   it('detects a single inserted or removed row', () => {
@@ -123,5 +126,29 @@ describe('insert a level between existing rungs', () => {
     const inserted = insertPlayingLevelAfter(prev, 1);
     expect(inferLevelListChange(prev, inserted)).toEqual({ insertedAt: 1 });
     expect(inferLevelListChange(inserted, prev)).toEqual({ removedAt: 2 });
+  });
+});
+
+describe('ante follows the big blind', () => {
+  it('overwrites a stored ante when parsing a level', () => {
+    const parsed = parseBlindLevel({
+      level: 2,
+      smallBlind: 200,
+      bigBlind: 400,
+      ante: 50,
+      durationMinutes: 20,
+      isBreak: false,
+    });
+    expect(parsed?.ante).toBe(400);
+    expect(withAnteFromBigBlind({ bigBlind: 800, ante: 1 }).ante).toBe(800);
+  });
+
+  it('keeps ante equal to BB on a copied playing row even if the template had a mismatch', () => {
+    const levels = [
+      { ...playing(1), ante: 1 },
+      { ...playing(2), ante: 9 },
+    ];
+    const next = insertPlayingLevelAfter(levels, 0);
+    expect(next.every((level) => level.ante === level.bigBlind)).toBe(true);
   });
 });
