@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BLIND_STRUCTURES,
   breakComment,
+  copyTripleLifeLadder,
   formatBlinds,
   formatNextBlinds,
   inferLevelListChange,
@@ -8,8 +10,11 @@ import {
   insertPlayingLevelAfter,
   isBreakLevel,
   parseBlindLevel,
+  TRIPLE_LIFE_LADDER_COPY_MIGRATION,
+  TRIPLE_LIFE_LADDER_TARGET_IDS,
   upcomingBreakLevel,
   withAnteFromBigBlind,
+  withTripleLifeLadderCopyMigration,
   type BlindLevel,
 } from './blindStructures';
 
@@ -150,5 +155,39 @@ describe('ante follows the big blind', () => {
     ];
     const next = insertPlayingLevelAfter(levels, 0);
     expect(next.every((level) => level.ante === level.bigBlind)).toBe(true);
+  });
+});
+
+describe('Triple Life ladder copy', () => {
+  it('uses the same levels for Freeroll, Phoenix, Freezeout and Chill out', () => {
+    const source = BLIND_STRUCTURES.find((row) => row.id === 'bs-triple-life');
+    expect(source?.levels[0]).toMatchObject({ smallBlind: 200, bigBlind: 300, ante: 300 });
+    for (const id of TRIPLE_LIFE_LADDER_TARGET_IDS) {
+      const row = BLIND_STRUCTURES.find((item) => item.id === id);
+      expect(row?.levels).toEqual(source?.levels);
+      expect(row?.levelDuration).toBe(source?.levelDuration);
+    }
+  });
+
+  it('copies Triple Life levels onto the weekday structures without touching others', () => {
+    const patched = BLIND_STRUCTURES.map((row) =>
+      row.id === 'bs-phoenix' ? { ...row, levels: [playing(1)], levelDuration: 99 } : row,
+    );
+    const next = copyTripleLifeLadder(patched);
+    const copied = copyTripleLifeLadder(BLIND_STRUCTURES);
+    expect(next.find((row) => row.id === 'bs-phoenix')?.levels).toEqual(
+      copied.find((row) => row.id === 'bs-phoenix')?.levels,
+    );
+    expect(next.find((row) => row.id === 'bs-grand-opening')?.levels).toEqual(
+      patched.find((row) => row.id === 'bs-grand-opening')?.levels,
+    );
+  });
+
+  it('runs the copy once per migration mark', () => {
+    const first = withTripleLifeLadderCopyMigration(BLIND_STRUCTURES, []);
+    expect(first.changed).toBe(true);
+    expect(first.migrations).toContain(TRIPLE_LIFE_LADDER_COPY_MIGRATION);
+    const second = withTripleLifeLadderCopyMigration(first.structures, first.migrations);
+    expect(second.changed).toBe(false);
   });
 });

@@ -63,7 +63,16 @@ export type BlindStructuresLocalMeta = {
   revision: number;
   writeId: string;
   updatedAt: number;
+  migrations?: string[];
 };
+
+export const TRIPLE_LIFE_LADDER_COPY_MIGRATION = 'copy-triple-life-ladder-v1';
+export const TRIPLE_LIFE_LADDER_TARGET_IDS = [
+  'bs-freeroll',
+  'bs-phoenix',
+  'bs-freezeout',
+  'bs-chill-out',
+] as const;
 
 export type LevelListChange = {
   /** Index of the row the new level was inserted after (`-1` = prepend). */
@@ -103,28 +112,6 @@ const SMOOTH_STEPS: BlindStep[] = [
   { sb: 100000, bb: 200000 },
 ];
 
-/** Classic ladder — no 1500/3000-style in-between rungs (Freeroll, Chill out, Phoenix). */
-const CLASSIC_STEPS: BlindStep[] = [
-  { sb: 100, bb: 200 },
-  { sb: 200, bb: 400 },
-  { sb: 300, bb: 600 },
-  { sb: 400, bb: 800 },
-  { sb: 500, bb: 1000 },
-  { sb: 600, bb: 1200 },
-  { sb: 1000, bb: 2000 },
-  { sb: 2000, bb: 4000 },
-  { sb: 3000, bb: 6000 },
-  { sb: 4000, bb: 8000 },
-  { sb: 5000, bb: 10000 },
-  { sb: 6000, bb: 12000 },
-  { sb: 10000, bb: 20000 },
-  { sb: 15000, bb: 30000 },
-  { sb: 20000, bb: 40000 },
-  { sb: 30000, bb: 60000 },
-  { sb: 40000, bb: 80000 },
-  { sb: 50000, bb: 100000 },
-  { sb: 100000, bb: 200000 },
-];
 
 export function durationSeconds(level: BlindLevel | undefined, fallbackMinutes = 20): number {
   const minutes = level?.durationMinutes ?? fallbackMinutes;
@@ -241,35 +228,67 @@ function makeStructure(
   };
 }
 
-/** Classic weekday: 15 min to first break, 12 min after; no 1500/3000 rungs. */
-const CLASSIC_WEEKDAY: ClubLevelOptions = {
-  steps: CLASSIC_STEPS,
-  preBreakMinutes: 15,
-  midMinutes: 12,
-  postBreakMinutes: 12,
-  firstBreakMinutes: 15,
-  secondBreakMinutes: 15,
-};
+function rung(
+  level: number,
+  smallBlind: number,
+  bigBlind: number,
+  durationMinutes: number,
+  extra?: Partial<BlindLevel>,
+): BlindLevel {
+  return withAnteFromBigBlind({
+    level,
+    smallBlind,
+    bigBlind,
+    ante: bigBlind,
+    durationMinutes,
+    ...extra,
+  });
+}
 
-/** Classic with even clocks (Triple Life). */
-const CLASSIC_SPORT: ClubLevelOptions = {
-  steps: CLASSIC_STEPS,
-  preBreakMinutes: 15,
-  midMinutes: 15,
-  postBreakMinutes: 12,
-  firstBreakMinutes: 15,
-  secondBreakMinutes: 15,
-};
+/** Live Triple Life ladder — copied onto Freeroll, Phoenix, Freezeout and Chill out. */
+const TRIPLE_LIFE_LEVELS: BlindLevel[] = [
+  rung(1, 200, 300, 15),
+  rung(2, 200, 400, 15),
+  rung(3, 300, 500, 15),
+  rung(4, 300, 600, 15),
+  rung(5, 400, 700, 15),
+  rung(6, 400, 800, 15),
+  rung(0, 3000, 6000, 15, { isBreak: true }),
+  rung(7, 500, 900, 15),
+  rung(8, 500, 1000, 15),
+  rung(9, 600, 1100, 15),
+  rung(10, 600, 1200, 15),
+  rung(11, 700, 1400, 15),
+  rung(12, 900, 1800, 15),
+  rung(13, 1000, 2000, 15),
+  rung(0, 40000, 80000, 15, {
+    isBreak: true,
+    isLateRegEnd: true,
+    comment: 'Вывод номинала 100',
+  }),
+  rung(14, 1500, 2500, 12),
+  rung(15, 1500, 3000, 12),
+  rung(16, 2000, 4000, 12),
+  rung(17, 2500, 5000, 12),
+  rung(18, 3500, 7000, 12),
+  rung(19, 5000, 10000, 12),
+  rung(20, 6500, 13000, 12),
+  rung(21, 7500, 15000, 12),
+  rung(22, 10000, 20000, 12),
+  rung(23, 15000, 30000, 12),
+  rung(24, 25000, 50000, 12),
+];
 
-/** Smooth weekday freezeout. */
-const SMOOTH_WEEKDAY: ClubLevelOptions = {
-  steps: SMOOTH_STEPS,
-  preBreakMinutes: 15,
-  midMinutes: 15,
-  postBreakMinutes: 15,
-  firstBreakMinutes: 15,
-  secondBreakMinutes: 15,
-};
+function makeTripleLifeStructure(id: string, name: string, guarantee: number): BlindStructure {
+  return {
+    id,
+    name,
+    levelDuration: 15,
+    guarantee,
+    levels: TRIPLE_LIFE_LEVELS.map((level) => withAnteFromBigBlind({ ...level })),
+    payouts: DEFAULT_PAYOUTS.map((place) => ({ ...place })),
+  };
+}
 
 /** Weekend / bounty: 20 min to the breaks, 15 after late reg. */
 const WEEKEND: ClubLevelOptions = {
@@ -298,11 +317,11 @@ const DEEPSTACK: ClubLevelOptions = {
  */
 export const BLIND_STRUCTURES: BlindStructure[] = [
   makeStructure('bs-grand-opening', 'Grand Opening', 20000, WEEKEND),
-  makeStructure('bs-freeroll', 'Freeroll', 8000, CLASSIC_WEEKDAY),
-  makeStructure('bs-triple-life', 'Triple Life', 12000, CLASSIC_SPORT),
-  makeStructure('bs-phoenix', 'Phoenix', 12000, CLASSIC_WEEKDAY),
-  makeStructure('bs-freezeout', 'Freezeout', 15000, SMOOTH_WEEKDAY),
-  makeStructure('bs-chill-out', 'Chill out', 10000, CLASSIC_WEEKDAY),
+  makeTripleLifeStructure('bs-freeroll', 'Freeroll', 8000),
+  makeTripleLifeStructure('bs-triple-life', 'Triple Life', 12000),
+  makeTripleLifeStructure('bs-phoenix', 'Phoenix', 12000),
+  makeTripleLifeStructure('bs-freezeout', 'Freezeout', 15000),
+  makeTripleLifeStructure('bs-chill-out', 'Chill out', 10000),
   makeStructure('bs-bounty-hunter', 'Bounty Hunter', 10000, WEEKEND),
   makeStructure('bs-deepstack', 'Deepstack', 15000, DEEPSTACK),
 ];
@@ -349,6 +368,35 @@ function cloneStructure(structure: BlindStructure): BlindStructure {
   };
 }
 
+/** Copy Triple Life's current ladder onto Freeroll, Phoenix, Freezeout and Chill out. */
+export function copyTripleLifeLadder(structures: BlindStructure[]): BlindStructure[] {
+  const source = structures.find((row) => row.id === 'bs-triple-life');
+  if (!source) return structures;
+  const targets = new Set<string>(TRIPLE_LIFE_LADDER_TARGET_IDS);
+  return structures.map((row) => {
+    if (!targets.has(row.id)) return row;
+    return {
+      ...row,
+      levelDuration: source.levelDuration,
+      levels: source.levels.map(cloneLevel),
+    };
+  });
+}
+
+export function withTripleLifeLadderCopyMigration(
+  structures: BlindStructure[],
+  migrations: string[] = [],
+): { structures: BlindStructure[]; migrations: string[]; changed: boolean } {
+  if (migrations.includes(TRIPLE_LIFE_LADDER_COPY_MIGRATION)) {
+    return { structures, migrations, changed: false };
+  }
+  return {
+    structures: copyTripleLifeLadder(structures),
+    migrations: [...migrations, TRIPLE_LIFE_LADDER_COPY_MIGRATION],
+    changed: true,
+  };
+}
+
 function catalogClone(): BlindStructure[] {
   return BLIND_STRUCTURES.map(cloneStructure);
 }
@@ -359,15 +407,22 @@ interface StoredPayload {
   revision?: number;
   writeId?: string;
   updatedAt?: number;
+  migrations?: string[];
 }
 
 const BOOT_META: BlindStructuresLocalMeta = {
   revision: 0,
   writeId: 'boot',
   updatedAt: 0,
+  migrations: [],
 };
 
 let cacheMeta: BlindStructuresLocalMeta = { ...BOOT_META };
+
+function parseMigrations(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
 
 function asMetaNumber(value: unknown, fallback: number): number {
   const n = Number(value);
@@ -386,6 +441,7 @@ function readStore(): BlindStructure[] | null {
       revision: Math.trunc(asMetaNumber(parsed.revision, 0)),
       writeId: typeof parsed.writeId === 'string' && parsed.writeId ? parsed.writeId : 'boot',
       updatedAt: asMetaNumber(parsed.updatedAt, 0),
+      migrations: parseMigrations(parsed.migrations),
     };
     return parsed.structures.map(cloneStructure);
   } catch {
@@ -401,6 +457,7 @@ function writeStore(structures: BlindStructure[]) {
       revision: cacheMeta.revision,
       writeId: cacheMeta.writeId,
       updatedAt: cacheMeta.updatedAt,
+      migrations: cacheMeta.migrations ?? [],
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
@@ -427,7 +484,7 @@ export function persistBlindStructuresLocal(
   meta: BlindStructuresLocalMeta,
 ): void {
   cache = structures.map(cloneStructure);
-  cacheMeta = { ...meta };
+  cacheMeta = { ...meta, migrations: meta.migrations ?? [] };
   writeStore(cache);
 }
 

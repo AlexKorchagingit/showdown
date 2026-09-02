@@ -19,6 +19,7 @@ import {
   readBlindStructuresLocalMeta,
   replaceBlindStructure,
   seedBlindStructures,
+  withTripleLifeLadderCopyMigration,
   type BlindLevel,
   type BlindStructure,
   type LevelListChange,
@@ -361,14 +362,23 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
 
   const publishStructures = useCallback(
     (structures: BlindStructure[], persist: 'now' | 'debounce') => {
-      const snapshot = makeBlindStructuresSnapshot(structures, structuresMetaRef.current.revision);
+      const migrated = withTripleLifeLadderCopyMigration(
+        structures,
+        structuresMetaRef.current.migrations ?? [],
+      );
+      const snapshot = makeBlindStructuresSnapshot(
+        migrated.structures,
+        structuresMetaRef.current.revision,
+        migrated.migrations,
+      );
       structuresMetaRef.current = {
         revision: snapshot.revision,
         writeId: snapshot.writeId,
         updatedAt: snapshot.updatedAt,
+        migrations: snapshot.migrations,
       };
       lastStructuresWriteIdRef.current = snapshot.writeId;
-      persistBlindStructuresLocal(structures, structuresMetaRef.current);
+      persistBlindStructuresLocal(migrated.structures, structuresMetaRef.current);
       pendingStructuresRef.current = snapshot;
       try {
         structuresChannelRef.current?.postMessage(snapshot);
@@ -409,21 +419,29 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         publishStructures(stateRef.current.structures, 'now');
         return;
       }
+      const migrated = withTripleLifeLadderCopyMigration(
+        snapshot.structures,
+        snapshot.migrations ?? [],
+      );
       const previous = stateRef.current.structures;
       lastStructuresWriteIdRef.current = snapshot.writeId;
       structuresMetaRef.current = {
         revision: snapshot.revision,
         writeId: snapshot.writeId,
         updatedAt: snapshot.updatedAt,
+        migrations: migrated.migrations,
       };
-      persistBlindStructuresLocal(snapshot.structures, structuresMetaRef.current);
-      dispatch({ type: 'setStructures', structures: snapshot.structures });
+      persistBlindStructuresLocal(migrated.structures, structuresMetaRef.current);
+      dispatch({ type: 'setStructures', structures: migrated.structures });
       const activeId = stateRef.current.snapshot.structureId;
-      if (!activeId) return;
-      const next = snapshot.structures.find((row) => row.id === activeId);
-      if (!next) return;
-      const prev = previous.find((row) => row.id === activeId);
-      syncTimerToStructure(next, prev ? inferLevelListChange(prev.levels, next.levels) : undefined);
+      if (activeId) {
+        const next = migrated.structures.find((row) => row.id === activeId);
+        const prev = previous.find((row) => row.id === activeId);
+        if (next) {
+          syncTimerToStructure(next, prev ? inferLevelListChange(prev.levels, next.levels) : undefined);
+        }
+      }
+      if (migrated.changed) publishStructures(migrated.structures, 'now');
     },
     [publishStructures, syncTimerToStructure],
   );

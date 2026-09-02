@@ -30,6 +30,19 @@ describe('blind structures snapshot', () => {
     expect(snapshot?.writeId).toBe('abc');
     expect(snapshot?.revision).toBe(3);
     expect(snapshot?.structures[0]?.id).toBe(BLIND_STRUCTURES[0].id);
+    expect(snapshot?.migrations).toEqual([]);
+  });
+
+  it('keeps a migrations list on the snapshot', () => {
+    const snapshot = parseBlindStructuresSnapshot({
+      v: 1,
+      writeId: 'abc',
+      revision: 3,
+      updatedAt: 100,
+      structures: [BLIND_STRUCTURES[0]],
+      migrations: ['copy-triple-life-ladder-v1'],
+    });
+    expect(snapshot?.migrations).toEqual(['copy-triple-life-ladder-v1']);
   });
 
   it('prefers a local custom copy over a first catalog seed from another device', () => {

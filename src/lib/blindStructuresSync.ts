@@ -16,7 +16,13 @@ export type BlindStructuresSnapshot = {
   revision: number;
   updatedAt: number;
   structures: BlindStructure[];
+  migrations?: string[];
 };
+
+function parseMigrations(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
 
 export function newBlindStructuresWriteId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -50,12 +56,14 @@ export function parseBlindStructuresSnapshot(raw: unknown): BlindStructuresSnaps
     revision: Number.isFinite(revision) ? Math.max(0, Math.trunc(revision)) : 0,
     updatedAt: Number.isFinite(updatedAt) ? Math.max(0, updatedAt) : 0,
     structures,
+    migrations: parseMigrations(row.migrations),
   };
 }
 
 export function makeBlindStructuresSnapshot(
   structures: BlindStructure[],
   previousRevision: number,
+  migrations: string[] = [],
 ): BlindStructuresSnapshot {
   return {
     v: 1,
@@ -63,6 +71,7 @@ export function makeBlindStructuresSnapshot(
     revision: previousRevision + 1,
     updatedAt: Date.now(),
     structures,
+    migrations,
   };
 }
 
