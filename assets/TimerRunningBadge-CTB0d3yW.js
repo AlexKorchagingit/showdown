@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-CGPWI2xF.js";var t=e();function n(){return(0,t.jsx)(`span`,{className:`bg-green-500/20 text-green-400 border border-green-500/50 px-2 py-1 rounded text-xs animate-pulse uppercase font-bold shrink-0`,children:`Таймер запущен`})}export{n as t};

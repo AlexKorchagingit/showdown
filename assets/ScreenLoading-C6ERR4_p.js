@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-CGPWI2xF.js";var t=e();function n({label:e=`Загрузка…`}){return(0,t.jsx)(`div`,{className:`flex h-full min-h-[12rem] items-center justify-center px-5`,children:(0,t.jsx)(`p`,{className:`text-[13px] font-500`,style:{color:`#6B6360`},children:e})})}export{n as t};

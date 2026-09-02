@@ -1,0 +1,1 @@
+import{Ut as e}from"./index-AadYbTsJ.js";function t(e){return`${e.trim().toLowerCase().replace(/[^a-z0-9]+/g,`.`)||`player`}@mail.ru`}function n(n,r){let i=e(n,r);if(i)return i.email;if(r.trim())return t(r)}export{n as t};

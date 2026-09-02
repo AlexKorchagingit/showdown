@@ -1,0 +1,1 @@
+import{i as e,t}from"./jsx-runtime-CGPWI2xF.js";var n=t();function r({id:t,nickname:r,className:i,style:a,stats:o}){return(0,n.jsx)(e,{to:t===`me`?`/profile`:`/profile/${encodeURIComponent(t)}`,state:{nickname:r,...o},className:[`active:opacity-70 transition-opacity`,i].filter(Boolean).join(` `),style:a,children:r})}export{r as t};
