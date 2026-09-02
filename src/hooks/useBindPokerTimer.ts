@@ -4,12 +4,12 @@ import { useBlinds } from '../context/BlindsContext';
 import { useTournaments } from '../context/TournamentContext';
 import {
   resolveStructureForTournament,
+  resolveTournamentForTimer,
   timerPathForStructure,
   timerPathForTournament,
 } from '../lib/timerTournament';
-import { cashierFieldSize } from '../lib/tournamentArrival';
 
-/** Bind the blinds timer to a TournamentContext row by id (never by title). */
+/** Bind the blinds timer to a TournamentContext row. */
 export function useBindPokerTimer() {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
@@ -18,7 +18,6 @@ export function useBindPokerTimer() {
     structures,
     ensureTimer,
     setLinkedTournament,
-    setTotalEntries,
     linkedTournamentId,
     activeStructureId,
   } = useBlinds();
@@ -35,14 +34,12 @@ export function useBindPokerTimer() {
 
       const structure = resolveStructureForTournament(tournament, structures);
       if (structure && structure.id !== activeStructureId) ensureTimer(structure.id);
-      if (switching) setTotalEntries(cashierFieldSize(tournament));
     },
     [
       tournaments,
       structures,
       ensureTimer,
       setLinkedTournament,
-      setTotalEntries,
       linkedTournamentId,
       activeStructureId,
       timerReady,
@@ -60,27 +57,9 @@ export function useBindPokerTimer() {
   const openTimerForStructure = useCallback(
     (structureId: string) => {
       const structure = structures.find((row) => row.id === structureId);
-      const linked = tournaments.find((row) => row.id === linkedTournamentId);
-      const linkedUsesStructure =
-        Boolean(structure) &&
-        Boolean(linked) &&
-        resolveStructureForTournament(linked, structures)?.id === structureId;
-
-      if (linked && linkedUsesStructure && !linked.isClosed) {
-        openTimerForTournament(linked.id);
-        return;
-      }
-
-      const matches = structure
-        ? tournaments.filter((tournament) => {
-            if (tournament.isClosed) return false;
-            if (tournament.blindStructureId === structure.id) return true;
-            return tournament.blindStructure.trim() === structure.name;
-          })
-        : [];
-
-      if (matches.length === 1) {
-        openTimerForTournament(matches[0].id);
+      const resolved = resolveTournamentForTimer(structure, tournaments, linkedTournamentId);
+      if (resolved) {
+        openTimerForTournament(resolved.id);
         return;
       }
 

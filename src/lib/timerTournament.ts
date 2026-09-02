@@ -45,6 +45,40 @@ export function tournamentsUsingStructure(
   });
 }
 
+function sameLabel(left: string, right: string): boolean {
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function usesStructure(tournament: Tournament, structure: BlindStructure): boolean {
+  if (tournament.blindStructureId && tournament.blindStructureId === structure.id) return true;
+  if (tournament.blindStructure.trim() === structure.name) return true;
+  return sameLabel(tournament.title, structure.name);
+}
+
+/**
+ * Which event the timer session belongs to.
+ * Keeps the previously linked tournament when it still uses this ladder,
+ * otherwise picks the open event whose title matches the structure name.
+ */
+export function resolveTournamentForTimer(
+  structure: BlindStructure | undefined,
+  tournaments: Tournament[],
+  linkedTournamentId: string | null,
+): Tournament | undefined {
+  if (!structure || tournaments.length === 0) return undefined;
+
+  const linked = linkedTournamentId
+    ? tournaments.find((row) => row.id === linkedTournamentId)
+    : undefined;
+  if (linked && usesStructure(linked, structure)) return linked;
+
+  const named = openTournaments(tournaments).find((row) => sameLabel(row.title, structure.name));
+  if (named) return named;
+
+  const using = openTournaments(tournamentsUsingStructure(tournaments, structure));
+  return using[0];
+}
+
 /** Event day + start time, timezone-stable (`YYYY-MM-DD` at noon). */
 export function formatTournamentHeldOn(startDate: string, startTime: string): string {
   const day = new Date(`${startDate.trim().slice(0, 10)}T12:00:00`);

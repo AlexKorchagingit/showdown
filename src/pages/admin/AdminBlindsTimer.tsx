@@ -19,7 +19,7 @@ import { useBlinds } from '../../context/BlindsContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
-import { resolveStructureForTournament } from '../../lib/timerTournament';
+import { resolveStructureForTournament, resolveTournamentForTimer } from '../../lib/timerTournament';
 import {
   breakComment,
   formatNextBlinds,
@@ -85,7 +85,7 @@ export function AdminBlindsTimer() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { equippedChar } = useProfile();
-  const { tournaments, refreshParticipants } = useTournaments();
+  const { tournaments, refreshParticipants, isLoading: tournamentsLoading } = useTournaments();
   const {
     timerReady,
     structures,
@@ -104,7 +104,6 @@ export function AdminBlindsTimer() {
     avgStackOverride,
     chipleaderId,
     setChipleader,
-    totalEntries,
     rebuyCount,
     chipleaderStack,
   } = useBlinds();
@@ -116,17 +115,13 @@ export function AdminBlindsTimer() {
   const tournamentIdParam = searchParams.get('tournament');
   const structureIdParam = searchParams.get('structure');
   const boundTournament = (() => {
-    const id = tournamentIdParam ?? linkedTournamentId;
-    if (!id) return undefined;
-    const found = tournaments.find((row) => row.id === id);
-    if (!found) return undefined;
-    if (tournamentIdParam) return found;
-    if (structureIdParam) {
-      const usesThisLadder =
-        resolveStructureForTournament(found, structures)?.id === structureIdParam;
-      return usesThisLadder ? found : undefined;
+    if (tournamentIdParam) {
+      return tournaments.find((row) => row.id === tournamentIdParam);
     }
-    return found;
+    const structure =
+      structures.find((row) => row.id === (structureIdParam ?? activeStructure?.id ?? '')) ??
+      activeStructure;
+    return resolveTournamentForTimer(structure, tournaments, linkedTournamentId);
   })();
   const resolvedStructure =
     resolveStructureForTournament(boundTournament, structures) ??
@@ -139,14 +134,17 @@ export function AdminBlindsTimer() {
       bindTournament(tournamentIdParam);
       return;
     }
-    if (structureIdParam) {
-      ensureTimer(structureIdParam);
-      if (isRunning) return;
-      const linked = tournaments.find((row) => row.id === linkedTournamentId);
-      const usesThisLadder =
-        resolveStructureForTournament(linked, structures)?.id === structureIdParam;
-      if (linkedTournamentId && !usesThisLadder) bindTournament(null);
+    if (!structureIdParam) return;
+    ensureTimer(structureIdParam);
+    const structure = structures.find((row) => row.id === structureIdParam);
+    if (!structure || tournamentsLoading) return;
+    const resolved = resolveTournamentForTimer(structure, tournaments, linkedTournamentId);
+    if (resolved) {
+      if (resolved.id !== linkedTournamentId) bindTournament(resolved.id);
+      return;
     }
+    if (isRunning || tournaments.length === 0) return;
+    if (linkedTournamentId) bindTournament(null);
   }, [
     timerReady,
     tournamentIdParam,
@@ -154,6 +152,7 @@ export function AdminBlindsTimer() {
     bindTournament,
     ensureTimer,
     tournaments,
+    tournamentsLoading,
     linkedTournamentId,
     structures,
     isRunning,
@@ -169,7 +168,7 @@ export function AdminBlindsTimer() {
     };
   }, []);
 
-  const liveTournamentId = tournamentIdParam ?? linkedTournamentId;
+  const liveTournamentId = boundTournament?.id ?? linkedTournamentId;
   useEffect(() => {
     if (!liveTournamentId) return;
     void refreshParticipants(liveTournamentId);
@@ -229,7 +228,7 @@ export function AdminBlindsTimer() {
   );
 
   const prizePool = tournament?.guarantee ?? structure?.guarantee ?? 0;
-  const fieldSize = tournament ? registered : (totalEntries ?? 0);
+  const fieldSize = registered;
   const hasEntries = fieldSize > 0;
   const payouts = useMemo(
     () => (hasEntries ? calculatePayouts(fieldSize, prizePool) : []),
@@ -341,14 +340,14 @@ export function AdminBlindsTimer() {
         </div>
 
         <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-visible md:w-[260px]">
-          {(tournament || totalEntries != null) && (
+          {tournament && (
             <section className={`${GLASS} text-center min-w-0`}>
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
                 В ИГРЕ
               </p>
               <FitText className="text-white mt-2">
                 {remaining}
-                <span className="text-white/35"> / {tournament ? registered : totalEntries}</span>
+                <span className="text-white/35"> / {registered}</span>
               </FitText>
               {rebuyCount != null && rebuyCount > 0 && (
                 <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
