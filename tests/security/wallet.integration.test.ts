@@ -17,6 +17,7 @@ function token(role: string) {
 }
 const anon = token('anon'); const service = token('service_role');
 const migration = () => readFileSync('supabase/migrations/20260903_wallet_shop.sql','utf8');
+const grantMigration = () => readFileSync('supabase/migrations/20260904_ruby_grants.sql','utf8');
 async function rpc(name: string, access: string, args: object = {}) {
   return fetch(`${base}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:anon,
     Authorization:`Bearer ${access}`,'Content-Type':'application/json'},body:JSON.stringify(args)});
@@ -77,7 +78,7 @@ describe('isolated shop and one-time wallet claims',() => {
         ('${id('admin')}','${email('admin')}','Synthetic admin',true,5000,array['char_base','bg_base'],'[]');\n`
       +readFileSync('supabase/migrations/20260903_auth_foundation.sql','utf8'));
     baseline=sourceHash();
-    localSql(migration()); localSql(migration());
+    localSql(migration()); localSql(migration()); localSql(grantMigration()); localSql(grantMigration());
     for(let attempt=0;attempt<20;attempt++) {
       if((await rpc('club_wallet_snapshot',anon)).status!==404) break;
       await new Promise((resolve)=>setTimeout(resolve,100));
@@ -232,5 +233,29 @@ describe('isolated shop and one-time wallet claims',() => {
       expect((await rpc('club_equip_item',poor,{p_request_id:randomUUID(),p_item_id:'char_base'})).status).toBe(403);
       expect((await rpc('club_claim_ruby_notification',poor,{p_notification_id:id('later')})).status).toBe(403);
     } finally { localSql(`update auth.users set banned_until=null where email='${email('poor')}';`); }
+  });
+  it('allows only administrators to create idempotent ruby grants with server audit',async () => {
+    const requestId=randomUUID();
+    const args={p_request_id:requestId,p_user_id:id('buyer'),p_amount:321,p_message:'Synthetic grant',p_delivery:'immediate'};
+    for(const access of [anon,buyer]) expect([401,403]).toContain((await rpc('club_grant_rubies',access,args)).status);
+    const before=await snapshot(buyer);
+    const responses=await Promise.all([rpc('club_grant_rubies',admin,args),rpc('club_grant_rubies',admin,args)]);
+    expect(responses.map((row)=>row.status)).toEqual([200,200]);
+    expect((await snapshot(buyer)).ruby_balance).toBe(before.ruby_balance+321);
+    expect(localSql(`select count(*) from club_private.ruby_grant_requests where actor_id='${id('admin')}' and request_id='${requestId}';`)).toBe('1');
+    expect(localSql(`select count(*) from public.logs where target_user_id='${id('buyer')}' and action_type='Начислил рубины на баланс' and details::jsonb->>'amount'='321';`)).toBe('1');
+    expect((await rpc('club_grant_rubies',admin,{...args,p_amount:322})).status).toBe(400);
+  });
+  it('creates a claimable notification without exposing receipts or accepting forged fields',async () => {
+    const requestId=randomUUID();
+    const args={p_request_id:requestId,p_user_id:id('other'),p_amount:222,p_message:' Claim me ',p_delivery:'notification'};
+    expect((await rpc('club_grant_rubies',admin,args)).status).toBe(200);
+    const current=await snapshot(other);
+    expect(current.pending_notifications).toContainEqual({id:`ruby-${requestId}`,message:'Claim me',amount:222});
+    const before=current.ruby_balance;
+    expect((await claim(other,`ruby-${requestId}`)).ruby_balance).toBe(before+222);
+    for(const extra of [{p_actor_id:id('buyer')},{p_balance:999999},{p_created_at:'2000-01-01'}])
+      expect((await rpc('club_grant_rubies',admin,{...args,p_request_id:randomUUID(),...extra})).status).toBe(404);
+    expect(localSql(`select has_table_privilege('authenticated','club_private.ruby_grant_requests','SELECT,INSERT,UPDATE,DELETE');`)).toBe('f');
   });
 });

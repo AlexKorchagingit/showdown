@@ -1,9 +1,25 @@
-import { fetchClubUsers, fetchUserByEmail, updateUserRow } from './userApi';
+import { fetchClubUsers, fetchUserByEmail } from './userApi';
+import { supabase } from './supabase';
+import { createOperationRequests } from './operationRequests';
 import { getClubDirectory } from './clubDirectory';
 import type { PendingNotification } from './userStorage';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+type GrantIntent={userId:string;amount:number;message:string;delivery:'notification'|'immediate'};
+const queues=new Map<string,ReturnType<typeof createOperationRequests<GrantIntent,void>>>();
+function grantQueue(scope:string) {
+  let queue=queues.get(scope);
+  if(queue)return queue;
+  queue=createOperationRequests(async(input)=>{
+    const {data,error}=await supabase.rpc('club_grant_rubies',{p_request_id:input.requestId,p_user_id:input.userId,
+      p_amount:input.amount,p_message:input.message,p_delivery:input.delivery});
+    if(error||data?.request_id!==input.requestId||data?.user_id!==input.userId) throw new Error('Не удалось подтвердить начисление рубинов');
+  },(value)=>({...value,message:value.message.trim()||'Подарок от клуба'}),'showdown.ruby-grant.v1',undefined,
+    {scope,storage:()=>window.sessionStorage});
+  queues.set(scope,queue); return queue;
 }
 
 export function createRubyNotification(message: string, amount: number): PendingNotification {
@@ -43,19 +59,11 @@ export async function grantRubies(options: {
   const amount = Math.floor(Number(options.amount));
   if (!Number.isFinite(amount) || amount <= 0) return;
 
-  if (normalizeEmail(options.email) === normalizeEmail(options.currentEmail)) {
-    await options.creditCurrentUser(amount);
-    return;
-  }
-
   const user = await fetchUserByEmail(options.email);
   if (!user) return;
-  await updateUserRow(user.id, {
-    pending_notifications: [
-      ...user.pendingNotifications,
-      createRubyNotification(options.message, amount),
-    ],
-  });
+  await grantQueue(normalizeEmail(options.currentEmail))({userId:user.id,amount,message:options.message,
+    delivery:normalizeEmail(options.email)===normalizeEmail(options.currentEmail)?'immediate':'notification'});
+  if(normalizeEmail(options.email)===normalizeEmail(options.currentEmail)) await options.creditCurrentUser(0);
 }
 
 export async function grantRubiesToEveryone(options: {
@@ -86,12 +94,8 @@ export async function creditRubiesToBalance(options: {
   const amount = Math.floor(Number(options.amount));
   if (!Number.isFinite(amount) || amount <= 0 || !options.email.trim()) return;
 
-  if (normalizeEmail(options.email) === normalizeEmail(options.currentEmail)) {
-    await options.creditCurrentUser(amount);
-    return;
-  }
-
   const user = await fetchUserByEmail(options.email);
   if (!user) return;
-  await updateUserRow(user.id, { ruby_balance: Math.max(0, user.coins + amount) });
+  await grantQueue(normalizeEmail(options.currentEmail))({userId:user.id,amount,message:'Выплата за турнир',delivery:'immediate'});
+  if(normalizeEmail(options.email)===normalizeEmail(options.currentEmail)) await options.creditCurrentUser(0);
 }

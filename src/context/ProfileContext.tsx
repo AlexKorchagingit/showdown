@@ -108,9 +108,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const addCoins = useCallback(
     async (amount: number) => {
       const delta = Math.floor(Number(amount));
-      if (!Number.isFinite(delta) || delta === 0) return;
+      if (!Number.isFinite(delta)) return;
       // Legacy admin grants/payouts remain pending a separate server-command substage.
       if (!wallet || walletState.isLoading || walletState.error) throw new Error('Сначала обновите кошелёк');
+      if (delta === 0) { await walletState.refresh(); return; }
       await patchAccount({ coins: Math.max(0, data.coins + delta) });
       await walletState.refresh();
     },
