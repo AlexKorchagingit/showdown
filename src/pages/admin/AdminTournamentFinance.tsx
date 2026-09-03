@@ -82,6 +82,10 @@ export function AdminTournamentFinance() {
   const { isRunning, linkedTournamentId } = useBlinds();
   const {
     transactions,
+    isLoading: financeLoading,
+    loadError: financeError,
+    refreshFinance,
+    isDealerHoursPending,
     addCharge,
     addTicket,
     getDealerHours,
@@ -146,6 +150,8 @@ export function AdminTournamentFinance() {
     );
   }
   if (!tournament) return <Navigate to="/admin/finance" replace />;
+  if (financeLoading) return <ScreenLoading label="Загрузка кассы и часов дилеров…" />;
+  if (financeError) return <FetchErrorCard message={financeError} onRetry={() => void refreshFinance()} />;
 
   const bountyEvent = isBountyEvent(tournament);
   const allowsAddon = tournamentOffersAddon(tournament);
@@ -1095,11 +1101,11 @@ export function AdminTournamentFinance() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          adjustDealerHours(tournament.id, player.id, -0.5);
-                          flashHours(player.id, -0.5);
+                        disabled={hours <= 0 || isDealerHoursPending(tournament.id, player.id)}
+                        onClick={async () => {
+                          if (await adjustDealerHours(tournament.id, player.id, -0.5)) flashHours(player.id, -0.5);
                         }}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95 disabled:opacity-40"
                         style={{
                           background: 'rgba(255,255,255,0.06)',
                           border: '1px solid rgba(255,255,255,0.1)',
@@ -1113,11 +1119,11 @@ export function AdminTournamentFinance() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          adjustDealerHours(tournament.id, player.id, 0.5);
-                          flashHours(player.id, 0.5);
+                        disabled={isDealerHoursPending(tournament.id, player.id)}
+                        onClick={async () => {
+                          if (await adjustDealerHours(tournament.id, player.id, 0.5)) flashHours(player.id, 0.5);
                         }}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95 disabled:opacity-40"
                         style={{
                           background: 'rgba(255,255,255,0.06)',
                           border: '1px solid rgba(255,255,255,0.1)',

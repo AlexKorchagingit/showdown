@@ -4,14 +4,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
   deleteTransactionRow,
-  fetchTransactions,
+  fetchFinanceSnapshot,
   createCharge,
-  updateDealerHoursRows,
+  adjustDealerHoursOnServer,
   markTransactionsPaid,
 } from '../lib/financeApi';
 import {
@@ -21,10 +22,7 @@ import {
 import { sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { createChargeRequests } from '../lib/chargeRequests';
 import { useUser } from './UserContext';
-
-function dealerKey(tournamentId: string, userId: string) {
-  return `${tournamentId}:${userId}`;
-}
+import { createDealerHoursRequests, dealerKey, mergeDealerHours, type DealerHours } from '../lib/dealerHours';
 
 function resolveLedgerUserId(userId: string): string | null {
   return sanitizeParticipantUserId(userId);
@@ -33,9 +31,12 @@ function resolveLedgerUserId(userId: string): string | null {
 interface FinanceContextValue {
   transactions: Transaction[];
   isLoading: boolean;
+  loadError: string | null;
+  refreshFinance: () => Promise<void>;
+  isDealerHoursPending: (tournamentId: string, userId: string) => boolean;
   getDealerHours: (tournamentId: string, userId: string) => number;
   getDealerLoggedAt: (tournamentId: string, userId: string) => string | undefined;
-  adjustDealerHours: (tournamentId: string, userId: string, delta: number) => void;
+  adjustDealerHours: (tournamentId: string, userId: string, delta: number) => Promise<boolean>;
   addCharge: (
     tournamentId: string,
     userId: string,
@@ -52,78 +53,92 @@ interface FinanceContextValue {
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
 
-function seedDealerHours(txs: Transaction[]): Record<string, number> {
-  const map: Record<string, number> = {};
-  txs.forEach((tx) => {
-    const key = dealerKey(tx.tournamentId, tx.userId);
-    map[key] = Math.max(map[key] ?? 0, tx.dealerHours);
-  });
-  return map;
-}
-
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [dealerHoursMap, setDealerHoursMap] = useState<Record<string, number>>({});
-  const [dealerLoggedAtMap, setDealerLoggedAtMap] = useState<Record<string, string>>({});
+  const [dealerHoursMap, setDealerHoursMap] = useState<Record<string, DealerHours>>({});
+  const [pendingHours, setPendingHours] = useState<Set<string>>(new Set());
+  const busyHours = useRef(new Set<string>());
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const fetchSequence = useRef(0);
+  const mutationVersion = useRef(0);
   const [isLoading, setIsLoading] = useState(true);
   const { account } = useUser();
   const actorId = account?.id ?? '';
   const chargeRequests = useMemo(() => createChargeRequests(createCharge, undefined,
     { scope: actorId, storage: () => sessionStorage }), [actorId]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setIsLoading(true);
-      try {
-        const rows = await fetchTransactions();
-        if (cancelled) return;
-        setTransactions(rows);
-        setDealerHoursMap(seedDealerHours(rows));
-      } catch (error) {
-        console.error(error);
-        if (!cancelled) setTransactions([]);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const hoursRequests = useMemo(() => createDealerHoursRequests(adjustDealerHoursOnServer, undefined,
+    { scope: actorId, storage: () => sessionStorage }), [actorId]);
+  const actorRole = account?.role;
+
+  const refreshFinance = useCallback(async () => {
+    const sequence = ++fetchSequence.current;
+    const version = mutationVersion.current;
+    try {
+      const snapshot = await fetchFinanceSnapshot();
+      if (sequence !== fetchSequence.current || version !== mutationVersion.current) return;
+      setTransactions(snapshot.transactions);
+      setDealerHoursMap((prev) => mergeDealerHours(prev, snapshot.dealerHours));
+      setLoadError(null);
+    } catch {
+      if (sequence !== fetchSequence.current || version !== mutationVersion.current) return;
+      setLoadError('Не удалось загрузить финансы. Повторите загрузку перед изменениями.');
+      setTransactions([]);
+      setDealerHoursMap({});
+    } finally {
+      if (sequence === fetchSequence.current) setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    setTransactions([]);
+    setDealerHoursMap({});
+    setIsLoading(true);
+    void refreshFinance();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshFinance();
+    }, 15000);
+    return () => { window.clearInterval(interval); fetchSequence.current++; };
+  }, [actorId, actorRole, refreshFinance]);
 
   const getDealerHours = useCallback(
-    (tournamentId: string, userId: string) => dealerHoursMap[dealerKey(tournamentId, userId)] ?? 0,
+    (tournamentId: string, userId: string) => dealerHoursMap[dealerKey(tournamentId, userId)]?.hours ?? 0,
     [dealerHoursMap],
   );
-
   const getDealerLoggedAt = useCallback(
-    (tournamentId: string, userId: string) => dealerLoggedAtMap[dealerKey(tournamentId, userId)],
-    [dealerLoggedAtMap],
+    (tournamentId: string, userId: string) => dealerHoursMap[dealerKey(tournamentId, userId)]?.loggedAt,
+    [dealerHoursMap],
   );
-
-  const adjustDealerHours = useCallback((tournamentId: string, userId: string, delta: number) => {
+  const isDealerHoursPending = useCallback(
+    (tournamentId: string, userId: string) => pendingHours.has(dealerKey(tournamentId, userId)),
+    [pendingHours],
+  );
+  const adjustDealerHours = useCallback(async (tournamentId: string, userId: string, delta: number) => {
     const ledgerUserId = resolveLedgerUserId(userId);
-    if (!ledgerUserId) return;
+    if (!ledgerUserId || isLoading || loadError) return false;
     const key = dealerKey(tournamentId, ledgerUserId);
-    const stamped = new Date().toISOString();
-    setDealerLoggedAtMap((prev) => ({ ...prev, [key]: stamped }));
-    setDealerHoursMap((prev) => {
-      const nextHours = Math.max(0, Math.round(((prev[key] ?? 0) + delta) * 10) / 10);
-      void updateDealerHoursRows(tournamentId, ledgerUserId, nextHours).catch((error) => {
-        console.error(error);
-        window.alert(error instanceof Error ? error.message : 'Не удалось сохранить часы дилера');
-      });
-      setTransactions((txs) =>
-        txs.map((tx) =>
-          tx.tournamentId === tournamentId && tx.userId === ledgerUserId
-            ? { ...tx, dealerHours: nextHours, isDealer: nextHours > 0 }
-            : tx,
-        ),
-      );
-      return { ...prev, [key]: nextHours };
-    });
-  }, []);
+    if (busyHours.current.has(key)) return false;
+    busyHours.current.add(key);
+    setPendingHours(new Set(busyHours.current));
+    try {
+      const saved = await hoursRequests({ tournamentId, userId: ledgerUserId, delta });
+      mutationVersion.current++;
+      setDealerHoursMap((prev) => mergeDealerHours(prev, [saved]));
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось подтвердить часы дилера');
+      return false;
+    } finally {
+      busyHours.current.delete(key);
+      setPendingHours(new Set(busyHours.current));
+    }
+  }, [hoursRequests, isLoading, loadError]);
+
+  // Canonical hours also override an older charge/payment response that arrived late.
+  const visibleTransactions = useMemo(() => transactions.map((tx) => {
+    const hours = dealerHoursMap[dealerKey(tx.tournamentId, tx.userId)];
+    return hours ? { ...tx, dealerHours: hours.hours, isDealer: hours.hours > 0 } : tx;
+  }), [transactions, dealerHoursMap]);
 
   const submitCharge = useCallback(
     (tournamentId: string, userId: string, type: TransactionType, comment = '') => {
@@ -134,6 +149,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       }
       void chargeRequests({ tournamentId, userId: ledgerUserId, type, comment })
         .then((saved) => {
+          mutationVersion.current++;
           setTransactions((prev) => [saved, ...prev.filter((tx) => tx.id !== saved.id)]);
         })
         .catch((error) => {
@@ -158,6 +174,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (transactionIds.length === 0) return;
     void markTransactionsPaid(transactionIds)
       .then((saved) => {
+        mutationVersion.current++;
         const confirmed = new Map(saved.map((tx) => [tx.id, tx]));
         setTransactions((prev) => prev.map((tx) => confirmed.get(tx.id) ?? tx));
       })
@@ -169,6 +186,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const removeTransaction = useCallback(async (transactionId: string): Promise<boolean> => {
     try {
       await deleteTransactionRow(transactionId);
+      mutationVersion.current++;
       setTransactions((prev) => prev.filter((tx) => tx.id !== transactionId));
       return true;
     } catch (error) {
@@ -215,8 +233,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      transactions,
+      transactions: visibleTransactions,
       isLoading,
+      loadError,
+      refreshFinance,
+      isDealerHoursPending,
       getDealerHours,
       getDealerLoggedAt,
       adjustDealerHours,
@@ -230,8 +251,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       unpaidTotalForPlayer,
     }),
     [
-      transactions,
+      visibleTransactions,
       isLoading,
+      loadError,
+      refreshFinance,
+      isDealerHoursPending,
       getDealerHours,
       getDealerLoggedAt,
       adjustDealerHours,

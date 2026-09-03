@@ -11,6 +11,8 @@ import {
   YAxis,
 } from 'recharts';
 import { useFinance } from '../../../context/FinanceContext';
+import { FetchErrorCard } from '../../../components/FetchErrorCard';
+import { ScreenLoading } from '../../../components/ScreenLoading';
 import { useTournaments } from '../../../context/TournamentContext';
 import { useAuditLog } from '../../../context/AuditLogContext';
 import { exportToCSV } from '../../../lib/exportToCSV';
@@ -47,7 +49,7 @@ function newestFirst(a: Transaction, b: Transaction): number {
 }
 
 export function CashierTab() {
-  const { transactions, markPaid, removeTransaction } = useFinance();
+  const { transactions, markPaid, removeTransaction, isLoading, loadError, refreshFinance } = useFinance();
   const { tournaments } = useTournaments();
   const { logAction } = useAuditLog();
   const [period, setPeriod] = useState<FinancePeriod>('today');
@@ -123,6 +125,8 @@ export function CashierTab() {
     });
   };
 
+  if (isLoading) return <ScreenLoading label="Загрузка кассы…" />;
+  if (loadError) return <FetchErrorCard message={loadError} onRetry={() => void refreshFinance()} />;
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-4 gap-1 rounded-xl p-1" style={{ background: '#1E1612' }}>

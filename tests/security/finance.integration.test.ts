@@ -17,7 +17,8 @@ function fixtureToken(role: string) {
 }
 const anon = fixtureToken('anon');
 const service = fixtureToken('service_role');
-const migration = () => readFileSync('supabase/migrations/20260903_finance_commands.sql', 'utf8');
+const hoursMigration = () => readFileSync('supabase/migrations/20260903_registered_dealer_hours.sql', 'utf8');
+const migration = () => readFileSync('supabase/migrations/20260903_finance_commands.sql', 'utf8') + '\n' + hoursMigration();
 async function rpc(name: string, access: string, args: object) {
   return fetch(`${base}/rest/v1/rpc/${name}`, { method: 'POST',
     headers: { apikey: anon, Authorization: `Bearer ${access}`, 'Content-Type': 'application/json' },
@@ -26,6 +27,9 @@ async function rpc(name: string, access: string, args: object) {
 function charge(overrides: Record<string, unknown> = {}) {
   return { p_request_id: randomUUID(), p_user_id: id('user'), p_tournament_id: id('event'),
     p_type: 'buy-in', p_comment: '', ...overrides };
+}
+function hours(overrides: Record<string, unknown> = {}) {
+  return { p_request_id: randomUUID(), p_user_id: id('user'), p_tournament_id: id('no-addon'), p_delta: 0.5, ...overrides };
 }
 async function login(name: string) {
   localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at)
@@ -169,6 +173,12 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
       expect(localSql(`select count(*) from club_private.finance_requests where request_id='${args.p_request_id}';`)).toBe('0');
       expect((await rpc('club_mark_paid',admin,{ p_transaction_ids:[tx.id] })).ok).toBe(false);
       expect(localSql(`select status,updated_at is null from public.transactions where id='${tx.id}';`)).toBe('unpaid|t');
+      const change = hours({ p_tournament_id:id('event') });
+      expect((await rpc('club_adjust_dealer_hours',admin,change)).ok).toBe(false);
+      expect(localSql(`select hours,revision,logged_at is null from club_private.dealer_hours
+        where tournament_id='${id('event')}' and user_id='${id('user')}';`)).toBe('2.5|0|t');
+      expect(localSql(`select count(*) from club_private.dealer_hour_requests where request_id='${change.p_request_id}';`)).toBe('0');
+      expect(localSql(`select dealer_hours from public.transactions where id='${tx.id}';`)).toBe('2.5');
     } finally {
       // Remove only this test's synthetic failure injector, never business rows.
       localSql(`drop trigger test_finance_audit_failure on public.logs;
@@ -181,6 +191,7 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
     try {
       expect((await rpc('club_create_charge',admin,charge())).status).toBe(403);
       expect((await rpc('club_mark_paid',admin,{ p_transaction_ids:[id('legacy')] })).status).toBe(403);
+      expect((await rpc('club_adjust_dealer_hours',admin,hours())).status).toBe(403);
     } finally {
       localSql(`update club_private.profile_roles set role='admin' where user_id='${id('admin')}';`);
     }
@@ -192,5 +203,92 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
     const before = localSql(`select count(*),sum(amount) from public.transactions where tournament_id='${id('event')}';`);
     localSql(migration());
     expect(localSql(`select count(*),sum(amount) from public.transactions where tournament_id='${id('event')}';`)).toBe(before);
+  });
+
+  it('stores hours before any charge exists and restores them through the server snapshot', async () => {
+    const res = await rpc('club_adjust_dealer_hours',admin,hours());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ hours:0.5, revision:1, user_id:id('user') });
+    expect(localSql(`select count(*) from public.transactions where tournament_id='${id('no-addon')}';`)).toBe('0');
+    const snapshot = await (await rpc('club_finance_snapshot',user,{})).json();
+    expect(snapshot.dealer_hours.find((row: {tournament_id:string}) => row.tournament_id===id('no-addon')).hours).toBe(0.5);
+  });
+  it('does not reapply simultaneous repetitions or accept a different delta with the same operation ID', async () => {
+    const args = hours();
+    const results = await Promise.all(Array.from({length:3},()=>rpc('club_adjust_dealer_hours',admin,args)));
+    expect(results.map((res)=>res.status)).toEqual([200,200,200]);
+    for (const res of results) expect(await res.json()).toMatchObject({ hours:1,revision:2 });
+    expect(localSql(`select count(*) from club_private.dealer_hour_requests where request_id='${args.p_request_id}';`)).toBe('1');
+    expect((await rpc('club_adjust_dealer_hours',admin,{ ...args,p_delta:-0.5 })).status).toBe(400);
+  });
+  it('retains all simultaneous increments from two administrators', async () => {
+    const results = await Promise.all([rpc('club_adjust_dealer_hours',admin,hours()),
+      rpc('club_adjust_dealer_hours',owner,hours()),rpc('club_adjust_dealer_hours',admin,hours())]);
+    expect(results.map((res)=>res.status)).toEqual([200,200,200]);
+    expect(localSql(`select hours,revision from club_private.dealer_hours
+      where tournament_id='${id('no-addon')}' and user_id='${id('user')}';`)).toBe('2.5|5');
+  });
+  it('serializes the first charge with a simultaneous hours change', async () => {
+    const results = await Promise.all([
+      rpc('club_create_charge',admin,charge({p_tournament_id:id('no-addon')})),
+      rpc('club_adjust_dealer_hours',owner,hours()),
+    ]);
+    expect(results.map((res)=>res.status)).toEqual([200,200]);
+    const snapshot = await (await rpc('club_finance_snapshot',admin,{})).json();
+    const txs = snapshot.transactions.filter((row: {tournament_id:string})=>row.tournament_id===id('no-addon'));
+    expect(txs.length).toBe(1);
+    expect(txs[0].dealer_hours).toBe(3);
+    expect(txs[0].is_dealer).toBe(true);
+  });
+  it('never goes negative and remembers a no-op decrement even after a later increment', async () => {
+    const noop = hours({p_user_id:id('owner'),p_delta:-0.5});
+    expect(await (await rpc('club_adjust_dealer_hours',admin,noop)).json()).toMatchObject({hours:0,revision:0,logged_at:null});
+    expect(await (await rpc('club_adjust_dealer_hours',admin,hours({p_user_id:id('owner')}))).json()).toMatchObject({hours:0.5,revision:1});
+    expect(await (await rpc('club_adjust_dealer_hours',admin,noop)).json()).toMatchObject({hours:0.5,revision:1});
+  });
+  it('reads only the member own finances and denies anonymous snapshots and non-admin changes', async () => {
+    expect((await rpc('club_create_charge',admin,charge({p_user_id:id('owner')}))).status).toBe(200);
+    for (const access of [anon,user]) {
+      expect([401,403]).toContain((await rpc('club_adjust_dealer_hours',access,hours())).status);
+    }
+    expect([401,403]).toContain((await rpc('club_finance_snapshot',anon,{})).status);
+    expect((await rpc('club_finance_snapshot',fixtureToken('authenticated'),{})).status).toBe(403);
+    const own = await (await rpc('club_finance_snapshot',user,{})).json();
+    expect(own.transactions.length).toBeGreaterThan(0);
+    expect([...own.transactions,...own.dealer_hours].every((row:{user_id:string})=>row.user_id===id('user'))).toBe(true);
+    const all = await (await rpc('club_finance_snapshot',admin,{})).json();
+    expect(all.transactions.some((row:{user_id:string})=>row.user_id===id('owner'))).toBe(true);
+    expect((await rpc('club_finance_snapshot',user,{p_user_id:id('owner')})).status).toBe(404);
+  });
+  it('rejects invalid deltas, unknown targets and client-assigned totals or timestamps', async () => {
+    for (const delta of [0,1,-1,0.1,null,'NaN','Infinity']) {
+      expect((await rpc('club_adjust_dealer_hours',admin,hours({p_delta:delta}))).status).toBe(400);
+    }
+    for (const extra of [{p_hours:999},{p_logged_at:'2000-01-01'},{p_admin_id:id('owner')}]) {
+      expect((await rpc('club_adjust_dealer_hours',admin,hours(extra))).status).toBe(404);
+    }
+    for (const extra of [{p_request_id:null},{p_user_id:id('missing')},{p_tournament_id:id('missing')}]) {
+      expect((await rpc('club_adjust_dealer_hours',admin,hours(extra))).status).toBe(400);
+    }
+  });
+  it('updates legacy hour projections without changing the payment date, amount or admin flags', async () => {
+    const res = await rpc('club_adjust_dealer_hours',admin,hours({p_tournament_id:id('event')}));
+    expect(res.status).toBe(200);
+    const result = await res.json();
+    expect(result).toMatchObject({hours:3,revision:1});
+    expect(Number.isFinite(Date.parse(result.logged_at))).toBe(true);
+    expect(localSql(`select dealer_hours,amount,status,updated_at='2026-08-01T12:00:00Z'::timestamptz
+      from public.transactions where id='${id('legacy')}';`)).toBe('3.0|1000|paid|t');
+    expect(localSql(`select count(*),count(*) filter(where is_admin),sum(ruby_balance)
+      from public.users where id like '${prefix}%';`)).toBe('3|2|7035');
+    // An old ledger value must not overwrite an existing canonical correction on rerun.
+    localSql(hoursMigration());
+    expect(localSql(`select hours,revision from club_private.dealer_hours
+      where tournament_id='${id('event')}' and user_id='${id('user')}';`)).toBe('3.0|1');
+  });
+  it('keeps canonical hours, receipts and internal helpers unavailable to client roles', () => {
+    expect(localSql(`select has_table_privilege('authenticated','club_private.dealer_hours','SELECT,INSERT,UPDATE,DELETE'),
+      has_table_privilege('anon','club_private.dealer_hour_requests','SELECT,INSERT,UPDATE,DELETE'),
+      has_function_privilege('authenticated','club_private.lock_dealer_hours(text,text)','EXECUTE');`)).toBe('f|f|f');
   });
 });
