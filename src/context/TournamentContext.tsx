@@ -9,19 +9,18 @@ import {
 import type { Participant, Tournament } from '../types/tournament';
 import { useUser } from './UserContext';
 import {
-  deleteParticipantSeat,
   deleteTournamentRow,
   fetchParticipants,
   fetchTournaments as loadTournaments,
-  insertParticipantRow,
   insertTournament,
   syncParticipantRows,
   updateTournamentRow,
 } from '../lib/tournamentApi';
-import { participantToRow, resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
-import { clubUserIdSet, countOccupiedLobbySeats, lobbySeatedPlayers } from '../lib/clubRating';
+import { resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
+import { clubUserIdSet, lobbySeatedPlayers } from '../lib/clubRating';
 import { usePersonnel } from '../hooks/usePersonnel';
 import { withPersonnel, type PersonnelIntent, type PersonnelRoster } from '../lib/personnel';
+import { setTournamentRegistration } from '../lib/tournamentRegistration';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -150,29 +149,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
       const seated = liveSeats.some((player) => isSeatOfUser(player, userId));
       try {
-        if (seated) {
-          await deleteParticipantSeat(tournamentId, userId);
-          await refreshParticipants(tournamentId);
-          return;
-        }
-        const knownIds = clubUserIdSet(clubUsers);
-        const occupied =
-          knownIds.size > 0
-            ? countOccupiedLobbySeats(liveSeats, knownIds)
-            : liveSeats.length;
-        if (occupied >= tournament.totalSeats) {
-          window.alert('Свободных мест нет');
-          await refreshParticipants(tournamentId);
-          return;
-        }
-        const player: Participant = {
-          id: userId,
-          nickname: account.nickname,
-          rating: 0,
-        };
-        await insertParticipantRow(
-          participantToRow(tournamentId, player, sanitizeParticipantUserId(userId)),
-        );
+        await setTournamentRegistration(account.id, tournamentId, !seated);
         await refreshParticipants(tournamentId);
       } catch (error) {
         console.error(error);
@@ -180,7 +157,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         window.alert(error instanceof Error ? error.message : 'Не удалось обновить запись');
       }
     },
-    [account, clubUsers, refreshParticipants, tournaments, userId],
+    [account, refreshParticipants, tournaments, userId],
   );
 
   const updateTournament = useCallback(

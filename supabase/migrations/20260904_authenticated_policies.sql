@@ -15,6 +15,7 @@ do $$ begin
         'users_read_authorized','users_update_authorized','tournaments_read_authorized','tournaments_admin_insert',
         'tournaments_admin_update','tournaments_admin_delete','participants_read_authorized',
         'participants_insert_authorized','participants_admin_update','participants_delete_authorized',
+        'participants_admin_insert','participants_admin_delete',
         'transactions_read_authorized','logs_superadmin_read','logs_admin_insert',
         'timer_admin_read','timer_admin_insert','timer_admin_update')) then
     raise exception 'Unexpected public policy; review before cutover';
