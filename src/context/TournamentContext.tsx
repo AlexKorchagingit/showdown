@@ -177,6 +177,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             current.participants,
             patch.participants,
             resolveUserId,
+            account?.id ?? '',
           );
         }
         setTournaments((prev) => prev.map((row) => (row.id === tournamentId ? next : row)));
@@ -185,7 +186,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         window.alert(error instanceof Error ? error.message : 'Не удалось сохранить турнир');
       }
     },
-    [resolveUserId, tournaments],
+    [account?.id, resolveUserId, tournaments],
   );
 
   const addTournament = useCallback(
@@ -201,6 +202,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
               [],
               created.participants,
               resolveUserId,
+              account?.id ?? '',
             );
           }
         } catch (seatError) {
@@ -226,7 +228,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         return '';
       }
     },
-    [resolveUserId],
+    [account?.id, resolveUserId],
   );
 
   const duplicateTournament = useCallback(

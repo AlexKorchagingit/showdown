@@ -42,7 +42,6 @@ import {
 } from '../../lib/guestPlayer';
 import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnalytics';
 import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
-import { clearParticipantPlace } from '../../lib/tournamentApi';
 import { seasonPointsByUserId } from '../../lib/clubRating';
 import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 
@@ -338,7 +337,6 @@ export function AdminTournamentFinance() {
     const player = tournament.participants.find((p) => p.id === playerId);
     if (!player || typeof player.place !== 'number' || tournament.isClosed) return;
     try {
-      await clearParticipantPlace(tournament.id, player.id);
       await updateTournament(tournament.id, {
         participants: tournament.participants.map((p) =>
           p.id === playerId ? { ...p, place: undefined } : p,

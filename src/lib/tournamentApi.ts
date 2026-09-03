@@ -13,6 +13,7 @@ import {
 } from './supabaseMap';
 import type { Participant, Tournament } from '../types/tournament';
 import { getClubDirectory } from './clubDirectory';
+import { replaceParticipants, type ParticipantCommandRow } from './participantCommands';
 
 /** Nested user preview. Rating lives on `participants`, not `users`. */
 const PARTICIPANT_SELECT_WITH_USER = '*, users (nickname, equipped_avatar, equipped_char)';
@@ -222,27 +223,6 @@ function rowsForSeats(
   });
 }
 
-async function insertSeatRows(
-  tournamentId: string,
-  players: Participant[],
-  resolveUserId: (player: Participant) => string | null,
-  realIds: Set<string>,
-): Promise<void> {
-  const rows = rowsForSeats(tournamentId, players, resolveUserId, realIds);
-  let lastError: Error | null = null;
-  let inserted = 0;
-  for (const row of rows) {
-    try {
-      await insertParticipantRow(row);
-      inserted += 1;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      logSupabaseError(lastError, 'insert participant batch');
-    }
-  }
-  if (inserted === 0 && rows.length > 0 && lastError) throw lastError;
-}
-
 export async function removeParticipantSeat(
   tournamentId: string,
   player: Pick<Participant, 'id' | 'nickname'>,
@@ -322,6 +302,7 @@ export async function syncParticipantRows(
   previous: Participant[],
   next: Participant[],
   resolveUserId: (player: Participant) => string | null,
+  actorId: string,
 ): Promise<Participant[]> {
   let baseline = previous;
   try {
@@ -330,30 +311,21 @@ export async function syncParticipantRows(
     logSupabaseError(error instanceof Error ? error : { message: String(error) }, 'sync participants fetch');
   }
 
-  const previousById = new Map(baseline.map((player) => [player.id, player]));
-  const nextIds = new Set(next.map((player) => player.id));
-  const removed = baseline.filter((player) => !nextIds.has(player.id));
-  const added = next.filter((player) => !previousById.has(player.id));
-  const changed = next.filter((player) => {
-    const before = previousById.get(player.id);
-    return Boolean(before && !sameSeat(before, player));
-  });
-
-  for (const player of removed) {
-    await removeParticipantSeat(tournamentId, player);
-  }
-
   const realIds = await fetchKnownUserIds();
-  if (added.length > 0) {
-    await insertSeatRows(tournamentId, added, resolveUserId, realIds);
-  }
-  if (changed.length > 0) {
-    await upsertParticipantRows(
-      changed.map((player) =>
-        participantToRow(tournamentId, player, bindKnownUserId(resolveUserId(player), realIds)),
-      ),
-    );
-  }
+  const desired=rowsForSeats(tournamentId,next,resolveUserId,realIds);
+  const previousById=new Map(baseline.map((player)=>[player.id,player]));
+  const removed=baseline.filter((player)=>!next.some((candidate)=>candidate.id===player.id));
+  const added=next.filter((player)=>!previousById.has(player.id));
+  const rows:ParticipantCommandRow[]=desired.map((row,index)=>{
+    const player=next[index];
+    let source=previousById.get(player.id);
+    if(!source&&added.length===1&&removed.length===1&&!removed[0].userId&&Boolean(player.userId)
+      &&sameSeat(removed[0],{...player,id:removed[0].id,
+      userId:removed[0].userId,nickname:removed[0].nickname}))source=removed[0];
+    return {source_id:source?participantRowId(tournamentId,source.id):null,seat_id:row.id,user_id:row.user_id,
+      nickname:row.nickname,place:row.place,knockouts:row.knockouts,comment:row.comment};
+  });
+  await replaceParticipants(actorId,tournamentId,rows);
 
   return fetchParticipants(tournamentId);
 }
