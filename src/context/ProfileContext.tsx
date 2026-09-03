@@ -7,14 +7,14 @@ import {
 } from 'react';
 import { useUser } from './UserContext';
 import {
-  COSMETICS_RESET_TOKEN,
   DEFAULT_BG_ID,
   DEFAULT_CHARACTER_ID,
-  FREE_ITEM_IDS,
-  findShopItem,
   resolveImage,
   avatarUrlForChar,
 } from '../data/shopItems';
+import type { ShopItem } from '../data/shopItems';
+import { shopCatalogItems } from '../lib/wallet';
+import { useWallet } from '../hooks/useWallet';
 import type { UserData } from '../lib/userStorage';
 
 const EMPTY_PROFILE: UserData = {
@@ -30,6 +30,11 @@ const EMPTY_PROFILE: UserData = {
 
 interface ProfileContextValue extends UserData {
   isLoading: boolean;
+  walletLoading: boolean;
+  walletError: string | null;
+  walletBusy: boolean;
+  refreshWallet: () => Promise<void>;
+  shopItems: ShopItem[];
   characterImage: string;
   backgroundImage: string;
   equippedAvatar: string;
@@ -39,16 +44,23 @@ interface ProfileContextValue extends UserData {
   isOwned: (itemId: string) => boolean;
   isEquipped: (itemId: string) => boolean;
   buyItem: (itemId: string) => Promise<boolean>;
-  equipItem: (itemId: string) => void;
+  equipItem: (itemId: string) => Promise<boolean>;
   addCoins: (amount: number) => Promise<void>;
-  claimFirstNotification: () => void;
+  claimFirstNotification: () => Promise<boolean>;
 }
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { account, isLoading, patchAccount } = useUser();
-  const data: UserData = account ?? EMPTY_PROFILE;
+  const walletState = useWallet(account?.id ?? '');
+  const wallet = walletState.wallet;
+  const data: UserData = { ...(account ?? EMPTY_PROFILE),
+    coins: wallet?.coins ?? 0, ownedItems: wallet?.ownedItems ?? [],
+    equippedChar: wallet?.equippedChar ?? DEFAULT_CHARACTER_ID, equippedBg: wallet?.equippedBg ?? DEFAULT_BG_ID,
+    pendingNotifications: wallet?.pendingNotifications ?? [],
+  };
+  const shopItems = useMemo(() => wallet ? shopCatalogItems(wallet) : [], [wallet]);
 
   const updateNickname = useCallback(
     (value: string) => {
@@ -70,8 +82,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   );
 
   const isOwned = useCallback(
-    (itemId: string) => data.ownedItems.includes(itemId),
-    [data.ownedItems],
+    (itemId: string) => data.ownedItems.includes(itemId) || wallet?.catalog.some((item) => item.id === itemId && item.price === 0) === true,
+    [data.ownedItems, wallet],
   );
 
   const isEquipped = useCallback(
@@ -80,66 +92,45 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   );
 
   const equipItem = useCallback(
-    (itemId: string) => {
-      const item = findShopItem(itemId);
-      if (!item) return;
-      void patchAccount(
-        item.type === 'character'
-          ? { equippedChar: itemId, equippedBg: data.equippedBg }
-          : { equippedBg: itemId, equippedChar: data.equippedChar },
-      );
-    },
-    [data.equippedBg, data.equippedChar, patchAccount],
+    (itemId: string) => walletState.shop({ action: 'equip', itemId }),
+    [walletState.shop],
   );
 
   const buyItem = useCallback(
     async (itemId: string) => {
-      const item = findShopItem(itemId);
+      const item = wallet?.catalog.find((entry) => entry.id === itemId);
       if (!item) return false;
-      if (data.ownedItems.includes(itemId)) return true;
-      if (data.coins < item.price) return false;
-      const ownedItems = [
-        ...new Set([
-          COSMETICS_RESET_TOKEN,
-          ...FREE_ITEM_IDS,
-          ...data.ownedItems,
-          itemId,
-        ]),
-      ];
-      const next = await patchAccount({
-        coins: data.coins - item.price,
-        ownedItems,
-        ...(item.type === 'character'
-          ? { equippedChar: itemId, equippedBg: data.equippedBg }
-          : { equippedBg: itemId, equippedChar: data.equippedChar }),
-      });
-      return Boolean(next?.ownedItems.includes(itemId));
+      return walletState.shop({ action: 'buy', itemId, catalogRevision: item.revision });
     },
-    [data.coins, data.equippedBg, data.equippedChar, data.ownedItems, patchAccount],
+    [wallet, walletState.shop],
   );
 
   const addCoins = useCallback(
     async (amount: number) => {
       const delta = Math.floor(Number(amount));
       if (!Number.isFinite(delta) || delta === 0) return;
+      // Legacy admin grants/payouts remain pending a separate server-command substage.
+      if (!wallet || walletState.isLoading || walletState.error) throw new Error('Сначала обновите кошелёк');
       await patchAccount({ coins: Math.max(0, data.coins + delta) });
+      await walletState.refresh();
     },
-    [data.coins, patchAccount],
+    [data.coins, patchAccount, wallet, walletState.isLoading, walletState.error, walletState.refresh],
   );
 
-  const claimFirstNotification = useCallback(() => {
-    const [first, ...rest] = data.pendingNotifications;
-    if (!first) return;
-    void patchAccount({
-      coins: data.coins + first.amount,
-      pendingNotifications: rest,
-    });
-  }, [data.coins, data.pendingNotifications, patchAccount]);
+  const claimFirstNotification = useCallback(async () => {
+    const first = data.pendingNotifications[0];
+    return first ? walletState.claim(first.id) : false;
+  }, [data.pendingNotifications, walletState.claim]);
 
   const value = useMemo(
     () => ({
       ...data,
-      isLoading,
+      isLoading: isLoading || walletState.isLoading,
+      walletLoading: walletState.isLoading,
+      walletError: walletState.error,
+      walletBusy: walletState.isBusy,
+      refreshWallet: walletState.refresh,
+      shopItems,
       characterImage: resolveImage(data.equippedChar, 'character'),
       backgroundImage: resolveImage(data.equippedBg, 'bg'),
       equippedAvatar: avatarUrlForChar(data.equippedChar),
@@ -165,6 +156,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       equipItem,
       addCoins,
       claimFirstNotification,
+      walletState,
+      shopItems,
     ],
   );
 

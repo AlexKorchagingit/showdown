@@ -1,7 +1,3 @@
-import {
-  DEFAULT_CHARACTER_ID,
-  avatarUrlForChar,
-} from '../data/shopItems';
 import { getClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
 import { supabase, logSupabaseError } from './supabase';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
@@ -92,6 +88,9 @@ export async function updateUserRow(
   userId: string,
   patch: Record<string, unknown>,
 ): Promise<MappedUser | null> {
+  if (['owned_items','equipped_char','equipped_bg','equipped_avatar'].some((field) => field in patch)) {
+    throw new Error('Инвентарь и внешний вид изменяются только серверной командой магазина');
+  }
   const { data, error } = await supabase.from('users').update(patch).eq('id', userId).select('*').single();
   if (error || !data) {
     logSupabaseError(error, 'update user');
@@ -110,26 +109,17 @@ export async function updateUserRow(
 }
 
 export function mappedUserToPatch(changes: Partial<MappedUser>): Record<string, unknown> {
+  if (['ownedItems','equippedChar','equippedBg','equippedAvatar'].some((field) => field in changes)) {
+    throw new Error('Инвентарь и внешний вид изменяются только серверной командой магазина');
+  }
   const patch: Record<string, unknown> = {};
   if (changes.nickname != null) patch.nickname = changes.nickname;
   if (changes.birthDate != null) patch.birth_date = changes.birthDate;
   if (changes.slogan != null) patch.slogan = changes.slogan;
   if (changes.coins != null) patch.ruby_balance = Math.max(0, Math.trunc(changes.coins));
   if (changes.rubyBalance != null) patch.ruby_balance = Math.max(0, Math.trunc(changes.rubyBalance));
-  if (changes.ownedItems != null) patch.owned_items = changes.ownedItems;
-  if (changes.equippedChar != null) patch.equipped_char = changes.equippedChar;
-  if (changes.equippedBg != null) patch.equipped_bg = changes.equippedBg;
   if (changes.pendingNotifications != null) patch.pending_notifications = changes.pendingNotifications;
   if (changes.agreementsAcceptedAt != null) patch.agreements_accepted_at = changes.agreementsAcceptedAt;
-  if (changes.equippedChar != null || changes.equippedBg != null) {
-    const charId = changes.equippedChar;
-    const bgId = changes.equippedBg;
-    patch.equipped_avatar = [
-      avatarUrlForChar(charId || DEFAULT_CHARACTER_ID),
-      charId,
-      bgId,
-    ].filter((item): item is string => Boolean(item));
-  }
   return patch;
 }
 

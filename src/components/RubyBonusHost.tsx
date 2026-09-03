@@ -6,7 +6,7 @@ import { useProfile } from '../context/ProfileContext';
 import type { PendingNotification } from '../lib/userStorage';
 
 export function RubyBonusHost() {
-  const { pendingNotifications, claimFirstNotification } = useProfile();
+  const { pendingNotifications, claimFirstNotification, walletBusy, walletLoading, walletError, refreshWallet } = useProfile();
   const [bonus, setBonus] = useState<PendingNotification | null>(null);
 
   useEffect(() => {
@@ -48,19 +48,26 @@ export function RubyBonusHost() {
               🎉 БОНУС! {bonus.message}
             </h2>
             <p className="text-[15px] font-800 mb-6" style={{ color: '#86efac' }}>
-              Начислено: +{bonus.amount.toLocaleString('ru-RU')} рубинов
+              К получению: +{bonus.amount.toLocaleString('ru-RU')} рубинов
             </p>
 
+            {walletError ? (
+              <div className="text-[12px] text-red-300 mb-3">
+                <p>{walletError}</p>
+                <button type="button" onClick={() => void refreshWallet()} className="underline mt-1">Обновить кошелёк</button>
+              </div>
+            ) : null}
             <button
               type="button"
-              onClick={claimFirstNotification}
-              className="w-full h-12 rounded-xl text-[15px] font-800 text-[#0A0908] active:scale-[0.97] transition-transform"
+              disabled={walletBusy || walletLoading || Boolean(walletError)}
+              onClick={() => void claimFirstNotification()}
+              className="w-full h-12 rounded-xl text-[15px] font-800 text-[#0A0908] active:scale-[0.97] disabled:opacity-50 transition-transform"
               style={{
                 background: 'linear-gradient(to right, #8C4C27, #D99962)',
                 boxShadow: '0 0 18px rgba(217,153,98,0.32)',
               }}
             >
-              Забрать
+              {walletBusy ? 'Подтверждение…' : 'Забрать'}
             </button>
           </motion.div>
         </motion.div>

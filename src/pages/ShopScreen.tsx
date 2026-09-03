@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Gem } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
-import { useUser } from '../context/UserContext';
+import { ScreenLoading } from '../components/ScreenLoading';
+import { FetchErrorCard } from '../components/FetchErrorCard';
 import { CoinBalance } from '../components/CoinBalance';
 import { RubyInfoModal } from '../components/RubyInfoModal';
-import { shopItemsOfType, type ShopItem, type ShopItemType } from '../data/shopItems';
+import { type ShopItem, type ShopItemType } from '../data/shopItems';
 
 const TAB_ORDER: ShopItemType[] = ['character', 'bg'];
 const TAB_LABEL: Record<ShopItemType, string> = {
@@ -103,12 +104,14 @@ function ItemCard({
   equipped,
   affordable,
   onSelect,
+  disabled,
 }: {
   item: ShopItem;
   owned: boolean;
   equipped: boolean;
   affordable: boolean;
   onSelect: () => void;
+  disabled: boolean;
 }) {
   const locked = !owned && !affordable;
   const isBackground = item.type === 'bg';
@@ -130,7 +133,7 @@ function ItemCard({
 
   // Backgrounds are shown edge to edge with the control floating on the artwork
   const card = isBackground ? (
-    <button type="button" onClick={onSelect} className={cardClass}>
+    <button type="button" disabled={disabled} onClick={onSelect} className={`${cardClass} disabled:opacity-50`}>
       <img
         src={item.image}
         alt={item.name}
@@ -139,7 +142,7 @@ function ItemCard({
       <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90%] z-10">{status}</span>
     </button>
   ) : (
-    <button type="button" onClick={onSelect} className={`${cardClass} flex flex-col`}>
+    <button type="button" disabled={disabled} onClick={onSelect} className={`${cardClass} flex flex-col disabled:opacity-50`}>
       <div className="relative min-h-0 flex-1 overflow-hidden bg-[#1d0b07]">
         <img
           src={item.image}
@@ -161,13 +164,13 @@ function ItemCard({
 
 export function ShopScreen() {
   const navigate = useNavigate();
-  const { coins, isOwned, isEquipped, buyItem, equipItem, nickname } = useProfile();
-  const { email, userId, addLog } = useUser();
+  const { coins, isOwned, isEquipped, buyItem, equipItem, shopItems,
+    walletLoading, walletError, walletBusy, refreshWallet } = useProfile();
   const [tab, setTab] = useState<ShopItemType>('character');
   const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
-  const [buyingId, setBuyingId] = useState<string | null>(null);
-
-  const items = shopItemsOfType(tab);
+  if (walletLoading) return <ScreenLoading label="Загрузка магазина и баланса…" />;
+  if (walletError) return <FetchErrorCard message={walletError} onRetry={() => void refreshWallet()} />;
+  const items = shopItems.filter((item) => item.type === tab);
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
@@ -246,10 +249,11 @@ export function ShopScreen() {
                   owned={owned}
                   equipped={isEquipped(item.id)}
                   affordable={affordable}
+                  disabled={walletBusy}
                   onSelect={() => {
                       void (async () => {
                         if (owned) {
-                          equipItem(item.id);
+                          await equipItem(item.id);
                           return;
                         }
                         if (!affordable) {
@@ -258,25 +262,7 @@ export function ShopScreen() {
                           );
                           return;
                         }
-                        if (buyingId) return;
-                        setBuyingId(item.id);
-                        try {
-                          const bought = await buyItem(item.id);
-                          if (!bought) {
-                            window.alert('Не удалось купить. Проверьте интернет и попробуйте ещё раз.');
-                            return;
-                          }
-                          const kind = item.type === 'bg' ? 'фона' : 'персонажа';
-                          await addLog({
-                            action_type: 'Списал рубины',
-                            target_user_id: userId,
-                            target_user_email: email,
-                            target_user_name: nickname,
-                            details: `Сумма: ${item.price.toLocaleString('ru-RU')}. Причина: покупка ${kind}`,
-                          });
-                        } finally {
-                          setBuyingId(null);
-                        }
+                        await buyItem(item.id);
                       })();
                     }}
                 />
