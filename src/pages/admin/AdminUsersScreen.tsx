@@ -2,39 +2,32 @@ import { useState } from 'react';
 import { Check, Trash2 } from 'lucide-react';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { ScreenLoading } from '../../components/ScreenLoading';
-import { ADMIN_EMAIL, useUser } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext';
 import { useAuditLog } from '../../context/AuditLogContext';
 import { CompactHeader } from '../../components/CompactHeader';
 import { formatBirthDate } from '../../lib/playerName';
-import { deleteUserRow, updateUserRow } from '../../lib/userApi';
+import { deleteUserRow } from '../../lib/userApi';
+import { supabase } from '../../lib/supabase';
 
 export function AdminUsersScreen() {
   const { logAction } = useAuditLog();
-  const { email, clubUsers, isLoading, refreshClubUsers } = useUser();
+  const { email, clubUsers, isLoading, refreshClubUsers, isSuperAdmin } = useUser();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<(typeof clubUsers)[number] | null>(null);
 
   const toggleAdmin = async (id: string) => {
     const target = clubUsers.find((u) => u.id === id);
-    if (!target || target.email.toLowerCase() === ADMIN_EMAIL) return;
+    if (!isSuperAdmin || !target || target.role === 'superadmin') return;
     const granting = !target.isAdmin;
     setBusyId(id);
-    const saved = await updateUserRow(id, { is_admin: granting });
+    const { error } = await supabase.rpc('club_set_role', { p_user_id: id, p_role: granting ? 'admin' : 'user' });
     setBusyId(null);
-    if (!saved) {
+    if (error) {
       window.alert('Не удалось обновить права администратора');
       return;
     }
     await refreshClubUsers();
-    if (granting) {
-      logAction({
-        actionType: 'Выдал права администратора',
-        targetUserId: target.id,
-        targetUserEmail: target.email,
-        targetUserName: target.nickname,
-        details: 'Выданы права администратора',
-      });
-    }
+    // The role RPC records the authenticated actor atomically; no client log.
   };
 
   const confirmDelete = async () => {
@@ -73,7 +66,9 @@ export function AdminUsersScreen() {
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
         <p className="text-[12px] font-500 mb-3 px-1" style={{ color: '#6B6360' }}>
-          Отметьте, кто должен получить права администратора
+          {isSuperAdmin
+            ? 'Отметьте, кто должен получить права администратора'
+            : 'Права пользователей изменяет только SuperAdmin'}
         </p>
 
         {isLoading && clubUsers.length === 0 ? (
@@ -81,7 +76,7 @@ export function AdminUsersScreen() {
         ) : (
           <div className="space-y-3">
             {clubUsers.map((user) => {
-              const isLocked = user.email.toLowerCase() === ADMIN_EMAIL;
+              const isLocked = !isSuperAdmin || user.role === 'superadmin';
               const isSelf = user.email.toLowerCase() === email.trim().toLowerCase();
               const canDelete = !isLocked && !isSelf;
 

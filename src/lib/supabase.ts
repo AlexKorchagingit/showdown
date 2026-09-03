@@ -12,19 +12,17 @@ if (supabaseUrl.includes(':8000')) {
   throw new Error('VITE_SUPABASE_URL must be https://api.showdown-br.ru without port 8000');
 }
 
-/**
- * Club data uses the anon key as a public PostgREST client — not Supabase Auth.
- * `accessToken` skips GoTrue `getSession()` so the client does not wait on Auth.
- */
+/** Personal Auth tokens identify callers; the anon key is only the public API key. */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  accessToken: async () => supabaseAnonKey,
   global: {
     fetch: createTimeoutFetch(12000),
   },
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+    storageKey: 'showdown.auth.session',
+    persistSession: true,
+    autoRefreshToken: true,
     detectSessionInUrl: false,
+    lockAcquireTimeout: 10_000,
   },
 });
 

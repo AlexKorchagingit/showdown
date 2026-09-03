@@ -1,14 +1,10 @@
 import {
-  COSMETICS_RESET_TOKEN,
-  DEFAULT_BG_ID,
   DEFAULT_CHARACTER_ID,
   avatarUrlForChar,
-  cosmeticsResetOwnedItems,
 } from '../data/shopItems';
-import { getClubDirectory, removeClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
+import { getClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
 import { supabase, logSupabaseError } from './supabase';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
-import { STARTING_COINS } from './userStorage';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -42,25 +38,22 @@ function lookupFromQuery(
 
 export async function lookupUserById(userId: string): Promise<UserLookupResult> {
   if (!userId) return { status: 'missing' };
-  const { data, error } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
-  return lookupFromQuery(data, error);
+  const { data, error } = await supabase.rpc('club_directory');
+  return lookupFromQuery(data?.find((row: UserRow) => row.id === userId), error);
 }
 
 export async function lookupUserByEmail(email: string): Promise<UserLookupResult> {
   const normalized = normalizeEmail(email);
   if (!normalized) return { status: 'missing' };
-  const { data, error } = await supabase.from('users').select('*').eq('email', normalized).maybeSingle();
-  return lookupFromQuery(data, error);
+  const { data, error } = await supabase.rpc('club_directory');
+  return lookupFromQuery(data?.find((row: UserRow) => row.email?.trim().toLowerCase() === normalized), error);
 }
 
 /** Resolve the signed-in account. Network errors stay `error` so we do not log people out offline. */
-export async function lookupSessionAccount(userId: string, email: string): Promise<UserLookupResult> {
-  if (userId) {
-    const byId = await lookupUserById(userId);
-    if (byId.status === 'found' || byId.status === 'error') return byId;
-  }
-  if (email) return lookupUserByEmail(email);
-  return { status: 'missing' };
+export async function lookupSessionAccount(_userId?: string, _email?: string): Promise<UserLookupResult> {
+  // Cache keys/arguments are never used to select the authenticated principal.
+  const { data, error } = await supabase.rpc('club_current_account');
+  return lookupFromQuery(data, error);
 }
 
 export async function fetchUserById(userId: string): Promise<MappedUser | null> {
@@ -74,12 +67,12 @@ export async function fetchUserByEmail(email: string): Promise<MappedUser | null
 }
 
 export async function fetchClubUsers(): Promise<MappedUser[]> {
-  const { data, error } = await supabase.from('users').select('*').order('nickname', { ascending: true });
+  const { data, error } = await supabase.rpc('club_directory');
   if (error || !data) {
     logSupabaseError(error, 'club users');
     return [];
   }
-  const users = data.flatMap((item) => {
+  const users = data.flatMap((item: unknown) => {
     const row = asUserRow(item);
     return row ? [userFromRow(row)] : [];
   });
@@ -89,29 +82,10 @@ export async function fetchClubUsers(): Promise<MappedUser[]> {
 
 export { loginOrRegisterUser } from './loginAccount';
 
-export async function deleteUserRow(userId: string): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
-  const { error: unlinkError } = await supabase
-    .from('participants')
-    .update({ user_id: null })
-    .eq('user_id', userId);
-  if (unlinkError) {
-    logSupabaseError(unlinkError, 'unlink participant user');
-    return { ok: false, code: unlinkError.code, message: unlinkError.message };
-  }
-
-  const { error: txError } = await supabase.from('transactions').delete().eq('user_id', userId);
-  if (txError) {
-    logSupabaseError(txError, 'delete user transactions');
-    return { ok: false, code: txError.code, message: txError.message };
-  }
-
-  const { error } = await supabase.from('users').delete().eq('id', userId);
-  if (!error) {
-    removeClubDirectory(userId);
-    return { ok: true };
-  }
-  logSupabaseError(error, 'delete user');
-  return { ok: false, code: error.code, message: error.message };
+/** Deletion must be redesigned as a reviewed atomic server operation. */
+export async function deleteUserRow(_userId: string): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
+  return { ok: false, code: 'deletion_disabled',
+    message: 'Удаление профилей отключено на время переноса прав, чтобы сохранить финансовую историю.' };
 }
 
 export async function updateUserRow(
@@ -126,6 +100,11 @@ export async function updateUserRow(
   const row = asUserRow(data);
   if (!row) return null;
   const mapped = userFromRow(row);
+  const authoritative = await fetchUserById(userId);
+  if (authoritative) {
+    upsertClubDirectory(authoritative);
+    return authoritative;
+  }
   upsertClubDirectory(mapped);
   return mapped;
 }
@@ -142,7 +121,6 @@ export function mappedUserToPatch(changes: Partial<MappedUser>): Record<string, 
   if (changes.equippedBg != null) patch.equipped_bg = changes.equippedBg;
   if (changes.pendingNotifications != null) patch.pending_notifications = changes.pendingNotifications;
   if (changes.agreementsAcceptedAt != null) patch.agreements_accepted_at = changes.agreementsAcceptedAt;
-  if (changes.isAdmin != null) patch.is_admin = changes.isAdmin;
   if (changes.equippedChar != null || changes.equippedBg != null) {
     const charId = changes.equippedChar;
     const bgId = changes.equippedBg;
@@ -153,51 +131,6 @@ export function mappedUserToPatch(changes: Partial<MappedUser>): Record<string, 
     ].filter((item): item is string => Boolean(item));
   }
   return patch;
-}
-
-export function cosmeticsResetPatch(): Record<string, unknown> {
-  return {
-    ruby_balance: STARTING_COINS,
-    owned_items: cosmeticsResetOwnedItems(),
-    equipped_char: DEFAULT_CHARACTER_ID,
-    equipped_bg: DEFAULT_BG_ID,
-    equipped_avatar: [avatarUrlForChar(DEFAULT_CHARACTER_ID), DEFAULT_CHARACTER_ID, DEFAULT_BG_ID],
-    pending_notifications: [],
-  };
-}
-
-export function userNeedsCosmeticsReset(user: Pick<MappedUser, 'ownedItems'>): boolean {
-  return !user.ownedItems.includes(COSMETICS_RESET_TOKEN);
-}
-
-let cosmeticsResetInFlight: Promise<{ updated: number; ok: boolean }> | null = null;
-
-/** One-shot: set every account without the sentinel to 1500 rubies and free cosmetics. */
-export async function applyCosmeticsResetToAllUsers(): Promise<{ updated: number; ok: boolean }> {
-  if (cosmeticsResetInFlight) return cosmeticsResetInFlight;
-  cosmeticsResetInFlight = (async () => {
-    const { data, error } = await supabase.from('users').select('*');
-    if (error || !data) {
-      logSupabaseError(error, 'cosmetics reset');
-      return { updated: 0, ok: false };
-    }
-    const targets = data.flatMap((item) => {
-      const row = asUserRow(item);
-      if (!row) return [];
-      const user = userFromRow(row);
-      return userNeedsCosmeticsReset(user) ? [user] : [];
-    });
-    if (!targets.length) return { updated: 0, ok: true };
-    const patch = cosmeticsResetPatch();
-    const results = await Promise.all(targets.map((user) => updateUserRow(user.id, patch)));
-    const updated = results.filter(Boolean).length;
-    return { updated, ok: updated === targets.length };
-  })();
-  try {
-    return await cosmeticsResetInFlight;
-  } finally {
-    cosmeticsResetInFlight = null;
-  }
 }
 
 export { getClubDirectory };

@@ -4,9 +4,11 @@ import type { Participant, Tournament, TournamentDealer, TournamentStaffMember }
 import type { PendingNotification, UserData } from './userStorage';
 import { avatarUrlForChar, DEFAULT_BG_ID, DEFAULT_CHARACTER_ID } from '../data/shopItems';
 import { asset } from './assets';
+import { hasAdminRole, isClubRole, type ClubRole } from './roles';
 
 /** Postgres `users` row. */
 export type UserRow = {
+  role?: ClubRole;
   id: string;
   email: string;
   nickname: string;
@@ -94,6 +96,7 @@ export type LogRow = {
 
 /** Club account as the UI already expects it (camelCase + UserData fields). */
 export type MappedUser = UserData & {
+  role?: ClubRole;
   id: string;
   email: string;
   isAdmin: boolean;
@@ -214,7 +217,8 @@ export function userFromRow(row: UserRow): MappedUser {
     id: row.id,
     email: row.email,
     nickname: row.nickname,
-    isAdmin: asBoolean(row.is_admin),
+    role: isClubRole(row.role) ? row.role : undefined,
+    isAdmin: hasAdminRole(row.role),
     rubyBalance: coins,
     coins,
     birthDate: asString(row.birth_date),

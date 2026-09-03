@@ -1,4 +1,5 @@
 import { clearUserData } from './userStorage';
+import { supabase } from './supabase';
 
 const EMAIL_KEY = 'userEmail';
 const USER_ID_KEY = 'showdown.userId';
@@ -54,9 +55,23 @@ function clearTempAuthDraft() {
 }
 
 /** Wipe the local login so the next screen is registration, not an empty profile. */
-export function endLocalSession(email?: string) {
+export async function endLocalSession(email?: string) {
+  let previousAuthValue: string | null = null;
+  try { previousAuthValue = localStorage.getItem('showdown.auth.session'); } catch { /* storage unavailable */ }
   const storedEmail = (email || readSessionEmail()).trim().toLowerCase();
   clearSession();
   clearTempAuthDraft();
   if (storedEmail) clearUserData(storedEmail);
+  // End the Auth session as well, not just the old display-cache keys.
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // Logout still clears local credentials when the network is unavailable.
+  } finally {
+    try {
+      if (localStorage.getItem('showdown.auth.session') === previousAuthValue) {
+        localStorage.removeItem('showdown.auth.session');
+      }
+    } catch { /* storage unavailable */ }
+  }
 }

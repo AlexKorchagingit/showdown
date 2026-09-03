@@ -9,6 +9,12 @@
     "build:pages": "tsc -b && GITHUB_PAGES=true vite build",
     "deploy:pages": "npm run build:pages && cp dist/index.html dist/404.html && touch dist/.nojekyll && npx gh-pages -d dist -b gh-pages --dotfiles",
     "test": "vitest run",
+    "test:security:up": "node scripts/security-local.mjs up",
+    "test:security:status": "node scripts/security-local.mjs status",
+    "test:security": "vitest run --config vitest.security.config.ts",
+    "typecheck:functions": "tsc -p tsconfig.functions.json",
+    "test:security:stop": "node scripts/security-local.mjs stop",
+    "build:local-check": "tsc -b && vite build --config vite.local-check.config.ts",
     "test:coverage": "vitest run --coverage",
     "lint": "oxlint",
     "preview": "vite preview"

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { isSuperAdmin, useUser } from '../context/UserContext';
+import { useUser } from '../context/UserContext';
 
 interface Props {
   open: boolean;
@@ -18,8 +18,8 @@ const ITEMS = [
 
 export function AdminBottomSheet({ open, onClose }: Props) {
   const navigate = useNavigate();
-  const { email } = useUser();
-  const items = isSuperAdmin(email)
+  const { isSuperAdmin } = useUser();
+  const items = isSuperAdmin
     ? [...ITEMS, { label: 'Logs', to: '/admin/logs' }]
     : ITEMS;
 

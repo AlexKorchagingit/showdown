@@ -4,22 +4,23 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
   deleteTransactionRow,
   fetchTransactions,
-  insertTransaction,
+  createCharge,
   updateDealerHoursRows,
-  updateTransactions,
+  markTransactionsPaid,
 } from '../lib/financeApi';
 import {
-  DEFAULT_ENTRY_FEE,
   type Transaction,
   type TransactionType,
 } from '../types/finance';
 import { sanitizeParticipantUserId } from '../lib/supabaseMap';
+import { createChargeRequests } from '../lib/chargeRequests';
 
 function dealerKey(tournamentId: string, userId: string) {
   return `${tournamentId}:${userId}`;
@@ -65,6 +66,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [dealerHoursMap, setDealerHoursMap] = useState<Record<string, number>>({});
   const [dealerLoggedAtMap, setDealerLoggedAtMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const chargeRequests = useRef<ReturnType<typeof createChargeRequests> | null>(null);
+  if (!chargeRequests.current) chargeRequests.current = createChargeRequests(createCharge);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,88 +123,43 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addCharge = useCallback(
-    (
-      tournamentId: string,
-      userId: string,
-      type: Exclude<TransactionType, 'ticket'>,
-    ) => {
+  const submitCharge = useCallback(
+    (tournamentId: string, userId: string, type: TransactionType, comment = '') => {
       const ledgerUserId = resolveLedgerUserId(userId);
       if (!ledgerUserId) {
         window.alert('Нельзя выставить счёт: игрок не найден в базе пользователей');
         return;
       }
-      const hours = dealerHoursMap[dealerKey(tournamentId, ledgerUserId)] ?? 0;
-      const tx: Transaction = {
-        id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        date: new Date().toISOString(),
-        tournamentId,
-        userId: ledgerUserId,
-        type,
-        amount: DEFAULT_ENTRY_FEE,
-        status: 'unpaid',
-        comment: '',
-        isDealer: hours > 0,
-        dealerHours: hours,
-      };
-      void insertTransaction(tx)
+      void chargeRequests.current!({ tournamentId, userId: ledgerUserId, type, comment })
         .then((saved) => {
-          setTransactions((prev) => [saved, ...prev]);
+          setTransactions((prev) => [saved, ...prev.filter((tx) => tx.id !== saved.id)]);
         })
         .catch((error) => {
-          console.error(error);
-          window.alert(error instanceof Error ? error.message : 'Не удалось создать транзакцию');
+          window.alert(error instanceof Error ? error.message : 'Не удалось подтвердить создание счёта');
         });
-    },
-    [dealerHoursMap],
+    }, [],
+  );
+
+  const addCharge = useCallback(
+    (tournamentId: string, userId: string, type: Exclude<TransactionType, 'ticket'>) => {
+      submitCharge(tournamentId, userId, type);
+    }, [submitCharge],
   );
 
   const addTicket = useCallback(
     (tournamentId: string, userId: string, comment: string) => {
-      const ledgerUserId = resolveLedgerUserId(userId);
-      if (!ledgerUserId) {
-        window.alert('Нельзя выдать билет: игрок не найден в базе пользователей');
-        return;
-      }
-      const hours = dealerHoursMap[dealerKey(tournamentId, ledgerUserId)] ?? 0;
-      const tx: Transaction = {
-        id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        date: new Date().toISOString(),
-        tournamentId,
-        userId: ledgerUserId,
-        type: 'ticket',
-        amount: 0,
-        status: 'paid',
-        comment: comment.trim(),
-        isDealer: hours > 0,
-        dealerHours: hours,
-      };
-      void insertTransaction(tx)
-        .then((saved) => {
-          setTransactions((prev) => [saved, ...prev]);
-        })
-        .catch((error) => {
-          console.error(error);
-          window.alert(error instanceof Error ? error.message : 'Не удалось создать билет');
-        });
-    },
-    [dealerHoursMap],
+      submitCharge(tournamentId, userId, 'ticket', comment);
+    }, [submitCharge],
   );
 
   const markPaid = useCallback((transactionIds: string[]) => {
     if (transactionIds.length === 0) return;
-    const idSet = new Set(transactionIds);
-    const paidAt = new Date().toISOString();
-    void updateTransactions(transactionIds, { status: 'paid', updated_at: paidAt })
-      .then(() => {
-        setTransactions((prev) =>
-          prev.map((tx) =>
-            idSet.has(tx.id) ? { ...tx, status: 'paid' as const, updatedAt: paidAt } : tx,
-          ),
-        );
+    void markTransactionsPaid(transactionIds)
+      .then((saved) => {
+        const confirmed = new Map(saved.map((tx) => [tx.id, tx]));
+        setTransactions((prev) => prev.map((tx) => confirmed.get(tx.id) ?? tx));
       })
       .catch((error) => {
-        console.error(error);
         window.alert(error instanceof Error ? error.message : 'Не удалось отметить оплату');
       });
   }, []);

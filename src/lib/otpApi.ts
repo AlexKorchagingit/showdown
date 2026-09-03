@@ -25,6 +25,7 @@ interface OtpClientOptions {
   baseUrl: string;
   anonKey: string;
   fetchImpl?: FetchLike;
+  storeSession?: (tokens: { access_token: string; refresh_token: string }) => Promise<void>;
 }
 
 function normalizedEmail(value: string): string {
@@ -44,7 +45,7 @@ async function readErrorCode(response: Response): Promise<string> {
   }
 }
 
-export function createOtpClient({ baseUrl, anonKey, fetchImpl = fetch }: OtpClientOptions) {
+export function createOtpClient({ baseUrl, anonKey, fetchImpl = fetch, storeSession }: OtpClientOptions) {
   const apiUrl = baseUrl.replace(/\/$/, '');
   const timedFetch = createTimeoutFetch(12000, fetchImpl);
 
@@ -88,8 +89,20 @@ export function createOtpClient({ baseUrl, anonKey, fetchImpl = fetch }: OtpClie
 
       const response = await post('verify', { email, code });
       if (response.ok) {
-        const payload = await response.json() as { verified?: unknown };
-        return payload.verified === true;
+        const payload = await response.json() as {
+          verified?: unknown; session?: { access_token?: unknown; refresh_token?: unknown };
+        };
+        if (payload.verified !== true) return false;
+        if (!storeSession || typeof payload.session?.access_token !== 'string' || !payload.session.access_token ||
+            typeof payload.session.refresh_token !== 'string' || !payload.session.refresh_token) {
+          throw new OtpApiError('unavailable', 'Сервер не создал сессию. Запросите код ещё раз.');
+        }
+        try {
+          await storeSession({ access_token: payload.session.access_token, refresh_token: payload.session.refresh_token });
+        } catch {
+          throw new OtpApiError('unavailable', 'Не удалось сохранить сессию. Запросите код ещё раз.');
+        }
+        return true;
       }
       if (response.status === 400 || response.status === 401 || response.status === 410 || response.status === 429) {
         return false;
@@ -98,15 +111,3 @@ export function createOtpClient({ baseUrl, anonKey, fetchImpl = fetch }: OtpClie
     },
   };
 }
-
-function productionClient() {
-  const baseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-  if (!baseUrl || !anonKey) {
-    throw new OtpApiError('unavailable', 'Сервис входа временно недоступен.');
-  }
-  return createOtpClient({ baseUrl, anonKey });
-}
-
-export const requestLoginCode = (email: string) => productionClient().requestCode(email);
-export const verifyLoginCode = (email: string, code: string) => productionClient().verifyCode(email, code);

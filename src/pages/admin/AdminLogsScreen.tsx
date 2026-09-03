@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { CompactHeader } from '../../components/CompactHeader';
 import { ScreenLoading } from '../../components/ScreenLoading';
-import { isSuperAdmin, useUser } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
@@ -42,13 +42,14 @@ function asLogRow(data: unknown): LogRow | null {
 }
 
 export function AdminLogsScreen() {
-  const { email, clubUsers } = useUser();
+  const { isSuperAdmin, clubUsers } = useUser();
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState<LogsTab>('general');
   const [period, setPeriod] = useState<AuditPeriod>('all');
 
   useEffect(() => {
+    if (!isSuperAdmin) { setLogs([]); setIsLoading(false); return; }
     let cancelled = false;
     setIsLoading(true);
     void (async () => {
@@ -76,9 +77,9 @@ export function AdminLogsScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isSuperAdmin]);
 
-  const isSuperAdminUser = isSuperAdmin(email);
+  const isSuperAdminUser = isSuperAdmin;
   const filtered = useMemo(
     () =>
       logs

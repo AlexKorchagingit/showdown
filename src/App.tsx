@@ -12,7 +12,8 @@ import { UserProvider, useUser } from './context/UserContext';
 import { AuditLogProvider } from './context/AuditLogContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
-import { endLocalSession, readSessionEmail } from './lib/session';
+import { supabase } from './lib/supabase';
+import { isClubRole } from './lib/roles';
 import { resolveStartupView } from './lib/startupState';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
@@ -50,6 +51,7 @@ interface AppLayoutProps {
 }
 
 function AppLayout({ userEmail }: AppLayoutProps) {
+  const { isAdmin } = useUser();
   const location = useLocation();
   const hideNav = HIDE_NAV_PATH.test(location.pathname);
   const isBlindsTimer = location.pathname === '/admin/blinds/timer';
@@ -57,6 +59,10 @@ function AppLayout({ userEmail }: AppLayoutProps) {
   const contentPaddingBottom = hideNav
     ? 'env(safe-area-inset-bottom, 0px)'
     : `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})`;
+
+  if (location.pathname.startsWith('/admin/') && !isAdmin) {
+    return <Navigate to="/profile" replace />;
+  }
 
   if (isBlindsTimer) {
     return (
@@ -205,15 +211,46 @@ function bootTelegramWebApp() {
 
 export default function App() {
   const navigate = useNavigate();
-  const [userEmail, setUserEmail] = useState(
-    () => readSessionEmail(),
-  );
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => Boolean(readSessionEmail()),
-  );
-  const [showSplash, setShowSplash] = useState(
-    () => Boolean(readSessionEmail()),
-  );
+  const [userEmail, setUserEmail] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [restoring, setRestoring] = useState(true);
+  const [restoreError, setRestoreError] = useState(false);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    let signedOut = false;
+    setRestoring(true);
+    setRestoreError(false);
+    void (async () => {
+      try {
+        const session = await supabase.auth.getSession();
+        if (session.error) throw new Error('Session unavailable');
+        if (!session.data.session) return;
+        const { data, error } = await supabase.rpc('club_current_account');
+        if (error) throw new Error('Account unavailable');
+        if (!cancelled && !signedOut && data && typeof data.email === 'string' && isClubRole(data.role)) {
+          setUserEmail(data.email);
+          setIsAuthenticated(true);
+        }
+      } catch {
+        if (!cancelled) setRestoreError(true);
+      } finally {
+        if (!cancelled) setRestoring(false);
+      }
+    })();
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      // SIGNED_IN is not sufficient: a new user may still need to accept consent
+      // and bind/create the club profile. LoginScreen completes that operation.
+      if (event === 'SIGNED_OUT') {
+        signedOut = true;
+        setUserEmail('');
+        setIsAuthenticated(false);
+      }
+    });
+    return () => { cancelled = true; data.subscription.unsubscribe(); };
+  }, [restoreAttempt]);
 
   useEffect(() => {
     bootTelegramWebApp();
@@ -237,11 +274,19 @@ export default function App() {
   }, [navigate]);
 
   const handleAccountInvalid = () => {
-    endLocalSession(userEmail);
+    // UserProvider already ends the Auth session; avoid a second concurrent logout.
     setUserEmail('');
     setIsAuthenticated(false);
     navigate('/', { replace: true });
   };
+
+  if (restoring) return <SplashShell />;
+  if (restoreError) return (
+    <div className={shellClass}>
+      <FetchErrorCard message="Не удалось восстановить сессию. Проверьте связь и повторите попытку."
+        onRetry={() => setRestoreAttempt((value) => value + 1)} />
+    </div>
+  );
 
   if (!isAuthenticated) {
     return (

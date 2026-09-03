@@ -10,7 +10,7 @@ import { useAuditLog } from '../../context/AuditLogContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useUser } from '../../context/UserContext';
 import { useBlinds } from '../../context/BlindsContext';
-import { DEFAULT_ENTRY_FEE, TRANSACTION_TYPE_LABEL } from '../../types/finance';
+import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { TransactionType } from '../../types/finance';
 import {
   applyPlaceToParticipant,
@@ -203,46 +203,18 @@ export function AdminTournamentFinance() {
     const reason = window.prompt(`Причина выдачи билета для ${nickname}?`, '');
     if (reason === null) return;
     addTicket(tournament.id, userId, reason.trim() || 'Билет');
-    logAction({
-      actionType: 'Выдал билет',
-      targetUserId: userId,
-      targetUserEmail: playerEmail(userId, nickname),
-      targetUserName: nickname,
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
-      details: `Причина: ${reason.trim() || 'Билет'}`,
-    });
   };
 
   const handleCharge = (
     userId: string,
-    nickname: string,
     type: Exclude<TransactionType, 'ticket'>,
   ) => {
     if (type === 'addon' && !allowsAddon) return;
     addCharge(tournament.id, userId, type);
-    logAction({
-      actionType: 'Создал транзакцию',
-      targetUserId: userId,
-      targetUserEmail: playerEmail(userId, nickname),
-      targetUserName: nickname,
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
-      details: `${TRANSACTION_TYPE_LABEL[type]}. Сумма: ${DEFAULT_ENTRY_FEE.toLocaleString('ru-RU')} руб`,
-    });
   };
 
-  const handlePayDebt = (userId: string, nickname: string, amount: number) => {
+  const handlePayDebt = (userId: string) => {
     markPlayerPaid(tournament.id, userId);
-    logAction({
-      actionType: 'Погасил долг',
-      targetUserId: userId,
-      targetUserEmail: playerEmail(userId, nickname),
-      targetUserName: nickname,
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
-      details: `Сумма: ${amount.toLocaleString('ru-RU')} руб`,
-    });
   };
 
   const closeTournament = async () => {
@@ -1054,7 +1026,7 @@ export function AdminTournamentFinance() {
                       <button
                         key={type}
                         type="button"
-                        onClick={() => handleCharge(player.id, player.nickname, type)}
+                        onClick={() => handleCharge(player.id, type)}
                         className="py-2 rounded-lg text-[11px] font-700 active:scale-95 transition-transform"
                         style={{
                           background: 'rgba(217,153,98,0.12)',
@@ -1184,7 +1156,7 @@ export function AdminTournamentFinance() {
                   {hasLocalDebt && unpaidTotal > 0 && (
                     <button
                       type="button"
-                      onClick={() => handlePayDebt(player.id, player.nickname, unpaidTotal)}
+                      onClick={() => handlePayDebt(player.id)}
                       className="w-full py-3 rounded-xl text-[13px] bg-red-900/80 border border-red-500/50 text-white font-bold active:scale-[0.98] transition-transform"
                     >
                       Оплатить {unpaidTotal.toLocaleString('ru-RU')} руб

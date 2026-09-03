@@ -1,4 +1,5 @@
 import { codeFromRandomBytes, isAllowedOrigin, normalizeCode, normalizeEmail } from './logic.ts';
+import { verifyOtpAndIssueSession } from './session.ts';
 
 const SUPABASE_URL = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
 const SERVICE_ROLE_KEY = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
@@ -27,7 +28,7 @@ function requiredEnv(name: string): string {
 }
 
 function response(origin: string, status: number, body: Record<string, unknown>, extraHeaders?: HeadersInit) {
-  return new Response(JSON.stringify(body), {
+  return new Response(status === 204 ? null : JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
@@ -144,14 +145,15 @@ async function verifyCode(origin: string, payload: Record<string, unknown>) {
   if (!email || !code) return response(origin, 400, { verified: false });
 
   const codeHash = await hmac(`otp:${email}:${code}`);
-  const verifyStatus = await rpc('verify_login_otp', { p_email: email, p_code_hash: codeHash });
-  if (verifyStatus === 'verified') return response(origin, 200, { verified: true });
-  return response(origin, 400, { verified: false });
+  const result = await verifyOtpAndIssueSession(
+    { supabaseUrl: SUPABASE_URL, serviceRoleKey: SERVICE_ROLE_KEY }, email, codeHash,
+  );
+  return response(origin, result.verified ? 200 : 400, result);
 }
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin');
-  if (!isAllowedOrigin(origin, ALLOWED_ORIGINS)) {
+  if (!origin || !isAllowedOrigin(origin, ALLOWED_ORIGINS)) {
     return new Response(JSON.stringify({ error: 'forbidden_origin' }), {
       status: 403,
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },

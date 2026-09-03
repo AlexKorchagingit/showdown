@@ -1,6 +1,6 @@
 import { supabase, logSupabaseError } from './supabase';
-import { transactionFromRow, transactionToRow, type TransactionRow } from './supabaseMap';
-import type { Transaction } from '../types/finance';
+import { transactionFromRow, type TransactionRow } from './supabaseMap';
+import type { Transaction, TransactionType } from '../types/finance';
 
 function asTransactionRow(data: unknown): TransactionRow | null {
   if (!data || typeof data !== 'object' || !('id' in data) || !('user_id' in data)) return null;
@@ -19,30 +19,39 @@ export async function fetchTransactions(): Promise<Transaction[]> {
   });
 }
 
-export async function insertTransaction(tx: Transaction): Promise<Transaction> {
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert(transactionToRow(tx))
-    .select('*')
-    .single();
-  if (error || !data) {
-    logSupabaseError(error, 'insert transaction');
-    throw new Error(error?.message || 'Не удалось создать транзакцию');
-  }
+export type CreateChargeInput = {
+  requestId: string;
+  tournamentId: string;
+  userId: string;
+  type: TransactionType;
+  comment?: string;
+};
+
+export async function createCharge(input: CreateChargeInput): Promise<Transaction> {
+  const { data, error } = await supabase.rpc('club_create_charge', {
+    p_request_id: input.requestId,
+    p_tournament_id: input.tournamentId,
+    p_user_id: input.userId,
+    p_type: input.type,
+    p_comment: input.comment?.trim() ?? '',
+  });
+  if (error) throw new Error('Не удалось подтвердить создание счёта. Повторите действие: будет отправлен тот же запрос.');
   const row = asTransactionRow(data);
-  return row ? transactionFromRow(row) : tx;
+  if (!row) throw new Error('Сервер не подтвердил создание счёта');
+  return transactionFromRow(row);
 }
 
-export async function updateTransactions(
-  ids: string[],
-  patch: Partial<TransactionRow>,
-): Promise<void> {
-  if (ids.length === 0) return;
-  const { error } = await supabase.from('transactions').update(patch).in('id', ids);
-  if (error) {
-    logSupabaseError(error, 'update transactions');
-    throw new Error(error.message);
+export async function markTransactionsPaid(ids: string[]): Promise<Transaction[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.rpc('club_mark_paid', { p_transaction_ids: ids });
+  if (error || !Array.isArray(data)) throw new Error('Не удалось подтвердить оплату');
+  const rows = data.map(asTransactionRow);
+  if (rows.some((row) => row === null)) throw new Error('Сервер не подтвердил оплату');
+  const expected = new Set(ids);
+  if (rows.length !== expected.size || rows.some((row) => !expected.delete(row!.id) || row!.status !== 'paid')) {
+    throw new Error('Сервер не подтвердил оплату всех счетов');
   }
+  return rows.map((row) => transactionFromRow(row!));
 }
 
 export async function deleteTransactionRow(transactionId: string): Promise<void> {

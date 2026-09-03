@@ -10,8 +10,8 @@ interface Props {
   userEmail: string;
 }
 
-function handleLogout() {
-  endLocalSession();
+async function handleLogout() {
+  await endLocalSession();
   window.location.reload();
 }
 

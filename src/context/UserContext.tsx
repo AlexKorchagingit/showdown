@@ -8,10 +8,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { ADMIN_EMAIL, isSuperAdmin } from '../lib/admin';
-import { getClubDirectory } from '../lib/clubDirectory';
+import { hasAdminRole, hasSuperAdminRole } from '../lib/roles';
 import {
-  applyCosmeticsResetToAllUsers,
   fetchClubUsers,
   lookupSessionAccount,
   mappedUserToPatch,
@@ -22,23 +20,20 @@ import { addLog as insertClubLog, type AddLogInput } from '../lib/logApi';
 import { endLocalSession, readSessionUserId, writeSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 
-export { ADMIN_EMAIL, isSuperAdmin };
+export { hasSuperAdminRole as isSuperAdmin } from '../lib/roles';
 export { addLog } from '../lib/logApi';
 
 const SESSION_POLL_MS = 10_000;
 
-export function isClubAdmin(email: string, account?: MappedUser | null): boolean {
-  if (isSuperAdmin(email)) return true;
-  if (account?.isAdmin) return true;
-  return getClubDirectory().some(
-    (user) => user.email.trim().toLowerCase() === email.trim().toLowerCase() && user.isAdmin,
-  );
+export function isClubAdmin(_email: string, account?: MappedUser | null): boolean {
+  return hasAdminRole(account?.role);
 }
 
 interface UserContextValue {
   email: string;
   userId: string;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isLoading: boolean;
   account: MappedUser | null;
   clubUsers: MappedUser[];
@@ -65,7 +60,6 @@ export function UserProvider({
   const onInvalidRef = useRef(onAccountInvalid);
   onInvalidRef.current = onAccountInvalid;
   const kickedRef = useRef(false);
-  const cosmeticsResetDoneRef = useRef(false);
 
   const kickDeletedAccount = useCallback(() => {
     if (kickedRef.current) return;
@@ -111,19 +105,6 @@ export function UserProvider({
     try {
       const ok = await enforceSession();
       if (!ok) return;
-      if (!cosmeticsResetDoneRef.current) {
-        void applyCosmeticsResetToAllUsers()
-          .then(async (reset) => {
-            if (reset.ok) cosmeticsResetDoneRef.current = true;
-            if (reset.updated > 0) {
-              await enforceSession();
-              await refreshClubUsers();
-            }
-          })
-          .catch((error) => {
-            console.error(error);
-          });
-      }
       await refreshClubUsers();
     } catch (error) {
       console.error(error);
@@ -134,7 +115,6 @@ export function UserProvider({
 
   useEffect(() => {
     kickedRef.current = false;
-    cosmeticsResetDoneRef.current = false;
     void refreshAccount();
   }, [refreshAccount]);
 
@@ -220,6 +200,7 @@ export function UserProvider({
       email: account?.email || email,
       userId: account?.id || readSessionUserId(),
       isAdmin,
+      isSuperAdmin: hasSuperAdminRole(account?.role),
       isLoading,
       account,
       clubUsers: visibleClubUsers,

@@ -35,14 +35,32 @@ describe('OTP API client', () => {
   });
 
   it('verifies the code on the server', async () => {
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ verified: true }), { status: 200 }));
-    const client = createOtpClient({ ...config, fetchImpl });
+    const session = { access_token: 'synthetic-access-token', refresh_token: 'synthetic-refresh-token' };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ verified: true, session }), { status: 200 }));
+    const storeSession = vi.fn(async () => undefined);
+    const client = createOtpClient({ ...config, fetchImpl, storeSession });
 
     await expect(client.verifyCode('user@example.com', '1234')).resolves.toBe(true);
+    expect(storeSession).toHaveBeenCalledWith(session);
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.example.test/functions/v1/login-otp/verify',
       expect.objectContaining({ body: JSON.stringify({ email: 'user@example.com', code: '1234' }) }),
     );
+  });
+
+  it('rejects the old verified-only response instead of pretending the user is signed in', async () => {
+    const fetchImpl = vi.fn(async () => Response.json({ verified: true }));
+    const storeSession = vi.fn();
+    const client = createOtpClient({ ...config, fetchImpl, storeSession });
+    await expect(client.verifyCode('user@example.com', '1234')).rejects.toBeInstanceOf(OtpApiError);
+    expect(storeSession).not.toHaveBeenCalled();
+  });
+
+  it('does not report success or leak details when storing the session fails', async () => {
+    const fetchImpl = vi.fn(async () => Response.json({ verified: true,
+      session: { access_token: 'synthetic', refresh_token: 'synthetic' } }));
+    const client = createOtpClient({ ...config, fetchImpl, storeSession: async () => { throw new Error('sensitive-provider-details'); } });
+    await expect(client.verifyCode('user@example.com', '1234')).rejects.toThrow('Не удалось сохранить сессию');
   });
 
   it('returns false for an invalid or expired code', async () => {

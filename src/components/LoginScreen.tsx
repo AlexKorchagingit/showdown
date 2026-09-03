@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
-import { emailAccountExists, loginOrRegisterUser } from '../lib/loginAccount';
+import { ConsentRequiredError, loginOrRegisterUser } from '../lib/loginAccount';
 import { requestErrorMessage } from '../lib/network';
-import { OtpApiError, requestLoginCode, verifyLoginCode } from '../lib/otpApi';
+import { OtpApiError } from '../lib/otpApi';
+import { requestLoginCode, verifyLoginCode } from '../lib/loginOtp';
 import { LegalImageModal } from './LegalImageModal';
 import { BrandLogo } from './BrandLogo';
 
@@ -81,48 +82,13 @@ function savePendingEmail(targetEmail: string, step: 'email' | 'consent') {
 }
 
 async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
-  try {
-    const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
-    if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
-    const acceptedAt = (agreementsAcceptedAt || readAgreementsAt()).trim();
-
-    let user: Awaited<ReturnType<typeof loginOrRegisterUser>>['user'];
-    let isNew = false;
-    try {
-      const result = await loginOrRegisterUser(normalized, acceptedAt || undefined);
-      user = result.user;
-      isNew = result.isNew;
-    } catch (error) {
-      console.error('LOGIN FATAL ERROR:', error);
-      throw error;
-    }
-
-    if (isNew) {
-      void import('../lib/logApi')
-        .then(({ addLog }) =>
-          addLog({
-            admin_id: user.id,
-            admin_email: normalized,
-            admin_name: user.nickname,
-            action_type: 'Согласия приняты (электронная подпись)',
-            target_user_id: user.id,
-            target_user_email: normalized,
-            target_user_name: user.nickname,
-            details: `Политики приняты: обработка ПДн, информационные рассылки, локальное хранилище. ISO: ${user.agreementsAcceptedAt ?? acceptedAt}`,
-          }),
-        )
-        .catch((error) => {
-          console.error('LOGIN FATAL ERROR:', error);
-        });
-    }
-
-    clearTempAuth();
-    clearAgreementsAt();
-    onLogin(user.email);
-  } catch (error) {
-    console.error('LOGIN FATAL ERROR:', error);
-    throw error;
-  }
+  const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
+  if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
+  const result = await loginOrRegisterUser(normalized, agreementsAcceptedAt || undefined);
+  // Registration and its audit entry are atomic server operations.
+  clearTempAuth();
+  clearAgreementsAt();
+  onLogin(result.user.email);
 }
 
 function ConsentCopy({ onOpen }: { onOpen: (document: ClubLegalDocument) => void }) {
@@ -179,6 +145,7 @@ export function LoginScreen({ onLogin }: Props) {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifiedRef = useRef(false);
+  const verifiedEmailRef = useRef('');
   const onLoginRef = useRef(onLogin);
   onLoginRef.current = onLogin;
 
@@ -236,10 +203,19 @@ export function LoginScreen({ onLogin }: Props) {
     const timestamp = new Date().toISOString();
     setAgreementsAcceptedAt(timestamp);
     writeAgreementsAt(timestamp);
-    void sendCode(email, 60);
+    if (verifiedEmailRef.current !== email.trim().toLowerCase()) {
+      void sendCode(email, 60);
+      return;
+    }
+    setIsLoading(true);
+    setLoginError('');
+    void completeLogin(email, timestamp, onLoginRef.current)
+      .catch(() => setLoginError('Не удалось завершить регистрацию. Попробуйте ещё раз.'))
+      .finally(() => setIsLoading(false));
   };
 
   const goToEmailStep = () => {
+    verifiedEmailRef.current = '';
     clearTempAuth();
     clearAgreementsAt();
     setAgreementsAcceptedAt('');
@@ -254,31 +230,11 @@ export function LoginScreen({ onLogin }: Props) {
 
   const handleContinueEmail = () => {
     if (!canContinueEmail) return;
-    const normalizedEmail = email.trim().toLowerCase();
-    setEmail(normalizedEmail);
-    setIsLoading(true);
-    setLoginError('');
-
-    void (async () => {
-      try {
-        const exists = await emailAccountExists(normalizedEmail);
-        if (exists) {
-          setAgreementsAcceptedAt('');
-          clearAgreementsAt();
-          await sendCode(normalizedEmail, 60);
-          return;
-        }
-        savePendingEmail(normalizedEmail, 'consent');
-        setAgreementsAcceptedAt('');
-        clearAgreementsAt();
-        setStep('consent');
-      } catch (error) {
-        console.error('LOGIN FATAL ERROR:', error);
-        setLoginError(requestErrorMessage(error, 'Не удалось проверить почту. Попробуйте ещё раз.'));
-      } finally {
-        setIsLoading(false);
-      }
-    })();
+    const normalized = email.trim().toLowerCase();
+    verifiedEmailRef.current = '';
+    setAgreementsAcceptedAt('');
+    clearAgreementsAt();
+    void sendCode(normalized, 60);
   };
 
   const handleResend = () => {
@@ -315,11 +271,20 @@ export function LoginScreen({ onLogin }: Props) {
           return;
         }
 
-        await completeLogin(
-          email || readTempAuthValue('temp_auth_email'),
-          agreementsAcceptedAt || readAgreementsAt(),
-          onLoginRef.current,
-        );
+        verifiedEmailRef.current = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
+        try {
+          await completeLogin(
+            verifiedEmailRef.current,
+            agreementsAcceptedAt || readAgreementsAt(),
+            onLoginRef.current,
+          );
+        } catch (error) {
+          if (!(error instanceof ConsentRequiredError)) throw error;
+          savePendingEmail(verifiedEmailRef.current, 'consent');
+          setIsLoading(false);
+          setStep('consent');
+          return;
+        }
         if (!cancelled) setIsSuccess(true);
       })
       .catch((error) => {
@@ -513,7 +478,7 @@ export function LoginScreen({ onLogin }: Props) {
                     autoComplete={i === 0 ? 'one-time-code' : 'off'}
                     maxLength={i === 0 ? 4 : 1}
                     value={digit}
-                    readOnly={isSuccess}
+                    readOnly={isSuccess || isLoading}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onPaste={(e) => handleOtpPaste(i, e)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e.key)}
@@ -554,7 +519,7 @@ export function LoginScreen({ onLogin }: Props) {
               <button
                 type="button"
                 onClick={goToEmailStep}
-                disabled={isSuccess}
+                disabled={isSuccess || isLoading}
                 className="mt-6 text-[12px] font-600 text-[#463129] active:opacity-60 disabled:opacity-40"
               >
                 ← Изменить email
