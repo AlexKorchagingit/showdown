@@ -177,7 +177,7 @@ export function formatAddonRate(percent: number): string {
 }
 
 export function hasGlobalUnpaidDebt(transactions: Transaction[], userId: string): boolean {
-  return transactions.some((tx) => tx.userId === userId && tx.status === 'unpaid');
+  return transactions.some((tx) => !tx.voidedAt && tx.userId === userId && tx.status === 'unpaid');
 }
 
 function tournamentTitle(tournaments: Tournament[], id: string): string {
@@ -203,7 +203,7 @@ export function computePlayerAdminStats(
   transactions: Transaction[],
   getDealerHours: (tournamentId: string, userId: string) => number,
 ): PlayerAdminStats {
-  const mine = transactions.filter((tx) => tx.userId === playerId);
+  const mine = transactions.filter((tx) => !tx.voidedAt && tx.userId === playerId);
   const paid = mine.filter((tx) => tx.status === 'paid');
   const unpaid = mine.filter((tx) => tx.status === 'unpaid');
   const ltv = paid.reduce((sum, tx) => sum + tx.amount, 0);

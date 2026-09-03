@@ -149,7 +149,7 @@ export function computeClubStatistics(
   const tournamentIds = new Set(tournaments.map((tournament) => tournament.id));
   const titleById = new Map(tournaments.map((tournament) => [tournament.id, tournament.title]));
   const ledger = transactions.filter(
-    (tx) => tournamentIds.has(tx.tournamentId) && knownIds.has(tx.userId),
+    (tx) => !tx.voidedAt && tournamentIds.has(tx.tournamentId) && knownIds.has(tx.userId),
   );
 
   const seatedByTournament = tournaments.map((tournament) =>

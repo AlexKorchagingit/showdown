@@ -1,10 +1,13 @@
-import { supabase, logSupabaseError } from './supabase';
+import { supabase } from './supabase';
 import { transactionFromRow, type TransactionRow } from './supabaseMap';
 import type { Transaction, TransactionType } from '../types/finance';
 import type { DealerHours, DealerHoursInput } from './dealerHours';
 
 function asTransactionRow(data: unknown): TransactionRow | null {
   if (!data || typeof data !== 'object' || !('id' in data) || !('user_id' in data)) return null;
+  const row = data as Record<string,unknown>;
+  if (row.voided_at != null && (typeof row.voided_at !== 'string' || !Number.isFinite(Date.parse(row.voided_at)))) return null;
+  if (row.void_reason != null && typeof row.void_reason !== 'string') return null;
   return data as TransactionRow;
 }
 
@@ -61,18 +64,20 @@ export async function markTransactionsPaid(ids: string[]): Promise<Transaction[]
   const rows = data.map(asTransactionRow);
   if (rows.some((row) => row === null)) throw new Error('Сервер не подтвердил оплату');
   const expected = new Set(ids);
-  if (rows.length !== expected.size || rows.some((row) => !expected.delete(row!.id) || row!.status !== 'paid')) {
+  if (rows.length !== expected.size || rows.some((row) => !expected.delete(row!.id) || row!.status !== 'paid' || row!.voided_at)) {
     throw new Error('Сервер не подтвердил оплату всех счетов');
   }
   return rows.map((row) => transactionFromRow(row!));
 }
 
-export async function deleteTransactionRow(transactionId: string): Promise<void> {
-  const { error } = await supabase.from('transactions').delete().eq('id', transactionId);
-  if (error) {
-    logSupabaseError(error, 'delete transaction');
-    throw new Error(error.message);
-  }
+export async function voidTransactionOnServer(transactionId: string, reason: string): Promise<Transaction> {
+  const normalized = reason.trim();
+  if (!transactionId.trim() || !normalized || normalized.length > 1000) throw new Error('Укажите причину отмены: от 1 до 1000 символов');
+  const { data, error } = await supabase.rpc('club_void_transaction', { p_transaction_id: transactionId, p_reason: normalized });
+  if (error) throw new Error('Не удалось подтвердить отмену. Повторите отмену этой же записи или обновите кассу.');
+  const row = asTransactionRow(data);
+  if (!row || row.id !== transactionId || !row.voided_at) throw new Error('Сервер не подтвердил отмену записи');
+  return transactionFromRow(row);
 }
 
 export async function adjustDealerHoursOnServer(input: DealerHoursInput): Promise<DealerHours> {

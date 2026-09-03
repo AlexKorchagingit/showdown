@@ -11,7 +11,8 @@ import { useProfile } from '../../context/ProfileContext';
 import { useUser } from '../../context/UserContext';
 import { useBlinds } from '../../context/BlindsContext';
 import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
-import type { TransactionType } from '../../types/finance';
+import type { Transaction, TransactionType } from '../../types/finance';
+import { transactionVoidPrompt } from '../../lib/transactionVoid';
 import {
   applyPlaceToParticipant,
   calculatePayouts,
@@ -94,7 +95,8 @@ export function AdminTournamentFinance() {
     unpaidForPlayer,
     unpaidTotalForPlayer,
     markPlayerPaid,
-    removeTransaction,
+    voidTransaction,
+    isTransactionVoiding,
   } = useFinance();
 
   const [query, setQuery] = useState('');
@@ -221,6 +223,10 @@ export function AdminTournamentFinance() {
 
   const handlePayDebt = (userId: string) => {
     markPlayerPaid(tournament.id, userId);
+  };
+  const handleVoid = (tx: Transaction) => {
+    const reason = window.prompt(transactionVoidPrompt(tx), '');
+    if (reason !== null) void voidTransaction(tx.id, reason);
   };
 
   const closeTournament = async () => {
@@ -971,7 +977,8 @@ export function AdminTournamentFinance() {
                           {TRANSACTION_TYPE_LABEL[tx.type]}
                           <button
                             type="button"
-                            onClick={() => removeTransaction(tx.id)}
+                            disabled={isTransactionVoiding(tx.id)}
+                            onClick={() => handleVoid(tx)}
                             className="w-5 h-5 rounded flex items-center justify-center"
                             aria-label={`Отменить ${TRANSACTION_TYPE_LABEL[tx.type]}`}
                           >
@@ -993,7 +1000,8 @@ export function AdminTournamentFinance() {
                           Билет
                           <button
                             type="button"
-                            onClick={() => removeTransaction(tx.id)}
+                            disabled={isTransactionVoiding(tx.id)}
+                            onClick={() => handleVoid(tx)}
                             className="w-5 h-5 rounded flex items-center justify-center"
                             aria-label="Аннулировать билет"
                           >

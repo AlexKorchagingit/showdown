@@ -14,6 +14,10 @@ export interface Transaction {
   dealerHours: number;
   /** Set when the transaction is marked paid — drives today's revenue. */
   updatedAt?: string;
+  /** Immutable server cancellation marker; original status/amount/date are retained. */
+  voidedAt?: string;
+  /** Cancellation reason is returned only to administrators. */
+  voidReason?: string;
 }
 
 export const TRANSACTION_TYPE_LABEL: Record<TransactionType, string> = {

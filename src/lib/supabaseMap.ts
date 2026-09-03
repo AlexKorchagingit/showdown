@@ -76,6 +76,8 @@ export type TransactionRow = {
   is_dealer: boolean;
   dealer_hours: number;
   updated_at: string | null;
+  voided_at?: string | null;
+  void_reason?: string | null;
 };
 
 /** Postgres `logs` row. */
@@ -395,6 +397,8 @@ export function transactionFromRow(row: TransactionRow): Transaction {
     isDealer: asBoolean(row.is_dealer),
     dealerHours: asNumber(row.dealer_hours),
     updatedAt: row.updated_at || undefined,
+    voidedAt: row.voided_at || undefined,
+    voidReason: row.void_reason || undefined,
   };
 }
 

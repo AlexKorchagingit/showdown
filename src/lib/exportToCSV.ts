@@ -6,8 +6,11 @@ import { formatIsoDay } from './financePeriod';
 import { formatTxDate, formatTxTime, ledgerTimestamp } from './transactionDisplay';
 import { compareByStart } from './tournamentStatus';
 
-function csvEscape(value: string | number | boolean, delimiter = ','): string {
-  const raw = String(value ?? '');
+export function csvEscape(value: string | number | boolean, delimiter = ','): string {
+  // Treat user-entered names/comments/reasons as text, not spreadsheet formulas.
+  // eslint-disable-next-line no-control-regex -- Also cover leading control characters before a formula marker.
+  const raw = typeof value === 'string' && /^[\s\u0000-\u001f]*[=+\-@]/.test(value)
+    ? `'${value}` : String(value ?? '');
   if (raw.includes('"') || raw.includes('\n') || raw.includes('\r') || raw.includes(delimiter)) {
     return `"${raw.replace(/"/g, '""')}"`;
   }
@@ -70,13 +73,12 @@ export interface ExportToCSVResolvers {
   playerName: (userId: string) => string;
 }
 
-/** Download the current ledger as a CSV file in the browser. */
-export function exportToCSV(
+export function financeExportRows(
   transactions: Transaction[],
   resolvers: ExportToCSVResolvers,
-  filename = `showdown-finance-${new Date().toISOString().slice(0, 10)}.csv`,
 ) {
-  const headers = ['Дата', 'Время', 'Турнир', 'Игрок', 'Тип', 'Сумма', 'Статус', 'Комментарий'];
+  const headers = ['Дата', 'Время', 'Турнир', 'Игрок', 'Тип', 'Сумма', 'Исходный статус', 'Комментарий',
+    'Отменено', 'Дата отмены', 'Причина отмены'];
 
   const rows = transactions.map((tx) => {
     const stamp = ledgerTimestamp(tx);
@@ -89,9 +91,22 @@ export function exportToCSV(
       tx.amount,
       TRANSACTION_STATUS_LABEL[tx.status],
       tx.comment,
+      Boolean(tx.voidedAt),
+      tx.voidedAt ? `${formatTxDate(tx.voidedAt)} ${formatTxTime(tx.voidedAt)}` : '',
+      tx.voidReason ?? '',
     ];
   });
 
+  return { headers, rows };
+}
+
+/** Download active entries or an explicitly selected cancellation history. */
+export function exportToCSV(
+  transactions: Transaction[],
+  resolvers: ExportToCSVResolvers,
+  filename = `showdown-finance-${new Date().toISOString().slice(0, 10)}.csv`,
+) {
+  const { headers, rows } = financeExportRows(transactions, resolvers);
   downloadCsv(filename, headers, rows);
 }
 

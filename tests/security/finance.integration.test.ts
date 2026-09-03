@@ -17,7 +17,8 @@ function fixtureToken(role: string) {
 }
 const anon = fixtureToken('anon');
 const service = fixtureToken('service_role');
-const hoursMigration = () => readFileSync('supabase/migrations/20260903_registered_dealer_hours.sql', 'utf8');
+const voidMigration = () => readFileSync('supabase/migrations/20260903_transaction_voids.sql', 'utf8');
+const hoursMigration = () => readFileSync('supabase/migrations/20260903_registered_dealer_hours.sql', 'utf8') + '\n' + voidMigration();
 const migration = () => readFileSync('supabase/migrations/20260903_finance_commands.sql', 'utf8') + '\n' + hoursMigration();
 async function rpc(name: string, access: string, args: object) {
   return fetch(`${base}/rest/v1/rpc/${name}`, { method: 'POST',
@@ -81,6 +82,7 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
     for (const access of [anon,user]) {
       expect([401,403]).toContain((await rpc('club_create_charge',access,charge())).status);
       expect([401,403]).toContain((await rpc('club_mark_paid',access,{ p_transaction_ids: [id('legacy')] })).status);
+      expect([401,403]).toContain((await rpc('club_void_transaction',access,{ p_transaction_id:id('legacy'),p_reason:'Synthetic correction' })).status);
     }
   });
   it('does not accept client prices, paid status, actor IDs or timestamps', async () => {
@@ -179,6 +181,9 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
         where tournament_id='${id('event')}' and user_id='${id('user')}';`)).toBe('2.5|0|t');
       expect(localSql(`select count(*) from club_private.dealer_hour_requests where request_id='${change.p_request_id}';`)).toBe('0');
       expect(localSql(`select dealer_hours from public.transactions where id='${tx.id}';`)).toBe('2.5');
+      expect((await rpc('club_void_transaction',admin,{p_transaction_id:tx.id,p_reason:'Synthetic correction'})).ok).toBe(false);
+      expect(localSql(`select count(*) from club_private.transaction_voids where transaction_id='${tx.id}';`)).toBe('0');
+      expect(localSql(`select status,updated_at is null from public.transactions where id='${tx.id}';`)).toBe('unpaid|t');
     } finally {
       // Remove only this test's synthetic failure injector, never business rows.
       localSql(`drop trigger test_finance_audit_failure on public.logs;
@@ -192,6 +197,7 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
       expect((await rpc('club_create_charge',admin,charge())).status).toBe(403);
       expect((await rpc('club_mark_paid',admin,{ p_transaction_ids:[id('legacy')] })).status).toBe(403);
       expect((await rpc('club_adjust_dealer_hours',admin,hours())).status).toBe(403);
+      expect((await rpc('club_void_transaction',admin,{p_transaction_id:id('legacy'),p_reason:'Synthetic correction'})).status).toBe(403);
     } finally {
       localSql(`update club_private.profile_roles set role='admin' where user_id='${id('admin')}';`);
     }
@@ -290,5 +296,102 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
     expect(localSql(`select has_table_privilege('authenticated','club_private.dealer_hours','SELECT,INSERT,UPDATE,DELETE'),
       has_table_privilege('anon','club_private.dealer_hour_requests','SELECT,INSERT,UPDATE,DELETE'),
       has_function_privilege('authenticated','club_private.lock_dealer_hours(text,text)','EXECUTE');`)).toBe('f|f|f');
+  });
+
+  it('voids an unpaid entry without deleting or modifying the original financial row', async () => {
+    const tx = await (await rpc('club_create_charge',admin,charge())).json();
+    const before = localSql(`select to_jsonb(t)::text from public.transactions t where id='${tx.id}';`);
+    const res = await rpc('club_void_transaction',admin,{p_transaction_id:tx.id,p_reason:'  Duplicate entry  '});
+    expect(res.status).toBe(200);
+    const cancelled = await res.json();
+    expect(cancelled).toMatchObject({id:tx.id,amount:1000,status:'unpaid',void_reason:'Duplicate entry'});
+    expect(Number.isFinite(Date.parse(cancelled.voided_at))).toBe(true);
+    expect(localSql(`select to_jsonb(t)::text from public.transactions t where id='${tx.id}';`)).toBe(before);
+    expect(localSql(`select v.actor_id,v.original_record=to_jsonb(t) from club_private.transaction_voids v
+      join public.transactions t on t.id=v.transaction_id where t.id='${tx.id}';`)).toBe(id('admin')+'|t');
+    expect(localSql(`select count(*) from public.logs where action_type='Отменил финансовую запись'
+      and target_tournament_id='${id('event')}' and details::jsonb->>'transaction_id'='${tx.id}';`)).toBe('1');
+  });
+  it('retains a paid record amount, original payment date and status when cancelling the ledger entry', async () => {
+    const res = await rpc('club_void_transaction',owner,{p_transaction_id:id('legacy'),p_reason:'Synthetic correction, no refund'});
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({id:id('legacy'),status:'paid',amount:1000});
+    expect(localSql(`select amount,status,updated_at='2026-08-01T12:00:00Z'::timestamptz
+      from public.transactions where id='${id('legacy')}';`)).toBe('1000|paid|t');
+    expect(localSql(`select count(*) from public.logs where action_type='Отменил финансовую запись'
+      and target_tournament_id='${id('event')}' and details::jsonb->>'transaction_id'='${id('legacy')}'
+      and details::jsonb->>'refund_performed'='false';`)).toBe('1');
+  });
+  it('retains a cancelled ticket and its original description', async () => {
+    const tx = await (await rpc('club_create_charge',admin,charge({p_type:'ticket',p_comment:'Synthetic ticket'}))).json();
+    const res = await rpc('club_void_transaction',admin,{p_transaction_id:tx.id,p_reason:'Wrong ticket'});
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({id:tx.id,type:'ticket',status:'paid',amount:0,comment:'Synthetic ticket'});
+    expect(localSql(`select count(*) from public.transactions where id='${tx.id}';`)).toBe('1');
+  });
+  it('makes concurrent cancellations and retries immutable and records only the first actor/reason', async () => {
+    const tx = await (await rpc('club_create_charge',admin,charge())).json();
+    const responses = await Promise.all([
+      rpc('club_void_transaction',admin,{p_transaction_id:tx.id,p_reason:'First candidate'}),
+      rpc('club_void_transaction',owner,{p_transaction_id:tx.id,p_reason:'Second candidate'}),
+    ]);
+    expect(responses.map((res)=>res.status)).toEqual([200,200]);
+    const first = await responses[0].json();
+    expect(await responses[1].json()).toEqual(first);
+    const repeat = await rpc('club_void_transaction',admin,{p_transaction_id:tx.id,p_reason:'Do not replace original reason'});
+    expect(await repeat.json()).toEqual(first);
+    expect(localSql(`select count(*) from public.logs where action_type='Отменил финансовую запись'
+      and target_tournament_id='${id('event')}' and details::jsonb->>'transaction_id'='${tx.id}';`)).toBe('1');
+  });
+  it('rejects a payment batch containing a cancelled entry without partially paying another entry', async () => {
+    const tx = await (await rpc('club_create_charge',admin,charge())).json();
+    expect((await rpc('club_mark_paid',admin,{p_transaction_ids:[tx.id,id('legacy')]})).status).toBe(400);
+    expect(localSql(`select status,updated_at is null from public.transactions where id='${tx.id}';`)).toBe('unpaid|t');
+  });
+  it('serializes payment racing with cancellation and always retains a cancelled final entry', async () => {
+    const tx = await (await rpc('club_create_charge',admin,charge())).json();
+    const [paid,cancelled] = await Promise.all([
+      rpc('club_mark_paid',admin,{p_transaction_ids:[tx.id]}),
+      rpc('club_void_transaction',owner,{p_transaction_id:tx.id,p_reason:'Racing correction'}),
+    ]);
+    expect([200,400]).toContain(paid.status);
+    expect(cancelled.status).toBe(200);
+    const final = await (await rpc('club_finance_snapshot',admin,{})).json();
+    const row = final.transactions.find((value:{id:string})=>value.id===tx.id);
+    expect(Boolean(row.voided_at)).toBe(true);
+    expect(row.status).toBe(paid.status===200 ? 'paid' : 'unpaid');
+  });
+  it('does not reactivate a cancelled transaction on a repeated creation request', async () => {
+    const args = charge();
+    const tx = await (await rpc('club_create_charge',admin,args)).json();
+    expect((await rpc('club_void_transaction',admin,{p_transaction_id:tx.id,p_reason:'Duplicate charge'})).status).toBe(200);
+    const replay = await rpc('club_create_charge',admin,args);
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toMatchObject({id:tx.id,void_reason:'Duplicate charge'});
+    const own = await (await rpc('club_finance_snapshot',user,{})).json();
+    const row = own.transactions.find((value:{id:string})=>value.id===tx.id);
+    expect(Boolean(row.voided_at)).toBe(true);
+    expect(row.void_reason).toBeNull();
+  });
+  it('requires a bounded reason and cannot accept a forged actor, date or status', async () => {
+    for (const reason of ['', '   ', 'x'.repeat(1001), null]) {
+      expect((await rpc('club_void_transaction',admin,{p_transaction_id:id('legacy'),p_reason:reason})).status).toBe(400);
+    }
+    expect((await rpc('club_void_transaction',admin,{p_transaction_id:id('missing'),p_reason:'Missing'})).status).toBe(400);
+    for (const extra of [{p_actor_id:id('owner')},{p_voided_at:'2000-01-01'},{p_status:'unpaid'}]) {
+      expect((await rpc('club_void_transaction',admin,{p_transaction_id:id('legacy'),p_reason:'Test',...extra})).status).toBe(404);
+    }
+  });
+  it('preserves cancellation history, profiles and balances on migration rerun and keeps markers private', async () => {
+    const before = localSql(`select count(*),sum(t.amount) from club_private.transaction_voids v
+      join public.transactions t on t.id=v.transaction_id where t.tournament_id='${id('event')}';`);
+    localSql(voidMigration());
+    expect(localSql(`select count(*),sum(t.amount) from club_private.transaction_voids v
+      join public.transactions t on t.id=v.transaction_id where t.tournament_id='${id('event')}';`)).toBe(before);
+    expect(localSql(`select has_table_privilege('authenticated','club_private.transaction_voids','SELECT,INSERT,UPDATE,DELETE'),
+      has_table_privilege('anon','club_private.transaction_voids','SELECT,INSERT,UPDATE,DELETE'),
+      has_function_privilege('authenticated','club_private.finance_transaction_json(public.transactions,boolean)','EXECUTE');`)).toBe('f|f|f');
+    expect(localSql(`select count(*),count(*) filter(where is_admin),sum(ruby_balance)
+      from public.users where id like '${prefix}%';`)).toBe('3|2|7035');
   });
 });

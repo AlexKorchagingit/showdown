@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronRight, Download, Trash2, X } from 'lucide-react';
+import { Check, ChevronRight, Download, Ban, X } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -14,7 +14,7 @@ import { useFinance } from '../../../context/FinanceContext';
 import { FetchErrorCard } from '../../../components/FetchErrorCard';
 import { ScreenLoading } from '../../../components/ScreenLoading';
 import { useTournaments } from '../../../context/TournamentContext';
-import { useAuditLog } from '../../../context/AuditLogContext';
+import { transactionVoidPrompt } from '../../../lib/transactionVoid';
 import { exportToCSV } from '../../../lib/exportToCSV';
 import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
 import { playerNickname } from '../../../lib/playerName';
@@ -32,12 +32,13 @@ const PERIODS: { id: FinancePeriod; label: string }[] = [
   { id: 'all', label: 'Все время' },
 ];
 
-type SheetKind = 'revenue' | 'expected' | 'tickets';
+type SheetKind = 'revenue' | 'expected' | 'tickets' | 'voided';
 
 const SHEET_TITLE: Record<SheetKind, string> = {
   revenue: 'Оплаченные транзакции',
   expected: 'Долги',
   tickets: 'Выданные билеты',
+  voided: 'История отмен',
 };
 
 function formatRub(value: number): string {
@@ -49,12 +50,10 @@ function newestFirst(a: Transaction, b: Transaction): number {
 }
 
 export function CashierTab() {
-  const { transactions, markPaid, removeTransaction, isLoading, loadError, refreshFinance } = useFinance();
+  const { transactions, voidedTransactions, markPaid, voidTransaction, isTransactionVoiding, isLoading, loadError, refreshFinance } = useFinance();
   const { tournaments } = useTournaments();
-  const { logAction } = useAuditLog();
   const [period, setPeriod] = useState<FinancePeriod>('today');
   const [sheet, setSheet] = useState<SheetKind | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const tournamentTitle = (id: string) => tournaments.find((t) => t.id === id)?.title ?? id;
 
@@ -82,6 +81,9 @@ export function CashierTab() {
     [filtered],
   );
 
+  const voided = useMemo(() => voidedTransactions.filter((tx) => isInPeriod(tx.voidedAt!, period))
+    .slice().sort((a,b) => Date.parse(b.voidedAt!) - Date.parse(a.voidedAt!)), [voidedTransactions, period]);
+
   const revenue = paid.reduce((sum, tx) => sum + tx.amount, 0);
   const expected = allUnpaid.reduce((sum, tx) => sum + tx.amount, 0);
 
@@ -95,34 +97,17 @@ export function CashierTab() {
     }));
   }, [paid, period]);
 
-  const sheetItems = sheet === 'revenue' ? paid : sheet === 'expected' ? allUnpaid : tickets;
+  const sheetItems = sheet === 'voided' ? voided : sheet === 'revenue' ? paid : sheet === 'expected' ? allUnpaid : tickets;
   const emptyCopy =
     sheet === 'revenue'
       ? 'Нет оплаченных транзакций за период'
       : sheet === 'expected'
         ? 'Долгов нет'
-        : 'Нет выданных билетов за период';
+        : sheet === 'voided' ? 'Нет отмен за период' : 'Нет выданных билетов за период';
 
-  const handleDelete = async (tx: Transaction) => {
-    const isTicket = tx.type === 'ticket';
-    const ok = window.confirm(
-      isTicket
-        ? 'Удалить этот билет из базы? Действие необратимо.'
-        : 'Удалить эту транзакцию из базы? Действие необратимо.',
-    );
-    if (!ok) return;
-    setDeletingId(tx.id);
-    const removed = await removeTransaction(tx.id);
-    setDeletingId(null);
-    if (!removed) return;
-    logAction({
-      actionType: isTicket ? 'Удалил билет' : 'Удалил транзакцию',
-      targetUserId: tx.userId,
-      targetUserName: playerNickname(tx.userId),
-      targetTournamentId: tx.tournamentId,
-      targetTournamentName: tournamentTitle(tx.tournamentId),
-      details: `${TRANSACTION_TYPE_LABEL[tx.type]}. ${formatRub(tx.amount)}. ${TRANSACTION_STATUS_LABEL[tx.status]}`,
-    });
+  const handleVoid = (tx: Transaction) => {
+    const reason = window.prompt(transactionVoidPrompt(tx), '');
+    if (reason !== null) void voidTransaction(tx.id, reason);
   };
 
   if (isLoading) return <ScreenLoading label="Загрузка кассы…" />;
@@ -158,6 +143,9 @@ export function CashierTab() {
         </button>
         <button type="button" onClick={() => setSheet('tickets')} className="text-left">
           <MetricCard label="Билеты" value={String(tickets.length)} accent="#D99962" />
+        </button>
+        <button type="button" onClick={() => setSheet('voided')} className="text-left">
+          <MetricCard label="История отмен" value={String(voided.length)} accent="#A39B98" />
         </button>
       </div>
 
@@ -279,6 +267,12 @@ export function CashierTab() {
                   <X size={16} style={{ color: '#A39B98' }} />
                 </button>
               </div>
+              {sheet === 'voided' && sheetItems.length > 0 ? (
+                <button type="button" onClick={() => exportToCSV(sheetItems, { tournamentTitle, playerName: playerNickname },
+                  'showdown-cancellations.csv')} className="mb-4 text-[12px] text-[#D99962] underline">
+                  Экспорт истории отмен
+                </button>
+              ) : null}
               {sheetItems.length === 0 ? (
                 <p className="text-center text-[13px] py-8" style={{ color: '#6B6360' }}>
                   {emptyCopy}
@@ -291,12 +285,12 @@ export function CashierTab() {
                       tx={tx}
                       tournamentTitle={tournamentTitle(tx.tournamentId)}
                       onSettle={sheet === 'expected' ? () => markPaid([tx.id]) : undefined}
-                      onDelete={
-                        sheet === 'revenue' || sheet === 'tickets'
-                          ? () => void handleDelete(tx)
+                      onVoid={
+                        sheet !== 'voided'
+                          ? () => void handleVoid(tx)
                           : undefined
                       }
-                      deleting={deletingId === tx.id}
+                      voiding={isTransactionVoiding(tx.id)}
                     />
                   ))}
                 </div>
@@ -340,16 +334,16 @@ function TransactionCard({
   tx,
   tournamentTitle,
   onSettle,
-  onDelete,
-  deleting = false,
+  onVoid,
+  voiding = false,
 }: {
   tx: Transaction;
   tournamentTitle: string;
   onSettle?: () => void;
-  onDelete?: () => void;
-  deleting?: boolean;
+  onVoid?: () => void;
+  voiding?: boolean;
 }) {
-  const amountColor = tx.status === 'unpaid' ? '#f87171' : '#F2D8A7';
+  const amountColor = tx.voidedAt ? '#A39B98' : tx.status === 'unpaid' ? '#f87171' : '#F2D8A7';
   const stamp = ledgerTimestamp(tx);
 
   return (
@@ -366,7 +360,7 @@ function TransactionCard({
             {TRANSACTION_TYPE_LABEL[tx.type]} · {formatRub(tx.amount)}
           </p>
           <p className="text-[10px] font-600 mt-0.5 uppercase tracking-wide" style={{ color: '#8c8c88' }}>
-            {TRANSACTION_STATUS_LABEL[tx.status]}
+            {tx.voidedAt ? 'Отменено · ранее: ' : ''}{TRANSACTION_STATUS_LABEL[tx.status]}
           </p>
         </div>
       </div>
@@ -378,6 +372,13 @@ function TransactionCard({
           {tx.comment}
         </p>
       ) : null}
+      {tx.voidedAt ? (
+        <div className="text-[11px] leading-snug break-words" style={{ color: '#A39B98' }}>
+          <p>Отмена: {formatTxDate(tx.voidedAt)} · {formatTxTime(tx.voidedAt)}</p>
+          {tx.voidReason ? <p>Причина: {tx.voidReason}</p> : null}
+          <p>Не учитывается в текущих итогах кассы. Отмена записи не означает возврат денег.</p>
+        </div>
+      ) : null}
       {onSettle ? (
         <button
           type="button"
@@ -388,19 +389,19 @@ function TransactionCard({
           Погасить долг
         </button>
       ) : null}
-      {onDelete ? (
+      {onVoid ? (
         <button
           type="button"
-          disabled={deleting}
-          onClick={onDelete}
+          disabled={voiding}
+          onClick={onVoid}
           className="w-full mt-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-800 text-white active:scale-[0.98] disabled:opacity-50 transition-transform"
           style={{
             background: 'rgba(127,29,29,0.85)',
             border: '1px solid rgba(239,68,68,0.45)',
           }}
         >
-          <Trash2 size={15} strokeWidth={2.4} />
-          {deleting ? 'Удаление…' : tx.type === 'ticket' ? 'Удалить билет' : 'Удалить транзакцию'}
+          <Ban size={15} strokeWidth={2.4} />
+          {voiding ? 'Отмена…' : tx.type === 'ticket' ? 'Отменить билет' : 'Отменить счёт'}
         </button>
       ) : null}
     </div>

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  deleteTransactionRow,
+  voidTransactionOnServer,
   fetchFinanceSnapshot,
   createCharge,
   adjustDealerHoursOnServer,
@@ -22,6 +22,7 @@ import {
 import { sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { createChargeRequests } from '../lib/chargeRequests';
 import { useUser } from './UserContext';
+import { isActiveTransaction, mergeTransactionUpdates, reconcileTransactionSnapshot } from '../lib/transactionVoid';
 import { createDealerHoursRequests, dealerKey, mergeDealerHours, type DealerHours } from '../lib/dealerHours';
 
 function resolveLedgerUserId(userId: string): string | null {
@@ -30,6 +31,8 @@ function resolveLedgerUserId(userId: string): string | null {
 
 interface FinanceContextValue {
   transactions: Transaction[];
+  voidedTransactions: Transaction[];
+  isTransactionVoiding: (transactionId: string) => boolean;
   isLoading: boolean;
   loadError: string | null;
   refreshFinance: () => Promise<void>;
@@ -44,7 +47,7 @@ interface FinanceContextValue {
   ) => void;
   addTicket: (tournamentId: string, userId: string, comment: string) => void;
   markPaid: (transactionIds: string[]) => void;
-  removeTransaction: (transactionId: string) => Promise<boolean>;
+  voidTransaction: (transactionId: string, reason: string) => Promise<boolean>;
   markPlayerPaid: (tournamentId: string, userId: string) => void;
   markAllUnpaidForPlayer: (userId: string) => void;
   unpaidForPlayer: (tournamentId: string, userId: string) => Transaction[];
@@ -58,6 +61,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [dealerHoursMap, setDealerHoursMap] = useState<Record<string, DealerHours>>({});
   const [pendingHours, setPendingHours] = useState<Set<string>>(new Set());
   const busyHours = useRef(new Set<string>());
+  const busyVoids = useRef(new Set<string>());
+  const [pendingVoids, setPendingVoids] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
   const fetchSequence = useRef(0);
   const mutationVersion = useRef(0);
@@ -77,7 +82,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     try {
       const snapshot = await fetchFinanceSnapshot();
       if (sequence !== fetchSequence.current || version !== mutationVersion.current) return;
-      setTransactions(snapshot.transactions);
+      setTransactions((prev) => reconcileTransactionSnapshot(prev, snapshot.transactions));
       setDealerHoursMap((prev) => mergeDealerHours(prev, snapshot.dealerHours));
       setLoadError(null);
     } catch {
@@ -150,7 +155,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       void chargeRequests({ tournamentId, userId: ledgerUserId, type, comment })
         .then((saved) => {
           mutationVersion.current++;
-          setTransactions((prev) => [saved, ...prev.filter((tx) => tx.id !== saved.id)]);
+          setTransactions((prev) => mergeTransactionUpdates(prev, [saved]));
         })
         .catch((error) => {
           window.alert(error instanceof Error ? error.message : 'Не удалось подтвердить создание счёта');
@@ -175,26 +180,31 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     void markTransactionsPaid(transactionIds)
       .then((saved) => {
         mutationVersion.current++;
-        const confirmed = new Map(saved.map((tx) => [tx.id, tx]));
-        setTransactions((prev) => prev.map((tx) => confirmed.get(tx.id) ?? tx));
+        setTransactions((prev) => mergeTransactionUpdates(prev, saved));
       })
       .catch((error) => {
         window.alert(error instanceof Error ? error.message : 'Не удалось отметить оплату');
       });
   }, []);
 
-  const removeTransaction = useCallback(async (transactionId: string): Promise<boolean> => {
+  const isTransactionVoiding = useCallback((transactionId: string) => pendingVoids.has(transactionId), [pendingVoids]);
+  const voidTransaction = useCallback(async (transactionId: string, reason: string): Promise<boolean> => {
+    if (isLoading || loadError || busyVoids.current.has(transactionId)) return false;
+    busyVoids.current.add(transactionId);
+    setPendingVoids(new Set(busyVoids.current));
     try {
-      await deleteTransactionRow(transactionId);
+      const saved = await voidTransactionOnServer(transactionId, reason);
       mutationVersion.current++;
-      setTransactions((prev) => prev.filter((tx) => tx.id !== transactionId));
+      setTransactions((prev) => mergeTransactionUpdates(prev, [saved]));
       return true;
     } catch (error) {
-      console.error(error);
-      window.alert(error instanceof Error ? error.message : 'Не удалось удалить транзакцию');
+      window.alert(error instanceof Error ? error.message : 'Не удалось подтвердить отмену');
       return false;
+    } finally {
+      busyVoids.current.delete(transactionId);
+      setPendingVoids(new Set(busyVoids.current));
     }
-  }, []);
+  }, [isLoading, loadError]);
 
   const unpaidForPlayer = useCallback(
     (tournamentId: string, userId: string) =>
@@ -202,7 +212,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         (tx) =>
           tx.tournamentId === tournamentId &&
           tx.userId === userId &&
-          tx.status === 'unpaid',
+          tx.status === 'unpaid' && isActiveTransaction(tx),
       ),
     [transactions],
   );
@@ -224,16 +234,20 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const markAllUnpaidForPlayer = useCallback(
     (userId: string) => {
       const ids = transactions
-        .filter((tx) => tx.userId === userId && tx.status === 'unpaid')
+        .filter((tx) => tx.userId === userId && tx.status === 'unpaid' && isActiveTransaction(tx))
         .map((tx) => tx.id);
       if (ids.length) markPaid(ids);
     },
     [transactions, markPaid],
   );
 
+  const activeTransactions = useMemo(() => visibleTransactions.filter(isActiveTransaction), [visibleTransactions]);
+  const voidedTransactions = useMemo(() => visibleTransactions.filter((tx) => !isActiveTransaction(tx)), [visibleTransactions]);
   const value = useMemo(
     () => ({
-      transactions: visibleTransactions,
+      transactions: activeTransactions,
+      voidedTransactions,
+      isTransactionVoiding,
       isLoading,
       loadError,
       refreshFinance,
@@ -244,14 +258,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addCharge,
       addTicket,
       markPaid,
-      removeTransaction,
+      voidTransaction,
       markPlayerPaid,
       markAllUnpaidForPlayer,
       unpaidForPlayer,
       unpaidTotalForPlayer,
     }),
     [
-      visibleTransactions,
+      activeTransactions,
+      voidedTransactions,
+      isTransactionVoiding,
       isLoading,
       loadError,
       refreshFinance,
@@ -262,7 +278,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addCharge,
       addTicket,
       markPaid,
-      removeTransaction,
+      voidTransaction,
       markPlayerPaid,
       markAllUnpaidForPlayer,
       unpaidForPlayer,
