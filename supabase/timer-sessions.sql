@@ -24,12 +24,10 @@ create trigger timer_sessions_set_updated_at
 
 alter table public.timer_sessions enable row level security;
 drop policy if exists timer_sessions_all_access on public.timer_sessions;
-create policy timer_sessions_all_access on public.timer_sessions
-  for all using (true) with check (true);
 
 revoke all on table public.timer_sessions from public, anon;
 revoke all (id,payload,created_at,updated_at) on table public.timer_sessions from public, anon;
-grant all on table public.timer_sessions to authenticated;
+grant select,insert,update on table public.timer_sessions to authenticated;
 
 do $$
 begin

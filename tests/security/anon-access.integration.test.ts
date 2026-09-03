@@ -11,6 +11,7 @@ const email = (name: string) => `${id(name)}@example.test`;
 const fixture = `anon_probe_${randomUUID().replaceAll('-', '')}`;
 const sqlFile = (name: string) => readFileSync(`supabase/${name}`, 'utf8');
 const migration = () => sqlFile('migrations/20260904_anon_access.sql');
+const policyMigration = () => sqlFile('migrations/20260904_authenticated_policies.sql');
 function token(role: string) {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
   const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ role, aud: 'authenticated', iss: 'supabase',
@@ -53,7 +54,7 @@ const remainingPrivileges = () => localSql(`select
 describe('anonymous access cutover, with the real Auth/OTP path still working', () => {
   let baseline = '';
   let admin = '';
-  let user = '';
+  let user = ''; let owner = '';
   beforeAll(async () => {
     expect((await fetch(`${base}/auth/v1/health`)).status).toBe(200);
     localSql(readFileSync('tests/security/auth-helpers.sql', 'utf8') + '\n' + sqlFile('schema.sql') + '\n'
@@ -70,7 +71,6 @@ describe('anonymous access cutover, with the real Auth/OTP path still working', 
       + sqlFile('migrations/20260903_registered_dealer_hours.sql') + '\n'
       + sqlFile('migrations/20260903_transaction_voids.sql') + '\n'
       + sqlFile('migrations/20260903_wallet_shop.sql'));
-    baseline = sourceHash();
     // Reproduce legacy grants, including column ACLs, views and PUBLIC defaults.
     // Synthetic/local only. Applying the migration must close all of them.
     localSql(`grant all on public.users,public.tournaments,public.participants,public.transactions,public.logs to anon;
@@ -86,6 +86,10 @@ describe('anonymous access cutover, with the real Auth/OTP path still working', 
       alter default privileges in schema public grant execute on functions to public,anon;`);
     localSql(migration());
     localSql(migration());
+    localSql(policyMigration());
+    localSql(policyMigration());
+    localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('other-admin')}';`);
+    baseline = sourceHash();
     for (let attempt = 0; attempt < 20; attempt++) {
       if ((await rpc('club_current_account')).status !== 404) break;
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -175,6 +179,8 @@ describe('anonymous access cutover, with the real Auth/OTP path still working', 
       expect(response.status).toBe(200);
       expect((await response.json()).user).toMatchObject({ id: profileId, role });
     }
+    owner = (await login('other-admin')).access_token;
+    expect((await rpc('club_open_session', owner)).status).toBe(200);
   });
   it('keeps consent, new profile creation and token refresh working without anonymous table grants', async () => {
     const session = await login('new');
@@ -197,5 +203,33 @@ describe('anonymous access cutover, with the real Auth/OTP path still working', 
     expect((await rpc('club_create_charge', user, charge)).status).toBe(403);
     expect((await rpc('club_create_charge', admin, charge)).status).toBe(200);
     expect((await rpc('club_finance_snapshot', admin)).status).toBe(200);
+  });
+  it('enforces direct table policies for user, admin and SuperAdmin', async () => {
+    const ownUsers = await request('/rest/v1/users?select=id', 'GET', user);
+    expect(ownUsers.status).toBe(200);
+    expect(await ownUsers.json()).toEqual([{ id:id('user') }]);
+    const adminUsers = await request(`/rest/v1/users?select=id&id=like.${prefix}*`, 'GET', admin);
+    expect((await adminUsers.json())).toHaveLength(3);
+
+    for (const path of ['/rest/v1/transactions?select=id','/rest/v1/logs?select=id','/rest/v1/timer_sessions?select=id']) {
+      const response = await request(path,'GET',user);
+      expect(response.status).toBe(200);
+      if (!path.includes('transactions')) expect(await response.json()).toEqual([]);
+    }
+    expect((await request('/rest/v1/logs?select=id','GET',admin)).status).toBe(200);
+    expect((await request('/rest/v1/logs?select=id','GET',owner)).status).toBe(200);
+
+    // PostgreSQL filters an unauthorized UPDATE to zero rows; PostgREST reports 204.
+    expect((await request(`/rest/v1/tournaments?id=eq.${id('event')}`,'PATCH',user,{ about:'forged' })).status).toBe(204);
+    expect(localSql(`select about from public.tournaments where id='${id('event')}';`)).toBe('');
+    expect((await request(`/rest/v1/tournaments?id=eq.${id('event')}`,'PATCH',admin,{ about:'Synthetic policy check' })).status).toBe(204);
+    expect(localSql(`select about from public.tournaments where id='${id('event')}';`)).toBe('Synthetic policy check');
+    expect((await request('/rest/v1/participants','POST',user,
+      { id:id('forged-seat'),tournament_id:id('event'),user_id:id('user'),nickname:'Synthetic player',rating:999 })).status).toBe(403);
+    const seat = { id:id('own-seat'),tournament_id:id('event'),user_id:id('user'),nickname:'Synthetic player',rating:0 };
+    expect((await request('/rest/v1/participants','POST',user,seat)).status).toBe(201);
+    expect((await request(`/rest/v1/participants?id=eq.${id('own-seat')}`,'DELETE',user)).status).toBe(204);
+    expect(localSql(`select count(*) from pg_policies where schemaname='public'
+      and (coalesce(qual,'') ~ '^\\s*true\\s*$' or coalesce(with_check,'') ~ '^\\s*true\\s*$');`)).toBe('0');
   });
 });

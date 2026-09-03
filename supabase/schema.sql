@@ -214,31 +214,20 @@ alter table public.transactions enable row level security;
 alter table public.logs enable row level security;
 
 drop policy if exists users_all_access on public.users;
-create policy users_all_access on public.users
-  for all using (true) with check (true);
 
 drop policy if exists tournaments_all_access on public.tournaments;
-create policy tournaments_all_access on public.tournaments
-  for all using (true) with check (true);
 
 drop policy if exists participants_all_access on public.participants;
-create policy participants_all_access on public.participants
-  for all using (true) with check (true);
 
 drop policy if exists transactions_all_access on public.transactions;
-create policy transactions_all_access on public.transactions
-  for all using (true) with check (true);
 
 drop policy if exists logs_all_access on public.logs;
-create policy logs_all_access on public.logs
-  for all using (true) with check (true);
 
 grant usage on schema public to authenticated, service_role;
-grant all on table public.users to authenticated;
-grant all on table public.tournaments to authenticated;
-grant all on table public.participants to authenticated;
-grant all on table public.transactions to authenticated;
-grant all on table public.logs to authenticated;
+grant select,update on table public.users to authenticated;
+grant select,insert,update,delete on table public.tournaments,public.participants to authenticated;
+grant select on table public.transactions to authenticated;
+grant select,insert on table public.logs to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- timer_sessions  (one live blinds clock for every admin device / tab)
@@ -261,10 +250,8 @@ create trigger timer_sessions_set_updated_at
 
 alter table public.timer_sessions enable row level security;
 drop policy if exists timer_sessions_all_access on public.timer_sessions;
-create policy timer_sessions_all_access on public.timer_sessions
-  for all using (true) with check (true);
 
-grant all on table public.timer_sessions to authenticated;
+grant select,insert,update on table public.timer_sessions to authenticated;
 
 do $$
 begin
