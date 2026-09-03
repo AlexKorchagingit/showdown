@@ -18,11 +18,12 @@ async function handleLogout() {
 export function SettingsPage({ userEmail }: Props) {
   const navigate = useNavigate();
   const { isAdmin } = useUser();
-  const { nickname, birthDate, slogan, updateNickname, updateBirthDate, updateSlogan } = useProfile();
+  const { nickname, birthDate, slogan, updateProfile } = useProfile();
 
   const [draftNickname, setDraftNickname] = useState(nickname);
   const [draftBirthDate, setDraftBirthDate] = useState(birthDate);
   const [draftSlogan, setDraftSlogan] = useState(slogan);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDraftNickname(nickname);
@@ -30,11 +31,16 @@ export function SettingsPage({ userEmail }: Props) {
     setDraftSlogan(slogan);
   }, [nickname, birthDate, slogan]);
 
-  const handleSave = () => {
-    updateNickname(draftNickname.trim() || nickname);
-    updateBirthDate(draftBirthDate);
-    updateSlogan(draftSlogan.trim());
-    navigate('/profile');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    const saved = await updateProfile({
+      nickname: draftNickname.trim() || nickname,
+      birthDate: draftBirthDate,
+      slogan: draftSlogan.trim(),
+    });
+    setSaving(false);
+    if (saved) navigate('/profile');
   };
 
   return (
@@ -138,10 +144,11 @@ export function SettingsPage({ userEmail }: Props) {
 
           <button
             type="button"
-            onClick={handleSave}
-            className="w-full bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white font-bold py-3 rounded-xl active:scale-[0.98] transition-transform"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="w-full bg-gradient-to-r from-[#8C4C27] to-[#D99962] text-white font-bold py-3 rounded-xl active:scale-[0.98] transition-transform disabled:opacity-50"
           >
-            Сохранить изменения
+            {saving ? 'Сохранение…' : 'Сохранить изменения'}
           </button>
         </div>
 

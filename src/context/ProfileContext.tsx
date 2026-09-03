@@ -38,9 +38,7 @@ interface ProfileContextValue extends UserData {
   characterImage: string;
   backgroundImage: string;
   equippedAvatar: string;
-  updateNickname: (value: string) => void;
-  updateBirthDate: (value: string) => void;
-  updateSlogan: (value: string) => void;
+  updateProfile: (values: Pick<UserData, 'nickname' | 'birthDate' | 'slogan'>) => Promise<boolean>;
   isOwned: (itemId: string) => boolean;
   isEquipped: (itemId: string) => boolean;
   buyItem: (itemId: string) => Promise<boolean>;
@@ -62,24 +60,16 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   };
   const shopItems = useMemo(() => wallet ? shopCatalogItems(wallet) : [], [wallet]);
 
-  const updateNickname = useCallback(
-    (value: string) => {
-      void patchAccount({ nickname: value });
-    },
-    [patchAccount],
-  );
-  const updateBirthDate = useCallback(
-    (value: string) => {
-      void patchAccount({ birthDate: value });
-    },
-    [patchAccount],
-  );
-  const updateSlogan = useCallback(
-    (value: string) => {
-      void patchAccount({ slogan: value });
-    },
-    [patchAccount],
-  );
+  const updateProfile = useCallback(async (
+    values: Pick<UserData, 'nickname' | 'birthDate' | 'slogan'>,
+  ) => {
+    try {
+      return Boolean(await patchAccount(values));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось сохранить профиль');
+      return false;
+    }
+  }, [patchAccount]);
 
   const isOwned = useCallback(
     (itemId: string) => data.ownedItems.includes(itemId) || wallet?.catalog.some((item) => item.id === itemId && item.price === 0) === true,
@@ -109,13 +99,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     async (amount: number) => {
       const delta = Math.floor(Number(amount));
       if (!Number.isFinite(delta)) return;
-      // Legacy admin grants/payouts remain pending a separate server-command substage.
       if (!wallet || walletState.isLoading || walletState.error) throw new Error('Сначала обновите кошелёк');
-      if (delta === 0) { await walletState.refresh(); return; }
-      await patchAccount({ coins: Math.max(0, data.coins + delta) });
+      if (delta !== 0) throw new Error('Баланс изменяется только подтверждённой серверной операцией');
       await walletState.refresh();
     },
-    [data.coins, patchAccount, wallet, walletState.isLoading, walletState.error, walletState.refresh],
+    [wallet, walletState.isLoading, walletState.error, walletState.refresh],
   );
 
   const claimFirstNotification = useCallback(async () => {
@@ -135,9 +123,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       characterImage: resolveImage(data.equippedChar, 'character'),
       backgroundImage: resolveImage(data.equippedBg, 'bg'),
       equippedAvatar: avatarUrlForChar(data.equippedChar),
-      updateNickname,
-      updateBirthDate,
-      updateSlogan,
+      updateProfile,
       isOwned,
       isEquipped,
       buyItem,
@@ -148,9 +134,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     [
       data,
       isLoading,
-      updateNickname,
-      updateBirthDate,
-      updateSlogan,
+      updateProfile,
       isOwned,
       isEquipped,
       buyItem,

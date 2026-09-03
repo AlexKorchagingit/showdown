@@ -88,16 +88,17 @@ export async function updateUserRow(
   userId: string,
   patch: Record<string, unknown>,
 ): Promise<MappedUser | null> {
-  if (['owned_items','equipped_char','equipped_bg','equipped_avatar'].some((field) => field in patch)) {
-    throw new Error('Инвентарь и внешний вид изменяются только серверной командой магазина');
+  const allowed = new Set(['nickname', 'birth_date', 'slogan']);
+  if (Object.keys(patch).length === 0 || Object.keys(patch).some((field) => !allowed.has(field))) {
+    throw new Error('Это поле профиля изменяется только специальной серверной командой');
   }
-  const { data, error } = await supabase.from('users').update(patch).eq('id', userId).select('*').single();
+  const { data, error } = await supabase.rpc('club_update_profile', { p_changes: patch });
   if (error || !data) {
     logSupabaseError(error, 'update user');
-    return null;
+    throw new Error(error?.message || 'Не удалось сохранить профиль');
   }
   const row = asUserRow(data);
-  if (!row) return null;
+  if (!row || row.id !== userId) throw new Error('Сервер вернул другой профиль');
   const mapped = userFromRow(row);
   const authoritative = await fetchUserById(userId);
   if (authoritative) {
@@ -109,17 +110,14 @@ export async function updateUserRow(
 }
 
 export function mappedUserToPatch(changes: Partial<MappedUser>): Record<string, unknown> {
-  if (['ownedItems','equippedChar','equippedBg','equippedAvatar'].some((field) => field in changes)) {
-    throw new Error('Инвентарь и внешний вид изменяются только серверной командой магазина');
+  const allowed = new Set(['nickname', 'birthDate', 'slogan']);
+  if (Object.keys(changes).some((field) => !allowed.has(field))) {
+    throw new Error('Защищённые поля профиля нельзя изменять обычным сохранением');
   }
   const patch: Record<string, unknown> = {};
   if (changes.nickname != null) patch.nickname = changes.nickname;
   if (changes.birthDate != null) patch.birth_date = changes.birthDate;
   if (changes.slogan != null) patch.slogan = changes.slogan;
-  if (changes.coins != null) patch.ruby_balance = Math.max(0, Math.trunc(changes.coins));
-  if (changes.rubyBalance != null) patch.ruby_balance = Math.max(0, Math.trunc(changes.rubyBalance));
-  if (changes.pendingNotifications != null) patch.pending_notifications = changes.pendingNotifications;
-  if (changes.agreementsAcceptedAt != null) patch.agreements_accepted_at = changes.agreementsAcceptedAt;
   return patch;
 }
 
