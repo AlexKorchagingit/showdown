@@ -4,10 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, Gem, Link2, MessageSquare, Minus, Plus, UserPlus, X } from 'lucide-react';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
-import { CURRENT_USER_ID, useTournaments } from '../../context/TournamentContext';
+import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useAuditLog } from '../../context/AuditLogContext';
-import { useProfile } from '../../context/ProfileContext';
 import { useUser } from '../../context/UserContext';
 import { useBlinds } from '../../context/BlindsContext';
 import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
@@ -34,7 +33,7 @@ import { TimerRunningBadge } from '../../components/TimerRunningBadge';
 import type { Participant } from '../../types/tournament';
 import type { PersonnelEntry } from '../../lib/personnel';
 import { playerEmail } from '../../lib/systemPlayers';
-import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
+import { isBountyEvent } from '../../lib/calculateRubies';
 import {
   GUEST_NICKNAME_MAX,
   guestParticipantId,
@@ -42,10 +41,10 @@ import {
   normalizeGuestNickname,
 } from '../../lib/guestPlayer';
 import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnalytics';
-import { creditRubiesToBalance } from '../../lib/rubyGrants';
 import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
 import { clearParticipantPlace } from '../../lib/tournamentApi';
 import { seasonPointsByUserId } from '../../lib/clubRating';
+import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
@@ -80,8 +79,7 @@ export function AdminTournamentFinance() {
   const { tournaments, updateTournament, isLoading, loadError, fetchTournaments,
     personnelRosters, personnelCommand, isPersonnelPending } = useTournaments();
   const { logAction } = useAuditLog();
-  const { email: currentEmail, userId, clubUsers } = useUser();
-  const { addCoins } = useProfile();
+  const { account, clubUsers } = useUser();
   const { isRunning, linkedTournamentId } = useBlinds();
   const {
     transactions,
@@ -276,45 +274,17 @@ export function AdminTournamentFinance() {
 
     closingRef.current = true;
     try {
-      const settled = attachRubiesAwarded(
-        closeTournamentWithPayouts(
-          closingParticipants,
-          tournament.guarantee,
-          bountyEvent,
-        ),
+      const settled = closeTournamentWithPayouts(
+        closingParticipants,
+        tournament.guarantee,
         bountyEvent,
       );
-      const rubyTotal = settled.reduce((sum, row) => sum + (row.rubiesAwarded ?? 0), 0);
-
-      for (const participant of settled) {
-        if (isUnboundGuestSeat(participant)) continue;
-        const amount = participant.rubiesAwarded ?? 0;
-        if (amount <= 0) continue;
-        const email =
-          participant.id === CURRENT_USER_ID || participant.id === userId
-            ? currentEmail
-            : playerEmail(participant.id, participant.nickname);
-        if (!email) continue;
-        await creditRubiesToBalance({
-          email,
-          amount,
-          currentEmail,
-          creditCurrentUser: addCoins,
-        });
-      }
-
-      await updateTournament(tournament.id, {
-        isClosed: true,
-        resultsEntered: true,
-        rubiesDistributed: true,
+      await closeTournamentOnServer({
+        actorId: account?.id ?? '',
+        tournamentId: tournament.id,
         participants: settled,
       });
-      logAction({
-        actionType: 'Закрыл турнир',
-        targetTournamentId: tournament.id,
-        targetTournamentName: tournament.title,
-        details: `Внесены результаты. Игроков: ${settled.length}. Рубины: ${rubyTotal.toLocaleString('ru-RU')}`,
-      });
+      await fetchTournaments();
     } catch (error) {
       closingRef.current = false;
       window.alert(error instanceof Error ? error.message : 'Не удалось закрыть турнир');
