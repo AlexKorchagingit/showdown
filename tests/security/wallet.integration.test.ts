@@ -52,8 +52,6 @@ async function claim(access: string, notificationId: string): Promise<WalletRow>
   return data.wallet;
 }
 async function login(name: string) {
-  localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at)
-    values('${email(name)}','synthetic-hmac','synthetic-ip',now()+interval '5 minutes');`);
   const result = await verifyOtpAndIssueSession({supabaseUrl:base,serviceRoleKey:service},email(name),'synthetic-hmac');
   expect(result.verified).toBe(true);
   if (!result.verified) throw new Error('Synthetic sign-in failed');
@@ -84,6 +82,9 @@ describe('isolated shop and one-time wallet claims',() => {
       if((await rpc('club_wallet_snapshot',anon)).status!==404) break;
       await new Promise((resolve)=>setTimeout(resolve,100));
     }
+    // Seed first; synchronous Docker must not consume in-flight Auth timeouts.
+    localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
+      ${['buyer','poor','other','admin'].map((name) => `('${email(name)}','synthetic-hmac','synthetic-ip',now()+interval '5 minutes')`).join(',')};`);
     [buyer,poor,other,admin]=await Promise.all([login('buyer'),login('poor'),login('other'),login('admin')]);
   });
   it('does not reset balances, inventory, notifications, timestamps or administrator flags',async () => {

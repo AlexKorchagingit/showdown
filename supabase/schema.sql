@@ -7,7 +7,16 @@
 --
 -- Ids stay as text so they can match the existing client ids
 -- ('1', 'opening', 'me', …) when we swap localStorage for Postgres.
--- Run this in the Supabase SQL editor.
+-- LOCAL ONLY until the coordinated Auth/access cutover is approved.
+-- New objects must not inherit anonymous/PUBLIC privileges from old defaults.
+begin;
+alter default privileges revoke all on tables from public, anon;
+alter default privileges revoke all on sequences from public, anon;
+alter default privileges revoke execute on functions from public, anon;
+alter default privileges in schema public revoke all on tables from public, anon;
+alter default privileges in schema public revoke all on sequences from public, anon;
+alter default privileges in schema public revoke execute on functions from public, anon;
+revoke create on schema public from public, anon;
 
 create extension if not exists pgcrypto;
 
@@ -194,9 +203,9 @@ create trigger participants_set_updated_at
   for each row execute procedure public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
--- Row Level Security — open read/write for now (tighten later)
--- Login uses the anon key against public.users (no Supabase Auth session).
--- Keep GRANT + policy for anon SELECT/INSERT/UPDATE or email OTP login will 401/403.
+-- Transitional authenticated access. Anonymous table access is forbidden.
+-- These legacy policies are NOT the final authenticated security boundary.
+-- OTP runs as service_role and the client must use a real Auth session.
 -- ---------------------------------------------------------------------------
 alter table public.users enable row level security;
 alter table public.tournaments enable row level security;
@@ -224,12 +233,12 @@ drop policy if exists logs_all_access on public.logs;
 create policy logs_all_access on public.logs
   for all using (true) with check (true);
 
-grant usage on schema public to anon, authenticated;
-grant all on table public.users to anon, authenticated;
-grant all on table public.tournaments to anon, authenticated;
-grant all on table public.participants to anon, authenticated;
-grant all on table public.transactions to anon, authenticated;
-grant all on table public.logs to anon, authenticated;
+grant usage on schema public to authenticated, service_role;
+grant all on table public.users to authenticated;
+grant all on table public.tournaments to authenticated;
+grant all on table public.participants to authenticated;
+grant all on table public.transactions to authenticated;
+grant all on table public.logs to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- timer_sessions  (one live blinds clock for every admin device / tab)
@@ -255,7 +264,7 @@ drop policy if exists timer_sessions_all_access on public.timer_sessions;
 create policy timer_sessions_all_access on public.timer_sessions
   for all using (true) with check (true);
 
-grant all on table public.timer_sessions to anon, authenticated;
+grant all on table public.timer_sessions to authenticated;
 
 do $$
 begin
@@ -264,3 +273,23 @@ exception
   when duplicate_object then null;
   when undefined_object then null;
 end $$;
+
+-- Also close existing objects on a bootstrap rerun, including views and helpers.
+revoke all on all tables in schema public from public, anon;
+revoke all on all sequences in schema public from public, anon;
+revoke all on all routines in schema public from public, anon;
+do $$
+declare v_table record;
+begin
+  for v_table in
+    select c.relname, string_agg(quote_ident(a.attname), ',' order by a.attnum) as columns
+    from pg_class c join pg_attribute a on a.attrelid=c.oid and a.attnum>0 and not a.attisdropped
+    where c.relnamespace='public'::regnamespace and c.relkind in ('r','p','v','m','f')
+    group by c.oid,c.relname
+  loop
+    execute format('revoke all (%s) on table public.%I from public, anon',v_table.columns,v_table.relname);
+  end loop;
+end;
+$$;
+notify pgrst, 'reload schema';
+commit;

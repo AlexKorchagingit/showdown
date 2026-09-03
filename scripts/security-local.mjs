@@ -23,11 +23,24 @@ export function docker(args, input) {
 }
 
 export function localSql(sql) {
-  const marker = docker(['exec', '-T', 'db', 'psql', '-X', '-U', 'postgres', '-At',
-    '-v', 'ON_ERROR_STOP=1', '-c', 'select id from public.showdown_local_test_marker'], '');
-  if (marker !== 't') throw new Error('Refusing SQL: missing local test marker');
-  return docker(['exec', '-T', 'db', 'psql', '-X', '-U', 'postgres', '-At',
-    '-v', 'ON_ERROR_STOP=1'], sql);
+  // Check the marker in the SAME connection before any supplied SQL executes.
+  // One Docker invocation also avoids paying Windows/Compose startup twice.
+  const guard = `do $local_guard$ begin
+    if to_regclass('public.showdown_local_test_marker') is null then
+      raise exception 'Refusing SQL: missing local test marker';
+    end if;
+    if (select count(*) from public.showdown_local_test_marker) <> 1
+      or not coalesce((select bool_and(id) from public.showdown_local_test_marker),false) then
+      raise exception 'Refusing SQL: invalid local test marker';
+    end if;
+  end; $local_guard$;`;
+  const output = docker(['exec', '-T', 'db', 'psql', '-X', '-U', 'postgres', '-At',
+    '-v', 'ON_ERROR_STOP=1'], `${guard}\n${sql}`);
+  // psql's first command tag belongs only to the guard, not the caller's result.
+  if (output !== 'DO' && !output.startsWith('DO\n') && !output.startsWith('DO\r\n')) {
+    throw new Error('Refusing SQL result: missing local guard confirmation');
+  }
+  return output.slice(2).trim();
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

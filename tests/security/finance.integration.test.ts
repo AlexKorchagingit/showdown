@@ -33,8 +33,6 @@ function hours(overrides: Record<string, unknown> = {}) {
   return { p_request_id: randomUUID(), p_user_id: id('user'), p_tournament_id: id('no-addon'), p_delta: 0.5, ...overrides };
 }
 async function login(name: string) {
-  localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at)
-    values ('${email(name)}','synthetic-hmac','synthetic-ip',now()+interval '5 minutes');`);
   const result = await verifyOtpAndIssueSession({ supabaseUrl: base, serviceRoleKey: service }, email(name), 'synthetic-hmac');
   expect(result.verified).toBe(true);
   if (!result.verified) throw new Error('Synthetic sign-in failed');
@@ -69,6 +67,10 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
       if ((await rpc('club_create_charge', anon, charge())).status !== 404) break;
       await new Promise((resolve) => setTimeout(resolve,100));
     }
+    // Finish blocking Docker setup before any 10-second Auth request starts.
+    // Parallelize real HTTP requests, not synchronous SQL mixed with HTTP.
+    localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
+      ${['admin','owner','user'].map((name) => `('${email(name)}','synthetic-hmac','synthetic-ip',now()+interval '5 minutes')`).join(',')};`);
     [admin,owner,user] = await Promise.all([login('admin'),login('owner'),login('user')]);
   });
 

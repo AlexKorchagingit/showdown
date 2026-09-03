@@ -1,6 +1,10 @@
 -- Live blinds timer snapshot shared by every admin device and browser tab.
 -- Safe to re-run. The app also falls back to a hidden logs row if this table
 -- is not present yet.
+-- LOCAL ONLY until coordinated rollout; never reopen anonymous access.
+begin;
+alter default privileges revoke all on tables from public, anon;
+alter default privileges in schema public revoke all on tables from public, anon;
 
 create table if not exists public.timer_sessions (
   id text primary key default 'live',
@@ -23,7 +27,9 @@ drop policy if exists timer_sessions_all_access on public.timer_sessions;
 create policy timer_sessions_all_access on public.timer_sessions
   for all using (true) with check (true);
 
-grant all on table public.timer_sessions to anon, authenticated;
+revoke all on table public.timer_sessions from public, anon;
+revoke all (id,payload,created_at,updated_at) on table public.timer_sessions from public, anon;
+grant all on table public.timer_sessions to authenticated;
 
 do $$
 begin
@@ -32,3 +38,5 @@ exception
   when duplicate_object then null;
   when undefined_object then null;
 end $$;
+notify pgrst, 'reload schema';
+commit;

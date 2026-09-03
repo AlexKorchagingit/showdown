@@ -26,8 +26,6 @@ function command(action = 'add_dealer', values: object = { name:'Synthetic deale
   return { p_request_id:randomUUID(),p_tournament_id:id('work'),p_action:action,p_values:values,p_entry_id:entryId };
 }
 async function login(name: string) {
-  localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at)
-    values('${email(name)}','synthetic-hmac','synthetic-ip',now()+interval '5 minutes');`);
   const result = await verifyOtpAndIssueSession({ supabaseUrl:base,serviceRoleKey:service },email(name),'synthetic-hmac');
   expect(result.verified).toBe(true);
   if (!result.verified) throw new Error('Synthetic sign-in failed');
@@ -76,6 +74,9 @@ describe('isolated personnel commands and non-destructive legacy transfer', () =
       if ((await rpc('club_personnel_snapshot',anon)).status!==404) break;
       await new Promise((resolve) => setTimeout(resolve,100));
     }
+    // Do not block an in-flight Auth timeout with synchronous Docker calls.
+    localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
+      ${['admin','owner','user'].map((name) => `('${email(name)}','synthetic-hmac','synthetic-ip',now()+interval '5 minutes')`).join(',')};`);
     [admin,owner,user] = await Promise.all([login('admin'),login('owner'),login('user')]);
   });
 
