@@ -4,7 +4,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -21,6 +20,7 @@ import {
 } from '../types/finance';
 import { sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { createChargeRequests } from '../lib/chargeRequests';
+import { useUser } from './UserContext';
 
 function dealerKey(tournamentId: string, userId: string) {
   return `${tournamentId}:${userId}`;
@@ -66,8 +66,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [dealerHoursMap, setDealerHoursMap] = useState<Record<string, number>>({});
   const [dealerLoggedAtMap, setDealerLoggedAtMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const chargeRequests = useRef<ReturnType<typeof createChargeRequests> | null>(null);
-  if (!chargeRequests.current) chargeRequests.current = createChargeRequests(createCharge);
+  const { account } = useUser();
+  const actorId = account?.id ?? '';
+  const chargeRequests = useMemo(() => createChargeRequests(createCharge, undefined,
+    { scope: actorId, storage: () => sessionStorage }), [actorId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,14 +132,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         window.alert('Нельзя выставить счёт: игрок не найден в базе пользователей');
         return;
       }
-      void chargeRequests.current!({ tournamentId, userId: ledgerUserId, type, comment })
+      void chargeRequests({ tournamentId, userId: ledgerUserId, type, comment })
         .then((saved) => {
           setTransactions((prev) => [saved, ...prev.filter((tx) => tx.id !== saved.id)]);
         })
         .catch((error) => {
           window.alert(error instanceof Error ? error.message : 'Не удалось подтвердить создание счёта');
         });
-    }, [],
+    }, [chargeRequests],
   );
 
   const addCharge = useCallback(
