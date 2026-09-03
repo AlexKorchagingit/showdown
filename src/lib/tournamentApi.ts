@@ -82,9 +82,12 @@ export async function fetchParticipants(tournamentId: string): Promise<Participa
 }
 
 export async function insertTournament(tournament: Tournament): Promise<Tournament> {
+  if ((tournament.dealers?.length ?? 0) || (tournament.staff?.length ?? 0)) {
+    throw new Error('Сначала создайте турнир, затем добавьте персонал серверной командой');
+  }
   const { data, error } = await supabase
     .from('tournaments')
-    .insert(tournamentToRow(tournament))
+    .insert(tournamentWriteRow(tournament))
     .select('*')
     .single();
   if (error || !data) {
@@ -98,12 +101,18 @@ export async function insertTournament(tournament: Tournament): Promise<Tourname
 export async function updateTournamentRow(tournament: Tournament): Promise<void> {
   const { error } = await supabase
     .from('tournaments')
-    .update(tournamentToRow(tournament))
+    .update(tournamentWriteRow(tournament))
     .eq('id', tournament.id);
   if (error) {
     logSupabaseError(error, 'update tournament');
     throw new Error(error.message);
   }
+}
+
+/** Protected personnel is not part of generic tournament writes, including stale editor saves. */
+export function tournamentWriteRow(tournament: Tournament) {
+  const { staff: _staff, dealers: _dealers, ...row } = tournamentToRow(tournament);
+  return row;
 }
 
 export async function deleteTournamentRow(tournamentId: string): Promise<void> {

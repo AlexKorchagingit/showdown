@@ -198,7 +198,7 @@ function formatHours(hours: number): string {
 
 export function computePlayerAdminStats(
   playerId: string,
-  nickname: string,
+  _nickname: string,
   tournaments: Tournament[],
   transactions: Transaction[],
   getDealerHours: (tournamentId: string, userId: string) => number,
@@ -243,14 +243,8 @@ export function computePlayerAdminStats(
   let dealerHours = 0;
   const dealerRows: PlayerLedgerRow[] = [];
   for (const tournament of tournaments) {
-    let hours = getDealerHours(tournament.id, playerId);
-    if (hours <= 0 && !tournament.participants.some((row) => participantMatches(row, ids))) {
-      for (const dealer of tournament.dealers ?? []) {
-        if (dealer.name === nickname) {
-          hours += dealer.hours + dealer.minutes / 60;
-        }
-      }
-    }
+    // A matching name is not an identity link. Unbound personnel stays in the event roster.
+    const hours = getDealerHours(tournament.id, playerId);
     if (hours <= 0) continue;
     dealerHours += hours;
     dealerRows.push({

@@ -20,6 +20,8 @@ import {
 } from '../lib/tournamentApi';
 import { participantToRow, resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { clubUserIdSet, countOccupiedLobbySeats, lobbySeatedPlayers } from '../lib/clubRating';
+import { usePersonnel } from '../hooks/usePersonnel';
+import { withPersonnel, type PersonnelIntent, type PersonnelRoster } from '../lib/personnel';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -39,6 +41,9 @@ interface TournamentContextValue {
     options: { includeParticipants: boolean },
   ) => Promise<string>;
   deleteTournament: (tournamentId: string) => Promise<void>;
+  personnelRosters: Record<string, PersonnelRoster>;
+  personnelCommand: (intent: PersonnelIntent) => Promise<boolean>;
+  isPersonnelPending: (tournamentId: string) => boolean;
 }
 
 const TournamentContext = createContext<TournamentContextValue | null>(null);
@@ -56,6 +61,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const personnel = usePersonnel(account?.id ?? '', account?.role);
+  const visibleTournaments = useMemo(() => tournaments.map((row) => withPersonnel(row, personnel.rosters[row.id])),
+    [tournaments, personnel.rosters]);
 
   const resolveUserId = useCallback(
     (player: Participant): string | null => {
@@ -177,6 +185,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const updateTournament = useCallback(
     async (tournamentId: string, patch: Partial<Tournament>) => {
+      if ('staff' in patch || 'dealers' in patch) {
+        window.alert('Персонал изменяется только отдельной серверной командой');
+        return;
+      }
       const current = tournaments.find((row) => row.id === tournamentId);
       if (!current) return;
       const next = { ...current, ...patch };
@@ -273,6 +285,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         rubiesDistributed: false,
         resultsEntered: false,
         dealers: undefined,
+        staff: undefined,
         results: undefined,
       });
     },
@@ -289,12 +302,19 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([fetchTournaments(), personnel.refresh()]);
+  }, [fetchTournaments, personnel.refresh]);
+
   const value = useMemo<TournamentContextValue>(
     () => ({
-      tournaments,
-      isLoading,
-      loadError,
-      fetchTournaments,
+      tournaments: visibleTournaments,
+      isLoading: isLoading || personnel.isLoading,
+      loadError: loadError ?? personnel.error,
+      fetchTournaments: refreshAll,
+      personnelRosters: personnel.rosters,
+      personnelCommand: personnel.command,
+      isPersonnelPending: personnel.isPending,
       refreshParticipants,
       toggleRegistration,
       isRegistered,
@@ -315,6 +335,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       toggleRegistration,
       tournaments,
       updateTournament,
+      visibleTournaments,
+      personnel,
+      refreshAll,
     ],
   );
 

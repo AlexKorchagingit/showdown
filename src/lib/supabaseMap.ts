@@ -284,8 +284,9 @@ export function tournamentFromRow(row: TournamentRow, participants: Participant[
     resultsEntered: asBoolean(row.results_entered) || undefined,
     rubiesDistributed: asBoolean(row.rubies_distributed) || undefined,
     adminSecretComment: row.admin_secret_comment || undefined,
-    staff: Array.isArray(row.staff) ? row.staff : undefined,
-    dealers: Array.isArray(row.dealers) ? row.dealers : undefined,
+    // Personnel comes only from its protected server projection, not legacy public JSON.
+    staff: undefined,
+    dealers: undefined,
   };
 }
 

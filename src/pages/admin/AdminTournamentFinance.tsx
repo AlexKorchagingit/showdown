@@ -31,7 +31,8 @@ import { formatTxDateTime } from '../../lib/transactionDisplay';
 import { PlayerNameLink } from '../../components/PlayerNameLink';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { TimerRunningBadge } from '../../components/TimerRunningBadge';
-import type { Participant, TournamentDealer } from '../../types/tournament';
+import type { Participant } from '../../types/tournament';
+import type { PersonnelEntry } from '../../lib/personnel';
 import { playerEmail } from '../../lib/systemPlayers';
 import { attachRubiesAwarded, isBountyEvent } from '../../lib/calculateRubies';
 import {
@@ -76,7 +77,8 @@ function FadingHoursDelta({ flash }: { flash?: { delta: number; token: number } 
 export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tournaments, updateTournament, isLoading, loadError, fetchTournaments } = useTournaments();
+  const { tournaments, updateTournament, isLoading, loadError, fetchTournaments,
+    personnelRosters, personnelCommand, isPersonnelPending } = useTournaments();
   const { logAction } = useAuditLog();
   const { email: currentEmail, userId, clubUsers } = useUser();
   const { addCoins } = useProfile();
@@ -137,14 +139,14 @@ export function AdminTournamentFinance() {
     [],
   );
 
-  if (!tournament && isLoading) {
+  if (isLoading) {
     return (
       <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
         <ScreenLoading label="Загрузка турнира…" />
       </div>
     );
   }
-  if (!tournament && loadError) {
+  if (loadError) {
     return (
       <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
         <FetchErrorCard message={loadError} onRetry={() => void fetchTournaments()} />
@@ -165,7 +167,10 @@ export function AdminTournamentFinance() {
   );
   const remainingInPlay = tournament.participants.filter((p) => typeof p.place !== 'number').length;
   const closeBlocked = remainingInPlay > 1;
-  const nonPlayingDealers = tournament.dealers ?? [];
+  const roster = personnelRosters[tournament.id];
+  const nonPlayingDealers = roster?.entries.filter((row) => row.kind === 'dealer' && !row.archivedAt) ?? [];
+  const archivedPersonnel = roster?.entries.filter((row) => row.archivedAt) ?? [];
+  const personnelPending = isPersonnelPending(tournament.id);
   const takenIds = new Set(tournament.participants.map((p) => p.id));
   const takenNicks = new Set(tournament.participants.map((p) => p.nickname.toLowerCase()));
   const seatedUserIds = new Set(
@@ -562,50 +567,38 @@ export function AdminTournamentFinance() {
     });
   };
 
-  const setDealerComment = (index: number, name: string, current?: string) => {
-    const next = window.prompt(`Комментарий к дилеру ${name}`, current ?? '');
+  const setDealerComment = (entry: PersonnelEntry) => {
+    const next = window.prompt(`Комментарий к дилеру ${entry.data.name}`, entry.data.comment ?? '');
     if (next === null) return;
-    updateTournament(tournament.id, {
-      dealers: nonPlayingDealers.map((row, i) =>
-        i === index ? { ...row, comment: next.trim() } : row,
-      ),
-    });
+    if (next.trim().length > 1000) { window.alert('Комментарий: не более 1000 символов'); return; }
+    void personnelCommand({ tournamentId: tournament.id, action: 'comment', entryId: entry.id,
+      values: { comment: next, revision: roster!.revision } });
   };
 
-  const adjustNonPlayingDealerHours = (index: number, deltaHours: number) => {
-    const row = nonPlayingDealers[index];
-    if (!row) return;
-    const total = Math.max(0, row.hours * 60 + row.minutes + deltaHours * 60);
-    const hours = Math.floor(total / 60);
-    const minutes = Math.round(total % 60);
-    updateTournament(tournament.id, {
-      dealers: nonPlayingDealers.map((item, i) =>
-        i === index
-          ? { ...item, hours, minutes, loggedAt: new Date().toISOString() }
-          : item,
-      ),
-    });
-    flashHours(`np-${index}`, deltaHours);
+  const adjustNonPlayingDealerHours = async (entry: PersonnelEntry, deltaHours: number) => {
+    if (await personnelCommand({ tournamentId: tournament.id, action: 'adjust', entryId: entry.id,
+      values: { delta: deltaHours * 60 } })) flashHours(entry.id, deltaHours);
   };
 
-  const addNonPlayingDealer = () => {
+  const addNonPlayingDealer = async () => {
     const name = dealerName.trim();
     const hoursRaw = Number(dealerHours.replace(',', '.'));
-    if (!name || !Number.isFinite(hoursRaw) || hoursRaw <= 0) return;
-    const hours = Math.floor(hoursRaw);
-    const minutes = Math.round((hoursRaw - hours) * 60);
-    const row: TournamentDealer = { name, hours, minutes, loggedAt: new Date().toISOString() };
-    updateTournament(tournament.id, {
-      dealers: [...nonPlayingDealers, row],
-    });
-    setDealerName('');
-    setDealerHours('');
+    const minutes = Math.round(hoursRaw * 60);
+    if (!name || name.length > 200 || !Number.isFinite(minutes) || minutes <= 0 || minutes > 600000) {
+      window.alert('Укажите имя (до 200 символов) и часы от 1 минуты до 10 000 часов');
+      return;
+    }
+    if (await personnelCommand({ tournamentId: tournament.id, action: 'add_dealer', values: { name, minutes } })) {
+      setDealerName('');
+      setDealerHours('');
+    }
   };
 
-  const removeNonPlayingDealer = (index: number) => {
-    updateTournament(tournament.id, {
-      dealers: nonPlayingDealers.filter((_, i) => i !== index),
-    });
+  const archiveNonPlayingDealer = (entry: PersonnelEntry) => {
+    const reason = window.prompt(`Убрать ${entry.data.name} из активного списка? Часы и история сохранятся в архиве. Укажите причину:`, '');
+    if (reason === null) return;
+    if (!reason.trim() || reason.trim().length > 1000) { window.alert('Причина: от 1 до 1000 символов'); return; }
+    void personnelCommand({ tournamentId: tournament.id, action: 'archive', entryId: entry.id, values: { reason } });
   };
 
   return (
@@ -1192,9 +1185,11 @@ export function AdminTournamentFinance() {
 
           {nonPlayingDealers.length > 0 && (
             <div className="space-y-2">
-              {nonPlayingDealers.map((row, index) => (
+              {nonPlayingDealers.map((entry) => {
+                const row = entry.data;
+                return (
                 <div
-                  key={`${row.name}-${index}`}
+                  key={entry.id}
                   className="flex items-center gap-2 rounded-xl px-3 py-2"
                   style={{ background: 'rgba(17,11,9,0.55)' }}
                 >
@@ -1211,11 +1206,12 @@ export function AdminTournamentFinance() {
                       </p>
                     ) : null}
                   </div>
-                  <FadingHoursDelta flash={hourFlash[`np-${index}`]} />
+                  <FadingHoursDelta flash={hourFlash[entry.id]} />
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => adjustNonPlayingDealerHours(index, -0.5)}
+                      disabled={personnelPending || row.hours * 60 + row.minutes <= 0}
+                      onClick={() => void adjustNonPlayingDealerHours(entry, -0.5)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center"
                       aria-label="Минус полчаса"
                     >
@@ -1226,7 +1222,8 @@ export function AdminTournamentFinance() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => adjustNonPlayingDealerHours(index, 0.5)}
+                      disabled={personnelPending}
+                      onClick={() => void adjustNonPlayingDealerHours(entry, 0.5)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center"
                       aria-label="Плюс полчаса"
                     >
@@ -1235,7 +1232,8 @@ export function AdminTournamentFinance() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setDealerComment(index, row.name, row.comment)}
+                    disabled={personnelPending}
+                    onClick={() => setDealerComment(entry)}
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{
                       background: 'rgba(217,153,98,0.12)',
@@ -1247,20 +1245,23 @@ export function AdminTournamentFinance() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => removeNonPlayingDealer(index)}
+                    disabled={personnelPending}
+                    onClick={() => archiveNonPlayingDealer(entry)}
                     className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    aria-label={`Удалить ${row.name}`}
+                    aria-label={`Архивировать ${row.name}`}
                   >
                     <X size={14} style={{ color: '#A39B98' }} />
                   </button>
                 </div>
-              ))}
+              ); })}
             </div>
           )}
 
           <div className="flex gap-2">
             <input
               value={dealerName}
+              disabled={personnelPending}
+              maxLength={200}
               onChange={(e) => setDealerName(e.target.value)}
               placeholder="Имя"
               className="flex-1 min-w-0 h-11 rounded-xl px-3 text-[13px] text-white outline-none"
@@ -1271,6 +1272,7 @@ export function AdminTournamentFinance() {
             />
             <input
               value={dealerHours}
+              disabled={personnelPending}
               onChange={(e) => setDealerHours(e.target.value)}
               placeholder="Часы"
               inputMode="decimal"
@@ -1282,7 +1284,8 @@ export function AdminTournamentFinance() {
             />
             <button
               type="button"
-              onClick={addNonPlayingDealer}
+              disabled={personnelPending}
+              onClick={() => void addNonPlayingDealer()}
               className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
               style={{
                 background: 'linear-gradient(to right, #8C4C27, #D99962)',
@@ -1293,6 +1296,17 @@ export function AdminTournamentFinance() {
               <Plus size={18} strokeWidth={2.6} />
             </button>
           </div>
+          {archivedPersonnel.length > 0 ? (
+            <details className="text-[12px] text-[#A39B98]">
+              <summary className="cursor-pointer">Архив персонала ({archivedPersonnel.length})</summary>
+              {archivedPersonnel.map((entry) => (
+                <div key={entry.id} className="mt-2 break-words">
+                  <p>{entry.data.name} · {entry.data.hours} ч {entry.data.minutes} мин · {formatTxDateTime(entry.archivedAt!)}</p>
+                  <p>{entry.archiveReason}</p>
+                </div>
+              ))}
+            </details>
+          ) : null}
         </div>
 
         <div
