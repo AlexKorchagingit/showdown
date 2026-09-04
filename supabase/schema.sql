@@ -224,10 +224,8 @@ drop policy if exists transactions_all_access on public.transactions;
 drop policy if exists logs_all_access on public.logs;
 
 grant usage on schema public to authenticated, service_role;
-grant select,update on table public.users to authenticated;
-grant select,insert,update,delete on table public.tournaments,public.participants to authenticated;
+grant select on table public.users,public.participants to authenticated;
 grant select on table public.transactions to authenticated;
-grant select,insert on table public.logs to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- timer_sessions  (one live blinds clock for every admin device / tab)
@@ -251,7 +249,7 @@ create trigger timer_sessions_set_updated_at
 alter table public.timer_sessions enable row level security;
 drop policy if exists timer_sessions_all_access on public.timer_sessions;
 
-grant select,insert,update on table public.timer_sessions to authenticated;
+grant select on table public.timer_sessions to authenticated;
 
 do $$
 begin

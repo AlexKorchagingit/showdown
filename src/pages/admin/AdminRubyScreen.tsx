@@ -4,7 +4,6 @@ import { CompactHeader } from '../../components/CompactHeader';
 import { CoinBalance } from '../../components/CoinBalance';
 import { useProfile } from '../../context/ProfileContext';
 import { useUser } from '../../context/UserContext';
-import { useAuditLog } from '../../context/AuditLogContext';
 import { grantRubies, grantRubiesToEveryone } from '../../lib/rubyGrants';
 import { ScreenLoading } from '../../components/ScreenLoading';
 
@@ -19,7 +18,6 @@ type GrantTarget =
 
 export function AdminRubyScreen() {
   const { email, clubUsers, isLoading, refreshClubUsers, refreshAccount } = useUser();
-  const { logAction } = useAuditLog();
   const { coins, addCoins } = useProfile();
   const [busy, setBusy] = useState(false);
   const [target, setTarget] = useState<GrantTarget | null>(null);
@@ -83,13 +81,6 @@ export function AdminRubyScreen() {
         });
       }
       await Promise.all([refreshClubUsers(), refreshAccount()]);
-      await logAction({
-        actionType: target.kind === 'all' ? 'Начислил рубины всем' : 'Начислил рубины',
-        targetUserId: target.kind === 'one' ? target.id : undefined,
-        targetUserEmail: target.kind === 'one' ? target.email : undefined,
-        targetUserName: target.kind === 'one' ? target.nickname : 'Все игроки',
-        details: `Сумма: ${parsedAmount.toLocaleString('ru-RU')}. Причина: ${message}`,
-      });
       closeModal();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Не удалось начислить рубины');

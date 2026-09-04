@@ -22,10 +22,10 @@ import {
   unlockBlindsAudio,
 } from '../lib/blindsAudio';
 import { supabase } from '../lib/supabase';
+import { useUser } from './UserContext';
 import {
   TIMER_SESSION_CACHE_KEY,
   TIMER_SESSION_CHANNEL,
-  TIMER_SESSION_LOG_ID,
   TIMER_SESSION_ROW_ID,
   computeLiveClock,
   durationsFromStructure,
@@ -39,7 +39,6 @@ import {
 import {
   loadTimerSession,
   queueTimerSessionSave,
-  timerSessionStorageMode,
 } from '../lib/timerSessionApi';
 
 interface BlindsState {
@@ -188,6 +187,7 @@ function openTimerChannel(): BroadcastChannel | null {
 }
 
 export function BlindsProvider({ children }: { children: ReactNode }) {
+  const { isAdmin } = useUser();
   const [state, dispatch] = useReducer(reducer, undefined, bootState);
   const [timerReady, setTimerReady] = useState(false);
   const stateRef = useRef(state);
@@ -242,6 +242,12 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!isAdmin) {
+      readyRef.current = true;
+      setTimerReady(true);
+      return;
+    }
+    setTimerReady(false);
     let cancelled = false;
     const channel = openTimerChannel();
     channelRef.current = channel;
@@ -285,23 +291,16 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     }, 2500);
 
     let realtime: ReturnType<typeof supabase.channel> | null = null;
-    void timerSessionStorageMode().then((mode) => {
-      if (cancelled) return;
-      realtime = supabase
-        .channel('blinds-timer-session')
-        .on(
-          'postgres_changes',
-          mode === 'table'
-            ? { event: '*', schema: 'public', table: 'timer_sessions', filter: `id=eq.${TIMER_SESSION_ROW_ID}` }
-            : { event: '*', schema: 'public', table: 'logs', filter: `id=eq.${TIMER_SESSION_LOG_ID}` },
-          (payload) => {
-            const row = payload.new as { payload?: unknown; details?: unknown } | undefined;
-            const snapshot = parseTimerSnapshot(row?.payload ?? row?.details);
-            if (snapshot) applyRemote(snapshot, true);
-          },
-        )
-        .subscribe();
-    });
+    realtime = supabase
+      .channel('blinds-timer-session')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'timer_sessions', filter: `id=eq.${TIMER_SESSION_ROW_ID}` },
+        (payload) => {
+          const row = payload.new as { payload?: unknown } | undefined;
+          const snapshot = parseTimerSnapshot(row?.payload);
+          if (snapshot) applyRemote(snapshot, true);
+        })
+      .subscribe();
 
     return () => {
       cancelled = true;
@@ -312,7 +311,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       channelRef.current = null;
       if (realtime) void supabase.removeChannel(realtime);
     };
-  }, [applyRemote]);
+  }, [applyRemote, isAdmin]);
 
   useEffect(() => {
     const id = window.setInterval(() => {

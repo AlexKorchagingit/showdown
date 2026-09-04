@@ -9,7 +9,6 @@ import { TournamentProvider } from './context/TournamentContext';
 import { FinanceProvider } from './context/FinanceContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { UserProvider, useUser } from './context/UserContext';
-import { AuditLogProvider } from './context/AuditLogContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 import { supabase } from './lib/supabase';
@@ -171,17 +170,15 @@ function AuthenticatedApp({
 
   return (
     <div className={shellClass}>
-      <AuditLogProvider>
-        <ProfileProvider>
-          <TournamentProvider>
-            <FinanceProvider>
-              <BlindsProvider>
-                <AppLayout userEmail={userEmail} />
-              </BlindsProvider>
-            </FinanceProvider>
-          </TournamentProvider>
-        </ProfileProvider>
-      </AuditLogProvider>
+      <ProfileProvider>
+        <TournamentProvider>
+          <FinanceProvider>
+            <BlindsProvider>
+              <AppLayout userEmail={userEmail} />
+            </BlindsProvider>
+          </FinanceProvider>
+        </TournamentProvider>
+      </ProfileProvider>
     </div>
   );
 }

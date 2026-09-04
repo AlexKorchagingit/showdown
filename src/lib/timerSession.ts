@@ -3,8 +3,6 @@ import { durationSeconds, type BlindStructure } from '../data/blindStructures';
 export const TIMER_SESSION_CACHE_KEY = 'showdown.timerSession';
 export const TIMER_SESSION_CHANNEL = 'showdown-timer-session';
 export const TIMER_SESSION_ROW_ID = 'live';
-export const TIMER_SESSION_LOG_ID = 'blinds-timer-session';
-export const TIMER_SESSION_LOG_ACTION = '__timer_session__';
 
 export type TimerSnapshot = {
   v: 1;

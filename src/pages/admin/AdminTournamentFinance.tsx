@@ -6,7 +6,6 @@ import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
-import { useAuditLog } from '../../context/AuditLogContext';
 import { useUser } from '../../context/UserContext';
 import { useBlinds } from '../../context/BlindsContext';
 import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
@@ -77,7 +76,6 @@ export function AdminTournamentFinance() {
   const navigate = useNavigate();
   const { tournaments, updateTournament, isLoading, loadError, fetchTournaments,
     personnelRosters, personnelCommand, isPersonnelPending } = useTournaments();
-  const { logAction } = useAuditLog();
   const { account, clubUsers } = useUser();
   const { isRunning, linkedTournamentId } = useBlinds();
   const {
@@ -305,7 +303,6 @@ export function AdminTournamentFinance() {
 
     const totalPlayers = tournament.participants.length;
     const syncRating = tournament.resultsEntered === true;
-    const oldRating = player.rating;
     updateTournament(tournament.id, {
       participants: tournament.participants.map((p) => {
         if (p.id !== playerId) return p;
@@ -314,22 +311,6 @@ export function AdminTournamentFinance() {
           : { ...p, place };
         return bountyEvent ? { ...next, knockouts } : next;
       }),
-    });
-    const newRating = syncRating
-      ? applyPlaceToParticipant(player, place, tournament.guarantee, totalPlayers).rating
-      : player.rating;
-    const ratingNote =
-      syncRating && newRating !== oldRating
-        ? ` Рейтинг изменен с ${oldRating.toLocaleString('ru-RU')} на ${newRating.toLocaleString('ru-RU')}.`
-        : '';
-    logAction({
-      actionType: 'Добавил результат',
-      targetUserId: player.id,
-      targetUserEmail: playerEmail(player.id, player.nickname),
-      targetUserName: player.nickname,
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
-      details: `${place} место.${ratingNote}`,
     });
   };
 
@@ -342,15 +323,6 @@ export function AdminTournamentFinance() {
           p.id === playerId ? { ...p, place: undefined } : p,
         ),
       });
-      logAction({
-        actionType: 'Вернул игрока в игру',
-        targetUserId: player.id,
-        targetUserEmail: playerEmail(player.id, player.nickname),
-        targetUserName: player.nickname,
-        targetTournamentId: tournament.id,
-        targetTournamentName: tournament.title,
-        details: 'Место сброшено, игрок снова в игре',
-      });
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Не удалось вернуть игрока в игру');
     }
@@ -359,7 +331,7 @@ export function AdminTournamentFinance() {
   const addPlayerToTournament = (id: string, nickname: string, options?: { guest?: boolean }) => {
     const guest = options?.guest === true;
     if (linkingId && !guest) {
-      bindGuestToUser(linkingId, id, nickname);
+      bindGuestToUser(linkingId, id);
       return;
     }
     if (
@@ -397,15 +369,6 @@ export function AdminTournamentFinance() {
         ? { totalSeats: nextParticipants.length }
         : {}),
     });
-    logAction({
-      actionType: 'Добавил игрока',
-      targetUserId: guest ? undefined : id,
-      targetUserEmail: guest ? undefined : playerEmail(id, nickname),
-      targetUserName: nickname,
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
-      details: guest ? 'Ник без аккаунта' : undefined,
-    });
     setAddOpen(false);
     setGuestNickOpen(false);
     setGuestNick('');
@@ -440,7 +403,7 @@ export function AdminTournamentFinance() {
     addPlayerToTournament(id, nickname, { guest: true });
   };
 
-  const bindGuestToUser = (guestSeatId: string, userId: string, nickname: string) => {
+  const bindGuestToUser = (guestSeatId: string, userId: string) => {
     const guest = tournament.participants.find((p) => p.id === guestSeatId);
     const user = clubUsers.find((row) => row.id === userId);
     if (!guest || !user) return;
@@ -467,15 +430,6 @@ export function AdminTournamentFinance() {
           : p,
       ),
     });
-    logAction({
-      actionType: 'Привязал игрока',
-      targetUserId: user.id,
-      targetUserEmail: user.email || playerEmail(user.id, user.nickname),
-      targetUserName: user.nickname,
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
-      details: `${guest.nickname} → ${nickname || user.nickname}`,
-    });
     setLinkingId(null);
     setAddOpen(false);
     setGuestNickOpen(false);
@@ -483,17 +437,8 @@ export function AdminTournamentFinance() {
 
   const removePlayerFromTournament = (playerId: string) => {
     if (!window.confirm('Точно удалить игрока из турнира?')) return;
-    const player = tournament.participants.find((p) => p.id === playerId);
     void updateTournament(tournament.id, {
       participants: tournament.participants.filter((p) => p.id !== playerId),
-    });
-    logAction({
-      actionType: 'Удалил игрока',
-      targetUserId: player?.id,
-      targetUserEmail: player ? playerEmail(player.id, player.nickname) : undefined,
-      targetUserName: player?.nickname,
-      targetTournamentId: tournament.id,
-      targetTournamentName: tournament.title,
     });
   };
 
@@ -510,19 +455,6 @@ export function AdminTournamentFinance() {
         tournament.resultsEntered === true,
       ),
     });
-    const from = placedOrdered[idx].place;
-    const to = neighbor.place;
-    if (typeof from === 'number' && typeof to === 'number') {
-      logAction({
-        actionType: 'Изменил место',
-        targetUserId: playerId,
-        targetUserEmail: playerEmail(placedOrdered[idx].id, placedOrdered[idx].nickname),
-        targetUserName: placedOrdered[idx].nickname,
-        targetTournamentId: tournament.id,
-        targetTournamentName: tournament.title,
-        details: `Было ${from} место → стало ${to} место`,
-      });
-    }
   };
 
   const setPlayerComment = (playerId: string, nickname: string, current?: string) => {

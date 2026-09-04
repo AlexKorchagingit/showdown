@@ -131,34 +131,6 @@ export async function updateTournamentRow(tournamentId:string,patch:Partial<Tour
   return tournamentFromRow(saved.tournament,[]);
 }
 
-function isFkError(error: { code?: string; message?: string }): boolean {
-  return error.code === '23503' || /foreign key|participants_user_id_fkey/i.test(error.message ?? '');
-}
-
-function isUniqueError(error: { code?: string; message?: string }): boolean {
-  return error.code === '23505' || /duplicate key|unique constraint/i.test(error.message ?? '');
-}
-
-export async function insertParticipantRow(row: ParticipantRow): Promise<void> {
-  const payload: ParticipantRow = {
-    ...row,
-    user_id: sanitizeParticipantUserId(row.user_id),
-    nickname: row.nickname.trim() || 'Игрок',
-  };
-  const { error } = await supabase.from('participants').insert(payload);
-  if (!error) return;
-  if (isUniqueError(error)) return;
-  logSupabaseError(error, 'insert participant');
-  if (payload.user_id && isFkError(error)) {
-    const retry: ParticipantRow = { ...payload, user_id: null };
-    const second = await supabase.from('participants').insert(retry);
-    if (!second.error || isUniqueError(second.error)) return;
-    logSupabaseError(second.error, 'insert participant retry');
-    throw new Error(second.error.message);
-  }
-  throw new Error(error.message);
-}
-
 async function fetchKnownUserIds(): Promise<Set<string>> {
   const { data, error } = await supabase.from('users').select('id');
   if (error) {
@@ -174,31 +146,6 @@ function bindKnownUserId(candidate: string | null | undefined, realIds: Set<stri
   const sanitized = sanitizeParticipantUserId(candidate);
   if (!sanitized) return null;
   return realIds.has(sanitized) ? sanitized : null;
-}
-
-async function upsertOneParticipantRow(row: ParticipantRow): Promise<void> {
-  const payload: ParticipantRow = {
-    ...row,
-    user_id: sanitizeParticipantUserId(row.user_id),
-    nickname: row.nickname.trim() || 'Игрок',
-  };
-  const { error } = await supabase.from('participants').upsert(payload, { onConflict: 'id' });
-  if (!error) return;
-  logSupabaseError(error, 'upsert participant');
-  if (isFkError(error) && payload.user_id) {
-    const retry: ParticipantRow = { ...payload, user_id: null };
-    const second = await supabase.from('participants').upsert(retry, { onConflict: 'id' });
-    if (!second.error) return;
-    logSupabaseError(second.error, 'upsert participant retry');
-    throw new Error(second.error.message);
-  }
-  throw new Error(error.message);
-}
-
-export async function upsertParticipantRows(rows: ParticipantRow[]): Promise<void> {
-  for (const row of rows) {
-    await upsertOneParticipantRow(row);
-  }
 }
 
 function allocateSeatKey(
@@ -228,67 +175,6 @@ function rowsForSeats(
     const key = allocateSeatKey(tournamentId, player, bound, used, index);
     return participantToRow(tournamentId, { ...player, id: key }, bound);
   });
-}
-
-export async function removeParticipantSeat(
-  tournamentId: string,
-  player: Pick<Participant, 'id' | 'nickname'>,
-): Promise<void> {
-  const userId = sanitizeParticipantUserId(player.id);
-  const ids = [...new Set([player.id, participantRowId(tournamentId, player.id)].filter(Boolean))];
-
-  const byId = await supabase.from('participants').delete().in('id', ids);
-  if (byId.error) {
-    logSupabaseError(byId.error, 'delete participant by id');
-    throw new Error(byId.error.message);
-  }
-
-  if (userId) {
-    const byUser = await supabase
-      .from('participants')
-      .delete()
-      .eq('tournament_id', tournamentId)
-      .eq('user_id', userId);
-    if (byUser.error) {
-      logSupabaseError(byUser.error, 'delete participant by user');
-      throw new Error(byUser.error.message);
-    }
-  }
-}
-
-export async function clearParticipantPlace(tournamentId: string, playerId: string): Promise<void> {
-  const rowId = playerId.includes(':') ? playerId : participantRowId(tournamentId, playerId);
-  const byId = await supabase
-    .from('participants')
-    .update({ place: null })
-    .eq('id', rowId)
-    .select('id');
-  if (!byId.error && (byId.data?.length ?? 0) > 0) return;
-
-  const bySeat = await supabase
-    .from('participants')
-    .update({ place: null })
-    .eq('tournament_id', tournamentId)
-    .eq('user_id', playerId)
-    .select('id');
-  if (bySeat.error || (bySeat.data?.length ?? 0) === 0) {
-    logSupabaseError(bySeat.error ?? byId.error, 'clear participant place');
-    throw new Error(bySeat.error?.message || byId.error?.message || 'Не удалось сбросить место');
-  }
-}
-
-export async function deleteParticipantSeat(tournamentId: string, userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('participants')
-    .delete()
-    .eq('tournament_id', tournamentId)
-    .eq('user_id', userId);
-  if (error) {
-    logSupabaseError(error, 'delete participant seat');
-    throw new Error(error.message);
-  }
-  await supabase.from('participants').delete().eq('id', participantRowId(tournamentId, userId));
-  await supabase.from('participants').delete().eq('id', participantRowId(tournamentId, 'me'));
 }
 
 function sameSeat(left: Participant, right: Participant): boolean {

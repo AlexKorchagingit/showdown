@@ -16,12 +16,10 @@ import {
   updateUserRow,
   type MappedUser,
 } from '../lib/userApi';
-import { addLog as insertClubLog, type AddLogInput } from '../lib/logApi';
 import { endLocalSession, readSessionUserId, writeSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 
 export { hasSuperAdminRole as isSuperAdmin } from '../lib/roles';
-export { addLog } from '../lib/logApi';
 
 const SESSION_POLL_MS = 10_000;
 
@@ -40,7 +38,6 @@ interface UserContextValue {
   patchAccount: (changes: Partial<MappedUser>) => Promise<MappedUser | null>;
   refreshAccount: () => Promise<void>;
   refreshClubUsers: () => Promise<void>;
-  addLog: (input: Omit<AddLogInput, 'admin_id' | 'admin_email' | 'admin_name'> & Partial<AddLogInput>) => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -167,26 +164,6 @@ export function UserProvider({
     [account],
   );
 
-  const addLog = useCallback(
-    async (
-      input: Omit<AddLogInput, 'admin_id' | 'admin_email' | 'admin_name'> & Partial<AddLogInput>,
-    ) => {
-      return insertClubLog({
-        admin_id: input.admin_id ?? account?.id ?? readSessionUserId() ?? null,
-        admin_email: input.admin_email ?? account?.email ?? email,
-        admin_name: input.admin_name ?? account?.nickname ?? '',
-        action_type: input.action_type,
-        target_user_id: input.target_user_id ?? null,
-        target_user_email: input.target_user_email ?? null,
-        target_user_name: input.target_user_name ?? null,
-        target_tournament_id: input.target_tournament_id ?? null,
-        target_tournament_name: input.target_tournament_name ?? null,
-        details: input.details ?? null,
-      });
-    },
-    [account?.email, account?.id, account?.nickname, email],
-  );
-
   const isAdmin = isClubAdmin(email, account);
   const visibleClubUsers = useMemo(() => {
     if (isAdmin) return clubUsers;
@@ -207,11 +184,9 @@ export function UserProvider({
       patchAccount,
       refreshAccount,
       refreshClubUsers,
-      addLog,
     }),
     [
       account,
-      addLog,
       email,
       isAdmin,
       isLoading,

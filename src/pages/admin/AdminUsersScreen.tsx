@@ -3,14 +3,12 @@ import { Check, Trash2 } from 'lucide-react';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { useUser } from '../../context/UserContext';
-import { useAuditLog } from '../../context/AuditLogContext';
 import { CompactHeader } from '../../components/CompactHeader';
 import { formatBirthDate } from '../../lib/playerName';
 import { deleteUserRow } from '../../lib/userApi';
 import { supabase } from '../../lib/supabase';
 
 export function AdminUsersScreen() {
-  const { logAction } = useAuditLog();
   const { email, clubUsers, isLoading, refreshClubUsers, isSuperAdmin } = useUser();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<(typeof clubUsers)[number] | null>(null);
@@ -49,12 +47,6 @@ export function AdminUsersScreen() {
       return;
     }
     await refreshClubUsers();
-    logAction({
-      actionType: 'Удалил пользователя',
-      targetUserId: target.id,
-      targetUserEmail: target.email,
-      targetUserName: target.nickname,
-    });
   };
 
   return (

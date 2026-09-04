@@ -16,13 +16,3 @@ export interface ActionLog {
   /** @deprecated Older rows stored a single target label here. */
   targetName?: string;
 }
-
-export type LogActionDraft = {
-  actionType: string;
-  targetUserId?: string;
-  targetUserEmail?: string;
-  targetUserName?: string;
-  targetTournamentId?: string;
-  targetTournamentName?: string;
-  details?: string;
-};

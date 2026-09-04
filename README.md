@@ -56,7 +56,9 @@ npm run dev
 
 Frontend talks to `https://api.showdown-br.ru`. Static files are served from the domain root (`/logo-final.webp`, `/avatars/…`), not `/showdown/`.
 
-The first registered account (and `anaak-01@mail.ru`) is granted `is_admin`, so an empty database can create tournaments immediately.
+New accounts always receive the `user` role. Existing `is_admin` profiles are preserved as
+`admin` during the role migration; `superadmin` is assigned only through an explicit,
+reviewed database operation and is never selected automatically by email or registration order.
 
 ## Build
 

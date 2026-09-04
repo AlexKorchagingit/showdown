@@ -6,8 +6,7 @@ import { useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
-import { supabase, logSupabaseError } from '../../lib/supabase';
-import { logFromRow, type LogRow } from '../../lib/supabaseMap';
+import { fetchLogs } from '../../lib/logApi';
 import { formatLegalDateTime, formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
 import type { ActionLog } from '../../types/auditLog';
 
@@ -36,11 +35,6 @@ function inAuditPeriod(timestamp: number, period: AuditPeriod, now = new Date())
   return timestamp >= periodStart(period, now).getTime() && timestamp <= now.getTime() + 60_000;
 }
 
-function asLogRow(data: unknown): LogRow | null {
-  if (!data || typeof data !== 'object' || !('id' in data) || !('action_type' in data)) return null;
-  return data as LogRow;
-}
-
 export function AdminLogsScreen() {
   const { isSuperAdmin, clubUsers } = useUser();
   const [logs, setLogs] = useState<ActionLog[]>([]);
@@ -53,26 +47,15 @@ export function AdminLogsScreen() {
     let cancelled = false;
     setIsLoading(true);
     void (async () => {
-      const { data, error } = await supabase
-        .from('logs')
-        .select('*')
-        .order('timestamp', { ascending: false });
-      if (error) {
-        logSupabaseError(error, 'admin logs');
+      try {
+        const rows=await fetchLogs();
         if (!cancelled) {
-          setLogs([]);
+          setLogs(rows);
           setIsLoading(false);
         }
-        return;
+      } catch {
+        if(!cancelled){setLogs([]);setIsLoading(false);}
       }
-      if (cancelled) return;
-      setLogs(
-        (data ?? []).flatMap((item) => {
-          const row = asLogRow(item);
-          return row ? [logFromRow(row)] : [];
-        }),
-      );
-      setIsLoading(false);
     })();
     return () => {
       cancelled = true;

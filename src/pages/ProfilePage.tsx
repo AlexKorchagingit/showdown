@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, BarChart3, ChevronDown, ChevronRight, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
-import { useAuditLog } from '../context/AuditLogContext';
 import { CURRENT_USER_ID, useTournaments } from '../context/TournamentContext';
 import { useFinance } from '../context/FinanceContext';
 import {
@@ -18,7 +17,6 @@ import {
 import { formatBirthDate, resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 import { clubRatingPlayers } from '../lib/clubRating';
 import { collectPlayerGameHistory, computePlayerAdminStats, summarizePlayerGameHistory } from '../lib/playerAnalytics';
-import { playerEmail } from '../lib/systemPlayers';
 import { AdminPlayerStats } from '../components/admin/AdminPlayerStats';
 import { GameHistorySheet } from '../components/GameHistorySheet';
 
@@ -39,7 +37,6 @@ export function ProfilePage() {
   const location = useLocation();
   const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
   const { isAdmin, userId, clubUsers } = useUser();
-  const { logAction } = useAuditLog();
   const { tournaments } = useTournaments();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -321,17 +318,7 @@ export function ProfilePage() {
           onClearDebts={
             statsPlayerId
               ? () => {
-                  const amount = adminStats?.clubDebt ?? 0;
                   markAllUnpaidForPlayer(statsPlayerId);
-                  if (amount > 0) {
-                    logAction({
-                      actionType: 'Погасил долг',
-                      targetUserId: statsPlayerId,
-                      targetUserName: displayNickname,
-                      targetUserEmail: playerEmail(statsPlayerId, displayNickname),
-                      details: `Сумма: ${amount.toLocaleString('ru-RU')} руб`,
-                    });
-                  }
                 }
               : undefined
           }
