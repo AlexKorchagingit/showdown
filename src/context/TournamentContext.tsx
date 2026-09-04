@@ -9,7 +9,6 @@ import {
 import type { Participant, Tournament } from '../types/tournament';
 import { useUser } from './UserContext';
 import {
-  deleteTournamentRow,
   fetchParticipants,
   fetchTournaments as loadTournaments,
   insertTournament,
@@ -39,7 +38,6 @@ interface TournamentContextValue {
     sourceId: string,
     options: { includeParticipants: boolean },
   ) => Promise<string>;
-  deleteTournament: (tournamentId: string) => Promise<void>;
   personnelRosters: Record<string, PersonnelRoster>;
   personnelCommand: (intent: PersonnelIntent) => Promise<boolean>;
   isPersonnelPending: (tournamentId: string) => boolean;
@@ -166,27 +164,44 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         window.alert('Персонал изменяется только отдельной серверной командой');
         return;
       }
+      if ('isClosed' in patch || 'resultsEntered' in patch || 'rubiesDistributed' in patch) {
+        window.alert('Закрытие и начисления выполняются только отдельной серверной командой');
+        return;
+      }
+      if (!account?.id) {
+        window.alert('Не удалось подтвердить администратора');
+        return;
+      }
       const current = tournaments.find((row) => row.id === tournamentId);
       if (!current) return;
-      const next = { ...current, ...patch };
+      const { participants,staff:_staff,dealers:_dealers,results:_results,
+        isClosed:_isClosed,resultsEntered:_resultsEntered,rubiesDistributed:_rubiesDistributed,
+        id:_id,...metadataPatch }=patch;
+      let confirmedParticipants:Participant[]|undefined;
       try {
-        await updateTournamentRow(next);
-        if (patch.participants) {
-          next.participants = await syncParticipantRows(
+        if(Object.keys(metadataPatch).length>0) {
+          await updateTournamentRow(tournamentId,metadataPatch,account.id);
+        }
+        if (participants) {
+          confirmedParticipants = await syncParticipantRows(
             tournamentId,
             current.participants,
-            patch.participants,
+            participants,
             resolveUserId,
-            account?.id ?? '',
+            account.id,
           );
         }
-        setTournaments((prev) => prev.map((row) => (row.id === tournamentId ? next : row)));
+        setTournaments((prev) => prev.map((row) => row.id === tournamentId ? {
+          ...row,...metadataPatch,
+          ...(confirmedParticipants?{participants:confirmedParticipants,
+            totalSeats:Math.max(metadataPatch.totalSeats??row.totalSeats,confirmedParticipants.length)}:{}),
+        }:row));
       } catch (error) {
         console.error(error);
         window.alert(error instanceof Error ? error.message : 'Не удалось сохранить турнир');
       }
     },
-    [account?.id, resolveUserId, tournaments],
+    [account, resolveUserId, tournaments],
   );
 
   const addTournament = useCallback(
@@ -194,7 +209,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       const id = `t-${Date.now()}`;
       const created: Tournament = { ...tournament, id, participants: tournament.participants ?? [] };
       try {
-        const saved = await insertTournament(created);
+        const saved = await insertTournament(created,account?.id ?? '');
         try {
           if (created.participants.length > 0) {
             saved.participants = await syncParticipantRows(
@@ -271,16 +286,6 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     [addTournament, clubUsers, tournaments],
   );
 
-  const deleteTournament = useCallback(async (tournamentId: string) => {
-    try {
-      await deleteTournamentRow(tournamentId);
-      setTournaments((prev) => prev.filter((row) => row.id !== tournamentId));
-    } catch (error) {
-      console.error(error);
-      window.alert(error instanceof Error ? error.message : 'Не удалось удалить турнир');
-    }
-  }, []);
-
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchTournaments(), personnel.refresh()]);
   }, [fetchTournaments, personnel.refresh]);
@@ -300,11 +305,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       updateTournament,
       addTournament,
       duplicateTournament,
-      deleteTournament,
     }),
     [
       addTournament,
-      deleteTournament,
       duplicateTournament,
       fetchTournaments,
       isLoading,

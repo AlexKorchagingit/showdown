@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, Timer, Trash2, UserPlus, X,
+  ArrowLeft, Calendar, Clock, ImagePlus, Plus, Star, Timer, UserPlus, X,
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
@@ -323,7 +323,7 @@ function ParticipantsEditor({
 /* ── Editor body ────────────────────────────────────────────────────────── */
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
-  const { tournaments, updateTournament, deleteTournament, duplicateTournament } = useTournaments();
+  const { tournaments, updateTournament, duplicateTournament } = useTournaments();
   const { clubUsers } = useUser();
   const { openTimerForTournament } = useBindPokerTimer();
 
@@ -364,12 +364,6 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
   const removeParticipant = (id: string) => {
     patch({ participants: tournament.participants.filter((p) => p.id !== id) });
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm('Точно удалить?')) return;
-    await deleteTournament(tournament.id);
-    navigate('/admin/tournaments');
   };
 
   const handleCopy = async (includeParticipants: boolean) => {
@@ -585,12 +579,12 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
           <button
             type="button"
-            onClick={() => void handleDelete()}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white bg-red-900/80 active:scale-[0.98] transition-transform"
-            style={{ border: '1px solid rgba(239,68,68,0.45)' }}
+            disabled
+            title="Физическое удаление может уничтожить состав и финансовую историю"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[13px] font-700 cursor-not-allowed opacity-70"
+            style={{ color:'#A39B98',background:'#231A16',border:'1px solid rgba(255,255,255,0.08)' }}
           >
-            <Trash2 size={17} strokeWidth={2.3} />
-            Удалить турнир
+            Удаление отключено — история сохраняется
           </button>
         </div>
       </div>

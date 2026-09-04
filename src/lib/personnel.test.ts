@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ rpc:vi.fn(),from:vi.fn() }));
 vi.mock('./supabase',() => ({ supabase:mocks,logSupabaseError:vi.fn() }));
 import { createPersonnelRequests, fetchPersonnel, mergePersonnel, parsePersonnelRoster, sendPersonnelCommand, withPersonnel,
   type PersonnelIntent } from './personnel';
-import { insertTournament, tournamentWriteRow, updateTournamentRow } from './tournamentApi';
+import { insertTournament } from './tournamentApi';
 import { tournamentFromRow, tournamentToRow } from './supabaseMap';
 import { computePlayerAdminStats } from './playerAnalytics';
 import type { Tournament } from '../types/tournament';
@@ -77,16 +77,9 @@ describe('protected personnel client',() => {
     expect(withPersonnel(tournament,saved).dealers).toEqual([saved.entries[0].data]);
   });
   it('omits protected lists from generic writes and refuses personnel in creation before any write',async () => {
-    expect(tournamentWriteRow(tournament)).not.toHaveProperty('staff');
-    expect(tournamentWriteRow(tournament)).not.toHaveProperty('dealers');
     await expect(insertTournament(tournament)).rejects.toThrow('Сначала создайте турнир');
     expect(mocks.from).not.toHaveBeenCalled();
-    const eq = vi.fn().mockResolvedValue({ error:null });
-    const update = vi.fn((_payload: object) => ({ eq }));
-    mocks.from.mockReturnValue({ update });
-    await updateTournamentRow(tournament);
-    expect(update.mock.calls[0][0]).not.toHaveProperty('dealers');
-    expect(update.mock.calls[0][0]).not.toHaveProperty('staff');
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
   it('does not attach an unbound dealer to a player just because their names match',() => {
     const visible = withPersonnel(tournament,saved);

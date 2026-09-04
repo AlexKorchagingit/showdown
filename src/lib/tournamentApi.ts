@@ -14,6 +14,12 @@ import {
 import type { Participant, Tournament } from '../types/tournament';
 import { getClubDirectory } from './clubDirectory';
 import { replaceParticipants, type ParticipantCommandRow } from './participantCommands';
+import {
+  createTournamentCommand,
+  updateTournamentCommand,
+  type TournamentChanges,
+  type TournamentValues,
+} from './tournamentCommands';
 
 /** Nested user preview. Rating lives on `participants`, not `users`. */
 const PARTICIPANT_SELECT_WITH_USER = '*, users (nickname, equipped_avatar, equipped_char)';
@@ -61,11 +67,11 @@ function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participan
 
 export async function fetchTournaments(): Promise<Tournament[]> {
   const [{ data, error }, participantRows] = await Promise.all([
-    supabase.from('tournaments').select('*').order('start_date', { ascending: false }),
+    supabase.rpc('club_tournament_snapshot'),
     selectParticipantsSafe(),
   ]);
 
-  if (error || !data) {
+  if (error || !Array.isArray(data)) {
     logSupabaseError(error, 'tournaments');
     throw new Error(error?.message || 'Не удалось загрузить турниры');
   }
@@ -82,46 +88,47 @@ export async function fetchParticipants(tournamentId: string): Promise<Participa
   return (await selectParticipants(tournamentId)).map(participantFromJoinedRow);
 }
 
-export async function insertTournament(tournament: Tournament): Promise<Tournament> {
+function tournamentValues(tournament: Tournament): TournamentValues {
+  const row=tournamentToRow(tournament);
+  return {title:row.title,image_url:row.image_url,address:row.address,start_date:row.start_date,
+    start_time:row.start_time,total_seats:row.total_seats,guarantee:row.guarantee,about:row.about,
+    features:row.features,late_reg_until:row.late_reg_until,blind_structure:row.blind_structure,
+    blind_structure_id:row.blind_structure_id,stack_size:row.stack_size,level_duration:row.level_duration,
+    is_bounty:row.is_bounty,admin_secret_comment:row.admin_secret_comment};
+}
+
+function tournamentChanges(patch: Partial<Tournament>): TournamentChanges {
+  const changes:TournamentChanges={};
+  if('title' in patch)changes.title=patch.title!;
+  if('imageUrl' in patch)changes.image_url=patch.imageUrl!;
+  if('address' in patch)changes.address=patch.address!;
+  if('startDate' in patch)changes.start_date=patch.startDate!.slice(0,10);
+  if('startTime' in patch)changes.start_time=patch.startTime!;
+  if('totalSeats' in patch)changes.total_seats=patch.totalSeats!;
+  if('guarantee' in patch)changes.guarantee=patch.guarantee!;
+  if('about' in patch)changes.about=patch.about!;
+  if('features' in patch)changes.features=[...(patch.features??[])];
+  if('lateRegUntil' in patch)changes.late_reg_until=patch.lateRegUntil!;
+  if('blindStructure' in patch)changes.blind_structure=patch.blindStructure!;
+  if('blindStructureId' in patch)changes.blind_structure_id=patch.blindStructureId??null;
+  if('stackSize' in patch)changes.stack_size=patch.stackSize!;
+  if('levelDuration' in patch)changes.level_duration=patch.levelDuration!;
+  if('isBounty' in patch)changes.is_bounty=patch.isBounty===true;
+  if('adminSecretComment' in patch)changes.admin_secret_comment=patch.adminSecretComment??null;
+  return changes;
+}
+
+export async function insertTournament(tournament: Tournament,actorId:string): Promise<Tournament> {
   if ((tournament.dealers?.length ?? 0) || (tournament.staff?.length ?? 0)) {
     throw new Error('Сначала создайте турнир, затем добавьте персонал серверной командой');
   }
-  const { data, error } = await supabase
-    .from('tournaments')
-    .insert(tournamentWriteRow(tournament))
-    .select('*')
-    .single();
-  if (error || !data) {
-    logSupabaseError(error, 'insert tournament');
-    throw new Error(error?.message || 'Не удалось создать турнир');
-  }
-  const parsed = asTournamentRow(data);
-  return parsed ? tournamentFromRow(parsed, []) : { ...tournament, participants: [] };
+  const saved=await createTournamentCommand(actorId,tournamentValues(tournament));
+  return tournamentFromRow(saved.tournament,[]);
 }
 
-export async function updateTournamentRow(tournament: Tournament): Promise<void> {
-  const { error } = await supabase
-    .from('tournaments')
-    .update(tournamentWriteRow(tournament))
-    .eq('id', tournament.id);
-  if (error) {
-    logSupabaseError(error, 'update tournament');
-    throw new Error(error.message);
-  }
-}
-
-/** Protected personnel is not part of generic tournament writes, including stale editor saves. */
-export function tournamentWriteRow(tournament: Tournament) {
-  const { staff: _staff, dealers: _dealers, ...row } = tournamentToRow(tournament);
-  return row;
-}
-
-export async function deleteTournamentRow(tournamentId: string): Promise<void> {
-  const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId);
-  if (error) {
-    logSupabaseError(error, 'delete tournament');
-    throw new Error(error.message);
-  }
+export async function updateTournamentRow(tournamentId:string,patch:Partial<Tournament>,actorId:string): Promise<Tournament> {
+  const saved=await updateTournamentCommand(actorId,tournamentId,tournamentChanges(patch));
+  return tournamentFromRow(saved.tournament,[]);
 }
 
 function isFkError(error: { code?: string; message?: string }): boolean {
