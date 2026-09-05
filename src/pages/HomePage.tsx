@@ -194,8 +194,16 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
   const dateStr = `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${dayMonth}`;
 
   return (
-    <button
+    <article
+      role="link"
+      tabIndex={0}
       onClick={onPress}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        onPress();
+      }}
+      aria-label={`Открыть турнир ${tournament.title}`}
       className="relative w-full text-left rounded-2xl overflow-hidden active:scale-[0.984] transition-transform duration-150"
       style={{
         background: '#1d0b07',
@@ -206,21 +214,23 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
     >
       {/* Fully transparent art wrapper — no bg / border / ring / shadow */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-transparent border-0 shadow-none ring-0 outline-none">
-        <img
-          src={tournament.imageUrl}
-          alt=""
-          aria-hidden
-          className={tournamentArtClassName(tournament.id)}
-          style={{
-            opacity: 0.85,
-            filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
-            border: 'none',
-            outline: 'none',
-            boxShadow: 'none',
-            background: 'transparent',
-            ...TOURNAMENT_ART_MASK,
-          }}
-        />
+        {tournament.imageUrl.trim() ? (
+          <img
+            src={tournament.imageUrl}
+            alt=""
+            aria-hidden
+            className={tournamentArtClassName(tournament.id)}
+            style={{
+              opacity: 0.85,
+              filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
+              border: 'none',
+              outline: 'none',
+              boxShadow: 'none',
+              background: 'transparent',
+              ...TOURNAMENT_ART_MASK,
+            }}
+          />
+        ) : null}
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
           style={TOURNAMENT_ART_FADE}
@@ -263,6 +273,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
         </div>
 
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onPress(); }}
           className="self-start py-2 px-4 rounded-xl text-[13px] font-bold active:scale-95 transition-transform"
           style={{
@@ -274,7 +285,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
           Записаться
         </button>
       </div>
-    </button>
+    </article>
   );
 }
 

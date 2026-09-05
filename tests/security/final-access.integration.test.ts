@@ -20,12 +20,15 @@ const migrations=['20260903_auth_foundation.sql','20260903_finance_commands.sql'
   '20260904_anon_access.sql','20260904_authenticated_policies.sql','20260904_ruby_grants.sql',
   '20260904_tournament_closure.sql','20260904_profile_updates.sql','20260904_user_update_acl.sql',
   '20260904_tournament_registration.sql','20260904_participant_commands.sql','20260904_tournament_commands.sql',
-  '20260905_audit_timer_commands.sql'];
+  '20260905_audit_timer_commands.sql','20260905_profile_archive.sql'];
 
 describe('final client access matrix after the complete local cutover',()=>{let superadmin='',admin='',user='';const event=id('event');
   beforeAll(async()=>{
     localSql(readFileSync('tests/security/auth-helpers.sql','utf8'));
     localSql(readFileSync('supabase/schema.sql','utf8'));
+    // Production predates timer_sessions. Keep this rehearsal path covered so
+    // policy migrations cannot accidentally assume the newer baseline schema.
+    localSql('drop table public.timer_sessions cascade;');
     localSql(readFileSync('supabase/migrations/20260829_login_otp.sql','utf8'));
     localSql(`insert into public.users(id,email,nickname,is_admin) values
       ('${id('super')}','${email('super')}','Super',true),('${id('admin')}','${email('admin')}','Admin',true),
@@ -57,6 +60,7 @@ describe('final client access matrix after the complete local cutover',()=>{let 
   });
 
   it('leaves only the intended authenticated read grants and no direct protected writes',()=>{
+    expect(localSql("select to_regclass('public.timer_sessions') is not null;")).toBe('t');
     expect(localSql(`select has_table_privilege('authenticated','public.users','SELECT'),
       has_table_privilege('authenticated','public.tournaments','SELECT'),has_table_privilege('authenticated','public.participants','SELECT'),
       has_table_privilege('authenticated','public.transactions','SELECT'),has_table_privilege('authenticated','public.logs','SELECT'),

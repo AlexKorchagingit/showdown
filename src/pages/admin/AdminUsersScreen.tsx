@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { Check, Trash2 } from 'lucide-react';
+import { Archive, Check } from 'lucide-react';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { useUser } from '../../context/UserContext';
 import { CompactHeader } from '../../components/CompactHeader';
 import { formatBirthDate } from '../../lib/playerName';
-import { deleteUserRow } from '../../lib/userApi';
+import { archiveUserProfile } from '../../lib/profileArchive';
 import { supabase } from '../../lib/supabase';
 
 export function AdminUsersScreen() {
-  const { email, clubUsers, isLoading, refreshClubUsers, isSuperAdmin } = useUser();
+  const { email, userId, clubUsers, isLoading, refreshClubUsers, isSuperAdmin } = useUser();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<(typeof clubUsers)[number] | null>(null);
+  const [pendingArchive, setPendingArchive] = useState<(typeof clubUsers)[number] | null>(null);
+  const [archiveReason, setArchiveReason] = useState('');
 
   const toggleAdmin = async (id: string) => {
     const target = clubUsers.find((u) => u.id === id);
@@ -28,25 +29,20 @@ export function AdminUsersScreen() {
     // The role RPC records the authenticated actor atomically; no client log.
   };
 
-  const confirmDelete = async () => {
-    if (!pendingDelete) return;
-    const target = pendingDelete;
+  const confirmArchive = async () => {
+    if (!pendingArchive || archiveReason.trim().length < 3) return;
+    const target = pendingArchive;
     setBusyId(target.id);
-    const result = await deleteUserRow(target.id);
-    setBusyId(null);
-    setPendingDelete(null);
-    if (!result.ok) {
-      const financeBlocked =
-        result.code === '23503' ||
-        /transactions|foreign key|restrict/i.test(result.message);
-      window.alert(
-        financeBlocked
-          ? 'Не удалось удалить пользователя: остались связанные записи'
-          : result.message || 'Не удалось удалить пользователя',
-      );
-      return;
+    try {
+      await archiveUserProfile(userId,target.id,archiveReason);
+      setPendingArchive(null);
+      setArchiveReason('');
+      await refreshClubUsers();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось архивировать профиль');
+    } finally {
+      setBusyId(null);
     }
-    await refreshClubUsers();
   };
 
   return (
@@ -68,9 +64,10 @@ export function AdminUsersScreen() {
         ) : (
           <div className="space-y-3">
             {clubUsers.map((user) => {
-              const isLocked = !isSuperAdmin || user.role === 'superadmin';
+              const isProtectedSuperAdmin = user.role === 'superadmin';
+              const isLocked = !isSuperAdmin || isProtectedSuperAdmin;
               const isSelf = user.email.toLowerCase() === email.trim().toLowerCase();
-              const canDelete = !isLocked && !isSelf;
+              const canArchive = !isLocked && !isSelf;
 
               return (
                 <div
@@ -99,26 +96,26 @@ export function AdminUsersScreen() {
                         Дата рождения: {formatBirthDate(user.birthDate)}
                       </p>
                     ) : null}
-                    {isLocked && (
+                    {isProtectedSuperAdmin && (
                       <p className="text-[11px] font-600 mt-0.5" style={{ color: '#D99962' }}>
                         Главный администратор
                       </p>
                     )}
                   </div>
 
-                  {canDelete && (
+                  {canArchive && (
                     <button
                       type="button"
-                      onClick={() => setPendingDelete(user)}
+                      onClick={() => { setPendingArchive(user); setArchiveReason(''); }}
                       disabled={busyId === user.id}
                       className="shrink-0 w-7 h-7 rounded-md flex items-center justify-center"
                       style={{
                         background: 'rgba(239,68,68,0.12)',
                         border: '1px solid rgba(239,68,68,0.35)',
                       }}
-                      aria-label={`Удалить ${user.nickname}`}
+                      aria-label={`Архивировать ${user.nickname}`}
                     >
-                      <Trash2 size={14} strokeWidth={2.3} style={{ color: '#f87171' }} />
+                      <Archive size={14} strokeWidth={2.3} style={{ color: '#f87171' }} />
                     </button>
                   )}
 
@@ -152,13 +149,13 @@ export function AdminUsersScreen() {
         )}
       </div>
 
-      {pendingDelete && (
+      {pendingArchive && (
         <div className="absolute inset-0 z-50 flex items-end justify-center">
           <button
             type="button"
             className="absolute inset-0 bg-black/65"
             aria-label="Закрыть"
-            onClick={() => setPendingDelete(null)}
+            onClick={() => setPendingArchive(null)}
           />
           <div
             className="relative w-full rounded-t-3xl px-4 pt-4 pb-8"
@@ -170,15 +167,23 @@ export function AdminUsersScreen() {
           >
             <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-4" />
             <h2 className="text-[15px] font-800 uppercase tracking-wide text-white mb-2">
-              Удалить пользователя
+              Архивировать профиль
             </h2>
             <p className="text-[13px] font-500 leading-relaxed mb-5" style={{ color: '#A39B98' }}>
-              Вы точно хотите удалить пользователя {pendingDelete.nickname}? Это действие необратимо.
+              Профиль {pendingArchive.nickname} исчезнет из активного списка, а вход будет заблокирован.
+              Финансы, турниры, роль и журнал сохранятся.
             </p>
+            <textarea
+              value={archiveReason}
+              onChange={(event) => setArchiveReason(event.target.value)}
+              maxLength={1000}
+              placeholder="Причина архивирования"
+              className="mb-4 min-h-20 w-full resize-none rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[13px] text-white outline-none focus:border-red-400/60"
+            />
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setPendingDelete(null)}
+                onClick={() => setPendingArchive(null)}
                 className="h-12 rounded-xl text-[14px] font-800"
                 style={{
                   background: 'rgba(255,255,255,0.06)',
@@ -190,12 +195,12 @@ export function AdminUsersScreen() {
               </button>
               <button
                 type="button"
-                disabled={busyId === pendingDelete.id}
-                onClick={() => void confirmDelete()}
+                disabled={busyId === pendingArchive.id || archiveReason.trim().length < 3}
+                onClick={() => void confirmArchive()}
                 className="h-12 rounded-xl text-[14px] font-800 text-white active:scale-[0.98] disabled:opacity-50"
                 style={{ background: 'linear-gradient(to right, #7f1d1d, #ef4444)' }}
               >
-                {busyId === pendingDelete.id ? 'Удаление…' : 'Удалить'}
+                {busyId === pendingArchive.id ? 'Архивирование…' : 'Архивировать'}
               </button>
             </div>
           </div>

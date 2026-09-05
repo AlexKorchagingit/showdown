@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import { BottomNav } from './components/BottomNav';
@@ -135,22 +135,12 @@ function AuthenticatedApp({
   userEmail: string;
   showSplash: boolean;
 }) {
-  const navigate = useNavigate();
   const { account, isLoading, refreshAccount } = useUser();
   const startupView = resolveStartupView({
     showSplash,
     isLoading,
     hasAccount: Boolean(account),
   });
-  const landedHomeRef = useRef(false);
-
-  useEffect(() => {
-    if (!account || startupView !== 'ready') return;
-    if (landedHomeRef.current) return;
-    landedHomeRef.current = true;
-    navigate('/', { replace: true });
-  }, [account, startupView, navigate]);
-
   if (startupView === 'loading') {
     return <SplashShell />;
   }
@@ -288,7 +278,7 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <div className={shellClass}>
-        <div className={`${columnClass} h-screen`}>
+        <div className={`${columnClass} h-[100dvh]`}>
           <LoginScreen onLogin={handleLogin} />
         </div>
       </div>

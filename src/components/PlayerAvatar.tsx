@@ -31,14 +31,14 @@ export function PlayerAvatar({
   const { userId } = useUser();
   const club = findClubUserByIdOrNick(playerId, nickname);
   const isSelf = playerId === 'me' || (Boolean(playerId) && playerId === userId);
-  const url =
-    src ??
+  const url = (
+    src ||
     (isSelf
       ? equippedAvatar
       : club?.equippedAvatar
         || (playerId && nickname
           ? avatarUrlForPlayer(playerId, nickname, equippedChar)
-          : DEFAULT_AVATAR_URL));
+          : DEFAULT_AVATAR_URL))) || DEFAULT_AVATAR_URL;
 
   return (
     <div className={`relative shrink-0 ${className}`}>

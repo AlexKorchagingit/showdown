@@ -4,6 +4,17 @@ begin;
 set local lock_timeout='3s';
 set local statement_timeout='30s';
 
+-- Older production installations do not have this table yet. Create the
+-- minimal final shape before policies and grants reference it; the later
+-- audit/timer migration remains responsible for its seed row, trigger and RPC.
+create table if not exists public.timer_sessions(
+  id text primary key default 'live',
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.timer_sessions enable row level security;
+
 do $$ begin
   if to_regprocedure('public.club_current_account()') is null then
     raise exception 'Auth foundation must be installed first';

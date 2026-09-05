@@ -6,7 +6,10 @@ const client = createOtpClient({
   anonKey: supabaseAnonKey,
   storeSession: async (tokens) => {
     const { error } = await supabase.auth.setSession(tokens);
-    if (error) throw new Error('Session unavailable');
+    if (error) {
+      console.error('Auth session storage failed:', error.name);
+      throw new Error('Session unavailable');
+    }
   },
 });
 

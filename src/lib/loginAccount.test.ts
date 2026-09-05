@@ -4,7 +4,7 @@ vi.mock('./supabase', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from }, l
 vi.mock('./session', () => ({ writeSession: mocks.write }));
 vi.mock('./clubDirectory', () => ({ upsertClubDirectory: mocks.upsert, getClubDirectory: vi.fn(), setClubDirectory: vi.fn() }));
 import { ConsentRequiredError, loginOrRegisterUser } from './loginAccount';
-import { deleteUserRow, lookupSessionAccount } from './userApi';
+import { lookupSessionAccount } from './userApi';
 
 const user = { id: 'synthetic-profile', email: 'member@example.test', nickname: 'Test',
   role: 'admin', is_admin: true, ruby_balance: 1234 };
@@ -40,11 +40,5 @@ describe('server-authoritative profile binding', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('club_current_account');
     expect(result.status).toBe('found');
     expect(mocks.from).not.toHaveBeenCalled();
-  });
-  it('blocks the old partial-deletion flow before any data write', async () => {
-    const result = await deleteUserRow('synthetic-profile');
-    expect(result.ok).toBe(false);
-    expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

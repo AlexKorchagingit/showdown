@@ -361,14 +361,14 @@ export function LoginScreen({ onLogin }: Props) {
     : null;
 
   return (
-    <div className="relative w-full h-screen overflow-hidden flex flex-col justify-center items-center">
+    <div className="relative flex min-h-[100dvh] w-full flex-col items-center overflow-x-hidden overflow-y-auto">
       <div
         className="absolute inset-0 z-0 bg-gradient-to-br from-[#F2D8A7] via-[#f7e8c6] to-[#D99962] login-bg-pulse"
       />
 
-      <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center mb-20">
-        <BrandLogo className="h-64 w-auto mb-8" />
-        <h1 className="text-3xl font-black text-[#110b09] mb-8 uppercase tracking-wide">
+      <div className="relative z-10 my-auto flex w-full max-w-sm flex-col items-center px-6 py-4">
+        <BrandLogo className="mb-[clamp(1rem,4dvh,2rem)] h-[clamp(8rem,36dvh,16rem)] w-auto shrink-0" />
+        <h1 className="mb-[clamp(1rem,4dvh,2rem)] text-3xl font-black uppercase tracking-wide text-[#110b09]">
           {step === 'consent' ? 'Регистрация' : 'Вход'}
         </h1>
 

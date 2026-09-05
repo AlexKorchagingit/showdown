@@ -78,12 +78,6 @@ export async function fetchClubUsers(): Promise<MappedUser[]> {
 
 export { loginOrRegisterUser } from './loginAccount';
 
-/** Deletion must be redesigned as a reviewed atomic server operation. */
-export async function deleteUserRow(_userId: string): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
-  return { ok: false, code: 'deletion_disabled',
-    message: 'Удаление профилей отключено на время переноса прав, чтобы сохранить финансовую историю.' };
-}
-
 export async function updateUserRow(
   userId: string,
   patch: Record<string, unknown>,
