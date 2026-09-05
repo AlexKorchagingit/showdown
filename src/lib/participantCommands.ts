@@ -2,7 +2,7 @@ import { createOperationRequests } from './operationRequests';
 import { supabase } from './supabase';
 
 export type ParticipantCommandRow={source_id:string|null;seat_id:string;user_id:string|null;nickname:string;
-  place:number|null;knockouts:number;comment:string|null};
+  place:number|null;knockouts:number;comment:string|null;arrived:boolean};
 type Intent={tournamentId:string;rows:ParticipantCommandRow[]};
 type Result={request_id:string;tournament_id:string;participants:number};
 const queues=new Map<string,ReturnType<typeof createOperationRequests<Intent,Result>>>();
@@ -18,7 +18,7 @@ function queue(actorId:string) {
       throw new Error('Сервер не подтвердил состав турнира');
     return result;
   },(intent)=>({tournamentId:intent.tournamentId.trim(),rows:[...intent.rows].sort((a,b)=>a.seat_id.localeCompare(b.seat_id))}),
-  'showdown.participants.v1',undefined,{scope:actorId,storage:()=>window.sessionStorage});
+  'showdown.participants.v2',undefined,{scope:actorId,storage:()=>window.sessionStorage});
   queues.set(actorId,current); return current;
 }
 export function replaceParticipants(actorId:string,tournamentId:string,rows:ParticipantCommandRow[]) {

@@ -61,6 +61,7 @@ export type ParticipantRow = {
   knockouts: number;
   rubies_awarded: number | null;
   comment: string | null;
+  arrived?: boolean;
 };
 
 /** Postgres `transactions` row. */
@@ -341,6 +342,7 @@ export function participantToRow(
     knockouts: participant.knockouts ?? 0,
     rubies_awarded: typeof participant.rubiesAwarded === 'number' ? participant.rubiesAwarded : null,
     comment: participant.comment ?? null,
+    arrived: participant.arrived === true,
   };
 }
 
@@ -355,6 +357,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
     knockouts: row.knockouts || undefined,
     rubiesAwarded: row.rubies_awarded ?? undefined,
     comment: row.comment || undefined,
+    arrived: row.arrived === true,
   };
 }
 
@@ -366,6 +369,7 @@ export function resetCopiedParticipant(player: Participant): Participant {
     nickname: player.nickname,
     rating: player.rating,
     equippedAvatar: player.equippedAvatar,
+    arrived: false,
   };
 }
 

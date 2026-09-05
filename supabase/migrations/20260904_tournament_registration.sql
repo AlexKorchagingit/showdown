@@ -74,15 +74,13 @@ drop policy if exists participants_insert_authorized on public.participants;
 drop policy if exists participants_delete_authorized on public.participants;
 drop policy if exists participants_admin_insert on public.participants;
 drop policy if exists participants_admin_delete on public.participants;
-create policy participants_admin_insert on public.participants for insert to authenticated
-  with check ((select public.club_current_account()->>'role') in ('admin','superadmin'));
-create policy participants_admin_delete on public.participants for delete to authenticated
-  using ((select public.club_current_account()->>'role') in ('admin','superadmin'));
+revoke insert,delete on public.participants from public,anon,authenticated;
 
 do $$ begin
   if exists(select 1 from pg_policies where schemaname='public' and tablename='participants'
-    and policyname in ('participants_insert_authorized','participants_delete_authorized')) then
-    raise exception 'Ordinary direct participant write policy remains';
+    and policyname in ('participants_insert_authorized','participants_delete_authorized',
+      'participants_admin_insert','participants_admin_delete')) then
+    raise exception 'Direct participant write policy remains';
   end if;
 end $$;
 notify pgrst,'reload schema';

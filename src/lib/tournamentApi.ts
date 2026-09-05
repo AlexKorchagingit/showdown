@@ -186,7 +186,8 @@ function sameSeat(left: Participant, right: Participant): boolean {
     left.place === right.place &&
     (left.knockouts ?? 0) === (right.knockouts ?? 0) &&
     left.rubiesAwarded === right.rubiesAwarded &&
-    left.comment === right.comment
+    left.comment === right.comment &&
+    (left.arrived === true) === (right.arrived === true)
   );
 }
 
@@ -216,7 +217,8 @@ export async function syncParticipantRows(
       &&sameSeat(removed[0],{...player,id:removed[0].id,
       userId:removed[0].userId,nickname:removed[0].nickname}))source=removed[0];
     return {source_id:source?participantRowId(tournamentId,source.id):null,seat_id:row.id,user_id:row.user_id,
-      nickname:row.nickname,place:row.place,knockouts:row.knockouts,comment:row.comment};
+      nickname:row.nickname,place:row.place,knockouts:row.knockouts,comment:row.comment,
+      arrived:row.arrived===true};
   });
   await replaceParticipants(actorId,tournamentId,rows);
 

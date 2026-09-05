@@ -19,10 +19,10 @@ import { useBlinds } from '../../context/BlindsContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
-import { resolveStructureForTournament } from '../../lib/timerTournament';
+import { resolveStructureForTournament, resolveTournamentForTimer } from '../../lib/timerTournament';
 import {
   breakComment,
-  formatBlinds,
+  formatNextBlinds,
   formatEta,
   isBreakLevel,
   isLateRegClosed,
@@ -34,6 +34,7 @@ import { calculatePayouts, itmSharePercent } from '../../data/prizeStructure';
 import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
+import { supabase } from '../../lib/supabase';
 import {
   autoAvgStack,
   nicknamesByPlace,
@@ -84,7 +85,7 @@ export function AdminBlindsTimer() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { equippedChar } = useProfile();
-  const { tournaments } = useTournaments();
+  const { tournaments, refreshParticipants, isLoading: tournamentsLoading } = useTournaments();
   const {
     timerReady,
     structures,
@@ -103,7 +104,6 @@ export function AdminBlindsTimer() {
     avgStackOverride,
     chipleaderId,
     setChipleader,
-    totalEntries,
     rebuyCount,
     chipleaderStack,
   } = useBlinds();
@@ -115,17 +115,13 @@ export function AdminBlindsTimer() {
   const tournamentIdParam = searchParams.get('tournament');
   const structureIdParam = searchParams.get('structure');
   const boundTournament = (() => {
-    const id = tournamentIdParam ?? linkedTournamentId;
-    if (!id) return undefined;
-    const found = tournaments.find((row) => row.id === id);
-    if (!found) return undefined;
-    if (tournamentIdParam) return found;
-    if (structureIdParam) {
-      const usesThisLadder =
-        resolveStructureForTournament(found, structures)?.id === structureIdParam;
-      return usesThisLadder ? found : undefined;
+    if (tournamentIdParam) {
+      return tournaments.find((row) => row.id === tournamentIdParam);
     }
-    return found;
+    const structure =
+      structures.find((row) => row.id === (structureIdParam ?? activeStructure?.id ?? '')) ??
+      activeStructure;
+    return resolveTournamentForTimer(structure, tournaments, linkedTournamentId);
   })();
   const resolvedStructure =
     resolveStructureForTournament(boundTournament, structures) ??
@@ -138,14 +134,17 @@ export function AdminBlindsTimer() {
       bindTournament(tournamentIdParam);
       return;
     }
-    if (structureIdParam) {
-      ensureTimer(structureIdParam);
-      if (isRunning) return;
-      const linked = tournaments.find((row) => row.id === linkedTournamentId);
-      const usesThisLadder =
-        resolveStructureForTournament(linked, structures)?.id === structureIdParam;
-      if (linkedTournamentId && !usesThisLadder) bindTournament(null);
+    if (!structureIdParam) return;
+    ensureTimer(structureIdParam);
+    const structure = structures.find((row) => row.id === structureIdParam);
+    if (!structure || tournamentsLoading) return;
+    const resolved = resolveTournamentForTimer(structure, tournaments, linkedTournamentId);
+    if (resolved) {
+      if (resolved.id !== linkedTournamentId) bindTournament(resolved.id);
+      return;
     }
+    if (isRunning || tournaments.length === 0) return;
+    if (linkedTournamentId) bindTournament(null);
   }, [
     timerReady,
     tournamentIdParam,
@@ -153,6 +152,7 @@ export function AdminBlindsTimer() {
     bindTournament,
     ensureTimer,
     tournaments,
+    tournamentsLoading,
     linkedTournamentId,
     structures,
     isRunning,
@@ -168,9 +168,37 @@ export function AdminBlindsTimer() {
     };
   }, []);
 
+  const liveTournamentId = boundTournament?.id ?? linkedTournamentId;
+  useEffect(() => {
+    if (!liveTournamentId) return;
+    void refreshParticipants(liveTournamentId);
+    const poll = window.setInterval(() => {
+      void refreshParticipants(liveTournamentId);
+    }, 2500);
+    const channel = supabase
+      .channel(`timer-cashier-${liveTournamentId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'participants',
+          filter: `tournament_id=eq.${liveTournamentId}`,
+        },
+        () => {
+          void refreshParticipants(liveTournamentId);
+        },
+      )
+      .subscribe();
+    return () => {
+      window.clearInterval(poll);
+      void supabase.removeChannel(channel);
+    };
+  }, [liveTournamentId, refreshParticipants]);
+
   const structure = resolvedStructure;
   const tournament = boundTournament;
-  const { remaining } = tournamentPlayerCounts(tournament);
+  const { remaining, registered } = tournamentPlayerCounts(tournament);
   const avgStack = avgStackOverride ?? autoAvgStack(tournament);
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
@@ -200,23 +228,21 @@ export function AdminBlindsTimer() {
   );
 
   const prizePool = tournament?.guarantee ?? structure?.guarantee ?? 0;
-  const hasEntries = totalEntries != null;
-  const fieldSize = hasEntries ? totalEntries : 0;
+  const fieldSize = registered;
+  const hasEntries = fieldSize > 0;
   const payouts = useMemo(
     () => (hasEntries ? calculatePayouts(fieldSize, prizePool) : []),
     [hasEntries, fieldSize, prizePool],
   );
-  const hasField = Boolean(tournament && tournament.participants.length > 0);
+  const hasField = registered > 0;
   const activePlayersCount = hasField ? remaining : Number.POSITIVE_INFINITY;
   const eliminatedNickByPlace = useMemo(() => nicknamesByPlace(tournament), [tournament]);
 
   useEffect(() => {
     if (!chipleaderId || !tournament) return;
-    if (tournament.participants.length === 0) return;
-    const stillSeated = tournament.participants.some(
-      (p) => p.id === chipleaderId && typeof p.place !== 'number',
-    );
-    if (!stillSeated) setChipleader(null);
+    if (!remainingPlayers(tournament).some((p) => p.id === chipleaderId)) {
+      setChipleader(null);
+    }
   }, [chipleaderId, tournament, setChipleader]);
 
   if (!timerReady) {
@@ -314,14 +340,14 @@ export function AdminBlindsTimer() {
         </div>
 
         <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-visible md:w-[260px]">
-          {hasEntries && (
+          {tournament && (
             <section className={`${GLASS} text-center min-w-0`}>
               <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
                 В ИГРЕ
               </p>
               <FitText className="text-white mt-2">
                 {remaining}
-                <span className="text-white/35"> / {totalEntries}</span>
+                <span className="text-white/35"> / {registered}</span>
               </FitText>
               {rebuyCount != null && rebuyCount > 0 && (
                 <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
@@ -411,39 +437,41 @@ export function AdminBlindsTimer() {
               </svg>
               {/* Clip to the inner ring so type can be large without leaving the circle. */}
               <div
-                className="pointer-events-none absolute inset-[5%] flex flex-col items-center justify-center overflow-hidden rounded-full px-4 text-center"
+                className="pointer-events-none absolute inset-[5%] overflow-hidden rounded-full px-4 text-center"
                 style={{ containerType: 'inline-size' }}
               >
-                {isBreak ? (
-                  <>
-                    <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
-                      ПЕРЕРЫВ
-                    </p>
-                    {currentBreakNote ? (
-                      <p className="mt-2 max-w-full px-1 text-[clamp(0.95rem,8cqi,1.85rem)] font-800 leading-snug text-[#F2D8A7]">
-                        {currentBreakNote}
+                <div className="flex h-full w-full origin-center scale-[0.855] flex-col items-center justify-center">
+                  {isBreak ? (
+                    <>
+                      <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
+                        ПЕРЕРЫВ
                       </p>
-                    ) : null}
-                    <p className="mt-2 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                      {formatClock(secondsLeft)}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <span className="rounded-full bg-[#D99962]/20 px-5 py-1 text-[clamp(1.05rem,11cqi,2rem)] font-bold uppercase tracking-widest text-[#D99962]">
-                      {levelBadge}
-                    </span>
-                    <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
-                      {blindsLabel}
-                    </p>
-                    <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
-                      {anteLabel}
-                    </p>
-                    <p className="mt-1.5 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                      {formatClock(secondsLeft)}
-                    </p>
-                  </>
-                )}
+                      {currentBreakNote ? (
+                        <p className="mt-2 max-w-full px-1 text-[clamp(0.95rem,8cqi,1.85rem)] font-800 leading-snug text-[#F2D8A7]">
+                          {currentBreakNote}
+                        </p>
+                      ) : null}
+                      <p className="mt-2 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                        {formatClock(secondsLeft)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="rounded-full bg-[#D99962]/20 px-5 py-1 text-[clamp(1.05rem,11cqi,2rem)] font-bold uppercase tracking-widest text-[#D99962]">
+                        {levelBadge}
+                      </span>
+                      <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
+                        {blindsLabel}
+                      </p>
+                      <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
+                        {anteLabel}
+                      </p>
+                      <p className="mt-1.5 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                        {formatClock(secondsLeft)}
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
               <button
                 type="button"
@@ -460,10 +488,10 @@ export function AdminBlindsTimer() {
             </div>
           </div>
 
-          <p className="mt-2 mb-1 shrink-0 text-center text-lg font-bold text-white/70 md:text-xl">
+          <p className="mt-2.5 mb-1.5 shrink-0 text-center text-[1.24rem] font-bold leading-snug text-white/70 md:text-[1.38rem]">
             Next Blinds:{' '}
             <span className="text-[#D99962]">
-              {nextLevel ? formatBlinds(nextLevel) : 'финальный уровень'}
+              {formatNextBlinds(nextLevel)}
             </span>
           </p>
         </div>

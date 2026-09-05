@@ -2,6 +2,27 @@
 -- LOCAL ONLY until the coordinated cutover.
 begin;
 set local lock_timeout='3s'; set local statement_timeout='30s';
+
+alter table public.participants add column if not exists arrived boolean not null default false;
+
+-- Preserve lobby check-ins written by the currently deployed client before
+-- `participants.arrived` existed. The legacy log row remains untouched so the
+-- migration is recoverable and can be audited after cutover.
+do $$
+declare v_snapshot jsonb;
+begin
+  select details::jsonb into v_snapshot from public.logs where id='participant-arrivals';
+  if jsonb_typeof(v_snapshot)='object' and v_snapshot->>'v'='1'
+    and jsonb_typeof(v_snapshot->'byTournament')='object' then
+    update public.participants p set arrived=true where not p.arrived and (
+      coalesce(v_snapshot#>array['byTournament',p.tournament_id,p.id],'false'::jsonb)='true'::jsonb
+      or (p.user_id is not null and
+        coalesce(v_snapshot#>array['byTournament',p.tournament_id,p.user_id],'false'::jsonb)='true'::jsonb));
+  end if;
+exception when invalid_text_representation then
+  raise exception using errcode='22023',message='Invalid legacy participant arrival snapshot';
+end $$;
+
 create table if not exists club_private.participant_requests(
   actor_id text not null references public.users(id) on delete restrict, request_id uuid not null,
   tournament_id text not null references public.tournaments(id) on delete restrict,
@@ -21,12 +42,13 @@ begin
   if p_request_id is null or p_tournament_id is null or btrim(p_tournament_id)='' or jsonb_typeof(p_rows)<>'array'
     or jsonb_array_length(p_rows)>500 then raise exception using errcode='22023',message='Invalid participant request'; end if;
   if exists(select 1 from jsonb_array_elements(p_rows) x where jsonb_typeof(x)<>'object'
-    or not x ?& array['seat_id','source_id','user_id','nickname','place','knockouts','comment']
-    or x-array['seat_id','source_id','user_id','nickname','place','knockouts','comment']::text[]<>'{}'::jsonb
+    or not x ?& array['seat_id','source_id','user_id','nickname','place','knockouts','comment','arrived']
+    or x-array['seat_id','source_id','user_id','nickname','place','knockouts','comment','arrived']::text[]<>'{}'::jsonb
     or jsonb_typeof(x->'seat_id')<>'string' or jsonb_typeof(x->'nickname')<>'string'
     or jsonb_typeof(x->'knockouts')<>'number'
     or jsonb_typeof(x->'source_id') not in ('string','null') or jsonb_typeof(x->'user_id') not in ('string','null')
-    or jsonb_typeof(x->'place') not in ('number','null') or jsonb_typeof(x->'comment') not in ('string','null')) then
+    or jsonb_typeof(x->'place') not in ('number','null') or jsonb_typeof(x->'comment') not in ('string','null')
+    or jsonb_typeof(x->'arrived')<>'boolean') then
     raise exception using errcode='22023',message='Invalid participant rows'; end if;
   if exists(select 1 from jsonb_array_elements(p_rows) x where length(x->>'seat_id') not between 3 and 500
     or (x->>'knockouts')::numeric<>trunc((x->>'knockouts')::numeric) or (x->>'knockouts')::numeric not between 0 and 10000
@@ -41,9 +63,9 @@ begin
   if found then if v_old.payload<>v_payload then raise exception using errcode='22023',message='Request identifier already used'; end if; return v_old.result; end if;
   perform 1 from public.participants where tournament_id=p_tournament_id order by id for update;
   create temporary table desired_participants(source_id text,seat_id text primary key,user_id text,nickname text,
-    place integer,knockouts integer,comment text) on commit drop;
-  insert into desired_participants select nullif(x.source_id,''),x.seat_id,nullif(x.user_id,''),btrim(x.nickname),x.place,x.knockouts,x.comment
-    from jsonb_to_recordset(p_rows) x(source_id text,seat_id text,user_id text,nickname text,place integer,knockouts integer,comment text);
+    place integer,knockouts integer,comment text,arrived boolean) on commit drop;
+  insert into desired_participants select nullif(x.source_id,''),x.seat_id,nullif(x.user_id,''),btrim(x.nickname),x.place,x.knockouts,x.comment,x.arrived
+    from jsonb_to_recordset(p_rows) x(source_id text,seat_id text,user_id text,nickname text,place integer,knockouts integer,comment text,arrived boolean);
   if exists(select 1 from desired_participants d where d.seat_id not like p_tournament_id||':%'
       or (d.user_id is null and (substring(d.seat_id from length(p_tournament_id)+2) not like 'guest-%' or length(d.nickname) not between 2 and 17))
       or (d.user_id is not null and (d.seat_id<>p_tournament_id||':'||d.user_id or not exists(select 1 from public.users u where u.id=d.user_id))))
@@ -68,15 +90,15 @@ begin
       v_rubies:=v.old_rubies;
       update public.participants set id=v.seat_id,user_id=v.user_id,nickname=v.nickname,rating=v_rating,
         place=v.place,knockouts=case when v_t.is_bounty then v.knockouts else 0 end,
-        rubies_awarded=v_rubies,comment=nullif(btrim(coalesce(v.comment,'')),'') where id=v.source_id;
+        rubies_awarded=v_rubies,comment=nullif(btrim(coalesce(v.comment,'')),''),arrived=v.arrived where id=v.source_id;
     else
       v_rating:=case when v_t.results_entered then
         club_private.tournament_place_points(coalesce(v.place,0),greatest(1,(select count(*)::integer from desired_participants)),v_t.guarantee)
         +case when v_t.is_bounty then v.knockouts*100 else 0 end else 0 end;
-      insert into public.participants(id,tournament_id,user_id,nickname,rating,place,knockouts,rubies_awarded,comment)
+      insert into public.participants(id,tournament_id,user_id,nickname,rating,place,knockouts,rubies_awarded,comment,arrived)
       values(v.seat_id,p_tournament_id,v.user_id,v.nickname,v_rating,v.place,
         case when v_t.is_bounty then v.knockouts else 0 end,case when v_t.rubies_distributed then 0 else null end,
-        nullif(btrim(coalesce(v.comment,'')),''));
+        nullif(btrim(coalesce(v.comment,'')),''),v.arrived);
     end if;
   end loop;
   if (select count(*) from desired_participants)>v_t.total_seats then

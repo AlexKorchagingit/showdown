@@ -18,17 +18,26 @@ const snapshot=(writeId:string,revision=1,extra:object={})=>({v:1,writeId,revisi
   tournamentId:null,levelIndex:0,secondsLeft:1200,isRunning:false,anchorAt:'2026-09-05T12:00:00.000Z',
   levelDurations:[1200],avgStackOverride:null,chipleaderId:null,totalEntries:null,rebuyCount:null,
   chipleaderStack:null,...extra});
+const blindSnapshot=(writeId:string,revision=1,extra:object={})=>({v:1,writeId,revision,updatedAt:1,
+  structures:[{id:'bs-test',name:'Test',levelDuration:20,guarantee:1000,
+    levels:[{level:1,smallBlind:100,bigBlind:200,ante:200,durationMinutes:20}],
+    payouts:[{place:1,share:100}]}],migrations:[],...extra});
 
 describe('protected audit and live timer',()=>{let superadmin='',admin='',user='';
   beforeAll(async()=>{
     localSql(readFileSync('tests/security/auth-helpers.sql','utf8'));
     localSql(readFileSync('supabase/schema.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260829_login_otp.sql','utf8'));
-    localSql(`insert into public.users(id,email,nickname,is_admin) values
+    const legacyBlind=JSON.stringify(blindSnapshot('legacy-blinds',3)).replaceAll("'","''");
+    localSql(`delete from public.timer_sessions where id='blind-structures';
+      delete from public.logs where id in ('blinds-timer-session','blinds-structures','participant-arrivals');
+      insert into public.users(id,email,nickname,is_admin) values
       ('${id('super')}','${email('super')}','Super',true),('${id('admin')}','${email('admin')}','Admin',true),
       ('${id('user')}','${email('user')}','User',false),('${id('target')}','${email('target')}','Target',false);
       insert into public.logs(id,admin_email,admin_name,action_type,details) values
       ('blinds-timer-session','timer@showdown.internal','Timer','__timer_session__','{}'),
+      ('blinds-structures','blinds@showdown.internal','Blinds','__blind_structures__','${legacyBlind}'),
+      ('participant-arrivals','arrivals@showdown.internal','Arrivals','__participant_arrivals__','{}'),
       ('${id('legacy-log')}','legacy@example.test','Legacy','Legacy audit','Preserve me') on conflict(id) do nothing;`);
     localSql(readFileSync('supabase/migrations/20260903_auth_foundation.sql','utf8'));
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';`);
@@ -49,6 +58,7 @@ describe('protected audit and live timer',()=>{let superadmin='',admin='',user='
     const rows=await response.json() as Array<{id:string;action_type:string}>;
     expect(rows.some(row=>row.id===id('legacy-log'))).toBe(true);
     expect(rows.some(row=>row.id==='blinds-timer-session'||row.action_type==='__timer_session__')).toBe(false);
+    expect(rows.some(row=>['blinds-structures','participant-arrivals'].includes(row.id))).toBe(false);
     expect(localSql(`select count(*) from public.logs where id='blinds-timer-session';`)).toBe('1');
   });
 
@@ -88,6 +98,19 @@ describe('protected audit and live timer',()=>{let superadmin='',admin='',user='
     const response=await rpc('club_save_timer_session',admin,{p_snapshot:snapshot('admin-write',5)});expect(response.status).toBe(200);
     const saved=await response.json() as {writeId:string;revision:number;updatedAt:number};
     expect(saved.writeId).toBe('admin-write');expect(saved.revision).toBe(5);expect(saved.updatedAt).toBeGreaterThan(1);
+  });
+
+  it('migrates and protects club-wide blind structures behind administrator RPCs',async()=>{
+    expect(localSql(`select payload->>'writeId' from public.timer_sessions where id='blind-structures';`)).toBe('legacy-blinds');
+    for(const access of [anon,user])expect((await rpc('club_blind_structures_snapshot',access)).status).toBeGreaterThanOrEqual(400);
+    for(const access of [admin,superadmin]){
+      const response=await rpc('club_blind_structures_snapshot',access);expect(response.status).toBe(200);
+      expect((await response.json() as {writeId:string}).writeId).toBe('legacy-blinds');
+    }
+    expect((await rpc('club_save_blind_structures',user,{p_snapshot:blindSnapshot('user-blinds',4)})).status).toBeGreaterThanOrEqual(400);
+    const response=await rpc('club_save_blind_structures',admin,{p_snapshot:blindSnapshot('admin-blinds',4)});
+    expect(response.status).toBe(200);expect((await response.json() as {writeId:string}).writeId).toBe('admin-blinds');
+    expect((await rpc('club_save_blind_structures',admin,{p_snapshot:blindSnapshot('invalid-blinds',5,{forged:true})})).status).toBe(400);
   });
 
   it('rejects unknown fields, invalid bounds and nonexistent tournament links',async()=>{for(const invalid of [

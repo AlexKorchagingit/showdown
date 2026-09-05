@@ -51,6 +51,7 @@ describe('participantFromRow guest seats', () => {
     });
     expect(player.id).toBe('guest-ivan');
     expect(player.userId).toBeNull();
+    expect(player.arrived).toBe(false);
     expect(guestSeatKey(player.id)).toBe('guest-ivan');
   });
 

@@ -1,4 +1,5 @@
 import type { Participant, Tournament } from '../types/tournament';
+import { cashierPlayers, hasArrivedWithoutPlace } from './tournamentArrival';
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_RE = /^(\d{1,2}):(\d{2})$/;
@@ -42,7 +43,7 @@ export function sortByRating<T extends { rating: number }>(participants: T[]): T
 }
 
 export function hasMissingPlaces(tournament: Pick<Tournament, 'participants'>): boolean {
-  return tournament.participants.some((p) => typeof p.place !== 'number' || p.place < 1);
+  return hasArrivedWithoutPlace(tournament.participants);
 }
 
 /** Closed events that still need places from admin. */
@@ -88,8 +89,9 @@ export function sortFinancePlayers<T extends { place?: number; nickname: string 
 
 /** True when the field can be closed: N−1 eliminated (winner left) or every seat has a place. */
 export function canCloseTournament(participants: Participant[]): boolean {
-  const total = participants.length;
+  const field = cashierPlayers(participants);
+  const total = field.length;
   if (total === 0) return true;
-  const placed = participants.filter((p) => typeof p.place === 'number' && p.place >= 1).length;
+  const placed = field.filter((p) => typeof p.place === 'number' && p.place >= 1).length;
   return placed >= total - 1;
 }

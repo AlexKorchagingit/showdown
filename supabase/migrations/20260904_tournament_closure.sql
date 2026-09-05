@@ -132,15 +132,16 @@ begin
     raise exception using errcode='55000',message='Tournament is already closed';
   end if;
   perform 1 from public.participants where tournament_id=p_tournament_id order by id for update;
-  select count(*) into v_players from public.participants where tournament_id=p_tournament_id;
+  select count(*) into v_players from public.participants
+    where tournament_id=p_tournament_id and arrived=true;
   if v_players=0 or jsonb_array_length(p_results)<>v_players
     or (select count(distinct item->>'id') from jsonb_array_elements(p_results) item)<>v_players
     or (select count(distinct (item->>'place')::integer) from jsonb_array_elements(p_results) item)<>v_players
     or (select min((item->>'place')::integer) from jsonb_array_elements(p_results) item)<>1
     or (select max((item->>'place')::integer) from jsonb_array_elements(p_results) item)<>v_players
     or exists(select 1 from jsonb_array_elements(p_results) item left join public.participants p
-      on p.id=item->>'id' and p.tournament_id=p_tournament_id where p.id is null) then
-    raise exception using errcode='22023',message='Results must cover every participant and place exactly once';
+      on p.id=item->>'id' and p.tournament_id=p_tournament_id and p.arrived=true where p.id is null) then
+    raise exception using errcode='22023',message='Results must cover every arrived participant and place exactly once';
   end if;
 
   -- Lock recipient wallets in a stable order before any credit is written.
@@ -151,7 +152,7 @@ begin
     from public.participants p
     join jsonb_to_recordset(p_results) as r(id text,place integer,knockouts integer) on r.id=p.id
     left join public.users u on u.id=p.user_id
-    where p.tournament_id=p_tournament_id order by p.id
+    where p.tournament_id=p_tournament_id and p.arrived=true order by p.id
   loop
     v_points:=club_private.tournament_place_points(v_row.place,v_players,v_tournament.guarantee)
       +case when v_tournament.is_bounty then v_row.knockouts*100 else 0 end;

@@ -93,6 +93,7 @@ create table if not exists public.participants (
   knockouts integer not null default 0,
   rubies_awarded integer,
   comment text,
+  arrived boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint participants_place_positive check (place is null or place >= 1),
@@ -228,7 +229,7 @@ grant select on table public.users,public.participants to authenticated;
 grant select on table public.transactions to authenticated;
 
 -- ---------------------------------------------------------------------------
--- timer_sessions  (one live blinds clock for every admin device / tab)
+-- timer_sessions  (live blinds clock + club-wide blind structures)
 -- ---------------------------------------------------------------------------
 create table if not exists public.timer_sessions (
   id text primary key default 'live',
@@ -238,7 +239,9 @@ create table if not exists public.timer_sessions (
 );
 
 insert into public.timer_sessions (id, payload)
-values ('live', '{}'::jsonb)
+values
+  ('live', '{}'::jsonb),
+  ('blind-structures', '{}'::jsonb)
 on conflict (id) do nothing;
 
 drop trigger if exists timer_sessions_set_updated_at on public.timer_sessions;

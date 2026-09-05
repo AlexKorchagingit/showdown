@@ -80,7 +80,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Triple Life',
     blindStructureId: 'bs-triple-life',
     stackSize: 30000,
-    levelDuration: '15 мин',
+    levelDuration: '15/12 мин',
     isClosed: false,
   },
   {
@@ -123,7 +123,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
       'Вход – 1500 р.',
       'Начальный стек 30000 (300 бб)',
       'Без возможности ре-энтри',
-      'Плавная структура турнира',
+      'Классическая структура турнира',
       'Поздняя регистрация до 22:10',
     ],
     participants: pickParticipants(24),
@@ -131,7 +131,7 @@ export const MOCK_TOURNAMENTS: Tournament[] = [
     blindStructure: 'Freezeout',
     blindStructureId: 'bs-freezeout',
     stackSize: 30000,
-    levelDuration: '15 мин',
+    levelDuration: '15/12 мин',
     isClosed: false,
   },
   {

@@ -1,5 +1,6 @@
 import type { BlindStructure } from '../data/blindStructures';
 import type { Tournament } from '../types/tournament';
+import { compareByStart } from './tournamentStatus';
 
 export const TIMER_ROUTE = '/admin/blinds/timer';
 
@@ -31,7 +32,7 @@ export function resolveStructureForTournament(
 }
 
 export function openTournaments(tournaments: Tournament[]): Tournament[] {
-  return tournaments.filter((tournament) => tournament.isClosed !== true);
+  return tournaments.filter((tournament) => tournament.isClosed !== true).sort(compareByStart);
 }
 
 export function tournamentsUsingStructure(
@@ -42,6 +43,40 @@ export function tournamentsUsingStructure(
     if (tournament.blindStructureId && tournament.blindStructureId === structure.id) return true;
     return tournament.blindStructure.trim() === structure.name;
   });
+}
+
+function sameLabel(left: string, right: string): boolean {
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function usesStructure(tournament: Tournament, structure: BlindStructure): boolean {
+  if (tournament.blindStructureId && tournament.blindStructureId === structure.id) return true;
+  if (tournament.blindStructure.trim() === structure.name) return true;
+  return sameLabel(tournament.title, structure.name);
+}
+
+/**
+ * Which event the timer session belongs to.
+ * Keeps the previously linked tournament when it still uses this ladder,
+ * otherwise picks the open event whose title matches the structure name.
+ */
+export function resolveTournamentForTimer(
+  structure: BlindStructure | undefined,
+  tournaments: Tournament[],
+  linkedTournamentId: string | null,
+): Tournament | undefined {
+  if (!structure || tournaments.length === 0) return undefined;
+
+  const linked = linkedTournamentId
+    ? tournaments.find((row) => row.id === linkedTournamentId)
+    : undefined;
+  if (linked && usesStructure(linked, structure)) return linked;
+
+  const named = openTournaments(tournaments).find((row) => sameLabel(row.title, structure.name));
+  if (named) return named;
+
+  const using = openTournaments(tournamentsUsingStructure(tournaments, structure));
+  return using[0];
 }
 
 /** Event day + start time, timezone-stable (`YYYY-MM-DD` at noon). */

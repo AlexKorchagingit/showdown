@@ -112,15 +112,15 @@ describe('serialized self-registration',()=>{
     expect(localSql(`select count(*) from public.participants where tournament_id='${id('placed')}' and user_id='${id('first')}';`)).toBe('1');
   });
 
-  it('removes ordinary direct insert/delete policies while retaining temporary admin management',async()=>{
+  it('removes direct insert/delete rights from users and administrators',async()=>{
     expect([401,403]).toContain((await insertDirect(first,id('open'),id('first'))).status);
     const hiddenDelete=await deleteDirect(first,id('placed'),id('first'));
-    expect(hiddenDelete.status).toBe(200);
-    expect(await hiddenDelete.json()).toEqual([]);
+    expect(hiddenDelete.status).toBeGreaterThanOrEqual(400);
     expect(localSql(`select count(*) from public.participants where tournament_id='${id('placed')}' and user_id='${id('first')}';`)).toBe('1');
-    expect((await insertDirect(admin,id('open'),id('admin'))).status).toBe(201);
-    expect((await deleteDirect(admin,id('open'),id('admin'))).status).toBe(200);
+    expect((await insertDirect(admin,id('open'),id('admin'))).status).toBeGreaterThanOrEqual(400);
+    expect((await deleteDirect(admin,id('placed'),id('first'))).status).toBeGreaterThanOrEqual(400);
     expect(localSql(`select count(*) from pg_policies where schemaname='public' and tablename='participants'
-      and policyname in ('participants_insert_authorized','participants_delete_authorized');`)).toBe('0');
+      and policyname in ('participants_insert_authorized','participants_delete_authorized',
+        'participants_admin_insert','participants_admin_delete');`)).toBe('0');
   });
 });

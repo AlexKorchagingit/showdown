@@ -12,6 +12,11 @@ export interface Participant {
   rubiesAwarded?: number;
   /** Admin note from tournament cashier, shown in a closed lobby. */
   comment?: string;
+  /**
+   * True once an admin ticks «пришёл» in the lobby.
+   * Missing / false = signed up, not in the cashier yet.
+   */
+  arrived?: boolean;
   /** Head-shot from the joined `users.equipped_avatar` column. */
   equippedAvatar?: string;
 }

@@ -4,6 +4,14 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import { applyAchievementEpochReset } from './lib/achievementStorage';
+import { recoverFromChunkLoadError } from './lib/chunkRecovery';
+
+window.addEventListener('vite:preloadError', (event) => {
+  const preloadError = event as Event & { payload?: unknown };
+  if (recoverFromChunkLoadError(preloadError.payload, __APP_BUILD_ID__)) {
+    event.preventDefault();
+  }
+});
 
 applyAchievementEpochReset();
 

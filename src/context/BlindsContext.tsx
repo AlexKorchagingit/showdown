@@ -11,12 +11,28 @@ import {
 } from 'react';
 import {
   addBlindStructure,
+  BLIND_STRUCTURES_STORAGE_KEY,
   durationSeconds,
+  inferLevelListChange,
+  isCatalogBlindStructures,
+  persistBlindStructuresLocal,
+  readBlindStructuresLocalMeta,
   replaceBlindStructure,
   seedBlindStructures,
+  withTripleLifeLadderCopyMigration,
   type BlindLevel,
   type BlindStructure,
+  type LevelListChange,
 } from '../data/blindStructures';
+import { loadBlindStructuresSnapshot, queueBlindStructuresSave } from '../lib/blindStructuresApi';
+import {
+  BLIND_STRUCTURES_CHANNEL,
+  BLIND_STRUCTURES_ROW_ID,
+  decideBlindStructuresSync,
+  makeBlindStructuresSnapshot,
+  parseBlindStructuresSnapshot,
+  type BlindStructuresSnapshot,
+} from '../lib/blindStructuresSync';
 import {
   playLevelUp,
   unlockBlindsAudio,
@@ -33,6 +49,7 @@ import {
   freezeTimerSnapshot,
   parseTimerSnapshot,
   readTimerSessionCache,
+  timerPatchForStructure,
   writeTimerSessionCache,
   type TimerSnapshot,
 } from '../lib/timerSession';
@@ -59,6 +76,7 @@ interface BlindsState {
 type BlindsAction =
   | { type: 'add'; structure: BlindStructure }
   | { type: 'replace'; structure: BlindStructure }
+  | { type: 'setStructures'; structures: BlindStructure[] }
   | { type: 'commit'; snapshot: TimerSnapshot; now: number; silent?: boolean }
   | { type: 'tick'; now: number };
 
@@ -91,13 +109,10 @@ function applySnapshot(
   };
 }
 
-function afterStructureChange(state: BlindsState, next: BlindStructure): BlindsState {
-  const structures = state.structures.map((s) => (s.id === next.id ? next : s));
-  const synced: BlindsState = { ...state, structures };
-  if (state.snapshot.structureId !== next.id) return synced;
-  const durations = durationsFromStructure(next);
-  const snapshot: TimerSnapshot = { ...state.snapshot, levelDurations: durations };
-  return applySnapshot(synced, snapshot, Date.now(), true);
+function replaceStructureList(structures: BlindStructure[], next: BlindStructure): BlindStructure[] {
+  const index = structures.findIndex((row) => row.id === next.id);
+  if (index < 0) return [...structures, next];
+  return structures.map((row, i) => (i === index ? next : row));
 }
 
 function reducer(state: BlindsState, action: BlindsAction): BlindsState {
@@ -105,7 +120,9 @@ function reducer(state: BlindsState, action: BlindsAction): BlindsState {
     case 'add':
       return { ...state, structures: [...state.structures, action.structure] };
     case 'replace':
-      return afterStructureChange(state, action.structure);
+      return { ...state, structures: replaceStructureList(state.structures, action.structure) };
+    case 'setStructures':
+      return { ...state, structures: action.structures };
     case 'commit':
       return applySnapshot(state, action.snapshot, action.now, action.silent);
     case 'tick': {
@@ -155,7 +172,7 @@ interface BlindsContextValue {
   activeStructure: BlindStructure | undefined;
   addStructure: (structure: BlindStructure) => void;
   updateStructure: (structure: BlindStructure) => void;
-  updateLevels: (structureId: string, levels: BlindLevel[]) => void;
+  updateLevels: (structureId: string, levels: BlindLevel[], change?: LevelListChange) => void;
   ensureTimer: (structureId: string | null) => void;
   setRunning: (value: boolean) => void;
   restartLevel: () => void;
@@ -177,10 +194,10 @@ interface BlindsContextValue {
 
 const BlindsContext = createContext<BlindsContextValue | null>(null);
 
-function openTimerChannel(): BroadcastChannel | null {
+function openBroadcastChannel(name: string): BroadcastChannel | null {
   try {
     if (typeof BroadcastChannel === 'undefined') return null;
-    return new BroadcastChannel(TIMER_SESSION_CHANNEL);
+    return new BroadcastChannel(name);
   } catch {
     return null;
   }
@@ -195,8 +212,13 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   const readyRef = useRef(false);
   const lastWriteIdRef = useRef(state.snapshot.writeId);
   const persistTimerRef = useRef<number | null>(null);
+  const persistStructuresTimerRef = useRef<number | null>(null);
+  const pendingStructuresRef = useRef<BlindStructuresSnapshot | null>(null);
   const prevNonceRef = useRef(0);
   const channelRef = useRef<BroadcastChannel | null>(null);
+  const structuresChannelRef = useRef<BroadcastChannel | null>(null);
+  const structuresMetaRef = useRef(readBlindStructuresLocalMeta());
+  const lastStructuresWriteIdRef = useRef(structuresMetaRef.current.writeId);
 
   const publish = useCallback((snapshot: TimerSnapshot, persist: 'now' | 'debounce' | 'none') => {
     lastWriteIdRef.current = snapshot.writeId;
@@ -249,7 +271,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     }
     setTimerReady(false);
     let cancelled = false;
-    const channel = openTimerChannel();
+    const channel = openBroadcastChannel(TIMER_SESSION_CHANNEL);
     channelRef.current = channel;
     if (channel) {
       channel.onmessage = (event) => {
@@ -326,25 +348,227 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     playLevelUp();
   }, [state.levelUpNonce]);
 
-  const addStructure = useCallback((structure: BlindStructure) => {
-    addBlindStructure(structure);
-    dispatch({ type: 'add', structure });
-  }, []);
+  const syncTimerToStructure = useCallback(
+    (structure: BlindStructure, change?: LevelListChange) => {
+      const snapshot = stateRef.current.snapshot;
+      if (snapshot.structureId !== structure.id) return;
+      const patch = timerPatchForStructure(snapshot, structure, change);
+      if (patch) commit(patch, { persist: 'now', silent: true });
+    },
+    [commit],
+  );
 
-  const updateStructure = useCallback((structure: BlindStructure) => {
-    replaceBlindStructure(structure);
-    dispatch({ type: 'replace', structure });
-  }, []);
+  const publishStructures = useCallback(
+    (structures: BlindStructure[], persist: 'now' | 'debounce') => {
+      const migrated = withTripleLifeLadderCopyMigration(
+        structures,
+        structuresMetaRef.current.migrations ?? [],
+      );
+      const snapshot = makeBlindStructuresSnapshot(
+        migrated.structures,
+        structuresMetaRef.current.revision,
+        migrated.migrations,
+      );
+      structuresMetaRef.current = {
+        revision: snapshot.revision,
+        writeId: snapshot.writeId,
+        updatedAt: snapshot.updatedAt,
+        migrations: snapshot.migrations,
+      };
+      lastStructuresWriteIdRef.current = snapshot.writeId;
+      persistBlindStructuresLocal(migrated.structures, structuresMetaRef.current);
+      pendingStructuresRef.current = snapshot;
+      try {
+        structuresChannelRef.current?.postMessage(snapshot);
+      } catch {
+        /* channel closed */
+      }
+      if (persistStructuresTimerRef.current) {
+        window.clearTimeout(persistStructuresTimerRef.current);
+        persistStructuresTimerRef.current = null;
+      }
+      if (persist === 'debounce') {
+        persistStructuresTimerRef.current = window.setTimeout(() => {
+          persistStructuresTimerRef.current = null;
+          pendingStructuresRef.current = null;
+          queueBlindStructuresSave(snapshot);
+        }, 400);
+        return;
+      }
+      pendingStructuresRef.current = null;
+      queueBlindStructuresSave(snapshot);
+    },
+    [],
+  );
+
+  const applyRemoteStructures = useCallback(
+    (snapshot: BlindStructuresSnapshot) => {
+      if (snapshot.writeId === lastStructuresWriteIdRef.current) return;
+      const local = structuresMetaRef.current;
+      const decision = decideBlindStructuresSync(
+        {
+          ...local,
+          custom: !isCatalogBlindStructures(stateRef.current.structures),
+        },
+        snapshot,
+      );
+      if (decision === 'keep') return;
+      if (decision === 'upload') {
+        publishStructures(stateRef.current.structures, 'now');
+        return;
+      }
+      const migrated = withTripleLifeLadderCopyMigration(
+        snapshot.structures,
+        snapshot.migrations ?? [],
+      );
+      const previous = stateRef.current.structures;
+      lastStructuresWriteIdRef.current = snapshot.writeId;
+      structuresMetaRef.current = {
+        revision: snapshot.revision,
+        writeId: snapshot.writeId,
+        updatedAt: snapshot.updatedAt,
+        migrations: migrated.migrations,
+      };
+      persistBlindStructuresLocal(migrated.structures, structuresMetaRef.current);
+      dispatch({ type: 'setStructures', structures: migrated.structures });
+      const activeId = stateRef.current.snapshot.structureId;
+      if (activeId) {
+        const next = migrated.structures.find((row) => row.id === activeId);
+        const prev = previous.find((row) => row.id === activeId);
+        if (next) {
+          syncTimerToStructure(next, prev ? inferLevelListChange(prev.levels, next.levels) : undefined);
+        }
+      }
+      if (migrated.changed) publishStructures(migrated.structures, 'now');
+    },
+    [publishStructures, syncTimerToStructure],
+  );
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    const channel = openBroadcastChannel(BLIND_STRUCTURES_CHANNEL);
+    structuresChannelRef.current = channel;
+    if (channel) {
+      channel.onmessage = (event) => {
+        const snapshot = parseBlindStructuresSnapshot(event.data);
+        if (snapshot) applyRemoteStructures(snapshot);
+      };
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== BLIND_STRUCTURES_STORAGE_KEY || !event.newValue) return;
+      try {
+        const parsed = JSON.parse(event.newValue) as {
+          structures?: unknown;
+          revision?: unknown;
+          writeId?: unknown;
+          updatedAt?: unknown;
+        };
+        const snapshot = parseBlindStructuresSnapshot({
+          v: 1,
+          writeId: typeof parsed.writeId === 'string' && parsed.writeId ? parsed.writeId : 'storage',
+          revision: parsed.revision,
+          updatedAt: parsed.updatedAt,
+          structures: parsed.structures,
+        });
+        if (snapshot) applyRemoteStructures(snapshot);
+      } catch {
+        /* ignore malformed cache */
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    void loadBlindStructuresSnapshot()
+      .then((remote) => {
+        if (cancelled) return;
+        if (!remote) {
+          publishStructures(stateRef.current.structures, 'now');
+          return;
+        }
+        applyRemoteStructures(remote);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+    const poll = window.setInterval(() => {
+      void loadBlindStructuresSnapshot()
+        .then((remote) => {
+          if (remote) applyRemoteStructures(remote);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }, 2500);
+
+    const realtime = supabase
+      .channel('blinds-structures-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'timer_sessions',
+          filter: `id=eq.${BLIND_STRUCTURES_ROW_ID}`,
+        },
+        (payload) => {
+          const row = payload.new as { payload?: unknown } | undefined;
+          const snapshot = parseBlindStructuresSnapshot(row?.payload);
+          if (snapshot) applyRemoteStructures(snapshot);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('storage', onStorage);
+      window.clearInterval(poll);
+      if (persistStructuresTimerRef.current) {
+        window.clearTimeout(persistStructuresTimerRef.current);
+        persistStructuresTimerRef.current = null;
+      }
+      const pending = pendingStructuresRef.current;
+      if (pending) {
+        pendingStructuresRef.current = null;
+        queueBlindStructuresSave(pending);
+      }
+      channel?.close();
+      structuresChannelRef.current = null;
+      void supabase.removeChannel(realtime);
+    };
+  }, [applyRemoteStructures, isAdmin, publishStructures]);
+
+  const addStructure = useCallback(
+    (structure: BlindStructure) => {
+      addBlindStructure(structure);
+      dispatch({ type: 'add', structure });
+      publishStructures([...stateRef.current.structures, structure], 'now');
+    },
+    [publishStructures],
+  );
+
+  const updateStructure = useCallback(
+    (structure: BlindStructure) => {
+      replaceBlindStructure(structure);
+      dispatch({ type: 'replace', structure });
+      publishStructures(replaceStructureList(stateRef.current.structures, structure), 'debounce');
+      syncTimerToStructure(structure);
+    },
+    [publishStructures, syncTimerToStructure],
+  );
 
   const updateLevels = useCallback(
-    (structureId: string, levels: BlindLevel[]) => {
-      const current = state.structures.find((s) => s.id === structureId);
+    (structureId: string, levels: BlindLevel[], change?: LevelListChange) => {
+      const current = stateRef.current.structures.find((row) => row.id === structureId);
       if (!current) return;
       const next = { ...current, levels };
       replaceBlindStructure(next);
       dispatch({ type: 'replace', structure: next });
+      publishStructures(replaceStructureList(stateRef.current.structures, next), 'debounce');
+      syncTimerToStructure(next, change);
     },
-    [state.structures],
+    [publishStructures, syncTimerToStructure],
   );
 
   const ensureTimer = useCallback(
@@ -352,10 +576,13 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       if (!structureId || !readyRef.current) return;
       const current = stateRef.current;
       const live = computeLiveClock(current.snapshot);
-      if (current.snapshot.structureId === structureId) return;
-      if (live.isRunning) return;
       const structure = current.structures.find((row) => row.id === structureId);
       if (!structure) return;
+      if (current.snapshot.structureId === structureId) {
+        syncTimerToStructure(structure);
+        return;
+      }
+      if (live.isRunning) return;
       const durations = durationsFromStructure(structure);
       commit(
         {
@@ -368,7 +595,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         { persist: 'now', silent: true },
       );
     },
-    [commit],
+    [commit, syncTimerToStructure],
   );
 
   const setRunning = useCallback(

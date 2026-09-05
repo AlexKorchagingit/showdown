@@ -66,6 +66,7 @@ export function ProfilePage() {
   }, [readOnly, playerId, userId, clubUsers]);
 
   const trimmedSlogan = (readOnly ? viewedUser?.slogan ?? '' : slogan).trim();
+  const viewedEmail = isAdmin ? (viewedUser?.email ?? '').trim() : '';
   const viewedBirthDate =
     readOnly && isAdmin ? (viewedUser?.birthDate ?? '').trim() : '';
   const achievementsPath = readOnly && playerId
@@ -166,6 +167,9 @@ export function ProfilePage() {
             <p className="text-white/70 italic text-sm font-light mt-1 leading-snug text-wrap break-words whitespace-normal line-clamp-2">
               «{trimmedSlogan}»
             </p>
+          ) : null}
+          {viewedEmail ? (
+            <p className="text-white/85 text-xs font-medium mt-1 truncate">{viewedEmail}</p>
           ) : null}
           {viewedBirthDate ? (
             <p className="text-white/55 text-xs font-medium mt-1 tracking-wide">

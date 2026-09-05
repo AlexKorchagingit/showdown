@@ -39,9 +39,9 @@ function seedTournament(name: string, players = 2, bounty = false, guarantee = 1
   localSql(`insert into public.tournaments(id,title,start_date,guarantee,is_bounty) values
     ('${tournament}','Synthetic ${name}',current_date,${guarantee},${bounty});
     ${Array.from({ length: players }, (_, index) => `insert into public.participants
-      (id,tournament_id,user_id,nickname,rating,knockouts) values
+      (id,tournament_id,user_id,nickname,rating,knockouts,arrived) values
       ('${tournament}:p${index+1}','${tournament}',${index < 3 ? `'${id(`p${index+1}`)}'` : 'null'},
-       'Player ${index+1}',${(index+1)*10},0);`).join('\n')}`);
+       'Player ${index+1}',${(index+1)*10},0,true);`).join('\n')}`);
   return tournament;
 }
 
@@ -108,6 +108,18 @@ describe('atomic tournament closure', () => {
     expect(localSql(`select ruby_balance from public.users where id in ('${id('p1')}','${id('p2')}','${id('p3')}') order by id;`))
       .toBe('2010\n2670\n3405');
     expect(localSql(`select count(*) from public.logs where target_tournament_id='${tournament}' and action_type='Закрыл турнир';`)).toBe('1');
+  });
+
+  it('settles only players checked in at the lobby and leaves no-shows untouched', async () => {
+    const tournament = seedTournament('no-show',3,false,1000);
+    localSql(`update public.participants set arrived=false where id='${tournament}:p3';`);
+    const response = await rpc('club_close_tournament',admin,{
+      p_request_id:randomUUID(),p_tournament_id:tournament,p_results:results(tournament,2),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({tournament_id:tournament,players:2});
+    expect(localSql(`select place is null,rating,rubies_awarded is null from public.participants where id='${tournament}:p3';`))
+      .toBe('t|30|t');
   });
 
   it('serializes retries, credits once and rejects reuse with another payload', async () => {

@@ -1,28 +1,92 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
+import { ChevronRight, Download, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
 import { useBlinds } from '../../context/BlindsContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { formatTournamentHeldOn, openTournaments } from '../../lib/timerTournament';
+import { exportBlindStructuresToExcel } from '../../lib/exportBlindStructures';
 import {
   BREAK_COMMENT_MAX,
   buildLevels,
   DEFAULT_PAYOUTS,
   breakComment,
+  insertBreakAfter,
+  insertPlayingLevelAfter,
+  inferLevelListChange,
   isBreakLevel,
   renumberLevels,
   structureDurationLabel,
   type BlindLevel,
   type BlindStructure,
+  type LevelListChange,
 } from '../../data/blindStructures';
 
 const FIELD_CLASS =
   'w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#D99962]/60 transition-colors';
 const LABEL_CLASS =
   'block text-[10px] font-700 uppercase tracking-[0.16em] mb-1 text-[#D99962]';
+
+/** Digits only. Empty is allowed while editing; leaving the field stores 0. */
+function BlindAmountField({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (value: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+
+  const commitNumber = (raw: string) => {
+    if (raw.trim() === '') {
+      onCommit(0);
+      return;
+    }
+    const next = Number(raw);
+    onCommit(Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0);
+  };
+
+  const showZeroIfEmpty = () => {
+    if (text.trim() !== '') return;
+    setText('0');
+    onCommit(0);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={(event) => {
+        const raw = event.target.value.replace(/[^\d]/g, '');
+        setText(raw);
+        commitNumber(raw);
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (text.trim() === '') {
+          showZeroIfEmpty();
+          return;
+        }
+        const next = Number(text);
+        const safe = Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0;
+        setText(String(safe));
+        onCommit(safe);
+      }}
+      onMouseLeave={showZeroIfEmpty}
+      className={FIELD_CLASS}
+    />
+  );
+}
 
 interface CreateForm {
   name: string;
@@ -70,6 +134,112 @@ function StructuresHeaderButton({ onClick }: { onClick: () => void }) {
     >
       Структуры блайндов
     </button>
+  );
+}
+
+function StructureEditorScreen({
+  structure,
+  timerRunning,
+  onBack,
+  onTimer,
+  onSave,
+}: {
+  structure: BlindStructure;
+  timerRunning: boolean;
+  onBack: () => void;
+  onTimer: () => void;
+  onSave: (levels: BlindLevel[]) => void;
+}) {
+  const [draft, setDraft] = useState(structure.levels);
+
+  useEffect(() => {
+    setDraft(structure.levels);
+  }, [structure.id]);
+
+  const dirty =
+    JSON.stringify(
+      draft.map((level) => [
+        level.level,
+        level.smallBlind,
+        level.bigBlind,
+        level.ante,
+        level.durationMinutes,
+        level.isBreak === true,
+        level.isLateRegEnd === true,
+        level.comment ?? '',
+      ]),
+    ) !==
+    JSON.stringify(
+      structure.levels.map((level) => [
+        level.level,
+        level.smallBlind,
+        level.bigBlind,
+        level.ante,
+        level.durationMinutes,
+        level.isBreak === true,
+        level.isLateRegEnd === true,
+        level.comment ?? '',
+      ]),
+    );
+
+  const handleBack = () => {
+    if (dirty && !window.confirm('Есть несохранённые изменения. Выйти без сохранения?')) return;
+    onBack();
+  };
+
+  return (
+    <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
+      <CompactHeader
+        title={structure.name}
+        onBack={handleBack}
+        right={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onTimer}
+              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide"
+              style={{
+                background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                color: '#0A0908',
+              }}
+            >
+              Таймер
+            </button>
+            <button
+              type="button"
+              disabled={!dirty}
+              onClick={() => onSave(draft)}
+              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: dirty ? 'linear-gradient(to right, #8C4C27, #D99962)' : '#514F4C',
+                color: dirty ? '#0A0908' : '#ffffff',
+              }}
+            >
+              Сохранить
+            </button>
+          </div>
+        }
+      />
+
+      <div
+        className="flex-1 scrollable px-3"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
+      >
+        {timerRunning ? (
+          <p className="text-[11px] font-600 mb-3 px-1" style={{ color: '#D99962' }}>
+            Таймер идёт. Изменения попадут на часы только после «Сохранить».
+          </p>
+        ) : dirty ? (
+          <p className="text-[11px] font-600 mb-3 px-1" style={{ color: '#D99962' }}>
+            Изменения не применены, пока не нажмёте «Сохранить».
+          </p>
+        ) : null}
+        <LevelEditor
+          structure={{ ...structure, levels: draft }}
+          onChange={(levels) => setDraft(levels)}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -166,13 +336,16 @@ function LevelEditor({
   onChange,
 }: {
   structure: BlindStructure;
-  onChange: (levels: BlindLevel[]) => void;
+  onChange: (levels: BlindLevel[], change?: LevelListChange) => void;
 }) {
   const patchLevel = (index: number, patch: Partial<BlindLevel>) => {
     onChange(
       renumberLevels(
         structure.levels.map((level, i) => {
-          if (i === index) return { ...level, ...patch };
+          if (i === index) {
+            const merged = { ...level, ...patch };
+            return { ...merged, ante: merged.bigBlind };
+          }
           if (patch.isLateRegEnd === true) return { ...level, isLateRegEnd: false };
           return level;
         }),
@@ -182,11 +355,16 @@ function LevelEditor({
 
   const patchNumber = (
     index: number,
-    key: 'smallBlind' | 'bigBlind' | 'ante' | 'durationMinutes',
+    key: 'smallBlind' | 'bigBlind' | 'durationMinutes',
     raw: string,
   ) => {
-    const value = Number(raw);
-    patchLevel(index, { [key]: Number.isFinite(value) ? value : 0 });
+    const parsed = Number(raw);
+    const value = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+    const current = structure.levels[index];
+    patchLevel(index, {
+      [key]: value,
+      ...(current?.isBreak === true ? {} : { isBreak: false }),
+    });
   };
 
   const addLevel = () => {
@@ -201,8 +379,10 @@ function LevelEditor({
           bigBlind: nextBb,
           ante: nextBb,
           durationMinutes: lastPlaying?.durationMinutes ?? structure.levelDuration,
+          isBreak: false,
         },
       ]),
+      { insertedAt: structure.levels.length - 1 },
     );
   };
 
@@ -215,38 +395,39 @@ function LevelEditor({
           level: 0,
           smallBlind: lastPlaying?.smallBlind || 100,
           bigBlind: lastPlaying?.bigBlind || 200,
-          ante: lastPlaying?.ante || lastPlaying?.bigBlind || 200,
+          ante: lastPlaying?.bigBlind || 200,
           durationMinutes: 15,
           isBreak: true,
         },
       ]),
+      { insertedAt: structure.levels.length - 1 },
     );
   };
 
   const removeLevel = (index: number) => {
     if (structure.levels.length <= 1) return;
-    onChange(renumberLevels(structure.levels.filter((_, i) => i !== index)));
+    onChange(renumberLevels(structure.levels.filter((_, i) => i !== index)), { removedAt: index });
   };
 
   return (
     <div className="space-y-2">
       {structure.levels.map((level, index) => (
-        <div
-          key={`${level.level}-${index}-${isBreakLevel(level) ? 'b' : 'p'}-${level.isLateRegEnd ? 'lr' : ''}`}
-          className="rounded-xl p-3 space-y-2"
-          style={{
-            background: level.isLateRegEnd
-              ? 'rgba(244,63,94,0.10)'
-              : isBreakLevel(level)
-                ? 'rgba(34,197,94,0.08)'
-                : '#2A211D',
-            border: level.isLateRegEnd
-              ? '1px solid rgba(244,63,94,0.40)'
-              : isBreakLevel(level)
-                ? '1px solid rgba(34,197,94,0.35)'
-                : '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
+        <div key={`${level.level}-${index}-${isBreakLevel(level) ? 'b' : 'p'}-${level.isLateRegEnd ? 'lr' : ''}`}>
+          <div
+            className="rounded-xl p-3 space-y-2"
+            style={{
+              background: level.isLateRegEnd
+                ? 'rgba(244,63,94,0.10)'
+                : isBreakLevel(level)
+                  ? 'rgba(34,197,94,0.08)'
+                  : '#2A211D',
+              border: level.isLateRegEnd
+                ? '1px solid rgba(244,63,94,0.40)'
+                : isBreakLevel(level)
+                  ? '1px solid rgba(34,197,94,0.35)'
+                  : '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
           <div className="flex items-center justify-between">
             <p className="text-[12px] font-800 uppercase tracking-wide" style={{ color: '#D99962' }}>
               {levelTitle(level)}
@@ -277,7 +458,7 @@ function LevelEditor({
                           isBreak: false,
                           smallBlind: level.smallBlind || 100,
                           bigBlind: level.bigBlind || 200,
-                          ante: level.ante || 200,
+                          ante: level.bigBlind || 200,
                           comment: undefined,
                         },
                   );
@@ -333,22 +514,77 @@ function LevelEditor({
                 [
                   ['smallBlind', 'SB'],
                   ['bigBlind', 'BB'],
-                  ['ante', 'Ante'],
-                  ['durationMinutes', 'Мин'],
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="min-w-0">
                   <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
                     {label}
                   </span>
-                  <input
-                    type="number"
+                  <BlindAmountField
                     value={level[key]}
-                    onChange={(e) => patchNumber(index, key, e.target.value)}
-                    className={FIELD_CLASS}
+                    onCommit={(value) => patchNumber(index, key, String(value))}
                   />
                 </label>
               ))}
+              <label className="min-w-0">
+                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                  Ante
+                </span>
+                <input
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={String(level.bigBlind)}
+                  aria-label="Анте равно большому блайнду"
+                  className={`${FIELD_CLASS} opacity-70 cursor-default`}
+                />
+              </label>
+              <label className="min-w-0">
+                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                  Мин
+                </span>
+                <input
+                  type="number"
+                  value={level.durationMinutes}
+                  onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
+            </div>
+          )}
+          </div>
+          {index < structure.levels.length - 1 && (
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  onChange(insertPlayingLevelAfter(structure.levels, index), { insertedAt: index })
+                }
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-700"
+                style={{
+                  background: 'rgba(217,153,98,0.08)',
+                  border: '1px dashed rgba(217,153,98,0.35)',
+                  color: '#D99962',
+                }}
+              >
+                <Plus size={13} strokeWidth={2.4} />
+                Уровень ниже
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onChange(insertBreakAfter(structure.levels, index), { insertedAt: index })
+                }
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-700"
+                style={{
+                  background: 'rgba(34,197,94,0.08)',
+                  border: '1px dashed rgba(34,197,94,0.35)',
+                  color: '#86efac',
+                }}
+              >
+                <Plus size={13} strokeWidth={2.4} />
+                Перерыв ниже
+              </button>
             </div>
           )}
         </div>
@@ -438,40 +674,15 @@ export function AdminBlindsSettings() {
 
   if (editing) {
     return (
-      <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
-        <CompactHeader
-          title={editing.name}
-          onBack={backFromEditor}
-          right={
-            <button
-              type="button"
-              onClick={() => openTimerForStructure(editing.id)}
-              className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide"
-              style={{
-                background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                color: '#0A0908',
-              }}
-            >
-              Таймер
-            </button>
-          }
-        />
-
-        <div
-          className="flex-1 scrollable px-3"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
-        >
-          {isRunning && activeStructureId === editing.id && (
-            <p className="text-[11px] font-600 mb-3 px-1" style={{ color: '#D99962' }}>
-              Таймер идёт. Изменения предстоящих уровней подхватятся сразу.
-            </p>
-          )}
-          <LevelEditor
-            structure={editing}
-            onChange={(levels) => updateLevels(editing.id, levels)}
-          />
-        </div>
-      </div>
+      <StructureEditorScreen
+        structure={editing}
+        timerRunning={isRunning && activeStructureId === editing.id}
+        onBack={backFromEditor}
+        onTimer={() => openTimerForStructure(editing.id)}
+        onSave={(levels) =>
+          updateLevels(editing.id, levels, inferLevelListChange(editing.levels, levels))
+        }
+      />
     );
   }
 
@@ -495,6 +706,21 @@ export function AdminBlindsSettings() {
           >
             <Plus size={17} strokeWidth={2.4} />
             Создать структуру
+          </button>
+
+          <button
+            type="button"
+            disabled={structures.length === 0}
+            onClick={() => exportBlindStructuresToExcel(structures, tournaments)}
+            className="w-full flex items-center justify-center gap-2 py-3 mb-4 rounded-xl text-[14px] font-800 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+            style={{
+              background: 'rgba(217,153,98,0.12)',
+              border: '1px solid rgba(217,153,98,0.35)',
+              color: '#F2D8A7',
+            }}
+          >
+            <Download size={17} strokeWidth={2.4} />
+            Выгрузить в Excel
           </button>
 
           <AnimatePresence initial={false}>
