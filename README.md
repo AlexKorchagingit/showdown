@@ -60,6 +60,9 @@ New accounts always receive the `user` role. Existing `is_admin` profiles are pr
 `admin` during the role migration; `superadmin` is assigned only through an explicit,
 reviewed database operation and is never selected automatically by email or registration order.
 
+The OTP-to-Supabase session flow, server-side identity/role checks and the final RPC
+allowlist are documented in [docs/server-authentication.md](docs/server-authentication.md).
+
 ## Build
 
 ```bash

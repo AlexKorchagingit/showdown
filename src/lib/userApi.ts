@@ -1,6 +1,7 @@
 import { getClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
 import { supabase, logSupabaseError } from './supabase';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
+import { isClubRole } from './roles';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -9,7 +10,7 @@ function normalizeEmail(email: string): string {
 function asUserRow(data: unknown): UserRow | null {
   if (!data || typeof data !== 'object') return null;
   const row = data as Partial<UserRow>;
-  if (typeof row.id !== 'string' || typeof row.email !== 'string') return null;
+  if (typeof row.id !== 'string' || typeof row.email !== 'string' || !isClubRole(row.role)) return null;
   return row as UserRow;
 }
 
@@ -46,8 +47,8 @@ export async function lookupUserByEmail(email: string): Promise<UserLookupResult
 }
 
 /** Resolve the signed-in account. Network errors stay `error` so we do not log people out offline. */
-export async function lookupSessionAccount(_userId?: string, _email?: string): Promise<UserLookupResult> {
-  // Cache keys/arguments are never used to select the authenticated principal.
+export async function lookupSessionAccount(): Promise<UserLookupResult> {
+  // The JWT subject is resolved by auth.uid() inside this server RPC.
   const { data, error } = await supabase.rpc('club_current_account');
   return lookupFromQuery(data, error);
 }

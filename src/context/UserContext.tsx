@@ -16,7 +16,7 @@ import {
   updateUserRow,
   type MappedUser,
 } from '../lib/userApi';
-import { endLocalSession, readSessionUserId, writeSession } from '../lib/session';
+import { endLocalSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 
 export { hasSuperAdminRole as isSuperAdmin } from '../lib/roles';
@@ -43,11 +43,9 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({
-  email,
   children,
   onAccountInvalid,
 }: {
-  email: string;
   children: ReactNode;
   onAccountInvalid?: () => void;
 }) {
@@ -57,14 +55,16 @@ export function UserProvider({
   const onInvalidRef = useRef(onAccountInvalid);
   onInvalidRef.current = onAccountInvalid;
   const kickedRef = useRef(false);
+  const verifiedEmailRef = useRef('');
 
   const kickDeletedAccount = useCallback(() => {
     if (kickedRef.current) return;
     kickedRef.current = true;
     setAccount(null);
-    endLocalSession(email);
+    void endLocalSession(verifiedEmailRef.current);
+    verifiedEmailRef.current = '';
     onInvalidRef.current?.();
-  }, [email]);
+  }, []);
 
   const refreshClubUsers = useCallback(async () => {
     try {
@@ -79,7 +79,7 @@ export function UserProvider({
   const enforceSession = useCallback(async (): Promise<boolean> => {
     if (kickedRef.current) return false;
     try {
-      const result = await lookupSessionAccount(readSessionUserId(), email);
+      const result = await lookupSessionAccount();
       if (result.status === 'error') {
         console.error(result.message);
         return true;
@@ -88,14 +88,14 @@ export function UserProvider({
         kickDeletedAccount();
         return false;
       }
-      writeSession(email || result.user.email, result.user.id);
+      verifiedEmailRef.current = result.user.email;
       setAccount(result.user);
       return true;
     } catch (error) {
       console.error(error);
       return true;
     }
-  }, [email, kickDeletedAccount]);
+  }, [kickDeletedAccount]);
 
   const refreshAccount = useCallback(async () => {
     setIsLoading(true);
@@ -133,7 +133,7 @@ export function UserProvider({
   }, [enforceSession]);
 
   useEffect(() => {
-    const userId = account?.id || readSessionUserId();
+    const userId = account?.id;
     if (!userId) return;
     const channel = supabase
       .channel(`session-user-${userId}`)
@@ -164,7 +164,7 @@ export function UserProvider({
     [account],
   );
 
-  const isAdmin = isClubAdmin(email, account);
+  const isAdmin = isClubAdmin('', account);
   const visibleClubUsers = useMemo(() => {
     if (isAdmin) return clubUsers;
     return clubUsers.map((user) =>
@@ -174,8 +174,8 @@ export function UserProvider({
 
   const value = useMemo<UserContextValue>(
     () => ({
-      email: account?.email || email,
-      userId: account?.id || readSessionUserId(),
+      email: account?.email ?? '',
+      userId: account?.id ?? '',
       isAdmin,
       isSuperAdmin: hasSuperAdminRole(account?.role),
       isLoading,
@@ -187,7 +187,6 @@ export function UserProvider({
     }),
     [
       account,
-      email,
       isAdmin,
       isLoading,
       patchAccount,

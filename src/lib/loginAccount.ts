@@ -1,4 +1,3 @@
-import { writeSession } from './session';
 import { upsertClubDirectory } from './clubDirectory';
 import { supabase } from './supabase';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
@@ -23,7 +22,6 @@ export async function loginOrRegisterUser(
     throw new Error('Не удалось подтвердить профиль. Войдите заново.');
   }
   const user = userFromRow(row);
-  writeSession(user.email, user.id); // Display cache, never proof of authentication.
   upsertClubDirectory(user);
   return { user, isNew: data.is_new === true };
 }

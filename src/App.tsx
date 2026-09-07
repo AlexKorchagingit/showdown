@@ -12,6 +12,7 @@ import { UserProvider, useUser } from './context/UserContext';
 import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 import { supabase } from './lib/supabase';
+import { clearLegacyIdentityCache } from './lib/session';
 import { isClubRole } from './lib/roles';
 import { resolveStartupView } from './lib/startupState';
 import { loadWithChunkRecovery } from './lib/chunkRecovery';
@@ -47,12 +48,8 @@ const SPLASH_MS = 2000;
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
 const columnClass = 'relative w-full max-w-[480px] overflow-hidden shadow-2xl';
 
-interface AppLayoutProps {
-  userEmail: string;
-}
-
-function AppLayout({ userEmail }: AppLayoutProps) {
-  const { isAdmin } = useUser();
+function AppLayout() {
+  const { email, isAdmin } = useUser();
   const location = useLocation();
   const hideNav = HIDE_NAV_PATH.test(location.pathname);
   const isBlindsTimer = location.pathname === '/admin/blinds/timer';
@@ -90,7 +87,7 @@ function AppLayout({ userEmail }: AppLayoutProps) {
             <Route path="/rating"            element={<RatingPage />} />
             <Route path="/profile"           element={<ProfilePage />} />
             <Route path="/profile/:playerId" element={<ProfilePage />} />
-            <Route path="/settings"          element={<SettingsPage userEmail={userEmail} />} />
+            <Route path="/settings"          element={<SettingsPage userEmail={email} />} />
             <Route path="/shop"              element={<ShopScreen />} />
             <Route path="/about"             element={<AboutClubScreen />} />
             <Route path="/qa"                element={<QnAScreen />} />
@@ -133,10 +130,8 @@ function SplashShell() {
 }
 
 function AuthenticatedApp({
-  userEmail,
   showSplash,
 }: {
-  userEmail: string;
   showSplash: boolean;
 }) {
   const { account, isLoading, refreshAccount } = useUser();
@@ -168,7 +163,7 @@ function AuthenticatedApp({
         <TournamentProvider>
           <FinanceProvider>
             <BlindsProvider>
-              <AppLayout userEmail={userEmail} />
+              <AppLayout />
             </BlindsProvider>
           </FinanceProvider>
         </TournamentProvider>
@@ -202,7 +197,6 @@ function bootTelegramWebApp() {
 
 export default function App() {
   const navigate = useNavigate();
-  const [userEmail, setUserEmail] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [restoring, setRestoring] = useState(true);
@@ -212,6 +206,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     let signedOut = false;
+    clearLegacyIdentityCache();
     setRestoring(true);
     setRestoreError(false);
     void (async () => {
@@ -221,8 +216,8 @@ export default function App() {
         if (!session.data.session) return;
         const { data, error } = await supabase.rpc('club_current_account');
         if (error) throw new Error('Account unavailable');
-        if (!cancelled && !signedOut && data && typeof data.email === 'string' && isClubRole(data.role)) {
-          setUserEmail(data.email);
+        if (!cancelled && !signedOut && data && typeof data.id === 'string' &&
+            typeof data.email === 'string' && isClubRole(data.role)) {
           setIsAuthenticated(true);
         }
       } catch {
@@ -236,7 +231,6 @@ export default function App() {
       // and bind/create the club profile. LoginScreen completes that operation.
       if (event === 'SIGNED_OUT') {
         signedOut = true;
-        setUserEmail('');
         setIsAuthenticated(false);
       }
     });
@@ -258,15 +252,13 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
-  const handleLogin = useCallback((nextEmail: string) => {
-    setUserEmail(nextEmail.trim().toLowerCase());
+  const handleLogin = useCallback(() => {
     setIsAuthenticated(true);
     navigate('/', { replace: true });
   }, [navigate]);
 
   const handleAccountInvalid = () => {
     // UserProvider already ends the Auth session; avoid a second concurrent logout.
-    setUserEmail('');
     setIsAuthenticated(false);
     navigate('/', { replace: true });
   };
@@ -290,8 +282,8 @@ export default function App() {
   }
 
   return (
-    <UserProvider email={userEmail} onAccountInvalid={handleAccountInvalid}>
-      <AuthenticatedApp userEmail={userEmail} showSplash={showSplash} />
+    <UserProvider onAccountInvalid={handleAccountInvalid}>
+      <AuthenticatedApp showSplash={showSplash} />
     </UserProvider>
   );
 }

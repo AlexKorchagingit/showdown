@@ -14,7 +14,7 @@ const CONSENT_TEXT =
   'Продолжая регистрацию, вы даете согласие на обработку персональных данных, получение информационных рассылок и использование локального хранилища.';
 
 interface Props {
-  onLogin: (email: string) => void;
+  onLogin: () => void;
 }
 
 type Step = 'consent' | 'email' | 'code';
@@ -81,14 +81,14 @@ function savePendingEmail(targetEmail: string, step: 'email' | 'consent') {
   localStorage.removeItem('temp_auth_expire');
 }
 
-async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: (email: string) => void) {
+async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: () => void) {
   const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
   if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
-  const result = await loginOrRegisterUser(normalized, agreementsAcceptedAt || undefined);
+  await loginOrRegisterUser(normalized, agreementsAcceptedAt || undefined);
   // Registration and its audit entry are atomic server operations.
   clearTempAuth();
   clearAgreementsAt();
-  onLogin(result.user.email);
+  onLogin();
 }
 
 function ConsentCopy({ onOpen }: { onOpen: (document: ClubLegalDocument) => void }) {

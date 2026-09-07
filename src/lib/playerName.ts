@@ -1,6 +1,6 @@
 import { ALL_PARTICIPANTS } from '../data/participants';
 import { MOCK_PLAYERS_GENERAL, MOCK_PLAYERS_SEASONAL, type RatingPlayer } from '../types/player';
-import { findClubUser, findClubUserByIdOrNick, getClubDirectory } from './clubDirectory';
+import { findClubUserByIdOrNick, getClubDirectory } from './clubDirectory';
 
 /** Settings store `YYYY-MM-DD`; show as `DD.MM.YYYY` without a timezone shift. */
 export function formatBirthDate(iso: string): string {
@@ -26,20 +26,6 @@ export function playerNickname(userId: string): string {
   }
 
   return userId;
-}
-
-/** Club nickname for an admin email, falling back to the local part of the address. */
-export function adminDisplayName(email: string): string {
-  return adminAccount(email).nickname;
-}
-
-export function adminAccount(email: string): { id: string; nickname: string; email: string } {
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) return { id: 'admin', nickname: 'Админ', email: '' };
-  const fromUsers = findClubUser({ email: normalized });
-  if (fromUsers) return { id: fromUsers.id, nickname: fromUsers.nickname, email: fromUsers.email };
-  const local = normalized.split('@')[0]?.trim();
-  return { id: normalized, nickname: local || email, email };
 }
 
 export interface PublicProfileStats {

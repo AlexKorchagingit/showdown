@@ -20,7 +20,7 @@ const migrations=['20260903_auth_foundation.sql','20260903_finance_commands.sql'
   '20260904_anon_access.sql','20260904_authenticated_policies.sql','20260904_ruby_grants.sql',
   '20260904_tournament_closure.sql','20260904_profile_updates.sql','20260904_user_update_acl.sql',
   '20260904_tournament_registration.sql','20260904_participant_commands.sql','20260904_tournament_commands.sql',
-  '20260905_audit_timer_commands.sql','20260905_profile_archive.sql'];
+  '20260905_audit_timer_commands.sql','20260905_profile_archive.sql','20260907_server_auth_contract.sql'];
 
 describe('final client access matrix after the complete local cutover',()=>{let superadmin='',admin='',user='';const event=id('event');
   beforeAll(async()=>{
@@ -40,6 +40,7 @@ describe('final client access matrix after the complete local cutover',()=>{let 
       insert into public.transactions(id,tournament_id,user_id,type,amount,status) values
         ('${id('tx')}','${event}','${id('user')}','buy-in',1000,'unpaid');`);
     localSql(migrations.map(name=>readFileSync(`supabase/migrations/${name}`,'utf8')).join('\n'));
+    localSql(readFileSync('supabase/migrations/20260907_server_auth_contract.sql','utf8'));
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';
       insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
       ('${email('super')}','synthetic-hmac','ip',now()+interval '5 minutes'),
@@ -69,6 +70,24 @@ describe('final client access matrix after the complete local cutover',()=>{let 
       from pg_tables where schemaname in ('public','club_private');`)).toBe('f');
   });
 
+  it('exposes only the explicit server API to authenticated clients',()=>{
+    expect(localSql(`select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname='public' and has_function_privilege('authenticated',p.oid,'EXECUTE');`)).toBe('28');
+    expect(localSql(`select has_schema_privilege('authenticated','club_private','USAGE'),coalesce(bool_or(
+      has_function_privilege('authenticated',p.oid,'EXECUTE')),'f') from pg_proc p
+      where p.pronamespace='club_private'::regnamespace;`)).toBe('f|f');
+  });
+
+  it('keeps future tables and functions private until explicitly granted',()=>{
+    const probe=`auth_contract_${randomUUID().replaceAll('-','')}`;
+    expect(localSql(`begin;
+      create table public.${probe}(id integer);
+      create function public.${probe}() returns integer language sql as 'select 1';
+      select has_table_privilege('authenticated','public.${probe}','INSERT,UPDATE,DELETE,TRUNCATE'),
+        has_function_privilege('authenticated','public.${probe}()','EXECUTE');
+      rollback;`)).toContain('f|f');
+  });
+
   it('keeps profile and finance row visibility separated by role',async()=>{
     const filter=encodeURIComponent(`(${id('super')},${id('admin')},${id('user')})`);
     const userProfiles=await fetch(`${base}/rest/v1/users?select=id&id=in.${filter}`,{headers:headers(user)});
@@ -76,6 +95,12 @@ describe('final client access matrix after the complete local cutover',()=>{let 
     expect((await userProfiles.json() as unknown[]).length).toBe(1);expect((await adminProfiles.json() as unknown[]).length).toBe(3);
     const userFinance=await fetch(`${base}/rest/v1/transactions?select=id&user_id=eq.${encodeURIComponent(id('user'))}`,{headers:headers(user)});
     expect((await userFinance.json() as unknown[]).length).toBe(1);
+  });
+
+  it('keeps an allowed server write working after helper execution is revoked',async()=>{
+    const changed=await rpc('club_update_profile',user,{p_changes:{slogan:'Verified server session'}});
+    expect(changed.status).toBe(200);
+    expect((await changed.json()).slogan).toBe('Verified server session');
   });
 
   it('serves tournaments only through a role-filtered projection',async()=>{

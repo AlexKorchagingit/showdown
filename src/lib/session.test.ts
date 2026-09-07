@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ signOut: vi.fn(), clear: vi.fn() }));
 vi.mock('./supabase', () => ({ supabase: { auth: { signOut: mocks.signOut } } }));
 vi.mock('./userStorage', () => ({ clearUserData: mocks.clear }));
-import { endLocalSession } from './session';
+import { clearLegacyIdentityCache, endLocalSession } from './session';
 let values: Map<string, string>;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -14,11 +14,18 @@ beforeEach(() => {
   });
 });
 describe('complete logout', () => {
+  it('deletes legacy identity values without touching the Supabase session', () => {
+    clearLegacyIdentityCache();
+    expect(values.has('userEmail')).toBe(false);
+    expect(values.has('showdown.userId')).toBe(false);
+    expect(values.get('showdown.auth.session')).toBe('old-session');
+  });
   it('awaits Auth logout before completing', async () => {
     let finish!: () => void;
     mocks.signOut.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
     const logout = endLocalSession();
     expect(values.has('userEmail')).toBe(false);
+    expect(values.has('showdown.userId')).toBe(false);
     expect(values.has('showdown.auth.session')).toBe(true);
     finish();
     await logout;

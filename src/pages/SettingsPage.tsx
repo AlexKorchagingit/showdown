@@ -10,8 +10,8 @@ interface Props {
   userEmail: string;
 }
 
-async function handleLogout() {
-  await endLocalSession();
+async function handleLogout(verifiedEmail: string) {
+  await endLocalSession(verifiedEmail);
   window.location.reload();
 }
 
@@ -155,7 +155,7 @@ export function SettingsPage({ userEmail }: Props) {
         <div className="mt-10">
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={() => void handleLogout(userEmail)}
             className="w-full h-14 rounded-2xl flex items-center justify-center gap-2.5 text-[15px] font-700 text-white/90 active:scale-[0.98] transition-transform bg-gradient-to-r from-red-900/80 to-red-800/80 border border-red-700/50"
             style={{ boxShadow: '0 4px 20px rgba(127,29,29,0.25)' }}
           >

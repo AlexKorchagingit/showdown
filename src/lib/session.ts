@@ -1,8 +1,9 @@
 import { clearUserData } from './userStorage';
 import { supabase } from './supabase';
 
-const EMAIL_KEY = 'userEmail';
-const USER_ID_KEY = 'showdown.userId';
+// These keys belonged to the pre-Supabase login. They are removed for
+// backwards compatibility, but are never read as identity or authentication.
+const LEGACY_IDENTITY_KEYS = ['userEmail', 'showdown.userId'] as const;
 
 export const TEMP_AUTH_KEYS = [
   'temp_auth_email',
@@ -12,35 +13,9 @@ export const TEMP_AUTH_KEYS = [
   'temp_auth_agreements_at',
 ] as const;
 
-export function readSessionEmail(): string {
+export function clearLegacyIdentityCache() {
   try {
-    return localStorage.getItem(EMAIL_KEY) || '';
-  } catch {
-    return '';
-  }
-}
-
-export function readSessionUserId(): string {
-  try {
-    return localStorage.getItem(USER_ID_KEY) || '';
-  } catch {
-    return '';
-  }
-}
-
-export function writeSession(email: string, userId: string) {
-  try {
-    localStorage.setItem(EMAIL_KEY, email.trim().toLowerCase());
-    if (userId) localStorage.setItem(USER_ID_KEY, userId);
-  } catch {
-    /* quota */
-  }
-}
-
-export function clearSession() {
-  try {
-    localStorage.removeItem(EMAIL_KEY);
-    localStorage.removeItem(USER_ID_KEY);
+    LEGACY_IDENTITY_KEYS.forEach((key) => localStorage.removeItem(key));
   } catch {
     /* ignore */
   }
@@ -58,10 +33,10 @@ function clearTempAuthDraft() {
 export async function endLocalSession(email?: string) {
   let previousAuthValue: string | null = null;
   try { previousAuthValue = localStorage.getItem('showdown.auth.session'); } catch { /* storage unavailable */ }
-  const storedEmail = (email || readSessionEmail()).trim().toLowerCase();
-  clearSession();
+  const verifiedEmail = email?.trim().toLowerCase() ?? '';
+  clearLegacyIdentityCache();
   clearTempAuthDraft();
-  if (storedEmail) clearUserData(storedEmail);
+  if (verifiedEmail) clearUserData(verifiedEmail);
   // End the Auth session as well, not just the old display-cache keys.
   try {
     await supabase.auth.signOut({ scope: 'local' });
