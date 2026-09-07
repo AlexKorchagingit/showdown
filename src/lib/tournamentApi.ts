@@ -1,4 +1,5 @@
 import { supabase, logSupabaseError } from './supabase';
+import { withRequestDeadline } from './network';
 import {
   participantFromJoinedRow,
   participantRowId,
@@ -66,10 +67,13 @@ function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participan
 }
 
 export async function fetchTournaments(): Promise<Tournament[]> {
-  const [{ data, error }, participantRows] = await Promise.all([
-    supabase.rpc('club_tournament_snapshot'),
-    selectParticipantsSafe(),
-  ]);
+  const [{ data, error }, participantRows] = await withRequestDeadline(
+    Promise.all([
+      supabase.rpc('club_tournament_snapshot'),
+      selectParticipantsSafe(),
+    ]),
+    15_000,
+  );
 
   if (error || !Array.isArray(data)) {
     logSupabaseError(error, 'tournaments');
@@ -85,7 +89,8 @@ export async function fetchTournaments(): Promise<Tournament[]> {
 }
 
 export async function fetchParticipants(tournamentId: string): Promise<Participant[]> {
-  return (await selectParticipants(tournamentId)).map(participantFromJoinedRow);
+  return (await withRequestDeadline(selectParticipants(tournamentId), 15_000))
+    .map(participantFromJoinedRow);
 }
 
 function tournamentValues(tournament: Tournament): TournamentValues {

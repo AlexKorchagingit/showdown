@@ -1,4 +1,5 @@
 import { supabase, logSupabaseError } from './supabase';
+import { withRequestDeadline } from './network';
 import {
   parseBlindStructuresSnapshot,
   type BlindStructuresSnapshot,
@@ -7,7 +8,10 @@ import {
 let saveChain: Promise<void> = Promise.resolve();
 
 export async function loadBlindStructuresSnapshot(): Promise<BlindStructuresSnapshot | null> {
-  const { data, error } = await supabase.rpc('club_blind_structures_snapshot');
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_blind_structures_snapshot'),
+    15_000,
+  );
   if (error) {
     logSupabaseError(error, 'blind structures');
     return null;

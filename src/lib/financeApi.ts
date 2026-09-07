@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { withRequestDeadline } from './network';
 import { transactionFromRow, type TransactionRow } from './supabaseMap';
 import type { Transaction, TransactionType } from '../types/finance';
 import type { DealerHours, DealerHoursInput } from './dealerHours';
@@ -25,7 +26,10 @@ function dealerHoursFromRow(data: unknown): DealerHours {
 }
 
 export async function fetchFinanceSnapshot(): Promise<{ transactions: Transaction[]; dealerHours: DealerHours[] }> {
-  const { data, error } = await supabase.rpc('club_finance_snapshot');
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_finance_snapshot'),
+    15_000,
+  );
   if (error || !data || !Array.isArray(data.transactions) || !Array.isArray(data.dealer_hours)) {
     throw new Error('Не удалось загрузить финансы и часы дилеров');
   }

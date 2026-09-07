@@ -20,6 +20,7 @@ import { clubUserIdSet, lobbySeatedPlayers } from '../lib/clubRating';
 import { usePersonnel } from '../hooks/usePersonnel';
 import { withPersonnel, type PersonnelIntent, type PersonnelRoster } from '../lib/personnel';
 import { setTournamentRegistration } from '../lib/tournamentRegistration';
+import { requestErrorMessage } from '../lib/network';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -83,9 +84,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       console.error(error);
       setTournaments([]);
       setLoadError(
-        error instanceof Error
-          ? error.message
-          : 'Не удалось загрузить турниры. Проверьте интернет.',
+        requestErrorMessage(
+          error,
+          error instanceof Error
+            ? error.message
+            : 'Не удалось загрузить турниры. Проверьте интернет.',
+        ),
       );
     } finally {
       setIsLoading(false);

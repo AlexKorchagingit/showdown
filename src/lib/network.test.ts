@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTimeoutFetch, requestErrorMessage, RequestTimeoutError } from './network';
+import {
+  createTimeoutFetch,
+  isUncertainNetworkError,
+  requestErrorMessage,
+  RequestTimeoutError,
+  withRequestDeadline,
+} from './network';
 
 describe('createTimeoutFetch', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('returns a successful response', async () => {
@@ -40,6 +47,20 @@ describe('createTimeoutFetch', () => {
 
     await expect(result).rejects.toMatchObject({ name: 'AbortError' });
   });
+
+  it('keeps a deadline on Android WebView without AbortController', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('AbortController', undefined);
+    const fetchImpl = vi.fn(() => new Promise<Response>(() => undefined));
+    const timedFetch = createTimeoutFetch(5000, fetchImpl);
+    const result = timedFetch('https://api.example.test');
+    const rejection = expect(result).rejects.toBeInstanceOf(RequestTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(5000);
+
+    await rejection;
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
 });
 
 describe('requestErrorMessage', () => {
@@ -53,5 +74,33 @@ describe('requestErrorMessage', () => {
     expect(requestErrorMessage(new Error('internal detail'), 'Не удалось проверить почту')).toBe(
       'Не удалось проверить почту',
     );
+  });
+});
+
+describe('withRequestDeadline', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns an operation that finishes before the deadline', async () => {
+    await expect(withRequestDeadline(Promise.resolve('ok'), 5000)).resolves.toBe('ok');
+  });
+
+  it('stops waiting even when work before fetch never settles', async () => {
+    vi.useFakeTimers();
+    const result = withRequestDeadline(new Promise<string>(() => undefined), 15000);
+    const rejection = expect(result).rejects.toBeInstanceOf(RequestTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(15000);
+
+    await rejection;
+  });
+});
+
+describe('isUncertainNetworkError', () => {
+  it('identifies failures where the server may have processed the request', () => {
+    expect(isUncertainNetworkError(new RequestTimeoutError(12000))).toBe(true);
+    expect(isUncertainNetworkError(new TypeError('Failed to fetch'))).toBe(true);
+    expect(isUncertainNetworkError(new Error('Server rejected the request'))).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'r
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
 import { ConsentRequiredError, loginOrRegisterUser } from '../lib/loginAccount';
-import { requestErrorMessage } from '../lib/network';
+import { isUncertainNetworkError, requestErrorMessage } from '../lib/network';
 import { OtpApiError } from '../lib/otpApi';
 import { requestLoginCode, verifyLoginCode } from '../lib/loginOtp';
 import { LegalImageModal } from './LegalImageModal';
@@ -176,18 +176,37 @@ export function LoginScreen({ onLogin }: Props) {
     setIsLoading(true);
     setLoginError('');
 
-    try {
-      await requestLoginCode(normalizedEmail);
-      saveTempAuth(normalizedEmail, nextTimer);
+    const openCodeStep = (timerSeconds: number, warning = '') => {
+      saveTempAuth(normalizedEmail, timerSeconds);
       setStep('code');
-      setTimer(nextTimer);
+      setTimer(timerSeconds);
       setOtp(['', '', '', '']);
       setOtpError(false);
       setIsSuccess(false);
+      setLoginError(warning);
       verifiedRef.current = false;
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    };
+
+    try {
+      await requestLoginCode(normalizedEmail);
+      openCodeStep(nextTimer);
     } catch (err) {
       console.error(err);
+
+      if (err instanceof OtpApiError && err.code === 'rate_limited') {
+        openCodeStep(err.retryAfter ?? nextTimer, err.message);
+        return;
+      }
+
+      if (isUncertainNetworkError(err)) {
+        openCodeStep(
+          15,
+          'Не удалось подтвердить ответ сервера. Если код пришёл, введите его. Если нет — отправьте ещё раз через 15 секунд.',
+        );
+        return;
+      }
+
       setLoginError(
         err instanceof OtpApiError
           ? err.message

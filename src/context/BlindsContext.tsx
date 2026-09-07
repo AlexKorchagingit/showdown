@@ -271,6 +271,17 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     }
     setTimerReady(false);
     let cancelled = false;
+    let remoteRequest: Promise<TimerSnapshot | null> | null = null;
+    const refreshRemote = async () => {
+      if (remoteRequest) return await remoteRequest;
+      const request = loadTimerSession();
+      remoteRequest = request;
+      try {
+        return await request;
+      } finally {
+        if (remoteRequest === request) remoteRequest = null;
+      }
+    };
     const channel = openBroadcastChannel(TIMER_SESSION_CHANNEL);
     channelRef.current = channel;
     if (channel) {
@@ -289,7 +300,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        const remote = await loadTimerSession();
+        const remote = await refreshRemote();
         if (cancelled) return;
         if (remote) applyRemote(remote, true);
       } catch (error) {
@@ -303,7 +314,8 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     })();
 
     const poll = window.setInterval(() => {
-      void loadTimerSession()
+      if (document.visibilityState !== 'visible') return;
+      void refreshRemote()
         .then((remote) => {
           if (remote) applyRemote(remote, true);
         })
@@ -447,6 +459,17 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAdmin) return;
     let cancelled = false;
+    let remoteRequest: Promise<BlindStructuresSnapshot | null> | null = null;
+    const refreshRemote = async () => {
+      if (remoteRequest) return await remoteRequest;
+      const request = loadBlindStructuresSnapshot();
+      remoteRequest = request;
+      try {
+        return await request;
+      } finally {
+        if (remoteRequest === request) remoteRequest = null;
+      }
+    };
     const channel = openBroadcastChannel(BLIND_STRUCTURES_CHANNEL);
     structuresChannelRef.current = channel;
     if (channel) {
@@ -479,7 +502,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('storage', onStorage);
 
-    void loadBlindStructuresSnapshot()
+    void refreshRemote()
       .then((remote) => {
         if (cancelled) return;
         if (!remote) {
@@ -490,10 +513,11 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       })
       .catch((error) => {
         console.error(error);
-      });
+    });
 
     const poll = window.setInterval(() => {
-      void loadBlindStructuresSnapshot()
+      if (document.visibilityState !== 'visible') return;
+      void refreshRemote()
         .then((remote) => {
           if (remote) applyRemoteStructures(remote);
         })

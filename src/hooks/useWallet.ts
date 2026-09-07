@@ -10,14 +10,19 @@ export function useWallet(userId: string) {
   const busy = useRef(new Set<string>());
   const [pending, setPending] = useState<Set<string>>(new Set());
   const sequence = useRef(0);
+  const refreshing = useRef(new Set<string>());
   const requests = useMemo(() => createShopRequests(userId, undefined,
     { scope: userId, storage: () => sessionStorage }, (input) => {
       if (actor.current !== userId) throw new Error('Учётная запись изменилась. Операция не отправлена.');
       return sendShopCommand(userId, input);
     }), [userId]);
   const refresh = useCallback(async () => {
-    const seq = ++sequence.current;
     if (!userId) { setLoading(false); return; }
+    // A poll interval must not supersede a slower request before its timeout can
+    // update the UI. This was the source of the endless shop loading state.
+    if (refreshing.current.has(userId)) return;
+    refreshing.current.add(userId);
+    const seq = ++sequence.current;
     try {
       const saved = await fetchWallet(userId);
       if (actor.current !== userId || seq !== sequence.current) return;
@@ -27,6 +32,7 @@ export function useWallet(userId: string) {
       if (actor.current !== userId || seq !== sequence.current) return;
       setError('Не удалось загрузить кошелёк. Обновите данные перед операцией.');
     } finally {
+      refreshing.current.delete(userId);
       if (actor.current === userId && seq === sequence.current) setLoading(false);
     }
   }, [userId]);

@@ -171,9 +171,21 @@ export function AdminBlindsTimer() {
   const liveTournamentId = boundTournament?.id ?? linkedTournamentId;
   useEffect(() => {
     if (!liveTournamentId) return;
-    void refreshParticipants(liveTournamentId);
+    let refreshRequest: Promise<void> | null = null;
+    const refreshRoster = async () => {
+      if (refreshRequest) return await refreshRequest;
+      const request = refreshParticipants(liveTournamentId);
+      refreshRequest = request;
+      try {
+        await request;
+      } finally {
+        if (refreshRequest === request) refreshRequest = null;
+      }
+    };
+    void refreshRoster();
     const poll = window.setInterval(() => {
-      void refreshParticipants(liveTournamentId);
+      if (document.visibilityState !== 'visible') return;
+      void refreshRoster();
     }, 2500);
     const channel = supabase
       .channel(`timer-cashier-${liveTournamentId}`)
@@ -186,7 +198,7 @@ export function AdminBlindsTimer() {
           filter: `tournament_id=eq.${liveTournamentId}`,
         },
         () => {
-          void refreshParticipants(liveTournamentId);
+          void refreshRoster();
         },
       )
       .subscribe();

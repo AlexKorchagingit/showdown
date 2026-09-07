@@ -1,5 +1,6 @@
 import { getClubDirectory, setClubDirectory, upsertClubDirectory } from './clubDirectory';
 import { supabase, logSupabaseError } from './supabase';
+import { withRequestDeadline } from './network';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
 import { isClubRole } from './roles';
 
@@ -49,7 +50,10 @@ export async function lookupUserByEmail(email: string): Promise<UserLookupResult
 /** Resolve the signed-in account. Network errors stay `error` so we do not log people out offline. */
 export async function lookupSessionAccount(): Promise<UserLookupResult> {
   // The JWT subject is resolved by auth.uid() inside this server RPC.
-  const { data, error } = await supabase.rpc('club_current_account');
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_current_account'),
+    15_000,
+  );
   return lookupFromQuery(data, error);
 }
 
@@ -64,7 +68,10 @@ export async function fetchUserByEmail(email: string): Promise<MappedUser | null
 }
 
 export async function fetchClubUsers(): Promise<MappedUser[]> {
-  const { data, error } = await supabase.rpc('club_directory');
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_directory'),
+    15_000,
+  );
   if (error || !data) {
     logSupabaseError(error, 'club users');
     return [];

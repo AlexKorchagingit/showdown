@@ -1,5 +1,6 @@
 import { upsertClubDirectory } from './clubDirectory';
 import { supabase } from './supabase';
+import { withRequestDeadline } from './network';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
 import { isClubRole } from './roles';
 
@@ -11,9 +12,12 @@ export class ConsentRequiredError extends Error {
 export async function loginOrRegisterUser(
   email: string, agreementsAcceptedAt?: string,
 ): Promise<{ user: MappedUser; isNew: boolean }> {
-  const { data, error } = await supabase.rpc('club_open_session', {
-    p_accept_agreements: Boolean(agreementsAcceptedAt?.trim()),
-  });
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_open_session', {
+      p_accept_agreements: Boolean(agreementsAcceptedAt?.trim()),
+    }),
+    15_000,
+  );
   if (error || !data) throw new Error('Не удалось открыть профиль. Попробуйте ещё раз.');
   if (data.status === 'consent_required') throw new ConsentRequiredError();
   const row = data.user as UserRow | undefined;

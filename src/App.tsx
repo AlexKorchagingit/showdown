@@ -17,6 +17,7 @@ import { isClubRole } from './lib/roles';
 import { resolveStartupView } from './lib/startupState';
 import { loadWithChunkRecovery } from './lib/chunkRecovery';
 import { ChunkLoadErrorBoundary } from './components/ChunkLoadErrorBoundary';
+import { withRequestDeadline } from './lib/network';
 
 const HomePage = lazy(() => loadWithChunkRecovery(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage }))));
 const TournamentsPage = lazy(() => loadWithChunkRecovery(() => import('./pages/TournamentsPage').then((module) => ({ default: module.TournamentsPage }))));
@@ -211,10 +212,13 @@ export default function App() {
     setRestoreError(false);
     void (async () => {
       try {
-        const session = await supabase.auth.getSession();
+        const session = await withRequestDeadline(supabase.auth.getSession(), 15_000);
         if (session.error) throw new Error('Session unavailable');
         if (!session.data.session) return;
-        const { data, error } = await supabase.rpc('club_current_account');
+        const { data, error } = await withRequestDeadline(
+          supabase.rpc('club_current_account'),
+          15_000,
+        );
         if (error) throw new Error('Account unavailable');
         if (!cancelled && !signedOut && data && typeof data.id === 'string' &&
             typeof data.email === 'string' && isClubRole(data.role)) {

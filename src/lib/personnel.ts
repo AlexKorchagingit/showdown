@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { withRequestDeadline } from './network';
 import { createOperationRequests, type RequestPersistence } from './operationRequests';
 import type { Tournament, TournamentDealer, TournamentStaffMember } from '../types/tournament';
 
@@ -51,7 +52,10 @@ export function parsePersonnelRoster(value: unknown): PersonnelRoster {
 }
 
 export async function fetchPersonnel(): Promise<PersonnelRoster[]> {
-  const { data, error } = await supabase.rpc('club_personnel_snapshot');
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_personnel_snapshot'),
+    15_000,
+  );
   if (error || !Array.isArray(data)) throw new Error('Не удалось загрузить персонал. Повторите загрузку перед изменениями.');
   const rows = data.map(parsePersonnelRoster);
   if (new Set(rows.map((row) => row.tournamentId)).size !== rows.length) throw new Error(CONFIRMATION_ERROR);

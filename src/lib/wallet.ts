@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { withRequestDeadline } from './network';
 import { SHOP_ITEMS, type ShopItem } from '../data/shopItems';
 import { createOperationRequests, type RequestPersistence } from './operationRequests';
 import type { PendingNotification } from './userStorage';
@@ -39,7 +40,10 @@ export function parseWallet(value: unknown, userId: string): Wallet {
 }
 
 export async function fetchWallet(userId: string): Promise<Wallet> {
-  const { data, error } = await supabase.rpc('club_wallet_snapshot');
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_wallet_snapshot'),
+    15_000,
+  );
   if (error) throw new Error('Не удалось загрузить кошелёк. Повторите загрузку перед операцией.');
   return parseWallet(data, userId);
 }

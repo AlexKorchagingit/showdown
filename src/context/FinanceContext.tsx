@@ -65,6 +65,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [pendingVoids, setPendingVoids] = useState<Set<string>>(new Set());
   const [loadError, setLoadError] = useState<string | null>(null);
   const fetchSequence = useRef(0);
+  const refreshing = useRef(new Set<string>());
   const mutationVersion = useRef(0);
   const [isLoading, setIsLoading] = useState(true);
   const { account } = useUser();
@@ -75,8 +76,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const hoursRequests = useMemo(() => createDealerHoursRequests(adjustDealerHoursOnServer, undefined,
     { scope: actorId, storage: () => sessionStorage }), [actorId]);
   const actorRole = account?.role;
+  const refreshScope = `${actorId}:${actorRole ?? ''}`;
 
   const refreshFinance = useCallback(async () => {
+    if (refreshing.current.has(refreshScope)) return;
+    refreshing.current.add(refreshScope);
     const sequence = ++fetchSequence.current;
     const version = mutationVersion.current;
     try {
@@ -91,9 +95,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       setTransactions([]);
       setDealerHoursMap({});
     } finally {
+      refreshing.current.delete(refreshScope);
       if (sequence === fetchSequence.current) setIsLoading(false);
     }
-  }, []);
+  }, [refreshScope]);
 
   useEffect(() => {
     setTransactions([]);

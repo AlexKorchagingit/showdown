@@ -13,13 +13,16 @@ export function usePersonnel(actorId: string, role: string | undefined) {
   const busy = useRef(new Set<string>());
   const sequence = useRef(0);
   const version = useRef(0);
+  const refreshing = useRef(new Set<string>());
   const requests = useMemo(() => createPersonnelRequests(undefined, undefined,
     { scope: actorId, storage: () => sessionStorage }), [actorId]);
 
   const refresh = useCallback(async () => {
+    if (!allowed) { setLoading(false); return; }
+    if (refreshing.current.has(scope)) return;
+    refreshing.current.add(scope);
     const seq = ++sequence.current;
     const startedVersion = version.current;
-    if (!allowed) { setLoading(false); return; }
     try {
       const rows = await fetchPersonnel();
       if (currentScope.current !== scope || seq !== sequence.current || startedVersion !== version.current) return;
@@ -30,6 +33,7 @@ export function usePersonnel(actorId: string, role: string | undefined) {
       setState({ scope, rows: {} });
       setError('Не удалось загрузить персонал. Повторите загрузку перед изменениями.');
     } finally {
+      refreshing.current.delete(scope);
       if (currentScope.current === scope && seq === sequence.current) setLoading(false);
     }
   }, [allowed, scope]);

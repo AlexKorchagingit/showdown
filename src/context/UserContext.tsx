@@ -56,6 +56,7 @@ export function UserProvider({
   onInvalidRef.current = onAccountInvalid;
   const kickedRef = useRef(false);
   const verifiedEmailRef = useRef('');
+  const sessionCheckRef = useRef<Promise<boolean> | null>(null);
 
   const kickDeletedAccount = useCallback(() => {
     if (kickedRef.current) return;
@@ -78,22 +79,32 @@ export function UserProvider({
 
   const enforceSession = useCallback(async (): Promise<boolean> => {
     if (kickedRef.current) return false;
-    try {
-      const result = await lookupSessionAccount();
-      if (result.status === 'error') {
-        console.error(result.message);
+    if (sessionCheckRef.current) return await sessionCheckRef.current;
+
+    const check = (async () => {
+      try {
+        const result = await lookupSessionAccount();
+        if (result.status === 'error') {
+          console.error(result.message);
+          return true;
+        }
+        if (result.status === 'missing') {
+          kickDeletedAccount();
+          return false;
+        }
+        verifiedEmailRef.current = result.user.email;
+        setAccount(result.user);
+        return true;
+      } catch (error) {
+        console.error(error);
         return true;
       }
-      if (result.status === 'missing') {
-        kickDeletedAccount();
-        return false;
-      }
-      verifiedEmailRef.current = result.user.email;
-      setAccount(result.user);
-      return true;
-    } catch (error) {
-      console.error(error);
-      return true;
+    })();
+    sessionCheckRef.current = check;
+    try {
+      return await check;
+    } finally {
+      if (sessionCheckRef.current === check) sessionCheckRef.current = null;
     }
   }, [kickDeletedAccount]);
 
@@ -124,7 +135,9 @@ export function UserProvider({
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', verify);
-    const timer = window.setInterval(verify, SESSION_POLL_MS);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') verify();
+    }, SESSION_POLL_MS);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', verify);
