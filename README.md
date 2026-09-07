@@ -63,8 +63,14 @@ reviewed database operation and is never selected automatically by email or regi
 The OTP-to-Supabase session flow, server-side identity/role checks and the final RPC
 allowlist are documented in [docs/server-authentication.md](docs/server-authentication.md).
 
+Android 8+ WebView support, the modern/legacy build split and the boot fallback
+are documented in [docs/android-webview-compatibility.md](docs/android-webview-compatibility.md).
+
 ## Build
 
 ```bash
 npm run build
 ```
+
+Every production build also runs `scripts/check-android-build.mjs` and fails if
+the legacy bundle, polyfills or no-JavaScript startup fallback are missing.
