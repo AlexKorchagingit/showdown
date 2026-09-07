@@ -43,83 +43,93 @@ begin
 end;
 $$;
 
--- A browser session may read only through the final RLS/projection rules and
--- may mutate state only through the explicit RPC allowlist below.
-revoke insert,update,delete,truncate,references,trigger
-  on all tables in schema public from authenticated;
-revoke all on all tables in schema club_private from authenticated;
-revoke all on all routines in schema public from authenticated;
-revoke all on all routines in schema club_private from authenticated;
-revoke usage on schema club_private from authenticated;
-
 do $$
-declare v_table record;
+declare
+  v_object record;
+  v_authenticated oid:='authenticated'::regrole;
+  v_current oid=current_user::regrole;
+  v_required regprocedure[]:=array[
+    'public.club_current_account()'::regprocedure,
+    'public.club_open_session(boolean)'::regprocedure,
+    'public.club_set_role(text,text)'::regprocedure,
+    'public.club_directory()'::regprocedure,
+    'public.club_create_charge(uuid,text,text,text,text)'::regprocedure,
+    'public.club_mark_paid(text[])'::regprocedure,
+    'public.club_void_transaction(text,text)'::regprocedure,
+    'public.club_adjust_dealer_hours(uuid,text,text,numeric)'::regprocedure,
+    'public.club_finance_snapshot()'::regprocedure,
+    'public.club_personnel_snapshot()'::regprocedure,
+    'public.club_personnel_command(uuid,text,text,uuid,jsonb)'::regprocedure,
+    'public.club_wallet_snapshot()'::regprocedure,
+    'public.club_buy_item(uuid,text,bigint)'::regprocedure,
+    'public.club_equip_item(uuid,text)',
+    'public.club_claim_ruby_notification(text)',
+    'public.club_grant_rubies(uuid,text,integer,text,text)',
+    'public.club_close_tournament(uuid,text,jsonb)',
+    'public.club_update_profile(jsonb)',
+    'public.club_set_registration(uuid,text,boolean)',
+    'public.club_replace_participants(uuid,text,jsonb)',
+    'public.club_tournament_snapshot()',
+    'public.club_create_tournament(uuid,jsonb)',
+    'public.club_update_tournament(uuid,text,jsonb)',
+    'public.club_audit_snapshot()',
+    'public.club_save_timer_session(jsonb)',
+    'public.club_blind_structures_snapshot()',
+    'public.club_save_blind_structures(jsonb)',
+    'public.club_archive_profile(uuid,text,text)'
+  ]::regprocedure[];
 begin
-  -- Table-level revokes do not remove old per-column grants.
-  for v_table in
-    select c.relname,string_agg(quote_ident(a.attname),',' order by a.attnum) columns
+  -- Revoke only grants issued by the role applying this migration. Production
+  -- API/private routines are owned by supabase_admin and must not be rewritten
+  -- by the postgres migration role. Foreign grants are rejected by the final
+  -- assertions instead of causing a partially applied ACL migration.
+  for v_object in
+    select distinct p.oid::regprocedure object_name
+    from pg_proc p
+    cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+    where p.pronamespace='public'::regnamespace
+      and acl.grantee=v_authenticated and acl.grantor=v_current
+      and acl.privilege_type='EXECUTE'
+      and p.oid<>all(v_required)
+  loop
+    execute format('revoke execute on function %s from authenticated',v_object.object_name);
+  end loop;
+
+  for v_object in
+    select distinct c.oid::regclass object_name
     from pg_class c
-    join pg_attribute a on a.attrelid=c.oid and a.attnum>0 and not a.attisdropped
+    cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl
     where c.relnamespace='public'::regnamespace and c.relkind in ('r','p','v','m','f')
-    group by c.oid,c.relname
+      and acl.grantee=v_authenticated and acl.grantor=v_current
+      and acl.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
   loop
-    execute format('revoke insert(%s),update(%s),references(%s) on table public.%I from authenticated',
-      v_table.columns,v_table.columns,v_table.columns,v_table.relname);
+    execute format('revoke insert,update,delete,truncate,references,trigger on table %s from authenticated',v_object.object_name);
+  end loop;
+
+  for v_object in
+    select distinct format('%I.%I',n.nspname,c.relname) table_name,
+      string_agg(quote_ident(a.attname),',' order by a.attnum) columns
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    join pg_attribute a on a.attrelid=c.oid and a.attnum>0 and not a.attisdropped
+    cross join lateral aclexplode(a.attacl) acl
+    where c.relnamespace='public'::regnamespace and c.relkind in ('r','p','v','m','f')
+      and acl.grantee=v_authenticated and acl.grantor=v_current
+      and acl.privilege_type in ('INSERT','UPDATE','REFERENCES')
+    group by c.oid,n.nspname,c.relname
+  loop
+    execute format('revoke insert(%s),update(%s),references(%s) on table %s from authenticated',
+      v_object.columns,v_object.columns,v_object.columns,v_object.table_name);
   end loop;
 end;
 $$;
 
-grant execute on function
-  public.club_current_account(),
-  public.club_open_session(boolean),
-  public.club_set_role(text,text),
-  public.club_directory(),
-  public.club_create_charge(uuid,text,text,text,text),
-  public.club_mark_paid(text[]),
-  public.club_void_transaction(text,text),
-  public.club_adjust_dealer_hours(uuid,text,text,numeric),
-  public.club_finance_snapshot(),
-  public.club_personnel_snapshot(),
-  public.club_personnel_command(uuid,text,text,uuid,jsonb),
-  public.club_wallet_snapshot(),
-  public.club_buy_item(uuid,text,bigint),
-  public.club_equip_item(uuid,text),
-  public.club_claim_ruby_notification(text),
-  public.club_grant_rubies(uuid,text,integer,text,text),
-  public.club_close_tournament(uuid,text,jsonb),
-  public.club_update_profile(jsonb),
-  public.club_set_registration(uuid,text,boolean),
-  public.club_replace_participants(uuid,text,jsonb),
-  public.club_tournament_snapshot(),
-  public.club_create_tournament(uuid,jsonb),
-  public.club_update_tournament(uuid,text,jsonb),
-  public.club_audit_snapshot(),
-  public.club_save_timer_session(jsonb),
-  public.club_blind_structures_snapshot(),
-  public.club_save_blind_structures(jsonb),
-  public.club_archive_profile(uuid,text,text)
-to authenticated;
-
-do $$
-declare v_owner record;
-begin
-  -- Future functions are private until their migration grants an explicit API.
-  for v_owner in
-    select distinct r.rolname from pg_roles r where r.oid in (
-      select relowner from pg_class where relnamespace in ('public'::regnamespace,'club_private'::regnamespace)
-      union select proowner from pg_proc where pronamespace in ('public'::regnamespace,'club_private'::regnamespace)
-      union select oid from pg_roles where rolname=current_user
-    )
-  loop
-    execute format('alter default privileges for role %I revoke execute on functions from authenticated',v_owner.rolname);
-    execute format('alter default privileges for role %I in schema public revoke execute on functions from authenticated',v_owner.rolname);
-    execute format('alter default privileges for role %I in schema club_private revoke execute on functions from authenticated',v_owner.rolname);
-    execute format('alter default privileges for role %I revoke insert,update,delete,truncate,references,trigger on tables from authenticated',v_owner.rolname);
-    execute format('alter default privileges for role %I in schema public revoke insert,update,delete,truncate,references,trigger on tables from authenticated',v_owner.rolname);
-    execute format('alter default privileges for role %I in schema club_private revoke all on tables from authenticated',v_owner.rolname);
-  end loop;
-end;
-$$;
+-- Objects created later by this migration role remain private until an explicit
+-- API migration grants access. Other owners manage their own default ACLs.
+alter default privileges revoke execute on functions from authenticated;
+alter default privileges in schema public revoke execute on functions from authenticated;
+alter default privileges revoke insert,update,delete,truncate,references,trigger on tables from authenticated;
+alter default privileges in schema public revoke insert,update,delete,truncate,references,trigger on tables from authenticated;
 
 do $$
 begin

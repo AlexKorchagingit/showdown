@@ -20,7 +20,7 @@ const migrations=['20260903_auth_foundation.sql','20260903_finance_commands.sql'
   '20260904_anon_access.sql','20260904_authenticated_policies.sql','20260904_ruby_grants.sql',
   '20260904_tournament_closure.sql','20260904_profile_updates.sql','20260904_user_update_acl.sql',
   '20260904_tournament_registration.sql','20260904_participant_commands.sql','20260904_tournament_commands.sql',
-  '20260905_audit_timer_commands.sql','20260905_profile_archive.sql','20260907_server_auth_contract.sql'];
+  '20260905_audit_timer_commands.sql','20260905_profile_archive.sql'];
 
 describe('final client access matrix after the complete local cutover',()=>{let superadmin='',admin='',user='';const event=id('event');
   beforeAll(async()=>{
@@ -40,6 +40,13 @@ describe('final client access matrix after the complete local cutover',()=>{let 
       insert into public.transactions(id,tournament_id,user_id,type,amount,status) values
         ('${id('tx')}','${event}','${id('user')}','buy-in',1000,'unpaid');`);
     localSql(migrations.map(name=>readFileSync(`supabase/migrations/${name}`,'utf8')).join('\n'));
+    // Production contains internal routines owned by supabase_admin. The final
+    // contract must verify their isolation without trying to rewrite their ACLs.
+    localSql(`create or replace function club_private.auth_contract_owner_probe() returns integer
+      language sql as 'select 1';
+      alter function club_private.auth_contract_owner_probe() owner to supabase_auth_admin;
+      revoke all on function club_private.auth_contract_owner_probe() from public,authenticated;`);
+    localSql(readFileSync('supabase/migrations/20260907_server_auth_contract.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260907_server_auth_contract.sql','utf8'));
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';
       insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
