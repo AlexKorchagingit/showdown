@@ -1,3 +1,6 @@
+import { RequestTimeoutError, withRequestDeadline } from './network';
+import { STARTUP_TIMEOUT_MS } from './startupState';
+
 export const CHUNK_RECOVERY_STORAGE_KEY = 'showdown:recovered-build';
 export const CHUNK_RECOVERY_QUERY_KEY = '__showdown_refresh';
 
@@ -63,12 +66,20 @@ export async function loadWithChunkRecovery<T>(
   loader: () => Promise<T>,
   buildId = __APP_BUILD_ID__,
   environment: ChunkRecoveryEnvironment | null = browserEnvironment(),
+  timeoutMs = STARTUP_TIMEOUT_MS,
 ): Promise<T> {
   try {
-    return await loader();
+    return await withRequestDeadline(loader(), timeoutMs);
   } catch (error) {
+    // A stalled download needs a visible retry action. Automatic navigation is
+    // reserved for an explicit stale-chunk error because location.replace may
+    // itself be unavailable in a degraded WebView.
+    if (error instanceof RequestTimeoutError) throw error;
     if (recoverFromChunkLoadError(error, buildId, environment)) {
-      return await new Promise<T>(() => undefined);
+      // Usually the document is replaced immediately. If a constrained
+      // WebView ignores navigation, release Suspense after the same startup
+      // deadline so the error boundary can render a manual retry.
+      return await withRequestDeadline(new Promise<T>(() => undefined), timeoutMs);
     }
     throw error;
   }

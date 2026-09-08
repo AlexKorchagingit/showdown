@@ -3,6 +3,7 @@ import { supabase, logSupabaseError } from './supabase';
 import { withRequestDeadline } from './network';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
 import { isClubRole } from './roles';
+import { STARTUP_TIMEOUT_MS } from './startupState';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -52,7 +53,7 @@ export async function lookupSessionAccount(): Promise<UserLookupResult> {
   // The JWT subject is resolved by auth.uid() inside this server RPC.
   const { data, error } = await withRequestDeadline(
     supabase.rpc('club_current_account'),
-    15_000,
+    STARTUP_TIMEOUT_MS,
   );
   return lookupFromQuery(data, error);
 }

@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { withRequestDeadline } from './network';
 import { userFromRow, type MappedUser, type UserRow } from './supabaseMap';
 import { isClubRole } from './roles';
+import { STARTUP_TIMEOUT_MS } from './startupState';
 
 export class ConsentRequiredError extends Error {
   constructor() { super('Для регистрации необходимо принять соглашения'); }
@@ -16,7 +17,7 @@ export async function loginOrRegisterUser(
     supabase.rpc('club_open_session', {
       p_accept_agreements: Boolean(agreementsAcceptedAt?.trim()),
     }),
-    15_000,
+    STARTUP_TIMEOUT_MS,
   );
   if (error || !data) throw new Error('Не удалось открыть профиль. Попробуйте ещё раз.');
   if (data.status === 'consent_required') throw new ConsentRequiredError();

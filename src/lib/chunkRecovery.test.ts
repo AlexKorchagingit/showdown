@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RequestTimeoutError } from './network';
 import {
   CHUNK_RECOVERY_STORAGE_KEY,
   forceFreshPageLoad,
@@ -26,6 +27,11 @@ function createEnvironment(storedBuildId: string | null = null) {
 }
 
 describe('chunk recovery', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
   it.each([
     new TypeError('Failed to fetch dynamically imported module'),
     new Error('Importing a module script failed'),
@@ -135,6 +141,23 @@ describe('chunk recovery', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it('rejects a lazy screen that never loads instead of keeping the splash forever', async () => {
+    vi.useFakeTimers();
+    const { environment, replace } = createEnvironment();
+    const result = loadWithChunkRecovery(
+      () => new Promise<{ default: string }>(() => undefined),
+      'current-build',
+      environment,
+      10_000,
+    );
+    const rejection = expect(result).rejects.toBeInstanceOf(RequestTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await rejection;
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it('keeps the old screen pending while navigation replaces it', async () => {
     const { environment, replace } = createEnvironment();
     const result = loadWithChunkRecovery(
@@ -149,6 +172,23 @@ describe('chunk recovery', () => {
     ]);
 
     expect(state).toBe('pending');
+    expect(replace).toHaveBeenCalledOnce();
+  });
+
+  it('releases the splash when a WebView ignores automatic chunk recovery', async () => {
+    vi.useFakeTimers();
+    const { environment, replace } = createEnvironment();
+    const result = loadWithChunkRecovery(
+      async () => { throw new TypeError('Failed to fetch dynamically imported module'); },
+      'current-build',
+      environment,
+      10_000,
+    );
+    const rejection = expect(result).rejects.toBeInstanceOf(RequestTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await rejection;
     expect(replace).toHaveBeenCalledOnce();
   });
 
@@ -189,6 +229,5 @@ describe('chunk recovery', () => {
     expect(replace).toHaveBeenCalledWith(
       `https://showdown-br.ru/profile?__showdown_refresh=${__APP_BUILD_ID__}-67890`,
     );
-    vi.unstubAllGlobals();
   });
 });

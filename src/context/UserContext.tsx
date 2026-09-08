@@ -42,14 +42,16 @@ const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({
   children,
+  initialAccount = null,
   onAccountInvalid,
 }: {
   children: ReactNode;
+  initialAccount?: MappedUser | null;
   onAccountInvalid?: () => void;
 }) {
-  const [account, setAccount] = useState<MappedUser | null>(null);
+  const [account, setAccount] = useState<MappedUser | null>(initialAccount);
   const [clubUsers, setClubUsers] = useState<MappedUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialAccount);
   const onInvalidRef = useRef(onAccountInvalid);
   onInvalidRef.current = onAccountInvalid;
   const kickedRef = useRef(false);
@@ -111,7 +113,10 @@ export function UserProvider({
     try {
       const ok = await enforceSession();
       if (!ok) return;
-      await refreshClubUsers();
+      // The signed-in account is the only critical startup dependency. The
+      // complete club directory is secondary and fills in after the shell is
+      // already usable.
+      void refreshClubUsers();
     } catch (error) {
       console.error(error);
     } finally {
@@ -121,8 +126,15 @@ export function UserProvider({
 
   useEffect(() => {
     kickedRef.current = false;
+    if (initialAccount) {
+      verifiedEmailRef.current = initialAccount.email;
+      setAccount(initialAccount);
+      setIsLoading(false);
+      void refreshClubUsers();
+      return;
+    }
     void refreshAccount();
-  }, [refreshAccount]);
+  }, [initialAccount, refreshAccount, refreshClubUsers]);
 
   useEffect(() => {
     const verify = () => {
