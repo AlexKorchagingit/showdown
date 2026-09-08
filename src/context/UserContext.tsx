@@ -19,11 +19,9 @@ import {
 import { endLocalSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 
-export { hasSuperAdminRole as isSuperAdmin } from '../lib/roles';
-
 const SESSION_POLL_MS = 10_000;
 
-export function isClubAdmin(_email: string, account?: MappedUser | null): boolean {
+function isClubAdmin(account?: MappedUser | null): boolean {
   return hasAdminRole(account?.role);
 }
 
@@ -177,7 +175,7 @@ export function UserProvider({
     [account],
   );
 
-  const isAdmin = isClubAdmin('', account);
+  const isAdmin = isClubAdmin(account);
   const visibleClubUsers = useMemo(() => {
     if (isAdmin) return clubUsers;
     return clubUsers.map((user) =>

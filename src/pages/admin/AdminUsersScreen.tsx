@@ -9,7 +9,7 @@ import { archiveUserProfile } from '../../lib/profileArchive';
 import { supabase } from '../../lib/supabase';
 
 export function AdminUsersScreen() {
-  const { email, userId, clubUsers, isLoading, refreshClubUsers, isSuperAdmin } = useUser();
+  const { userId, clubUsers, isLoading, refreshClubUsers, isSuperAdmin } = useUser();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingArchive, setPendingArchive] = useState<(typeof clubUsers)[number] | null>(null);
   const [archiveReason, setArchiveReason] = useState('');
@@ -66,7 +66,7 @@ export function AdminUsersScreen() {
             {clubUsers.map((user) => {
               const isProtectedSuperAdmin = user.role === 'superadmin';
               const isLocked = !isSuperAdmin || isProtectedSuperAdmin;
-              const isSelf = user.email.toLowerCase() === email.trim().toLowerCase();
+              const isSelf = user.id === userId;
               const canArchive = !isLocked && !isSelf;
 
               return (

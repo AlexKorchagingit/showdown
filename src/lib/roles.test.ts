@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { hasAdminRole, hasSuperAdminRole, isClubRole } from './roles';
+import {
+  hasAdminRole,
+  hasRequiredAdminRole,
+  hasSuperAdminRole,
+  isClubRole,
+} from './roles';
 
 describe('server-issued application roles', () => {
   it('recognizes only the three explicit role names', () => {
@@ -15,5 +20,14 @@ describe('server-issued application roles', () => {
     expect(hasAdminRole('superadmin')).toBe(true);
     expect(hasSuperAdminRole('admin')).toBe(false);
     expect(hasSuperAdminRole('superadmin')).toBe(true);
+  });
+
+  it('enforces the route role hierarchy without using identity fields', () => {
+    expect(hasRequiredAdminRole('user')).toBe(false);
+    expect(hasRequiredAdminRole('admin')).toBe(true);
+    expect(hasRequiredAdminRole('superadmin')).toBe(true);
+    expect(hasRequiredAdminRole('admin', 'superadmin')).toBe(false);
+    expect(hasRequiredAdminRole('superadmin', 'superadmin')).toBe(true);
+    expect(hasRequiredAdminRole('owner@example.test', 'superadmin')).toBe(false);
   });
 });

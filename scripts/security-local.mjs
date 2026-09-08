@@ -1,7 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const host = process.platform === 'win32'
@@ -9,6 +11,7 @@ const host = process.platform === 'win32'
 const compose = ['--host', host, 'compose', '--project-name', 'showdown-security-local',
   '--env-file', resolve(root, 'tests/security/compose.env'),
   '-f', resolve(root, 'tests/security/compose.yml')];
+const localDbContainer = 'showdown-security-local-db-1';
 
 export function docker(args, input) {
   const result = spawnSync('docker', [...compose, ...args], {
@@ -22,9 +25,19 @@ export function docker(args, input) {
   return result.stdout?.trim() ?? '';
 }
 
+function localDocker(args) {
+  const result = spawnSync('docker', ['--host', host, ...args], {
+    cwd: root, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.status !== 0) {
+    throw new Error('Local Docker command failed; inspect only the local test services');
+  }
+  return result.stdout?.trim() ?? '';
+}
+
 export function localSql(sql) {
   // Check the marker in the SAME connection before any supplied SQL executes.
-  // One Docker invocation also avoids paying Windows/Compose startup twice.
   const guard = `do $local_guard$ begin
     if to_regclass('public.showdown_local_test_marker') is null then
       raise exception 'Refusing SQL: missing local test marker';
@@ -34,8 +47,19 @@ export function localSql(sql) {
       raise exception 'Refusing SQL: invalid local test marker';
     end if;
   end; $local_guard$;`;
-  const output = docker(['exec', '-T', 'db', 'psql', '-X', '-U', 'postgres', '-At',
-    '-v', 'ON_ERROR_STOP=1'], `${guard}\n${sql}`);
+  // Docker Desktop for Windows can keep a nested process' stdin open forever.
+  // Copying a short-lived SQL file avoids that platform-specific deadlock.
+  const hostSqlPath = join(tmpdir(), `showdown-security-${randomUUID()}.sql`);
+  const containerSqlPath = '/tmp/showdown-security-local.sql';
+  let output;
+  try {
+    writeFileSync(hostSqlPath, `${guard}\n${sql}`, 'utf8');
+    localDocker(['cp', hostSqlPath, `${localDbContainer}:${containerSqlPath}`]);
+    output = localDocker(['exec', localDbContainer, 'psql', '-X', '-U', 'postgres', '-At',
+      '-v', 'ON_ERROR_STOP=1', '-f', containerSqlPath]);
+  } finally {
+    try { unlinkSync(hostSqlPath); } catch { /* best-effort cleanup of our exact temp file */ }
+  }
   // psql's first command tag belongs only to the guard, not the caller's result.
   if (output !== 'DO' && !output.startsWith('DO\n') && !output.startsWith('DO\r\n')) {
     throw new Error('Refusing SQL result: missing local guard confirmation');

@@ -17,7 +17,7 @@ async function handleLogout(verifiedEmail: string) {
 
 export function SettingsPage({ userEmail }: Props) {
   const navigate = useNavigate();
-  const { isAdmin } = useUser();
+  const { isSuperAdmin } = useUser();
   const { nickname, birthDate, slogan, updateProfile } = useProfile();
 
   const [draftNickname, setDraftNickname] = useState(nickname);
@@ -59,7 +59,7 @@ export function SettingsPage({ userEmail }: Props) {
         <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
       </button>
 
-      {isAdmin && (
+      {isSuperAdmin && (
         <button
           type="button"
           onClick={() => navigate('/admin/users')}
@@ -70,7 +70,7 @@ export function SettingsPage({ userEmail }: Props) {
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(217,153,98,0.28)',
           }}
-          aria-label="Админ-панель"
+          aria-label="Управление администраторами"
         >
           <ShieldCheck size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
         </button>

@@ -18,6 +18,7 @@ import { resolveStartupView } from './lib/startupState';
 import { loadWithChunkRecovery } from './lib/chunkRecovery';
 import { ChunkLoadErrorBoundary } from './components/ChunkLoadErrorBoundary';
 import { withRequestDeadline } from './lib/network';
+import { AdminRoute } from './components/AdminRoute';
 
 const HomePage = lazy(() => loadWithChunkRecovery(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage }))));
 const TournamentsPage = lazy(() => loadWithChunkRecovery(() => import('./pages/TournamentsPage').then((module) => ({ default: module.TournamentsPage }))));
@@ -50,7 +51,7 @@ const shellClass = 'w-full min-h-screen bg-black flex justify-center';
 const columnClass = 'relative w-full max-w-[480px] overflow-hidden shadow-2xl';
 
 function AppLayout() {
-  const { email, isAdmin } = useUser();
+  const { email } = useUser();
   const location = useLocation();
   const hideNav = HIDE_NAV_PATH.test(location.pathname);
   const isBlindsTimer = location.pathname === '/admin/blinds/timer';
@@ -59,16 +60,14 @@ function AppLayout() {
     ? 'env(safe-area-inset-bottom, 0px)'
     : `calc(env(safe-area-inset-bottom, 0px) + ${NAV_HEIGHT})`;
 
-  if (location.pathname.startsWith('/admin/') && !isAdmin) {
-    return <Navigate to="/profile" replace />;
-  }
-
   if (isBlindsTimer) {
     return (
-      <div className="w-full h-[100dvh] overflow-hidden bg-[#0A0908]">
-        <AdminBlindsTimer />
-        <RubyBonusHost />
-      </div>
+      <AdminRoute>
+        <div className="w-full h-[100dvh] overflow-hidden bg-[#0A0908]">
+          <AdminBlindsTimer />
+          <RubyBonusHost />
+        </div>
+      </AdminRoute>
     );
   }
 
@@ -94,19 +93,24 @@ function AppLayout() {
             <Route path="/qa"                element={<QnAScreen />} />
             <Route path="/achievements"      element={<AchievementsScreen />} />
             <Route path="/achievements/:playerId" element={<AchievementsScreen />} />
-            <Route path="/admin/users"           element={<AdminUsersScreen />} />
-            <Route path="/admin/tournaments"     element={<AdminTournamentsScreen />} />
-            <Route path="/admin/tournaments/:id" element={<AdminTournamentEditor />} />
-            <Route path="/admin/blinds"          element={<Navigate to="/admin/blinds/settings" replace />} />
-            <Route path="/admin/blinds/settings" element={<AdminBlindsSettings />} />
-            <Route path="/admin/blinds/timer"    element={<AdminBlindsTimer />} />
-            <Route path="/admin/finance"         element={<AdminFinanceScreen />} />
-            <Route path="/admin/finance/tournaments/:id" element={<AdminTournamentFinance />} />
-            <Route path="/admin/ruby"            element={<AdminRubyScreen />} />
-            <Route path="/admin/statistic"       element={<AdminStatisticScreen />} />
-            <Route path="/admin/logs"            element={<AdminLogsScreen />} />
-            <Route path="/admin/achievements/users"      element={<AdminAchievementsUsers />} />
-            <Route path="/admin/achievements/edit/:userId" element={<AdminAchievementsEditor />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin/tournaments"     element={<AdminTournamentsScreen />} />
+              <Route path="/admin/tournaments/:id" element={<AdminTournamentEditor />} />
+              <Route path="/admin/blinds"          element={<Navigate to="/admin/blinds/settings" replace />} />
+              <Route path="/admin/blinds/settings" element={<AdminBlindsSettings />} />
+              <Route path="/admin/blinds/timer"    element={<AdminBlindsTimer />} />
+              <Route path="/admin/finance"         element={<AdminFinanceScreen />} />
+              <Route path="/admin/finance/tournaments/:id" element={<AdminTournamentFinance />} />
+              <Route path="/admin/ruby"            element={<AdminRubyScreen />} />
+              <Route path="/admin/statistic"       element={<AdminStatisticScreen />} />
+              <Route path="/admin/achievements/users"      element={<AdminAchievementsUsers />} />
+              <Route path="/admin/achievements/edit/:userId" element={<AdminAchievementsEditor />} />
+              <Route path="/admin/*" element={<Navigate to="/profile" replace />} />
+            </Route>
+            <Route element={<AdminRoute requiredRole="superadmin" />}>
+              <Route path="/admin/users" element={<AdminUsersScreen />} />
+              <Route path="/admin/logs" element={<AdminLogsScreen />} />
+            </Route>
             <Route path="*"                  element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
