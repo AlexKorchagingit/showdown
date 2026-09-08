@@ -56,11 +56,58 @@ describe('OTP API client', () => {
     expect(storeSession).not.toHaveBeenCalled();
   });
 
+  it('retries session installation without repeating OTP verification', async () => {
+    const session = { access_token: 'synthetic', refresh_token: 'synthetic' };
+    const fetchImpl = vi.fn(async () => Response.json({ verified: true, session }));
+    const storeSession = vi.fn()
+      .mockRejectedValueOnce(new TypeError('temporary network failure'))
+      .mockResolvedValueOnce(undefined);
+    const client = createOtpClient({
+      ...config,
+      fetchImpl,
+      storeSession,
+      sessionRetryDelaysMs: [0, 0],
+    });
+
+    await expect(client.verifyCode('user@example.com', '1234')).resolves.toBe(true);
+    expect(storeSession).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an issued session for retrying the same code without consuming another OTP', async () => {
+    const session = { access_token: 'synthetic', refresh_token: 'synthetic' };
+    const fetchImpl = vi.fn(async () => Response.json({ verified: true, session }));
+    const storeSession = vi.fn()
+      .mockRejectedValueOnce(new Error('temporary-1'))
+      .mockRejectedValueOnce(new Error('temporary-2'))
+      .mockResolvedValueOnce(undefined);
+    const client = createOtpClient({
+      ...config,
+      fetchImpl,
+      storeSession,
+      sessionRetryDelaysMs: [0, 0],
+    });
+
+    await expect(client.verifyCode('user@example.com', '1234')).rejects.toThrow(
+      'Введите тот же код ещё раз',
+    );
+    await expect(client.verifyCode('user@example.com', '1234')).resolves.toBe(true);
+    expect(storeSession).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('does not report success or leak details when storing the session fails', async () => {
     const fetchImpl = vi.fn(async () => Response.json({ verified: true,
       session: { access_token: 'synthetic', refresh_token: 'synthetic' } }));
-    const client = createOtpClient({ ...config, fetchImpl, storeSession: async () => { throw new Error('sensitive-provider-details'); } });
-    await expect(client.verifyCode('user@example.com', '1234')).rejects.toThrow('Не удалось сохранить сессию');
+    const client = createOtpClient({
+      ...config,
+      fetchImpl,
+      storeSession: async () => { throw new Error('sensitive-provider-details'); },
+      sessionRetryDelaysMs: [0],
+    });
+    await expect(client.verifyCode('user@example.com', '1234')).rejects.toThrow(
+      'Сессия получена, но соединение прервалось',
+    );
   });
 
   it('returns false for an invalid or expired code', async () => {
