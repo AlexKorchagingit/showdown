@@ -5,6 +5,7 @@ interface ApiRouteFetchOptions {
   fallbackBaseUrls?: readonly string[];
   probePath?: string;
   probeTimeoutMs?: number;
+  failureCooldownMs?: number;
   fetchImpl?: FetchLike;
 }
 
@@ -115,6 +116,36 @@ function rewriteRequestBase(
   return new Request(rewrittenUrl, input);
 }
 
+const RETRYABLE_RPC = new Set([
+  'club_audit_snapshot',
+  'club_blind_structures_snapshot',
+  'club_current_account',
+  'club_directory',
+  'club_finance_snapshot',
+  'club_personnel_snapshot',
+  'club_tournament_snapshot',
+  'club_wallet_snapshot',
+]);
+
+function requestUrl(input: RequestInfo | URL): string {
+  return typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+}
+
+function isSafeToRetry(input: RequestInfo | URL, init: RequestInit): boolean {
+  const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true;
+  if (method !== 'POST') return false;
+
+  try {
+    const url = new URL(requestUrl(input));
+    if (url.pathname === '/auth/v1/token' && url.searchParams.get('grant_type') === 'refresh_token') return true;
+    const rpcPrefix = '/rest/v1/rpc/';
+    return url.pathname.startsWith(rpcPrefix) && RETRYABLE_RPC.has(url.pathname.slice(rpcPrefix.length));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Select the first API route that is actually reachable from the current
  * browser. The probe is a safe GET, so POST/RPC calls are still sent exactly
@@ -125,6 +156,7 @@ export function createApiRouteFetch({
   fallbackBaseUrls = [],
   probePath = '/auth/v1/settings',
   probeTimeoutMs = 3500,
+  failureCooldownMs = 60_000,
   fetchImpl = fetch,
 }: ApiRouteFetchOptions): FetchLike {
   const primary = normalizedBaseUrl(primaryBaseUrl);
@@ -133,17 +165,24 @@ export function createApiRouteFetch({
   const probeFetch = createTimeoutFetch(probeTimeoutMs, fetchImpl);
   let selectedRoute: string | undefined;
   let selection: Promise<string> | undefined;
+  const failedUntil = new Map<string, number>();
+
+  const routeIsCoolingDown = (route: string) => (failedUntil.get(route) ?? 0) > Date.now();
 
   const selectReachableRoute = (): Promise<string> => {
-    if (selectedRoute) return Promise.resolve(selectedRoute);
+    if (selectedRoute && !routeIsCoolingDown(selectedRoute)) return Promise.resolve(selectedRoute);
+    selectedRoute = undefined;
     if (selection) return selection;
 
+    const availableRoutes = routes.filter((route) => !routeIsCoolingDown(route));
+    const candidates = availableRoutes.length > 0 ? availableRoutes : routes;
+
     const pendingSelection = new Promise<string>((resolve, reject) => {
-      let failuresRemaining = routes.length;
+      let failuresRemaining = candidates.length;
       let lastError: unknown = new TypeError('No API route is reachable');
       let settled = false;
 
-      for (const route of routes) {
+      for (const route of candidates) {
         probeFetch(`${route}${probePath}`, {
           method: 'GET',
           cache: 'no-store',
@@ -182,17 +221,38 @@ export function createApiRouteFetch({
     return selection;
   };
 
+  const fetchFromRoute = async (
+    route: string,
+    input: RequestInfo | URL,
+    init: RequestInit,
+  ): Promise<Response> => {
+    try {
+      const response = await fetchImpl(rewriteRequestBase(input, primary, route), init);
+      failedUntil.delete(route);
+      return response;
+    } catch (error) {
+      failedUntil.set(route, Date.now() + failureCooldownMs);
+      if (selectedRoute === route) selectedRoute = undefined;
+      throw error;
+    }
+  };
+
   return async (input, init = {}) => {
+    const retryable = routes.length > 1 && isSafeToRetry(input, init);
+    const firstInput = input instanceof Request ? input.clone() : input;
+    const retryInput = retryable && input instanceof Request ? input.clone() : input;
     const route = await selectReachableRoute();
-    const rewrittenInput = rewriteRequestBase(input, primary, route);
 
     try {
-      return await fetchImpl(rewrittenInput, init);
+      return await fetchFromRoute(route, firstInput, init);
     } catch (error) {
-      // Recheck connectivity for the next request. Never automatically replay
-      // this request: a failed POST may already have reached the server.
-      selectedRoute = undefined;
-      throw error;
+      // Mutating calls are never replayed: the server may already have applied
+      // them. Reads and refresh-token exchange are safe to retry once through
+      // a different route; Supabase permits refresh-token reuse briefly for
+      // recovery from a lost response.
+      if (!retryable) throw error;
+      const retryRoute = await selectReachableRoute();
+      return await fetchFromRoute(retryRoute, retryInput, init);
     }
   };
 }

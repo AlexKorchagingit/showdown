@@ -104,6 +104,52 @@ describe('createApiRouteFetch', () => {
     expect(probes).toBe(2);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
+
+  it('retries a failed read once through a different route', async () => {
+    const applicationUrls: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith('/auth/v1/settings')) return new Response('{}', { status: 401 });
+      applicationUrls.push(url);
+      if (url.startsWith('https://api.')) throw new TypeError('primary route stalled');
+      return new Response('{}', { status: 200 });
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: ['https://direct-api.example.test'],
+      fetchImpl,
+    });
+
+    await expect(routedFetch('https://api.example.test/rest/v1/users')).resolves.toMatchObject({ status: 200 });
+    expect(applicationUrls).toEqual([
+      'https://api.example.test/rest/v1/users',
+      'https://direct-api.example.test/rest/v1/users',
+    ]);
+  });
+
+  it('recovers a lost refresh-token response without replaying other POST requests', async () => {
+    const applicationUrls: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith('/auth/v1/settings')) return new Response('{}', { status: 401 });
+      applicationUrls.push(url);
+      if (url.startsWith('https://api.')) throw new TypeError('refresh response lost');
+      return new Response('{}', { status: 200 });
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: ['https://direct-api.example.test'],
+      fetchImpl,
+    });
+
+    await expect(routedFetch('https://api.example.test/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST', body: '{}',
+    })).resolves.toMatchObject({ status: 200 });
+    expect(applicationUrls).toEqual([
+      'https://api.example.test/auth/v1/token?grant_type=refresh_token',
+      'https://direct-api.example.test/auth/v1/token?grant_type=refresh_token',
+    ]);
+  });
 });
 
 describe('createTimeoutFetch', () => {

@@ -24,9 +24,11 @@ const productionFallbackUrl = (() => {
 })();
 
 export const supabaseFallbackUrl = configuredFallbackUrl || productionFallbackUrl;
-export const supabaseFetch = createTimeoutFetch(12_000, createApiRouteFetch({
+const perRouteFetch = createTimeoutFetch(6_000);
+export const supabaseFetch = createTimeoutFetch(15_000, createApiRouteFetch({
   primaryBaseUrl: supabaseUrl,
   fallbackBaseUrls: supabaseFallbackUrl ? [supabaseFallbackUrl] : [],
+  fetchImpl: perRouteFetch,
 }));
 
 /** Personal Auth tokens identify callers; the anon key is only the public API key. */
