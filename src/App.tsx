@@ -13,12 +13,17 @@ import { BlindsProvider } from './context/BlindsContext';
 import { RubyBonusHost } from './components/RubyBonusHost';
 import { supabase } from './lib/supabase';
 import { clearLegacyIdentityCache } from './lib/session';
-import { isClubRole } from './lib/roles';
-import { resolveStartupView } from './lib/startupState';
-import { loadWithChunkRecovery } from './lib/chunkRecovery';
+import {
+  resolveStartupView,
+  STARTUP_TIMEOUT_MS,
+  startupStageLabel,
+  type StartupStage,
+} from './lib/startupState';
+import { forceFreshPageLoad, loadWithChunkRecovery } from './lib/chunkRecovery';
 import { ChunkLoadErrorBoundary } from './components/ChunkLoadErrorBoundary';
-import { withRequestDeadline } from './lib/network';
+import { requestErrorMessage, withRequestDeadline } from './lib/network';
 import { AdminRoute } from './components/AdminRoute';
+import { lookupSessionAccount, type MappedUser } from './lib/userApi';
 
 const HomePage = lazy(() => loadWithChunkRecovery(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage }))));
 const TournamentsPage = lazy(() => loadWithChunkRecovery(() => import('./pages/TournamentsPage').then((module) => ({ default: module.TournamentsPage }))));
@@ -45,12 +50,35 @@ const AdminLogsScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/a
 
 const NAV_HEIGHT = '5rem';
 const HIDE_NAV_PATH = /^\/(tournaments\/[^/]+|settings|shop|about|qa|achievements(?:\/[^/]+)?|admin\/.+)$/;
-const SPLASH_MS = 2000;
-
 const shellClass = 'w-full min-h-screen bg-black flex justify-center';
 const columnClass = 'relative w-full max-w-[480px] overflow-hidden shadow-2xl';
 
-function AppLayout() {
+function StartupScreenFallback({ deadlineAt }: { deadlineAt: number }) {
+  const [timedOut, setTimedOut] = useState(() => Date.now() >= deadlineAt);
+
+  useEffect(() => {
+    const remaining = Math.max(0, deadlineAt - Date.now());
+    setTimedOut(remaining === 0);
+    if (remaining === 0) return;
+    const timer = window.setTimeout(() => setTimedOut(true), remaining);
+    return () => window.clearTimeout(timer);
+  }, [deadlineAt]);
+
+  if (timedOut) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-[#0A0908]">
+        <FetchErrorCard
+          message="Экран не открылся за 10 секунд. Проверьте интернет и повторите загрузку."
+          onRetry={() => forceFreshPageLoad()}
+        />
+      </div>
+    );
+  }
+
+  return <SplashScreen label={startupStageLabel('screen')} />;
+}
+
+function AppLayout({ startupDeadlineAt }: { startupDeadlineAt: number }) {
   const { email } = useUser();
   const location = useLocation();
   const hideNav = HIDE_NAV_PATH.test(location.pathname);
@@ -79,7 +107,7 @@ function AppLayout() {
       >
         <div className="h-full">
           <ChunkLoadErrorBoundary>
-            <Suspense fallback={<SplashScreen />}>
+            <Suspense fallback={<StartupScreenFallback deadlineAt={startupDeadlineAt} />}>
               <Routes>
             <Route path="/"                  element={<HomePage />} />
             <Route path="/tournaments"       element={<TournamentsPage />} />
@@ -124,29 +152,29 @@ function AppLayout() {
   );
 }
 
-function SplashShell() {
+function SplashShell({ stage = 'application' }: { stage?: StartupStage }) {
   return (
     <div className={shellClass}>
       <div className={columnClass} style={{ height: '100dvh' }}>
-        <SplashScreen />
+        <SplashScreen label={startupStageLabel(stage)} />
       </div>
     </div>
   );
 }
 
 function AuthenticatedApp({
-  showSplash,
+  startupDeadlineAt,
 }: {
-  showSplash: boolean;
+  startupDeadlineAt: number;
 }) {
   const { account, isLoading, refreshAccount } = useUser();
   const startupView = resolveStartupView({
-    showSplash,
+    showSplash: false,
     isLoading,
     hasAccount: Boolean(account),
   });
   if (startupView === 'loading') {
-    return <SplashShell />;
+    return <SplashShell stage="account" />;
   }
 
   if (startupView === 'error') {
@@ -168,7 +196,7 @@ function AuthenticatedApp({
         <TournamentProvider>
           <FinanceProvider>
             <BlindsProvider>
-              <AppLayout />
+              <AppLayout startupDeadlineAt={startupDeadlineAt} />
             </BlindsProvider>
           </FinanceProvider>
         </TournamentProvider>
@@ -203,33 +231,48 @@ function bootTelegramWebApp() {
 export default function App() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showSplash, setShowSplash] = useState(false);
+  const [authenticatedAccount, setAuthenticatedAccount] = useState<MappedUser | null>(null);
   const [restoring, setRestoring] = useState(true);
-  const [restoreError, setRestoreError] = useState(false);
+  const [restoreError, setRestoreError] = useState('');
+  const [restoreStage, setRestoreStage] = useState<StartupStage>('session');
   const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [startupDeadlineAt, setStartupDeadlineAt] = useState(
+    () => Date.now() + STARTUP_TIMEOUT_MS,
+  );
 
   useEffect(() => {
     let cancelled = false;
     let signedOut = false;
+    let attemptActive = true;
+    setStartupDeadlineAt(Date.now() + STARTUP_TIMEOUT_MS);
     clearLegacyIdentityCache();
     setRestoring(true);
-    setRestoreError(false);
+    setRestoreError('');
+    setRestoreStage('session');
+    setAuthenticatedAccount(null);
     void (async () => {
       try {
-        const session = await withRequestDeadline(supabase.auth.getSession(), 15_000);
-        if (session.error) throw new Error('Session unavailable');
-        if (!session.data.session) return;
-        const { data, error } = await withRequestDeadline(
-          supabase.rpc('club_current_account'),
-          15_000,
-        );
-        if (error) throw new Error('Account unavailable');
-        if (!cancelled && !signedOut && data && typeof data.id === 'string' &&
-            typeof data.email === 'string' && isClubRole(data.role)) {
+        await withRequestDeadline((async () => {
+          const session = await supabase.auth.getSession();
+          if (session.error) throw new Error('Session unavailable');
+          if (!session.data.session || cancelled || signedOut || !attemptActive) return;
+
+          setRestoreStage('account');
+          const account = await lookupSessionAccount();
+          if (account.status === 'error') throw new Error(account.message);
+          if (account.status !== 'found' || cancelled || signedOut || !attemptActive) return;
+
+          setAuthenticatedAccount(account.user);
           setIsAuthenticated(true);
+        })(), STARTUP_TIMEOUT_MS);
+      } catch (error) {
+        attemptActive = false;
+        if (!cancelled) {
+          setRestoreError(requestErrorMessage(
+            error,
+            'Не удалось восстановить сессию. Проверьте связь и повторите попытку.',
+          ));
         }
-      } catch {
-        if (!cancelled) setRestoreError(true);
       } finally {
         if (!cancelled) setRestoring(false);
       }
@@ -239,43 +282,43 @@ export default function App() {
       // and bind/create the club profile. LoginScreen completes that operation.
       if (event === 'SIGNED_OUT') {
         signedOut = true;
+        setAuthenticatedAccount(null);
         setIsAuthenticated(false);
       }
     });
-    return () => { cancelled = true; data.subscription.unsubscribe(); };
+    return () => {
+      cancelled = true;
+      attemptActive = false;
+      data.subscription.unsubscribe();
+    };
   }, [restoreAttempt]);
 
   useEffect(() => {
     bootTelegramWebApp();
   }, []);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setShowSplash(false);
-      return;
-    }
-
-    setShowSplash(true);
-    const timer = setTimeout(() => setShowSplash(false), SPLASH_MS);
-    return () => clearTimeout(timer);
-  }, [isAuthenticated]);
-
-  const handleLogin = useCallback(() => {
+  const handleLogin = useCallback((account: MappedUser) => {
+    setAuthenticatedAccount(account);
+    setStartupDeadlineAt(Date.now() + STARTUP_TIMEOUT_MS);
     setIsAuthenticated(true);
     navigate('/', { replace: true });
   }, [navigate]);
 
   const handleAccountInvalid = () => {
     // UserProvider already ends the Auth session; avoid a second concurrent logout.
+    setAuthenticatedAccount(null);
     setIsAuthenticated(false);
     navigate('/', { replace: true });
   };
 
-  if (restoring) return <SplashShell />;
+  if (restoring) return <SplashShell stage={restoreStage} />;
   if (restoreError) return (
     <div className={shellClass}>
-      <FetchErrorCard message="Не удалось восстановить сессию. Проверьте связь и повторите попытку."
-        onRetry={() => setRestoreAttempt((value) => value + 1)} />
+      <FetchErrorCard message={restoreError}
+        onRetry={() => {
+          setStartupDeadlineAt(Date.now() + STARTUP_TIMEOUT_MS);
+          setRestoreAttempt((value) => value + 1);
+        }} />
     </div>
   );
 
@@ -290,8 +333,8 @@ export default function App() {
   }
 
   return (
-    <UserProvider onAccountInvalid={handleAccountInvalid}>
-      <AuthenticatedApp showSplash={showSplash} />
+    <UserProvider initialAccount={authenticatedAccount} onAccountInvalid={handleAccountInvalid}>
+      <AuthenticatedApp startupDeadlineAt={startupDeadlineAt} />
     </UserProvider>
   );
 }

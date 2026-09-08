@@ -5,6 +5,7 @@ import { ConsentRequiredError, loginOrRegisterUser } from '../lib/loginAccount';
 import { isUncertainNetworkError, requestErrorMessage } from '../lib/network';
 import { OtpApiError } from '../lib/otpApi';
 import { requestLoginCode, verifyLoginCode } from '../lib/loginOtp';
+import type { MappedUser } from '../lib/supabaseMap';
 import { LegalImageModal } from './LegalImageModal';
 import { BrandLogo } from './BrandLogo';
 
@@ -14,7 +15,7 @@ const CONSENT_TEXT =
   'Продолжая регистрацию, вы даете согласие на обработку персональных данных, получение информационных рассылок и использование локального хранилища.';
 
 interface Props {
-  onLogin: () => void;
+  onLogin: (account: MappedUser) => void;
 }
 
 type Step = 'consent' | 'email' | 'code';
@@ -81,14 +82,18 @@ function savePendingEmail(targetEmail: string, step: 'email' | 'consent') {
   localStorage.removeItem('temp_auth_expire');
 }
 
-async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: () => void) {
+async function completeLogin(
+  email: string,
+  agreementsAcceptedAt: string,
+  onLogin: (account: MappedUser) => void,
+) {
   const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
   if (!normalized) throw new Error('Не найден email для входа. Запросите код ещё раз.');
-  await loginOrRegisterUser(normalized, agreementsAcceptedAt || undefined);
+  const { user } = await loginOrRegisterUser(normalized, agreementsAcceptedAt || undefined);
   // Registration and its audit entry are atomic server operations.
   clearTempAuth();
   clearAgreementsAt();
-  onLogin();
+  onLogin(user);
 }
 
 function ConsentCopy({ onOpen }: { onOpen: (document: ClubLegalDocument) => void }) {

@@ -8,7 +8,10 @@ import { lookupSessionAccount } from './userApi';
 const user = { id: 'synthetic-profile', email: 'member@example.test', nickname: 'Test',
   role: 'admin', is_admin: true, ruby_balance: 1234 };
 beforeEach(() => vi.clearAllMocks());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 describe('server-authoritative profile binding', () => {
   it('passes only consent to the server, never identity or desired role', async () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'ready', is_new: false, user }, error: null });
@@ -31,6 +34,16 @@ describe('server-authoritative profile binding', () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'ready', user }, error: null });
     await expect(loginOrRegisterUser('other@example.test')).rejects.toThrow('подтвердить профиль');
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+  it('releases the login UI at the common startup deadline', async () => {
+    vi.useFakeTimers();
+    mocks.rpc.mockReturnValue(new Promise(() => undefined));
+    const result = loginOrRegisterUser(user.email);
+    const rejection = expect(result).rejects.toMatchObject({ name: 'RequestTimeoutError' });
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await rejection;
   });
   it('resolves the current account without reading a client-supplied ID or email', async () => {
     const getItem = vi.fn(() => 'forged-superadmin');

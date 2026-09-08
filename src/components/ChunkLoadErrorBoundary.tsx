@@ -23,9 +23,11 @@ export class ChunkLoadErrorBoundary extends Component<
   render() {
     if (!this.state.error) return this.props.children;
 
-    const message = isChunkLoadError(this.state.error)
-      ? 'Обновление сайта загрузилось не полностью. Повторите загрузку.'
-      : 'Не удалось открыть этот экран. Повторите загрузку.';
+    const message = this.state.error.name === 'RequestTimeoutError'
+      ? 'Экран загружается дольше 10 секунд. Проверьте интернет и повторите загрузку.'
+      : isChunkLoadError(this.state.error)
+        ? 'Обновление сайта загрузилось не полностью. Повторите загрузку.'
+        : 'Не удалось открыть этот экран. Повторите загрузку.';
 
     return (
       <div className="flex h-full items-center justify-center bg-[#0A0908]">

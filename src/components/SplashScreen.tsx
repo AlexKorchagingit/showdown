@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { asset } from '../lib/assets';
 
-export function SplashScreen() {
+export function SplashScreen({ label = 'Открываем приложение…' }: { label?: string }) {
   return (
     <motion.div
       className="absolute inset-0 z-[200] flex items-center justify-center"
@@ -36,6 +36,17 @@ export function SplashScreen() {
           image.src = fallback;
         }}
       />
+
+      <motion.p
+        className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+3rem)] left-6 right-6 z-10 text-center text-[13px] font-600 text-[#231A16]/75"
+        role="status"
+        aria-live="polite"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.25, duration: 0.3 }}
+      >
+        {label}
+      </motion.p>
 
       <style>{`
         @keyframes splashGrad {
