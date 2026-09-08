@@ -1,3 +1,5 @@
+import { safeLocalStorage } from '../lib/safeStorage';
+
 export type BlindLevel = {
   level: number;
   smallBlind: number;
@@ -431,7 +433,7 @@ function asMetaNumber(value: unknown, fallback: number): number {
 
 function readStore(): BlindStructure[] | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeLocalStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredPayload;
     if (!parsed || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.structures)) {
@@ -459,7 +461,7 @@ function writeStore(structures: BlindStructure[]) {
       updatedAt: cacheMeta.updatedAt,
       migrations: cacheMeta.migrations ?? [],
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
     console.warn('Could not persist blind structures locally', error);
   }
