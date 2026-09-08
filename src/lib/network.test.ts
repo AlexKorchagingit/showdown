@@ -43,6 +43,42 @@ describe('createApiRouteFetch', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it('does not let a slower successful probe overwrite the first reachable route', async () => {
+    let resolvePrimary!: (response: Response) => void;
+    let resolveFallback!: (response: Response) => void;
+    const fetchImpl = vi.fn((input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url === 'https://api.example.test/auth/v1/settings') {
+        return new Promise<Response>((resolve) => { resolvePrimary = resolve; });
+      }
+      if (url === 'https://direct-api.example.test/auth/v1/settings') {
+        return new Promise<Response>((resolve) => { resolveFallback = resolve; });
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: ['https://direct-api.example.test'],
+      fetchImpl,
+    });
+
+    const firstRequest = routedFetch('https://api.example.test/rest/v1/users');
+    resolveFallback(new Response('{}', { status: 401 }));
+    await firstRequest;
+
+    resolvePrimary(new Response('{}', { status: 401 }));
+    await Promise.resolve();
+    await routedFetch('https://api.example.test/rest/v1/shop_items');
+
+    const applicationUrls = fetchImpl.mock.calls
+      .map(([input]) => input.toString())
+      .filter((url) => !url.endsWith('/auth/v1/settings'));
+    expect(applicationUrls).toEqual([
+      'https://direct-api.example.test/rest/v1/users',
+      'https://direct-api.example.test/rest/v1/shop_items',
+    ]);
+  });
+
   it('does not replay a failed write on another route', async () => {
     let probes = 0;
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {

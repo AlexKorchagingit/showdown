@@ -141,6 +141,7 @@ export function createApiRouteFetch({
     const pendingSelection = new Promise<string>((resolve, reject) => {
       let failuresRemaining = routes.length;
       let lastError: unknown = new TypeError('No API route is reachable');
+      let settled = false;
 
       for (const route of routes) {
         probeFetch(`${route}${probePath}`, {
@@ -148,12 +149,21 @@ export function createApiRouteFetch({
           cache: 'no-store',
           headers: { Accept: 'application/json' },
         }).then(() => {
+          // Every probe keeps running after the promise resolves. Without this
+          // guard, a slower successful route can overwrite the actual winner
+          // and send later requests back through an unstable connection.
+          if (settled) return;
+          settled = true;
           selectedRoute = route;
           resolve(route);
         }).catch((error: unknown) => {
+          if (settled) return;
           lastError = error;
           failuresRemaining -= 1;
-          if (failuresRemaining === 0) reject(lastError);
+          if (failuresRemaining === 0) {
+            settled = true;
+            reject(lastError);
+          }
         });
       }
     });
