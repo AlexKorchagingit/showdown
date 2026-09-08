@@ -5,11 +5,20 @@ import { ConsentRequiredError, loginOrRegisterUser } from '../lib/loginAccount';
 import { isUncertainNetworkError, requestErrorMessage } from '../lib/network';
 import { OtpApiError } from '../lib/otpApi';
 import { requestLoginCode, verifyLoginCode } from '../lib/loginOtp';
+import {
+  clearAgreementsAt,
+  clearTempAuth,
+  readAgreementsAt,
+  readTempAuthStep,
+  readTempAuthValue,
+  savePendingEmail,
+  saveTempAuth,
+  writeAgreementsAt,
+} from '../lib/loginDraft';
 import { LegalImageModal } from './LegalImageModal';
 import { BrandLogo } from './BrandLogo';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const AGREEMENTS_KEY = 'temp_auth_agreements_at';
 const CONSENT_TEXT =
   'Продолжая регистрацию, вы даете согласие на обработку персональных данных, получение информационных рассылок и использование локального хранилища.';
 
@@ -18,68 +27,6 @@ interface Props {
 }
 
 type Step = 'consent' | 'email' | 'code';
-
-const TEMP_AUTH_KEYS = [
-  'temp_auth_email',
-  'temp_auth_code',
-  'temp_auth_step',
-  'temp_auth_expire',
-] as const;
-
-function readTempAuthValue(key: string): string {
-  try {
-    return localStorage.getItem(key) || '';
-  } catch {
-    return '';
-  }
-}
-
-function readTempAuthStep(): string | null {
-  const step = readTempAuthValue('temp_auth_step');
-  return step || null;
-}
-
-function readAgreementsAt(): string {
-  try {
-    return localStorage.getItem(AGREEMENTS_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function writeAgreementsAt(iso: string) {
-  try {
-    localStorage.setItem(AGREEMENTS_KEY, iso);
-  } catch {
-    /* ignore quota */
-  }
-}
-
-function clearAgreementsAt() {
-  try {
-    localStorage.removeItem(AGREEMENTS_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
-function clearTempAuth() {
-  TEMP_AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
-}
-
-function saveTempAuth(targetEmail: string, timerSeconds: number) {
-  localStorage.setItem('temp_auth_email', targetEmail.trim().toLowerCase());
-  localStorage.removeItem('temp_auth_code');
-  localStorage.setItem('temp_auth_step', 'code');
-  localStorage.setItem('temp_auth_expire', (Date.now() + timerSeconds * 1000).toString());
-}
-
-function savePendingEmail(targetEmail: string, step: 'email' | 'consent') {
-  localStorage.setItem('temp_auth_email', targetEmail.trim().toLowerCase());
-  localStorage.setItem('temp_auth_step', step);
-  localStorage.removeItem('temp_auth_code');
-  localStorage.removeItem('temp_auth_expire');
-}
 
 async function completeLogin(email: string, agreementsAcceptedAt: string, onLogin: () => void) {
   const normalized = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();

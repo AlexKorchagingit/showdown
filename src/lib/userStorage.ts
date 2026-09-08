@@ -4,6 +4,7 @@ import {
   FREE_ITEM_IDS,
   cosmeticsResetOwnedItems,
 } from '../data/shopItems';
+import { safeLocalStorage } from './safeStorage';
 
 export const SLOGAN_PLACEHOLDER = 'Ставлю вот такую стопку белых фишек';
 
@@ -46,29 +47,16 @@ export function userDataKey(email: string): string {
   return `userData_${normalizeEmail(email)}`;
 }
 
-/** Storage throws in private browsing modes, where losing data beats crashing. */
 function readKey(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+  return safeLocalStorage.getItem(key);
 }
 
 function writeKey(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    /* storage unavailable */
-  }
+  safeLocalStorage.setItem(key, value);
 }
 
 function removeKey(key: string) {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    /* storage unavailable */
-  }
+  safeLocalStorage.removeItem(key);
 }
 
 export function generateNickname(): string {
@@ -238,16 +226,11 @@ const USER_DATA_PREFIX = 'userData_';
 
 export function listStoredUsers(): Array<{ email: string; data: UserData }> {
   const rows: Array<{ email: string; data: UserData }> = [];
-  try {
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
-      if (!key?.startsWith(USER_DATA_PREFIX)) continue;
-      const email = key.slice(USER_DATA_PREFIX.length);
-      if (!email) continue;
-      rows.push({ email, data: loadUserData(email) });
-    }
-  } catch {
-    /* storage unavailable */
+  for (const key of safeLocalStorage.keys()) {
+    if (!key.startsWith(USER_DATA_PREFIX)) continue;
+    const email = key.slice(USER_DATA_PREFIX.length);
+    if (!email) continue;
+    rows.push({ email, data: loadUserData(email) });
   }
   return rows;
 }

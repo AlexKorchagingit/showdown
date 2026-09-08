@@ -3,6 +3,7 @@ import {
   type Achievement,
   type AchievementProgress,
 } from '../data/achievements';
+import { safeLocalStorage } from './safeStorage';
 
 const PROGRESS_PREFIX = 'achievements_';
 const EPOCH_KEY = 'showdown.achievementEpoch';
@@ -18,45 +19,22 @@ export function achievementsStorageKey(userKey: string): string {
 }
 
 function readKey(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+  return safeLocalStorage.getItem(key);
 }
 
 function writeKey(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    /* storage unavailable */
-  }
-}
-
-function removeKey(key: string) {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    /* storage unavailable */
-  }
+  safeLocalStorage.setItem(key, value);
 }
 
 /** One-time wipe of every `achievements_*` row on this device. */
 export function applyAchievementEpochReset(): void {
-  try {
-    const current = Number(localStorage.getItem(EPOCH_KEY) ?? '0');
-    if (Number.isFinite(current) && current >= ACHIEVEMENT_EPOCH) return;
+  const current = Number(safeLocalStorage.getItem(EPOCH_KEY) ?? '0');
+  if (Number.isFinite(current) && current >= ACHIEVEMENT_EPOCH) return;
 
-    const toRemove: string[] = [];
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
-      if (key?.startsWith(PROGRESS_PREFIX)) toRemove.push(key);
-    }
-    toRemove.forEach(removeKey);
-    localStorage.setItem(EPOCH_KEY, String(ACHIEVEMENT_EPOCH));
-  } catch {
-    /* storage unavailable */
-  }
+  safeLocalStorage.keys()
+    .filter((key) => key.startsWith(PROGRESS_PREFIX))
+    .forEach((key) => safeLocalStorage.removeItem(key));
+  safeLocalStorage.setItem(EPOCH_KEY, String(ACHIEVEMENT_EPOCH));
 }
 
 /** Empty progress for a new player — nothing pre-unlocked. */

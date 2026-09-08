@@ -3,6 +3,7 @@ import {
   type BlindStructure,
   type LevelListChange,
 } from '../data/blindStructures';
+import { safeLocalStorage } from './safeStorage';
 
 export const TIMER_SESSION_CACHE_KEY = 'showdown.timerSession';
 export const TIMER_SESSION_CHANNEL = 'showdown-timer-session';
@@ -215,7 +216,7 @@ export function freezeTimerSnapshot(
 
 export function readTimerSessionCache(): TimerSnapshot | null {
   try {
-    const raw = localStorage.getItem(TIMER_SESSION_CACHE_KEY);
+    const raw = safeLocalStorage.getItem(TIMER_SESSION_CACHE_KEY);
     return raw ? parseTimerSnapshot(raw) : null;
   } catch {
     return null;
@@ -224,7 +225,7 @@ export function readTimerSessionCache(): TimerSnapshot | null {
 
 export function writeTimerSessionCache(snapshot: TimerSnapshot): void {
   try {
-    localStorage.setItem(TIMER_SESSION_CACHE_KEY, JSON.stringify(snapshot));
+    safeLocalStorage.setItem(TIMER_SESSION_CACHE_KEY, JSON.stringify(snapshot));
   } catch {
     /* storage unavailable */
   }

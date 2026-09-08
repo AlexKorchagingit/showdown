@@ -1,5 +1,6 @@
 import { clearUserData } from './userStorage';
 import { supabase } from './supabase';
+import { safeLocalStorage } from './safeStorage';
 
 // These keys belonged to the pre-Supabase login. They are removed for
 // backwards compatibility, but are never read as identity or authentication.
@@ -14,25 +15,16 @@ export const TEMP_AUTH_KEYS = [
 ] as const;
 
 export function clearLegacyIdentityCache() {
-  try {
-    LEGACY_IDENTITY_KEYS.forEach((key) => localStorage.removeItem(key));
-  } catch {
-    /* ignore */
-  }
+  LEGACY_IDENTITY_KEYS.forEach((key) => safeLocalStorage.removeItem(key));
 }
 
 function clearTempAuthDraft() {
-  try {
-    TEMP_AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
-  } catch {
-    /* ignore */
-  }
+  TEMP_AUTH_KEYS.forEach((key) => safeLocalStorage.removeItem(key));
 }
 
 /** Wipe the local login so the next screen is registration, not an empty profile. */
 export async function endLocalSession(email?: string) {
-  let previousAuthValue: string | null = null;
-  try { previousAuthValue = localStorage.getItem('showdown.auth.session'); } catch { /* storage unavailable */ }
+  const previousAuthValue = safeLocalStorage.getItem('showdown.auth.session');
   const verifiedEmail = email?.trim().toLowerCase() ?? '';
   clearLegacyIdentityCache();
   clearTempAuthDraft();
@@ -43,10 +35,8 @@ export async function endLocalSession(email?: string) {
   } catch {
     // Logout still clears local credentials when the network is unavailable.
   } finally {
-    try {
-      if (localStorage.getItem('showdown.auth.session') === previousAuthValue) {
-        localStorage.removeItem('showdown.auth.session');
-      }
-    } catch { /* storage unavailable */ }
+    if (safeLocalStorage.getItem('showdown.auth.session') === previousAuthValue) {
+      safeLocalStorage.removeItem('showdown.auth.session');
+    }
   }
 }

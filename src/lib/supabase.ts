@@ -1,5 +1,6 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
 import { createApiRouteFetch, createTimeoutFetch } from './network';
+import { safeLocalStorage } from './safeStorage';
 
 export const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -38,6 +39,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   auth: {
     storageKey: 'showdown.auth.session',
+    storage: safeLocalStorage,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
