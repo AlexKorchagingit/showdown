@@ -1,10 +1,11 @@
 import { createOtpClient } from './otpApi';
-import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
+import { supabase, supabaseAnonKey, supabaseFetch, supabaseUrl } from './supabase';
 import { withRequestDeadline } from './network';
 
 const client = createOtpClient({
   baseUrl: supabaseUrl,
   anonKey: supabaseAnonKey,
+  fetchImpl: supabaseFetch,
   storeSession: async (tokens) => {
     const { error } = await withRequestDeadline(supabase.auth.setSession(tokens), 15_000);
     if (error) {

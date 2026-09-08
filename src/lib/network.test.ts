@@ -1,11 +1,74 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  createApiRouteFetch,
   createTimeoutFetch,
   isUncertainNetworkError,
   requestErrorMessage,
   RequestTimeoutError,
   withRequestDeadline,
 } from './network';
+
+describe('createApiRouteFetch', () => {
+  it('uses a reachable direct route when the proxied route is blocked', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url === 'https://api.example.test/auth/v1/settings') {
+        throw new TypeError('proxied route blocked');
+      }
+      return new Response('{}', { status: url.includes('/auth/v1/settings') ? 401 : 200 });
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: ['https://direct-api.example.test'],
+      fetchImpl,
+    });
+
+    await expect(routedFetch('https://api.example.test/rest/v1/users')).resolves.toMatchObject({ status: 200 });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://direct-api.example.test/rest/v1/users',
+      {},
+    );
+  });
+
+  it('keeps using the selected route without probing every endpoint', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fetchImpl,
+    });
+
+    await routedFetch('https://api.example.test/rest/v1/users');
+    await routedFetch('https://api.example.test/rest/v1/shop_items');
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not replay a failed write on another route', async () => {
+    let probes = 0;
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      if (input.toString().endsWith('/auth/v1/settings')) {
+        probes += 1;
+        if (input.toString().startsWith('https://api.')) return new Response('{}', { status: 401 });
+        return new Promise<Response>(() => undefined);
+      }
+      throw new TypeError('connection reset after sending');
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: ['https://direct-api.example.test'],
+      probeTimeoutMs: 10,
+      fetchImpl,
+    });
+
+    await expect(routedFetch('https://api.example.test/rest/v1/rpc/critical_command', {
+      method: 'POST',
+      body: '{}',
+    })).rejects.toThrow('connection reset after sending');
+
+    expect(probes).toBe(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+});
 
 describe('createTimeoutFetch', () => {
   afterEach(() => {

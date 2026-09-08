@@ -1,5 +1,13 @@
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+interface ApiRouteFetchOptions {
+  primaryBaseUrl: string;
+  fallbackBaseUrls?: readonly string[];
+  probePath?: string;
+  probeTimeoutMs?: number;
+  fetchImpl?: FetchLike;
+}
+
 export class RequestTimeoutError extends Error {
   constructor(timeoutMs: number) {
     super(`Request timed out after ${timeoutMs}ms`);
@@ -77,6 +85,104 @@ export function createTimeoutFetch(timeoutMs: number, fetchImpl: FetchLike = fet
     } finally {
       clearTimeout(timer);
       callerSignal?.removeEventListener('abort', abortFromCaller);
+    }
+  };
+}
+
+function normalizedBaseUrl(value: string): string {
+  return value.replace(/\/$/, '');
+}
+
+function rewriteRequestBase(
+  input: RequestInfo | URL,
+  primaryBaseUrl: string,
+  selectedBaseUrl: string,
+): RequestInfo | URL {
+  const originalUrl = typeof input === 'string'
+    ? input
+    : input instanceof URL
+      ? input.toString()
+      : input.url;
+
+  if (selectedBaseUrl === primaryBaseUrl ||
+      (originalUrl !== primaryBaseUrl && !originalUrl.startsWith(`${primaryBaseUrl}/`))) {
+    return input;
+  }
+
+  const rewrittenUrl = `${selectedBaseUrl}${originalUrl.slice(primaryBaseUrl.length)}`;
+  if (typeof input === 'string') return rewrittenUrl;
+  if (input instanceof URL) return new URL(rewrittenUrl);
+  return new Request(rewrittenUrl, input);
+}
+
+/**
+ * Select the first API route that is actually reachable from the current
+ * browser. The probe is a safe GET, so POST/RPC calls are still sent exactly
+ * once and cannot be duplicated while switching between routes.
+ */
+export function createApiRouteFetch({
+  primaryBaseUrl,
+  fallbackBaseUrls = [],
+  probePath = '/auth/v1/settings',
+  probeTimeoutMs = 3500,
+  fetchImpl = fetch,
+}: ApiRouteFetchOptions): FetchLike {
+  const primary = normalizedBaseUrl(primaryBaseUrl);
+  const routes = [primary, ...fallbackBaseUrls.map(normalizedBaseUrl)]
+    .filter((route, index, values) => route && values.indexOf(route) === index);
+  const probeFetch = createTimeoutFetch(probeTimeoutMs, fetchImpl);
+  let selectedRoute: string | undefined;
+  let selection: Promise<string> | undefined;
+
+  const selectReachableRoute = (): Promise<string> => {
+    if (selectedRoute) return Promise.resolve(selectedRoute);
+    if (selection) return selection;
+
+    const pendingSelection = new Promise<string>((resolve, reject) => {
+      let failuresRemaining = routes.length;
+      let lastError: unknown = new TypeError('No API route is reachable');
+
+      for (const route of routes) {
+        probeFetch(`${route}${probePath}`, {
+          method: 'GET',
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        }).then(() => {
+          selectedRoute = route;
+          resolve(route);
+        }).catch((error: unknown) => {
+          lastError = error;
+          failuresRemaining -= 1;
+          if (failuresRemaining === 0) reject(lastError);
+        });
+      }
+    });
+
+    selection = pendingSelection.then(
+      (route) => {
+        selection = undefined;
+        return route;
+      },
+      (error: unknown) => {
+        selection = undefined;
+        throw error;
+      },
+    );
+
+    return selection;
+  };
+
+  return async (input, init = {}) => {
+    const route = await selectReachableRoute();
+    const rewrittenInput = rewriteRequestBase(input, primary, route);
+
+    try {
+      return await fetchImpl(rewrittenInput, init);
+    } catch (error) {
+      // Recheck connectivity for the next request. Never automatically replay
+      // this request: a failed POST may already have reached the server.
+      selectedRoute = undefined;
+      throw error;
     }
   };
 }

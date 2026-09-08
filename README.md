@@ -54,7 +54,7 @@ cp .env.example .env.local   # fill VITE_SUPABASE_ANON_KEY
 npm run dev
 ```
 
-Frontend talks to `https://api.showdown-br.ru`. Static files are served from the domain root (`/logo-final.webp`, `/avatars/…`), not `/showdown/`.
+Frontend selects the first reachable API route between the Cloudflare-proxied `https://api.showdown-br.ru` and the direct `https://direct-api.showdown-br.ru` fallback. Static files are served from the domain root (`/logo-final.webp`, `/avatars/…`), not `/showdown/`.
 
 New accounts always receive the `user` role. Existing `is_admin` profiles are preserved as
 `admin` during the role migration; `superadmin` is assigned only through an explicit,
