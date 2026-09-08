@@ -31,6 +31,7 @@ import {
   decideBlindStructuresSync,
   makeBlindStructuresSnapshot,
   parseBlindStructuresSnapshot,
+  parseBlindStructuresStorageSnapshot,
   type BlindStructuresSnapshot,
 } from '../lib/blindStructuresSync';
 import {
@@ -481,24 +482,8 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
 
     const onStorage = (event: StorageEvent) => {
       if (event.key !== BLIND_STRUCTURES_STORAGE_KEY || !event.newValue) return;
-      try {
-        const parsed = JSON.parse(event.newValue) as {
-          structures?: unknown;
-          revision?: unknown;
-          writeId?: unknown;
-          updatedAt?: unknown;
-        };
-        const snapshot = parseBlindStructuresSnapshot({
-          v: 1,
-          writeId: typeof parsed.writeId === 'string' && parsed.writeId ? parsed.writeId : 'storage',
-          revision: parsed.revision,
-          updatedAt: parsed.updatedAt,
-          structures: parsed.structures,
-        });
-        if (snapshot) applyRemoteStructures(snapshot);
-      } catch {
-        /* ignore malformed cache */
-      }
+      const snapshot = parseBlindStructuresStorageSnapshot(event.newValue);
+      if (snapshot) applyRemoteStructures(snapshot);
     };
     window.addEventListener('storage', onStorage);
 

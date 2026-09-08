@@ -60,6 +60,34 @@ export function parseBlindStructuresSnapshot(raw: unknown): BlindStructuresSnaps
   };
 }
 
+/**
+ * Convert the local-storage payload into the same snapshot shape used by the
+ * server and BroadcastChannel transports. Keeping migration markers here is
+ * essential: dropping them makes every other tab repeat the migration and
+ * publish a new revision indefinitely.
+ */
+export function parseBlindStructuresStorageSnapshot(raw: string): BlindStructuresSnapshot | null {
+  try {
+    const parsed = JSON.parse(raw) as {
+      structures?: unknown;
+      revision?: unknown;
+      writeId?: unknown;
+      updatedAt?: unknown;
+      migrations?: unknown;
+    };
+    return parseBlindStructuresSnapshot({
+      v: 1,
+      writeId: typeof parsed.writeId === 'string' && parsed.writeId ? parsed.writeId : 'storage',
+      revision: parsed.revision,
+      updatedAt: parsed.updatedAt,
+      structures: parsed.structures,
+      migrations: parsed.migrations,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export function makeBlindStructuresSnapshot(
   structures: BlindStructure[],
   previousRevision: number,

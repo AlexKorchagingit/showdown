@@ -3,6 +3,7 @@ import { BLIND_STRUCTURES, type BlindStructure } from '../data/blindStructures';
 import {
   decideBlindStructuresSync,
   parseBlindStructuresSnapshot,
+  parseBlindStructuresStorageSnapshot,
 } from './blindStructuresSync';
 
 function customStructure(): BlindStructure {
@@ -43,6 +44,25 @@ describe('blind structures snapshot', () => {
       migrations: ['copy-triple-life-ladder-v1'],
     });
     expect(snapshot?.migrations).toEqual(['copy-triple-life-ladder-v1']);
+  });
+
+  it('preserves migration markers received through a storage event', () => {
+    const snapshot = parseBlindStructuresStorageSnapshot(JSON.stringify({
+      version: 'club-breaks-v4',
+      writeId: 'another-tab',
+      revision: 8,
+      updatedAt: 250,
+      structures: [BLIND_STRUCTURES[0]],
+      migrations: ['copy-triple-life-ladder-v1'],
+    }));
+
+    expect(snapshot?.writeId).toBe('another-tab');
+    expect(snapshot?.revision).toBe(8);
+    expect(snapshot?.migrations).toEqual(['copy-triple-life-ladder-v1']);
+  });
+
+  it('ignores malformed storage events', () => {
+    expect(parseBlindStructuresStorageSnapshot('{not-json')).toBeNull();
   });
 
   it('prefers a local custom copy over a first catalog seed from another device', () => {

@@ -1,6 +1,7 @@
 # Blind structures synchronization storm — 2026-09-08
 
-Status: diagnosed; remediation intentionally deferred.
+Status: client remediation implemented on `fix/bryansk-network-gateway`;
+production deployment pending canary validation.
 
 ## Observed production behaviour
 
@@ -30,12 +31,15 @@ Relevant code: `src/context/BlindsContext.tsx`, the blind-structures
 `onStorage` handler near line 482 and the `migrated.changed` publish path near
 line 454.
 
-## Planned remediation
+## Remediation
 
-1. Preserve and validate `migrations` in the storage-event snapshot.
-2. Ignore structurally identical snapshots and coalesce queued saves.
-3. Add a single-writer/tab-leader guard for background synchronization.
-4. Add a server-side rate/idempotency guard for the save RPC.
-5. Test two visible/hidden tabs and then repeat a long iPhone test without VPN.
+1. Implemented: preserve and validate `migrations` in the storage-event
+   snapshot through `parseBlindStructuresStorageSnapshot`.
+2. Implemented: add regression coverage for valid and malformed storage-event
+   payloads. With the migration marker intact, receiving tabs apply the newer
+   revision without publishing the migration again.
+3. Pending hardening: add a server-side rate/idempotency guard for the save RPC.
+4. Pending validation: test two visible/hidden admin tabs and then repeat a long
+   iPhone test without VPN.
 
 Until remediation, keep only one `showdown-br.ru` tab open per browser profile.
