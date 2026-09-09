@@ -4,7 +4,10 @@ import { safeLocalStorage } from './safeStorage';
 
 export const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const configuredFallbackUrl = (import.meta.env.VITE_SUPABASE_FALLBACK_URL || '').replace(/\/$/, '');
+const configuredFallbackUrls = (import.meta.env.VITE_SUPABASE_FALLBACK_URL || '')
+  .split(',')
+  .map((value) => value.trim().replace(/\/$/, ''))
+  .filter(Boolean);
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
@@ -14,21 +17,26 @@ if (supabaseUrl.includes(':8000')) {
   throw new Error('VITE_SUPABASE_URL must be https://api.showdown-br.ru without port 8000');
 }
 
-const productionFallbackUrl = (() => {
+const productionFallbackUrls = (() => {
   try {
     return new URL(supabaseUrl).hostname === 'api.showdown-br.ru'
-      ? 'https://direct-api.showdown-br.ru'
-      : '';
+      ? [
+          'https://direct-api.showdown-br.ru',
+          'https://direct-api.showdown-br.ru:8443',
+        ]
+      : [];
   } catch {
-    return '';
+    return [];
   }
 })();
 
-export const supabaseFallbackUrl = configuredFallbackUrl || productionFallbackUrl;
+export const supabaseFallbackUrls = [...configuredFallbackUrls, ...productionFallbackUrls]
+  .filter((url, index, urls) => url !== supabaseUrl && urls.indexOf(url) === index);
+export const supabaseFallbackUrl = supabaseFallbackUrls[0] || '';
 const perRouteFetch = createTimeoutFetch(6_000);
 export const supabaseFetch = createTimeoutFetch(15_000, createApiRouteFetch({
   primaryBaseUrl: supabaseUrl,
-  fallbackBaseUrls: supabaseFallbackUrl ? [supabaseFallbackUrl] : [],
+  fallbackBaseUrls: supabaseFallbackUrls,
   fetchImpl: perRouteFetch,
 }));
 

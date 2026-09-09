@@ -1,6 +1,7 @@
 # Intermittent production access — 2026-09-09
 
-Status: origin canary active; main frontend unchanged.
+Status: origin canary active; alternate TLS route under validation; main
+frontend unchanged.
 
 ## User impact
 
@@ -17,6 +18,16 @@ Status: origin canary active; main frontend unchanged.
 - During the audit, the Cloudflare API route completed in roughly 0.36–0.44 s.
 - The direct HTTPS route alternated between a TCP timeout and a successful
   response of roughly 0.14 s on the same client connection.
+- The failure was reproduced from the affected desktop connection: 30 of 30
+  direct HTTPS attempts timed out while the server observed only 19 incoming
+  SYN packets.
+- In a synchronized follow-up, all 10 client requests failed. The server saw
+  seven SYN packets and emitted seven corresponding SYN-ACK packets, but the
+  client completed no TCP handshake. This places the loss outside Nginx,
+  Supabase and the VM firewall, on the network path in front of the origin.
+- Minutes later, the main frontend, Cloudflare API and direct origin each
+  completed 10 of 10 requests. The rapid recovery confirms an intermittent
+  route rather than a deterministic application error.
 - Russian probes in Moscow and Saint Petersburg reached direct TCP/HTTPS.
 - A Vimpelcom (AS3216) probe in Moscow reached both direct and Cloudflare API
   routes. This rules out a permanent blanket Beeline block, but not intermittent
@@ -35,6 +46,18 @@ standard Supabase paths (`/auth/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`,
 gateway. The browser therefore uses one HTTPS origin for HTML, JavaScript and
 API calls.
 
+## Alternate TLS route
+
+The direct origin also listens on `https://direct-api.showdown-br.ru:8443` with
+the same certificate and proxy rules. The application route selector accepts
+multiple fallback origins and includes port 8443 after the Cloudflare and
+standard direct HTTPS routes. Safe reads and refresh-token recovery may switch
+routes; mutating commands are still never replayed automatically.
+
+This is a no-cost mitigation for port-specific disruption, not a substitute
+for a gateway on an independent network. It must be observed during a real 443
+failure before it can be considered effective.
+
 The production frontend at `https://showdown-br.ru/` and the Cloudflare-facing
 API host remain unchanged. The active canary release is stored below
 `/var/www/showdown-origin/releases`, and the Nginx configuration was backed up
@@ -50,8 +73,8 @@ preventing the cross-tab rewrite loop.
 
 ## Validation before any main-domain cutover
 
-1. Test the canary repeatedly from affected Bryansk mobile and home networks,
-   including at least one 10–15 minute authenticated session.
+1. Test both direct ports repeatedly from affected Bryansk mobile and home
+   networks, including at least one 10–15 minute authenticated session.
 2. Verify login, profile, shop, tournaments, timer and an admin read-only screen.
 3. Confirm normal request rate and database CPU during the test.
 4. Only then consider moving the main frontend to the origin. DNS must not be

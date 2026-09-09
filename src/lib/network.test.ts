@@ -30,6 +30,30 @@ describe('createApiRouteFetch', () => {
     );
   });
 
+  it('can select a third route when the standard HTTPS paths are blocked', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (!url.startsWith('https://direct-api.example.test:8443')) {
+        throw new TypeError('standard HTTPS route blocked');
+      }
+      return new Response('{}', { status: url.endsWith('/auth/v1/settings') ? 401 : 200 });
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: [
+        'https://direct-api.example.test',
+        'https://direct-api.example.test:8443',
+      ],
+      fetchImpl,
+    });
+
+    await expect(routedFetch('https://api.example.test/rest/v1/users')).resolves.toMatchObject({ status: 200 });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://direct-api.example.test:8443/rest/v1/users',
+      {},
+    );
+  });
+
   it('keeps using the selected route without probing every endpoint', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
     const routedFetch = createApiRouteFetch({
