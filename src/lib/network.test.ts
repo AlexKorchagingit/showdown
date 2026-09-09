@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createApiRouteFetch,
+  createClassifiedTimeoutFetch,
   createTimeoutFetch,
   isUncertainNetworkError,
   requestErrorMessage,
@@ -275,6 +276,56 @@ describe('createTimeoutFetch', () => {
 
     await rejection;
     expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+});
+
+describe('createClassifiedTimeoutFetch', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('keeps retryable snapshot reads on the short route deadline', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    let abortedAt = -1;
+    const fetchImpl = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        abortedAt = Date.now();
+        reject(init.signal?.reason);
+      });
+    }));
+    const classifiedFetch = createClassifiedTimeoutFetch(4000, 8000, fetchImpl);
+    const result = classifiedFetch('https://api.example.test/rest/v1/rpc/club_current_account', {
+      method: 'POST', body: '{}',
+    });
+    const rejection = expect(result).rejects.toBeInstanceOf(RequestTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(4000);
+
+    await rejection;
+    expect(abortedAt).toBe(4000);
+  });
+
+  it('allows a non-replayable session write eight seconds', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    let abortedAt = -1;
+    const fetchImpl = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        abortedAt = Date.now();
+        reject(init.signal?.reason);
+      });
+    }));
+    const classifiedFetch = createClassifiedTimeoutFetch(4000, 8000, fetchImpl);
+    const result = classifiedFetch('https://api.example.test/rest/v1/rpc/club_open_session', {
+      method: 'POST', body: '{}',
+    });
+    const rejection = expect(result).rejects.toBeInstanceOf(RequestTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(8000);
+
+    await rejection;
+    expect(abortedAt).toBe(8000);
   });
 });
 

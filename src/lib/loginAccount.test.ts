@@ -3,6 +3,7 @@ const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), upsert: vi.fn() }
 vi.mock('./supabase', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from }, logSupabaseError: vi.fn() }));
 vi.mock('./clubDirectory', () => ({ upsertClubDirectory: mocks.upsert, getClubDirectory: vi.fn(), setClubDirectory: vi.fn() }));
 import { ConsentRequiredError, loginOrRegisterUser } from './loginAccount';
+import { RequestTimeoutError } from './network';
 import { lookupSessionAccount } from './userApi';
 
 const user = { id: 'synthetic-profile', email: 'member@example.test', nickname: 'Test',
@@ -34,6 +35,17 @@ describe('server-authoritative profile binding', () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'ready', user }, error: null });
     await expect(loginOrRegisterUser('other@example.test')).rejects.toThrow('подтвердить профиль');
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+  it('recovers a lost open-session response with a read-only account lookup', async () => {
+    mocks.rpc
+      .mockRejectedValueOnce(new RequestTimeoutError(8000))
+      .mockResolvedValueOnce({ data: user, error: null });
+
+    const result = await loginOrRegisterUser(user.email);
+
+    expect(result).toMatchObject({ user: { id: user.id }, isNew: false });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'club_open_session', { p_accept_agreements: false });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'club_current_account');
   });
   it('releases the login UI at the common startup deadline', async () => {
     vi.useFakeTimers();

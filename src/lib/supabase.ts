@@ -1,5 +1,5 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
-import { createApiRouteFetch, createTimeoutFetch } from './network';
+import { createApiRouteFetch, createClassifiedTimeoutFetch, createTimeoutFetch } from './network';
 import { safeLocalStorage } from './safeStorage';
 
 export const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
@@ -36,8 +36,10 @@ export const supabaseFallbackUrls = fallbackDisabled
   : [...configuredFallbackUrls, ...productionFallbackUrls]
   .filter((url, index, urls) => url !== supabaseUrl && urls.indexOf(url) === index);
 export const supabaseFallbackUrl = supabaseFallbackUrls[0] || '';
-// Two independent routes must fit inside the 10-second startup budget.
-const perRouteFetch = createTimeoutFetch(4_000);
+// Safe reads fail over quickly enough to fit two independent routes inside the
+// startup budget. OTP/session writes are never replayed, so allow them to
+// survive the 4-5 second mobile response times observed in production.
+const perRouteFetch = createClassifiedTimeoutFetch(4_000, 8_000);
 export const supabaseFetch = createTimeoutFetch(15_000, createApiRouteFetch({
   primaryBaseUrl: supabaseUrl,
   fallbackBaseUrls: supabaseFallbackUrls,

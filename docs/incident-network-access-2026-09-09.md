@@ -231,6 +231,37 @@ from the affected phone is still required before any main-domain cutover.
 4. Only then consider moving the main frontend to the origin. DNS must not be
    changed until rollback and certificate handling are prepared.
 
+## Emergency DNS bypass and iOS 26 trace
+
+When the TimeWeb load balancer stopped accepting TCP/HTTPS connections,
+`api.showdown-br.ru` was changed from the unavailable balancer to the origin
+server. The record is DNS-only and resolves to the origin from Cloudflare,
+Google and Yandex resolvers. Ten direct-origin checks and a distributed
+twelve-node check, including a Russian node, returned HTTP 200. The old load
+balancer address remains the DNS rollback value.
+
+The 443 virtual host now serves the existing `api.showdown-br.ru` same-origin
+build directly. Nginx validated the candidate before reload and kept the
+previous configuration at
+`/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-direct-same-origin`.
+This changes neither Supabase data nor the production frontend hostname.
+
+The first two-device comparison separated the clients by their reported iOS
+versions. The iOS 18.7 client completed authentication and all startup reads;
+account, wallet, finance, tournaments, directory and participants returned
+HTTP 200. The iOS 26.6.1 client executed JavaScript and completed OTP
+verification, but stopped after the CORS preflight for `club_open_session`.
+No matching RPC POST followed. OTP request responses on that route took
+4.26--4.93 seconds at the origin, while the browser route deadline is four
+seconds. There were no Nginx or Supabase errors.
+
+This creates two actionable application changes without weakening server-side
+authorization: use a longer deadline for non-replayable OTP/session-opening
+writes while preserving the four-second failover deadline for safe reads, and
+recover an uncertain `club_open_session` response with the read-only
+`club_current_account` RPC instead of repeating the mutation. The raw timeout
+message should also be mapped to the existing localized network error.
+
 ## Rollback
 
 The pre-canary Nginx configuration is stored at:

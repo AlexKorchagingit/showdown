@@ -1,8 +1,8 @@
-# Production API plus an isolated same-origin frontend canary.
+# Production API plus isolated same-origin frontend canaries.
 #
-# The Cloudflare-facing API hostname remains an API-only reverse proxy.
-# The direct hostname serves the canary SPA at `/` and proxies the Supabase
-# protocols from their standard paths, so the browser uses one origin.
+# Both API hostnames serve the SPA and proxy the Supabase protocols from their
+# standard paths. This keeps mobile startup on one origin regardless of which
+# public network route is being tested.
 
 log_format showdown_safe '$remote_addr - $remote_user [$time_local] '
                          '"$request_method $uri $server_protocol" $status $body_bytes_sent '
@@ -14,6 +14,8 @@ server {
     server_name api.showdown-br.ru;
 
     access_log /var/log/nginx/showdown-api-origin.access.log showdown_safe;
+    root /var/www/showdown-timeweb/current;
+    index index.html;
     client_max_body_size 50m;
 
     # HTTP/3 was disabled at Cloudflare after reproducible QUIC failures on
@@ -27,7 +29,7 @@ server {
         return 200 "ok\n";
     }
 
-    location / {
+    location ~ ^/(?:auth|rest|realtime|storage|functions|graphql)/v1(?:/|$) {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -40,6 +42,28 @@ server {
         proxy_send_timeout 60s;
         proxy_read_timeout 3600s;
         proxy_buffering off;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        add_header Alt-Svc "clear" always;
+        try_files $uri =404;
+    }
+
+    location ^~ /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header Alt-Svc "clear" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        add_header Alt-Svc "clear" always;
+        try_files $uri /index.html;
+    }
+
+    location ~ /\. {
+        deny all;
     }
 
     ssl_certificate /etc/letsencrypt/live/api.showdown-br.ru/fullchain.pem;

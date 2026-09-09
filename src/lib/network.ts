@@ -90,6 +90,22 @@ export function createTimeoutFetch(timeoutMs: number, fetchImpl: FetchLike = fet
   };
 }
 
+/**
+ * Keep reads short enough to fail over during startup, but give writes which
+ * must never be replayed enough time to complete on a slow mobile route.
+ */
+export function createClassifiedTimeoutFetch(
+  retryableTimeoutMs: number,
+  nonReplayableTimeoutMs: number,
+  fetchImpl: FetchLike = fetch,
+): FetchLike {
+  const retryableFetch = createTimeoutFetch(retryableTimeoutMs, fetchImpl);
+  const nonReplayableFetch = createTimeoutFetch(nonReplayableTimeoutMs, fetchImpl);
+  return (input, init = {}) => (
+    isSafeToRetry(input, init) ? retryableFetch(input, init) : nonReplayableFetch(input, init)
+  );
+}
+
 function normalizedBaseUrl(value: string): string {
   return value.replace(/\/$/, '');
 }
@@ -131,7 +147,7 @@ function requestUrl(input: RequestInfo | URL): string {
   return typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 }
 
-function isSafeToRetry(input: RequestInfo | URL, init: RequestInit): boolean {
+export function isSafeToRetry(input: RequestInfo | URL, init: RequestInit): boolean {
   const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true;
   if (method !== 'POST') return false;
