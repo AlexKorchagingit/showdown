@@ -1,0 +1,13 @@
+tunnel: 4c9fc906-e34e-444d-a600-0483f958a4b1
+credentials-file: /etc/cloudflared/4c9fc906-e34e-444d-a600-0483f958a4b1.json
+edge-ip-version: "4"
+protocol: http2
+region: us
+
+ingress:
+  - hostname: brn-origin.showdown-br.ru
+    service: http://127.0.0.1:80
+    originRequest:
+      httpHostHeader: brn-origin.showdown-br.ru
+      connectTimeout: 5s
+  - service: http_status:404
