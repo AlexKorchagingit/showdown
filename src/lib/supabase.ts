@@ -22,7 +22,6 @@ const productionFallbackUrls = (() => {
     return new URL(supabaseUrl).hostname === 'api.showdown-br.ru'
       ? [
           'https://direct-api.showdown-br.ru',
-          'https://direct-api.showdown-br.ru:8443',
         ]
       : [];
   } catch {

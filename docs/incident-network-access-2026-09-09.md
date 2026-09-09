@@ -1,7 +1,7 @@
 # Intermittent production access — 2026-09-09
 
-Status: origin canary active; alternate TLS route under validation; main
-frontend unchanged.
+Status: origin canary active; alternate-port experiment retired; main frontend
+unchanged.
 
 ## User impact
 
@@ -46,17 +46,14 @@ standard Supabase paths (`/auth/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`,
 gateway. The browser therefore uses one HTTPS origin for HTML, JavaScript and
 API calls.
 
-## Alternate TLS route
+## Alternate-port experiment
 
-The direct origin also listens on `https://direct-api.showdown-br.ru:8443` with
-the same certificate and proxy rules. The application route selector accepts
-multiple fallback origins and includes port 8443 after the Cloudflare and
-standard direct HTTPS routes. Safe reads and refresh-token recovery may switch
-routes; mutating commands are still never replayed automatically.
-
-This is a no-cost mitigation for port-specific disruption, not a substitute
-for a gateway on an independent network. It must be observed during a real 443
-failure before it can be considered effective.
+TLS port 8443 was tested as a no-cost way to distinguish port-specific
+filtering from an IP-route failure. It initially completed 20 of 20 requests,
+then failed 10 of 10 in the same window where direct port 443 also failed 10 of
+10. On iPhone, HTML and the logo arrived before the route collapsed and the
+JavaScript bundle never reached the device, producing a blank page. The test
+listener was therefore retired and is not a production fallback.
 
 The production frontend at `https://showdown-br.ru/` and the Cloudflare-facing
 API host remain unchanged. The active canary release is stored below
@@ -73,8 +70,8 @@ preventing the cross-tab rewrite loop.
 
 ## Validation before any main-domain cutover
 
-1. Test both direct ports repeatedly from affected Bryansk mobile and home
-   networks, including at least one 10–15 minute authenticated session.
+1. Test the canary repeatedly from affected Bryansk mobile and home networks,
+   including at least one 10–15 minute authenticated session.
 2. Verify login, profile, shop, tournaments, timer and an admin read-only screen.
 3. Confirm normal request rate and database CPU during the test.
 4. Only then consider moving the main frontend to the origin. DNS must not be
