@@ -3,8 +3,9 @@
 Status: network-path failure confirmed; the production API now has two
 independent routes. `api.showdown-br.ru` uses the existing TimeWeb load
 balancer over HTTP/1.1, while `direct-api.showdown-br.ru` remains behind
-Cloudflare as the fallback. A deterministic client failover fix is validated
-on the incident branch but is not yet deployed to the main frontend.
+Cloudflare as the fallback. The deterministic client failover fix was deployed
+to the main frontend in commit `3015331`. Desktop access became stable, but the
+affected phone still intermittently loses the startup batch.
 
 ## User impact
 
@@ -165,9 +166,9 @@ timeout or transient gateway response. It does not repeat writes or
 administrative commands. The successful route remains sticky for subsequent
 requests, and late parallel responses cannot switch the application back to a
 route that has already failed. Per-route timeouts were reduced to four seconds
-so both paths fit within the startup limit. The change passes 205 automated
+so both paths fit within the startup limit. The change passed 205 automated
 tests, lint, the production build and the Android 8/9/10/modern WebView build
-matrix. Production remains unchanged until an approved deployment.
+matrix before its approved deployment in commit `3015331`.
 
 ## Application load finding
 
@@ -177,6 +178,50 @@ markers and made another admin tab publish the same migration again. The fix
 parses storage payloads through a tested adapter that preserves the markers,
 preventing the cross-tab rewrite loop.
 
+## Same-origin mobile canary refresh
+
+Post-deployment iPhone traffic confirmed that the new fallback is active: when
+the TimeWeb route does not finish, the Cloudflare route receives the safe reads
+about four seconds later. Nginx and Supabase then return complete HTTP 200
+response bodies for account, wallet, tournament, finance, directory and
+participants. The phone can still remain on incomplete UI despite those origin
+responses. This keeps the remaining fault on the browser-to-edge delivery path
+and makes the separate frontend/API origins, CORS preflights and parallel
+mobile connections the next variables to remove.
+
+The isolated same-origin canary at `https://direct-api.showdown-br.ru/` was
+refreshed from production commit `3015331`. Its build uses that same hostname
+for HTML, JavaScript, Auth, REST, Realtime, Storage, Functions and GraphQL, so
+normal application requests do not require cross-origin preflights. The change
+only replaced the canary's static files; the production frontend, API protocol
+paths, database and roles were not changed. The previous canary release remains
+available for an atomic symlink rollback.
+
+The affected phone could not open the refreshed Cloudflare canary at all, even
+though desktop checks completed normally. This rules out using Cloudflare as a
+universal delivery path for the affected mobile networks.
+
+## TimeWeb same-origin canary
+
+A second same-origin canary is served from `https://api.showdown-br.ru/` through
+the existing TimeWeb load balancer. The established Supabase protocol paths on
+that hostname are still proxied to the same local gateway; only the root and
+SPA routes now serve the isolated frontend build. This adds no new service or
+tariff.
+
+The canary build sets `api.showdown-br.ru` as its own Supabase origin and
+explicitly disables browser-side fallback to another hostname. That removes
+CORS preflights and keeps HTML, JavaScript, Auth, REST, Realtime, Storage,
+Functions and GraphQL on one browser connection path. The configuration has an
+atomic release symlink and an Nginx backup at
+`/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-timeweb-same-origin`.
+
+After activation, the root, JavaScript bundle, health endpoint, Auth settings,
+direct SPA routes for tournaments/rating/profile/shop, the production frontend
+and the Cloudflare fallback health endpoint all returned HTTP 200. The login
+screen also rendered without new console warnings or errors. A sustained test
+from the affected phone is still required before any main-domain cutover.
+
 ## Validation before any main-domain cutover
 
 1. Test the canary repeatedly from affected Bryansk mobile and home networks,
@@ -185,6 +230,37 @@ preventing the cross-tab rewrite loop.
 3. Confirm normal request rate and database CPU during the test.
 4. Only then consider moving the main frontend to the origin. DNS must not be
    changed until rollback and certificate handling are prepared.
+
+## Emergency DNS bypass and iOS 26 trace
+
+When the TimeWeb load balancer stopped accepting TCP/HTTPS connections,
+`api.showdown-br.ru` was changed from the unavailable balancer to the origin
+server. The record is DNS-only and resolves to the origin from Cloudflare,
+Google and Yandex resolvers. Ten direct-origin checks and a distributed
+twelve-node check, including a Russian node, returned HTTP 200. The old load
+balancer address remains the DNS rollback value.
+
+The 443 virtual host now serves the existing `api.showdown-br.ru` same-origin
+build directly. Nginx validated the candidate before reload and kept the
+previous configuration at
+`/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-direct-same-origin`.
+This changes neither Supabase data nor the production frontend hostname.
+
+The first two-device comparison separated the clients by their reported iOS
+versions. The iOS 18.7 client completed authentication and all startup reads;
+account, wallet, finance, tournaments, directory and participants returned
+HTTP 200. The iOS 26.6.1 client executed JavaScript and completed OTP
+verification, but stopped after the CORS preflight for `club_open_session`.
+No matching RPC POST followed. OTP request responses on that route took
+4.26--4.93 seconds at the origin, while the browser route deadline is four
+seconds. There were no Nginx or Supabase errors.
+
+This creates two actionable application changes without weakening server-side
+authorization: use a longer deadline for non-replayable OTP/session-opening
+writes while preserving the four-second failover deadline for safe reads, and
+recover an uncertain `club_open_session` response with the read-only
+`club_current_account` RPC instead of repeating the mutation. The raw timeout
+message should also be mapped to the existing localized network error.
 
 ## Rollback
 
