@@ -1,8 +1,10 @@
 # Intermittent production access — 2026-09-09
 
-Status: alternate-port experiment retired; Cloudflare HTTP/3 temporarily
-disabled for an ISP compatibility test; both production API hostnames now use
-the Cloudflare proxy; main frontend unchanged.
+Status: network-path failure confirmed; the production API now has two
+independent routes. `api.showdown-br.ru` uses the existing TimeWeb load
+balancer over HTTP/1.1, while `direct-api.showdown-br.ru` remains behind
+Cloudflare as the fallback. A deterministic client failover fix is validated
+on the incident branch but is not yet deployed to the main frontend.
 
 ## User impact
 
@@ -43,6 +45,9 @@ the Cloudflare proxy; main frontend unchanged.
 - The TimeWeb React application supports redirects but does not expose a true
   path-based upstream reverse proxy. Requests such as `/auth/v1/health` on the
   main frontend domain therefore return the SPA HTML rather than Supabase.
+- An existing TimeWeb load balancer was found in the account. Ten consecutive
+  API health requests through it completed in about 0.08–0.26 seconds without
+  creating or purchasing another service.
 
 ## Canary architecture
 
@@ -114,6 +119,55 @@ The production frontend at `https://showdown-br.ru/` remains unchanged. The
 canary release is still stored below `/var/www/showdown-origin/releases`, but
 its hostname now traverses Cloudflare instead of testing the raw ISP-to-origin
 path. The Nginx configuration was backed up before each activation.
+
+## Independent production routes
+
+The temporary state where both API hostnames traversed Cloudflare did not give
+the browser a real fallback. `api.showdown-br.ru` was therefore changed to a
+DNS-only A record for the existing TimeWeb load balancer at `185.84.162.192`.
+Its certificate and forwarding configuration were already valid for the API
+hostname. `direct-api.showdown-br.ru` remains proxied by Cloudflare, so the two
+hostnames now use different public network paths.
+
+Nginx exposes a side-effect-free `GET /__health` endpoint on both public API
+hostnames and on the TimeWeb listener. Ten consecutive requests through the
+TimeWeb route completed in about 0.09–0.15 seconds. Separate access logs were enabled
+for the origin, Cloudflare fallback and TimeWeb load-balancer listener, without
+recording authorization headers, request bodies or URL query parameters.
+
+Backups immediately before these Nginx changes are stored at:
+
+- `/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-health-probe`
+- `/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-split-logs`
+- `/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-safe-log`
+- `/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-health-all-routes`
+
+## Morning startup correlation and client fix
+
+Repeated morning tests showed an all-or-nothing pattern: a successful startup
+immediately loaded account, wallet, directory, tournaments and participants;
+an unsuccessful startup produced only the route probe and no corresponding
+application batch. Both independent routes delivered complete response bodies
+when selected successfully, and Supabase, Nginx and the VM remained healthy.
+
+The deployed client races lightweight `/auth/v1/settings` probes, permanently
+selects the first response, then gives each real request a six-second timeout.
+On failure it performs another probe before attempting the alternate route.
+That sequence can consume almost the entire ten-second startup budget, while a
+probe response does not prove that the larger authenticated request will pass.
+Concurrent startup requests can also overwrite the chosen route with a late
+response. This matches the observed result: once the first route decision is
+good, every screen works; when it is bad, every screen fails together.
+
+The incident branch changes safe reads and refresh recovery to use the TimeWeb
+route immediately and then try the Cloudflare route directly on a network
+timeout or transient gateway response. It does not repeat writes or
+administrative commands. The successful route remains sticky for subsequent
+requests, and late parallel responses cannot switch the application back to a
+route that has already failed. Per-route timeouts were reduced to four seconds
+so both paths fit within the startup limit. The change passes 205 automated
+tests, lint, the production build and the Android 8/9/10/modern WebView build
+matrix. Production remains unchanged until an approved deployment.
 
 ## Application load finding
 

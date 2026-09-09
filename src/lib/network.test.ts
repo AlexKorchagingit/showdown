@@ -12,10 +12,10 @@ describe('createApiRouteFetch', () => {
   it('uses a reachable direct route when the proxied route is blocked', async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
-      if (url === 'https://api.example.test/auth/v1/settings') {
+      if (url.startsWith('https://api.example.test')) {
         throw new TypeError('proxied route blocked');
       }
-      return new Response('{}', { status: url.includes('/auth/v1/settings') ? 401 : 200 });
+      return new Response('{}', { status: 200 });
     });
     const routedFetch = createApiRouteFetch({
       primaryBaseUrl: 'https://api.example.test',
@@ -54,7 +54,7 @@ describe('createApiRouteFetch', () => {
     );
   });
 
-  it('keeps using the selected route without probing every endpoint', async () => {
+  it('keeps using the selected route without probing endpoints', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
     const routedFetch = createApiRouteFetch({
       primaryBaseUrl: 'https://api.example.test',
@@ -64,19 +64,20 @@ describe('createApiRouteFetch', () => {
     await routedFetch('https://api.example.test/rest/v1/users');
     await routedFetch('https://api.example.test/rest/v1/shop_items');
 
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it('does not let a slower successful probe overwrite the first reachable route', async () => {
-    let resolvePrimary!: (response: Response) => void;
-    let resolveFallback!: (response: Response) => void;
+  it('does not let a late response overwrite the route which recovered the startup', async () => {
+    let resolveSlowPrimary!: (response: Response) => void;
+    let primaryCalls = 0;
     const fetchImpl = vi.fn((input: RequestInfo | URL) => {
       const url = input.toString();
-      if (url === 'https://api.example.test/auth/v1/settings') {
-        return new Promise<Response>((resolve) => { resolvePrimary = resolve; });
-      }
-      if (url === 'https://direct-api.example.test/auth/v1/settings') {
-        return new Promise<Response>((resolve) => { resolveFallback = resolve; });
+      if (url.startsWith('https://api.example.test')) {
+        primaryCalls += 1;
+        if (primaryCalls === 1) {
+          return new Promise<Response>((resolve) => { resolveSlowPrimary = resolve; });
+        }
+        return Promise.reject(new TypeError('primary route failed'));
       }
       return Promise.resolve(new Response('{}', { status: 200 }));
     });
@@ -86,20 +87,42 @@ describe('createApiRouteFetch', () => {
       fetchImpl,
     });
 
-    const firstRequest = routedFetch('https://api.example.test/rest/v1/users');
-    resolveFallback(new Response('{}', { status: 401 }));
-    await firstRequest;
-
-    resolvePrimary(new Response('{}', { status: 401 }));
-    await Promise.resolve();
+    const slowRequest = routedFetch('https://api.example.test/rest/v1/users');
     await routedFetch('https://api.example.test/rest/v1/shop_items');
+
+    resolveSlowPrimary(new Response('{}', { status: 200 }));
+    await slowRequest;
+    await routedFetch('https://api.example.test/rest/v1/tournaments');
 
     const applicationUrls = fetchImpl.mock.calls
       .map(([input]) => input.toString())
       .filter((url) => !url.endsWith('/auth/v1/settings'));
     expect(applicationUrls).toEqual([
-      'https://direct-api.example.test/rest/v1/users',
+      'https://api.example.test/rest/v1/users',
+      'https://api.example.test/rest/v1/shop_items',
       'https://direct-api.example.test/rest/v1/shop_items',
+      'https://direct-api.example.test/rest/v1/tournaments',
+    ]);
+  });
+
+  it('retries a transient proxy response through the other route', async () => {
+    const applicationUrls: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      applicationUrls.push(url);
+      if (url.startsWith('https://api.')) return new Response('', { status: 504 });
+      return new Response('{}', { status: 200 });
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: ['https://direct-api.example.test'],
+      fetchImpl,
+    });
+
+    await expect(routedFetch('https://api.example.test/rest/v1/users')).resolves.toMatchObject({ status: 200 });
+    expect(applicationUrls).toEqual([
+      'https://api.example.test/rest/v1/users',
+      'https://direct-api.example.test/rest/v1/users',
     ]);
   });
 
@@ -125,8 +148,31 @@ describe('createApiRouteFetch', () => {
       body: '{}',
     })).rejects.toThrow('connection reset after sending');
 
-    expect(probes).toBe(2);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(probes).toBe(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not replay a write when the proxy returns a transient status', async () => {
+    const applicationUrls: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith('/auth/v1/settings')) return new Response('{}', { status: 401 });
+      applicationUrls.push(url);
+      return new Response('', { status: 504 });
+    });
+    const routedFetch = createApiRouteFetch({
+      primaryBaseUrl: 'https://api.example.test',
+      fallbackBaseUrls: ['https://direct-api.example.test'],
+      fetchImpl,
+    });
+
+    await expect(routedFetch('https://api.example.test/rest/v1/rpc/critical_command', {
+      method: 'POST',
+      body: '{}',
+    })).resolves.toMatchObject({ status: 504 });
+    expect(applicationUrls).toEqual([
+      'https://api.example.test/rest/v1/rpc/critical_command',
+    ]);
   });
 
   it('retries a failed read once through a different route', async () => {

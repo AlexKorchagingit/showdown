@@ -32,10 +32,12 @@ const productionFallbackUrls = (() => {
 export const supabaseFallbackUrls = [...configuredFallbackUrls, ...productionFallbackUrls]
   .filter((url, index, urls) => url !== supabaseUrl && urls.indexOf(url) === index);
 export const supabaseFallbackUrl = supabaseFallbackUrls[0] || '';
-const perRouteFetch = createTimeoutFetch(6_000);
+// Two independent routes must fit inside the 10-second startup budget.
+const perRouteFetch = createTimeoutFetch(4_000);
 export const supabaseFetch = createTimeoutFetch(15_000, createApiRouteFetch({
   primaryBaseUrl: supabaseUrl,
   fallbackBaseUrls: supabaseFallbackUrls,
+  probeTimeoutMs: 2_000,
   fetchImpl: perRouteFetch,
 }));
 

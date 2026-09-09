@@ -146,6 +146,16 @@ function isSafeToRetry(input: RequestInfo | URL, init: RequestInit): boolean {
   }
 }
 
+function isTransientGatewayResponse(response: Response): boolean {
+  return response.status === 408 ||
+    response.status === 425 ||
+    response.status === 502 ||
+    response.status === 503 ||
+    response.status === 504 ||
+    (response.status >= 520 && response.status <= 527) ||
+    response.status === 530;
+}
+
 /**
  * Select the first API route that is actually reachable from the current
  * browser. The probe is a safe GET, so POST/RPC calls are still sent exactly
@@ -169,43 +179,37 @@ export function createApiRouteFetch({
 
   const routeIsCoolingDown = (route: string) => (failedUntil.get(route) ?? 0) > Date.now();
 
+  const orderedRoutes = () => {
+    const available = routes.filter((route) => !routeIsCoolingDown(route));
+    const candidates = available.length > 0 ? available : routes;
+    if (!selectedRoute || !candidates.includes(selectedRoute)) return candidates;
+    return [selectedRoute, ...candidates.filter((route) => route !== selectedRoute)];
+  };
+
   const selectReachableRoute = (): Promise<string> => {
     if (selectedRoute && !routeIsCoolingDown(selectedRoute)) return Promise.resolve(selectedRoute);
     selectedRoute = undefined;
     if (selection) return selection;
 
-    const availableRoutes = routes.filter((route) => !routeIsCoolingDown(route));
-    const candidates = availableRoutes.length > 0 ? availableRoutes : routes;
-
-    const pendingSelection = new Promise<string>((resolve, reject) => {
-      let failuresRemaining = candidates.length;
+    const pendingSelection = (async () => {
       let lastError: unknown = new TypeError('No API route is reachable');
-      let settled = false;
-
-      for (const route of candidates) {
-        probeFetch(`${route}${probePath}`, {
-          method: 'GET',
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        }).then(() => {
-          // Every probe keeps running after the promise resolves. Without this
-          // guard, a slower successful route can overwrite the actual winner
-          // and send later requests back through an unstable connection.
-          if (settled) return;
-          settled = true;
+      for (const route of orderedRoutes()) {
+        try {
+          await probeFetch(`${route}${probePath}`, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: { Accept: 'application/json' },
+          });
           selectedRoute = route;
-          resolve(route);
-        }).catch((error: unknown) => {
-          if (settled) return;
+          failedUntil.delete(route);
+          return route;
+        } catch (error) {
           lastError = error;
-          failuresRemaining -= 1;
-          if (failuresRemaining === 0) {
-            settled = true;
-            reject(lastError);
-          }
-        });
+          failedUntil.set(route, Date.now() + failureCooldownMs);
+        }
       }
-    });
+      throw lastError;
+    })();
 
     selection = pendingSelection.then(
       (route) => {
@@ -229,6 +233,12 @@ export function createApiRouteFetch({
     try {
       const response = await fetchImpl(rewriteRequestBase(input, primary, route), init);
       failedUntil.delete(route);
+      // Several startup reads run concurrently. Once one route has recovered,
+      // a late response from an older request must not switch the whole app
+      // back to another route which has already failed for its peers.
+      if (!selectedRoute || selectedRoute === route || routeIsCoolingDown(selectedRoute)) {
+        selectedRoute = route;
+      }
       return response;
     } catch (error) {
       failedUntil.set(route, Date.now() + failureCooldownMs);
@@ -238,21 +248,38 @@ export function createApiRouteFetch({
   };
 
   return async (input, init = {}) => {
-    const retryable = routes.length > 1 && isSafeToRetry(input, init);
-    const firstInput = input instanceof Request ? input.clone() : input;
-    const retryInput = retryable && input instanceof Request ? input.clone() : input;
-    const route = await selectReachableRoute();
+    const retryable = isSafeToRetry(input, init);
+    const requestForAttempt = () => input instanceof Request ? input.clone() : input;
+    // Reads and refresh-token recovery are safe to repeat. Send them directly
+    // through the preferred route so startup does not spend its budget on a
+    // probe which says nothing about whether the real request body will pass.
+    // Writes still require a successful probe and are never replayed.
+    const preferredRoutes = retryable ? orderedRoutes() : [await selectReachableRoute()];
+    const attemptRoutes = retryable
+      ? [...preferredRoutes, ...routes.filter((route) => !preferredRoutes.includes(route))]
+      : preferredRoutes;
+    let lastError: unknown;
+    let lastGatewayResponse: Response | undefined;
 
-    try {
-      return await fetchFromRoute(route, firstInput, init);
-    } catch (error) {
-      // Mutating calls are never replayed: the server may already have applied
-      // them. Reads and refresh-token exchange are safe to retry once through
-      // a different route; Supabase permits refresh-token reuse briefly for
-      // recovery from a lost response.
-      if (!retryable) throw error;
-      const retryRoute = await selectReachableRoute();
-      return await fetchFromRoute(retryRoute, retryInput, init);
+    for (const route of attemptRoutes) {
+      try {
+        const response = await fetchFromRoute(route, requestForAttempt(), init);
+        if (!retryable || !isTransientGatewayResponse(response)) return response;
+
+        lastGatewayResponse = response;
+        failedUntil.set(route, Date.now() + failureCooldownMs);
+        if (selectedRoute === route) selectedRoute = undefined;
+      } catch (error) {
+        // Mutating calls are never replayed: the server may already have
+        // applied them. Reads and refresh-token exchange can safely continue
+        // through each independent route. Supabase permits refresh-token reuse
+        // briefly for recovery from a lost response.
+        if (!retryable) throw error;
+        lastError = error;
+      }
     }
+
+    if (lastGatewayResponse) return lastGatewayResponse;
+    throw lastError ?? new TypeError('No API route is reachable');
   };
 }
