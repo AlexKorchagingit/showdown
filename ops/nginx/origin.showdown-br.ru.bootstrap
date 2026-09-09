@@ -1,0 +1,27 @@
+# Temporary HTTP-only virtual host used to obtain the first TLS certificate.
+# It is isolated from production and is replaced by origin.showdown-br.ru after
+# the certificate has been issued successfully.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name origin.showdown-br.ru;
+
+    access_log /var/log/nginx/showdown-origin-canary.access.log showdown_safe;
+
+    location = /__health {
+        default_type text/plain;
+        return 200 "bootstrap-ok\n";
+    }
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    location / {
+        default_type text/plain;
+        return 200 "SHOWDOWN origin canary is preparing TLS.\n";
+    }
+}
