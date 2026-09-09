@@ -1,0 +1,151 @@
+# Production API plus an isolated same-origin frontend canary.
+#
+# The Cloudflare-facing API hostname remains an API-only reverse proxy.
+# The direct hostname serves the canary SPA at `/` and proxies the Supabase
+# protocols from their standard paths, so the browser uses one origin.
+
+log_format showdown_safe '$remote_addr - $remote_user [$time_local] '
+                         '"$request_method $uri $server_protocol" $status $body_bytes_sent '
+                         '"$http_user_agent" rt=$request_time urt=$upstream_response_time';
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name api.showdown-br.ru;
+
+    access_log /var/log/nginx/showdown-api-origin.access.log showdown_safe;
+    client_max_body_size 50m;
+
+    # HTTP/3 was disabled at Cloudflare after reproducible QUIC failures on
+    # several mobile ISP paths. Clear the previously advertised alternative
+    # service immediately instead of waiting for Safari/WebView's cache to
+    # expire (the old advertisement was valid for 24 hours).
+    add_header Alt-Svc "clear" always;
+
+    location = /__health {
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+    }
+
+    ssl_certificate /etc/letsencrypt/live/api.showdown-br.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.showdown-br.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name direct-api.showdown-br.ru;
+
+    access_log /var/log/nginx/showdown-direct-api.access.log showdown_safe;
+    root /var/www/showdown-origin/current;
+    index index.html;
+    client_max_body_size 50m;
+
+    location = /__health {
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Supabase clients use these stable protocol roots. Keep them ahead of the
+    # SPA fallback so auth, data, storage, functions and realtime never receive
+    # index.html by mistake.
+    location ~ ^/(?:auth|rest|realtime|storage|functions|graphql)/v1(?:/|$) {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        try_files $uri =404;
+    }
+
+    location ^~ /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        # A route such as /tournaments also exists as an image directory in
+        # the bundle. Testing $uri/ therefore selects that directory and
+        # returns 403 instead of booting the SPA. Only real files bypass the
+        # index fallback.
+        try_files $uri /index.html;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+
+    ssl_certificate /etc/letsencrypt/live/api.showdown-br.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.showdown-br.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# Temporary compatibility path for the existing TimeWeb load balancer. Only
+# that balancer may reach Supabase through the old public port.
+server {
+    listen 147.45.138.92:8000;
+    server_name api.showdown-br.ru direct-api.showdown-br.ru;
+
+    access_log /var/log/nginx/showdown-timeweb-lb.access.log showdown_safe;
+    allow 185.84.162.192;
+    deny all;
+
+    client_max_body_size 50m;
+
+    location = /__health {
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.showdown-br.ru direct-api.showdown-br.ru;
+    return 301 https://$host$request_uri;
+}

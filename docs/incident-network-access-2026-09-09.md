@@ -3,8 +3,9 @@
 Status: network-path failure confirmed; the production API now has two
 independent routes. `api.showdown-br.ru` uses the existing TimeWeb load
 balancer over HTTP/1.1, while `direct-api.showdown-br.ru` remains behind
-Cloudflare as the fallback. A deterministic client failover fix is validated
-on the incident branch but is not yet deployed to the main frontend.
+Cloudflare as the fallback. The deterministic client failover fix was deployed
+to the main frontend in commit `3015331`. Desktop access became stable, but the
+affected phone still intermittently loses the startup batch.
 
 ## User impact
 
@@ -165,9 +166,9 @@ timeout or transient gateway response. It does not repeat writes or
 administrative commands. The successful route remains sticky for subsequent
 requests, and late parallel responses cannot switch the application back to a
 route that has already failed. Per-route timeouts were reduced to four seconds
-so both paths fit within the startup limit. The change passes 205 automated
+so both paths fit within the startup limit. The change passed 205 automated
 tests, lint, the production build and the Android 8/9/10/modern WebView build
-matrix. Production remains unchanged until an approved deployment.
+matrix before its approved deployment in commit `3015331`.
 
 ## Application load finding
 
@@ -176,6 +177,25 @@ application-level availability risk. A storage event dropped the migration
 markers and made another admin tab publish the same migration again. The fix
 parses storage payloads through a tested adapter that preserves the markers,
 preventing the cross-tab rewrite loop.
+
+## Same-origin mobile canary refresh
+
+Post-deployment iPhone traffic confirmed that the new fallback is active: when
+the TimeWeb route does not finish, the Cloudflare route receives the safe reads
+about four seconds later. Nginx and Supabase then return complete HTTP 200
+response bodies for account, wallet, tournament, finance, directory and
+participants. The phone can still remain on incomplete UI despite those origin
+responses. This keeps the remaining fault on the browser-to-edge delivery path
+and makes the separate frontend/API origins, CORS preflights and parallel
+mobile connections the next variables to remove.
+
+The isolated same-origin canary at `https://direct-api.showdown-br.ru/` was
+refreshed from production commit `3015331`. Its build uses that same hostname
+for HTML, JavaScript, Auth, REST, Realtime, Storage, Functions and GraphQL, so
+normal application requests do not require cross-origin preflights. The change
+only replaced the canary's static files; the production frontend, API protocol
+paths, database and roles were not changed. The previous canary release remains
+available for an atomic symlink rollback.
 
 ## Validation before any main-domain cutover
 
