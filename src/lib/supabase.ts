@@ -8,6 +8,7 @@ const configuredFallbackUrls = (import.meta.env.VITE_SUPABASE_FALLBACK_URL || ''
   .split(',')
   .map((value) => value.trim().replace(/\/$/, ''))
   .filter(Boolean);
+const fallbackDisabled = import.meta.env.VITE_SUPABASE_DISABLE_FALLBACK === 'true';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
@@ -18,6 +19,7 @@ if (supabaseUrl.includes(':8000')) {
 }
 
 const productionFallbackUrls = (() => {
+  if (fallbackDisabled) return [];
   try {
     return new URL(supabaseUrl).hostname === 'api.showdown-br.ru'
       ? [
@@ -29,7 +31,9 @@ const productionFallbackUrls = (() => {
   }
 })();
 
-export const supabaseFallbackUrls = [...configuredFallbackUrls, ...productionFallbackUrls]
+export const supabaseFallbackUrls = fallbackDisabled
+  ? []
+  : [...configuredFallbackUrls, ...productionFallbackUrls]
   .filter((url, index, urls) => url !== supabaseUrl && urls.indexOf(url) === index);
 export const supabaseFallbackUrl = supabaseFallbackUrls[0] || '';
 // Two independent routes must fit inside the 10-second startup budget.

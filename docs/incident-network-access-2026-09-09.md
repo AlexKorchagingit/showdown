@@ -197,6 +197,31 @@ only replaced the canary's static files; the production frontend, API protocol
 paths, database and roles were not changed. The previous canary release remains
 available for an atomic symlink rollback.
 
+The affected phone could not open the refreshed Cloudflare canary at all, even
+though desktop checks completed normally. This rules out using Cloudflare as a
+universal delivery path for the affected mobile networks.
+
+## TimeWeb same-origin canary
+
+A second same-origin canary is served from `https://api.showdown-br.ru/` through
+the existing TimeWeb load balancer. The established Supabase protocol paths on
+that hostname are still proxied to the same local gateway; only the root and
+SPA routes now serve the isolated frontend build. This adds no new service or
+tariff.
+
+The canary build sets `api.showdown-br.ru` as its own Supabase origin and
+explicitly disables browser-side fallback to another hostname. That removes
+CORS preflights and keeps HTML, JavaScript, Auth, REST, Realtime, Storage,
+Functions and GraphQL on one browser connection path. The configuration has an
+atomic release symlink and an Nginx backup at
+`/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-timeweb-same-origin`.
+
+After activation, the root, JavaScript bundle, health endpoint, Auth settings,
+direct SPA routes for tournaments/rating/profile/shop, the production frontend
+and the Cloudflare fallback health endpoint all returned HTTP 200. The login
+screen also rendered without new console warnings or errors. A sustained test
+from the affected phone is still required before any main-domain cutover.
+
 ## Validation before any main-domain cutover
 
 1. Test the canary repeatedly from affected Bryansk mobile and home networks,
