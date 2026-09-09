@@ -1,6 +1,7 @@
 # Intermittent production access — 2026-09-09
 
-Status: origin canary active; alternate-port experiment retired; main frontend
+Status: origin canary active; alternate-port experiment retired; Cloudflare
+HTTP/3 temporarily disabled for an ISP compatibility test; main frontend
 unchanged.
 
 ## User impact
@@ -28,6 +29,11 @@ unchanged.
 - Minutes later, the main frontend, Cloudflare API and direct origin each
   completed 10 of 10 requests. The rapid recovery confirms an intermittent
   route rather than a deterministic application error.
+- At 00:23–00:24 UTC, iPhone requests reproduced partial delivery: session
+  refresh and current-account calls returned 200, then only the CORS preflights
+  for wallet and finance reached Nginx. The corresponding POST requests never
+  arrived. At 00:32 UTC the same preflight-without-request pattern occurred in
+  desktop Edge. Nginx recorded no errors and every Supabase service was healthy.
 - Russian probes in Moscow and Saint Petersburg reached direct TCP/HTTPS.
 - A Vimpelcom (AS3216) probe in Moscow reached both direct and Cloudflare API
   routes. This rules out a permanent blanket Beeline block, but not intermittent
@@ -54,6 +60,22 @@ then failed 10 of 10 in the same window where direct port 443 also failed 10 of
 10. On iPhone, HTML and the logo arrived before the route collapsed and the
 JavaScript bundle never reached the device, producing a blank page. The test
 listener was therefore retired and is not a production fallback.
+
+## HTTP/3 compatibility test
+
+Cloudflare responses advertised `Alt-Svc: h3`, while the local curl build (which
+supports HTTP/1.1 but not HTTP/2 or HTTP/3) completed requests that Edge and the
+iPhone WebView intermittently lost. Cloudflare documents this diagnostic for
+ISP- or network-specific failures and recommends temporarily disabling HTTP/3
+to isolate QUIC handling:
+
+https://developers.cloudflare.com/ssl/troubleshooting/err-ssl-protocol-error/
+
+HTTP/3 was disabled for the zone at 00:34 UTC. Five subsequent API responses
+completed successfully and no longer contained an `Alt-Svc` header. HTTP/2,
+TLS and WebSockets remain enabled. The change is reversible and must be judged
+from affected Bryansk networks, including a sustained session rather than a
+single page load.
 
 The production frontend at `https://showdown-br.ru/` and the Cloudflare-facing
 API host remain unchanged. The active canary release is stored below
