@@ -1,8 +1,8 @@
 # Intermittent production access — 2026-09-09
 
-Status: origin canary active; alternate-port experiment retired; Cloudflare
-HTTP/3 temporarily disabled for an ISP compatibility test; main frontend
-unchanged.
+Status: alternate-port experiment retired; Cloudflare HTTP/3 temporarily
+disabled for an ISP compatibility test; both production API hostnames now use
+the Cloudflare proxy; main frontend unchanged.
 
 ## User impact
 
@@ -77,10 +77,43 @@ TLS and WebSockets remain enabled. The change is reversible and must be judged
 from affected Bryansk networks, including a sustained session rather than a
 single page load.
 
-The production frontend at `https://showdown-br.ru/` and the Cloudflare-facing
-API host remain unchanged. The active canary release is stored below
-`/var/www/showdown-origin/releases`, and the Nginx configuration was backed up
-before activation.
+The desktop connection became stable after this change. Fresh iPhone traffic
+at 00:41–00:49 UTC also reached Nginx: session/account, wallet, tournament,
+finance, directory and participant requests returned HTTP 200, and Realtime
+connections upgraded with HTTP 101. Some groups still arrived several seconds
+later or only after the UI retried, so the phone result was not yet considered
+stable.
+
+An `Alt-Svc: clear` response was added at the origin and as a scoped Cloudflare
+response-header rule for `api.showdown-br.ru`. Cloudflare accepted the rule but
+did not expose the header in external HTTP/1.1 responses, so this mechanism is
+not relied on as the fix.
+
+## Direct-route retirement
+
+The deployed frontend still races `api.showdown-br.ru` against
+`direct-api.showdown-br.ru` and retains the first probe that responds. This
+could move an otherwise healthy mobile session from Cloudflare back to the
+intermittent origin route. At 00:55 UTC both the A and AAAA DNS records for
+`direct-api.showdown-br.ru` were changed from DNS-only to proxied. No frontend,
+database or Supabase configuration changed.
+
+After propagation, both advertised Cloudflare IPv4 addresses completed five
+of five diagnostic HTTPS requests each in 0.33–0.58 seconds. The previous
+origin address may remain in client and resolver caches for its old TTL; tests
+should therefore use a fresh network session or wait for the cache to expire.
+
+At 00:59:50 UTC, after the DNS change, a mobile client completed the full
+startup batch: account, finance, wallet, directory and tournament RPCs plus the
+participant query all returned HTTP 200 in the same second. Realtime upgraded
+successfully with HTTP 101 nine seconds later. This is the first fully delivered
+mobile startup batch observed after the route change; a sustained device test
+is still required before declaring the incident closed.
+
+The production frontend at `https://showdown-br.ru/` remains unchanged. The
+canary release is still stored below `/var/www/showdown-origin/releases`, but
+its hostname now traverses Cloudflare instead of testing the raw ISP-to-origin
+path. The Nginx configuration was backed up before each activation.
 
 ## Application load finding
 
@@ -105,5 +138,13 @@ The pre-canary Nginx configuration is stored at:
 
 `/etc/nginx/sites-available/api.showdown-br.ru.bak-20260908-2305-origin-canary`
 
+The configuration immediately before the origin `Alt-Svc: clear` header is:
+
+`/etc/nginx/sites-available/api.showdown-br.ru.bak-20260909-altsvc-clear`
+
 Restoring that file over the active virtual host, validating with `nginx -t`,
 and reloading Nginx returns `direct-api.showdown-br.ru` to API-only behavior.
+To restore the raw-origin network experiment, both the A and AAAA
+`direct-api.showdown-br.ru` records must also be changed from proxied to
+DNS-only in Cloudflare. That rollback reintroduces the confirmed ISP-path risk
+and should not be used for production clients.
