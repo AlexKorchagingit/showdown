@@ -24,7 +24,8 @@ for command_name in corepack curl flock git node tar; do
   fi
 done
 
-install -d -m 0755 "${state_root}" "${work_root}" "${releases_root}"
+install -d -m 0755 "${state_root}" "${work_root}"
+mkdir -p "${releases_root}"
 
 exec 9>"${lock_file}"
 if ! flock -n 9; then
