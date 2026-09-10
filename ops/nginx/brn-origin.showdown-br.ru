@@ -16,7 +16,7 @@ map $http_x_forwarded_proto $showdown_brn_proto {
 
 server {
     listen 80;
-    server_name brn-origin.showdown-br.ru 10.102.2.22;
+    server_name brn-origin.showdown-br.ru showdown-br.ru www.showdown-br.ru 10.102.2.22;
 
     access_log /var/log/nginx/showdown-brn.access.log;
     error_log /var/log/nginx/showdown-brn.error.log warn;

@@ -89,3 +89,50 @@ production server is independent of this rollback.
 The Cloudflare connector can be re-enabled with `systemctl enable --now
 cloudflared`. It is not part of production traffic while the test hostname is
 unused.
+
+## Production-domain cutover prerequisite (2026-09-10)
+
+The isolated clone passed HTTPS, OTP and application-function tests through
+`brn-origin.showdown-br.ru`. A final production database snapshot was restored
+on the Bryansk server and its control counts and application roles matched the
+source. The main-domain frontend was built as a separate, inactive release at
+`/var/www/showdown-brn/releases/20260910-main-cutover` with
+`https://showdown-br.ru` as its only API origin.
+
+The managed public forwarding rule is not yet bound to the main host: pre-DNS
+`--resolve` checks return HTTP 404 and a certificate-name mismatch for
+`showdown-br.ru`/`www.showdown-br.ru`. In the gateway control plane, bind both
+main names to the same forwarding destination already used by the canary:
+`10.102.2.22:80`. The gateway terminates TLS; the virtual machine intentionally
+listens on HTTP port 80 only. Do not change DNS until strict HTTPS `--resolve`
+health checks pass for both main names.
+
+Because production was resumed after this blocked cutover attempt, take and
+restore one fresh final database snapshot immediately before the eventual DNS
+switch. Do not reuse the 2026-09-10 14:46 snapshot as the final source of truth.
+
+## Production cutover completed (2026-09-10 17:15 MSK)
+
+A fresh final snapshot was taken after stopping the old external Supabase
+services and restored on the Bryansk server. The post-restore controls matched
+the source: 27 Auth users, 66 profiles, 16 tournaments, 186 participants, 41
+transactions, 897 log rows, two administrators, one SuperAdmin and 63 regular
+users. All eleven target containers reported healthy.
+
+The active frontend link now points to
+`/var/www/showdown-brn/releases/20260910-main-cutover`. Auth uses
+`https://showdown-br.ru` as its site URL while retaining the canary hostname as
+an allowed recovery redirect. The authoritative, Cloudflare-managed DNS-only A
+records for the apex and `www` were changed from `178.209.127.53` to the managed
+gateway at `109.194.11.169` with a 300-second TTL.
+
+Strict HTTPS checks passed for the apex and `www`; the SPA, all five startup
+assets and Auth health endpoint returned HTTP 200 through the new gateway. The
+served bundle contains the main same-origin API URL and no references to
+`brn-origin.showdown-br.ru` or `direct-api.showdown-br.ru`.
+
+The old server retains its healthy database container and protected final
+backup, but all externally reachable Supabase services remain stopped to avoid
+split-brain writes. Do not start those services unless performing a controlled
+rollback. Temporary unprotected database archives were removed from the target
+host and container after the protected backups were verified.
