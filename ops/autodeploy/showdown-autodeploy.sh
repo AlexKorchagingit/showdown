@@ -34,10 +34,16 @@ if ! flock -n 9; then
 fi
 
 if [[ ! -d "${repository_dir}" ]]; then
-  git clone --mirror "${repository_url}" "${repository_dir}"
+  git init --quiet --bare "${repository_dir}"
+  git --git-dir="${repository_dir}" remote add origin "${repository_url}"
 fi
 
-git --git-dir="${repository_dir}" fetch --quiet --prune origin \
+if [[ "$(git --git-dir="${repository_dir}" rev-parse --is-bare-repository)" != "true" ]]; then
+  echo "Deployment repository state is invalid: ${repository_dir}" >&2
+  exit 1
+fi
+
+git --git-dir="${repository_dir}" fetch --quiet --prune --depth=1 --no-tags origin \
   '+refs/heads/main:refs/remotes/origin/main'
 
 commit="$(git --git-dir="${repository_dir}" rev-parse \

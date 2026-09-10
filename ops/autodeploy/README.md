@@ -17,7 +17,8 @@ including the Supabase anon key, but must never be committed. The file mode is
 `0640` and its group is `showdown-deploy`.
 
 The host uses Ubuntu's Node.js 22 package and Corepack with npm 11.6.2 pinned
-in the deployment script. No third-party package repository is installed.
+in the deployment script. Git fetches only the current `main` revision with a
+shallow history. No third-party package repository is installed.
 
 Useful operational commands:
 
