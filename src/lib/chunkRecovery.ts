@@ -1,4 +1,5 @@
 import { RequestTimeoutError, withRequestDeadline } from './network';
+import { safeSessionStorage } from './safeStorage';
 import { STARTUP_TIMEOUT_MS } from './startupState';
 
 export const CHUNK_RECOVERY_STORAGE_KEY = 'showdown:recovered-build';
@@ -35,7 +36,7 @@ function browserEnvironment(): ChunkRecoveryEnvironment | null {
   if (typeof window === 'undefined') return null;
   return {
     href: window.location.href,
-    storage: window.sessionStorage,
+    storage: safeSessionStorage,
     replace: (url) => window.location.replace(url),
   };
 }

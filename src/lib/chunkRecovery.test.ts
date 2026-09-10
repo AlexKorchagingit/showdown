@@ -129,6 +129,26 @@ describe('chunk recovery', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it('loads the first screen when an iOS WebView blocks sessionStorage access', async () => {
+    const blockedWindow = {
+      location: {
+        href: 'https://showdown-br.ru/',
+        replace: vi.fn(),
+      },
+    };
+    Object.defineProperty(blockedWindow, 'sessionStorage', {
+      get: () => {
+        throw new DOMException('Access denied', 'SecurityError');
+      },
+    });
+    vi.stubGlobal('window', blockedWindow);
+
+    await expect(loadWithChunkRecovery(
+      async () => ({ default: 'home-screen' }),
+      'ios-private-webview',
+    )).resolves.toEqual({ default: 'home-screen' });
+  });
+
   it('rethrows an unrelated lazy screen error', async () => {
     const { environment, replace } = createEnvironment();
     const error = new Error('Application render failed');

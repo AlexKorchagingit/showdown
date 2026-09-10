@@ -105,3 +105,13 @@ export const safeLocalStorage = createSafeStorage(() => {
   if (typeof globalThis === 'undefined') return null;
   return globalThis.localStorage;
 });
+
+/**
+ * Safari private mode and embedded iOS WebViews may throw while merely reading
+ * the sessionStorage property. Keep boot-time chunk recovery independent from
+ * that browser capability, just like Auth is independent from localStorage.
+ */
+export const safeSessionStorage = createSafeStorage(() => {
+  if (typeof globalThis === 'undefined') return null;
+  return globalThis.sessionStorage;
+});

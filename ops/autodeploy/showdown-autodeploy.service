@@ -1,0 +1,30 @@
+[Unit]
+Description=Build and atomically deploy Showdown main branch
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=showdown-deploy
+Group=showdown-deploy
+EnvironmentFile=/etc/showdown-autodeploy.env
+ExecStart=/opt/showdown-autodeploy/showdown-autodeploy.sh
+TimeoutStartSec=20min
+UMask=0022
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/opt/showdown-autodeploy/state /var/www/showdown-brn
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+SystemCallArchitectures=native
