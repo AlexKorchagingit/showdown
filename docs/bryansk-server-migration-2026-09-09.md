@@ -136,3 +136,18 @@ backup, but all externally reachable Supabase services remain stopped to avoid
 split-brain writes. Do not start those services unless performing a controlled
 rollback. Temporary unprotected database archives were removed from the target
 host and container after the protected backups were verified.
+
+## Automatic frontend deployment
+
+Production now uses a pull-based systemd timer. Every two minutes, an
+unprivileged `showdown-deploy` account checks the public GitHub `main` branch.
+When its commit changes, the server performs a clean dependency install and
+production build in an isolated directory, then switches the frontend release
+symlink atomically. A failed build never changes the live release; a failed
+local health check restores the previous symlink.
+
+The server has no GitHub write credential or deployment private key. Frontend
+build variables are stored only in the root-managed
+`/etc/showdown-autodeploy.env`, outside the repository. Older release
+directories are intentionally retained for controlled rollback. Installation
+details and operational commands are documented in `ops/autodeploy/README.md`.

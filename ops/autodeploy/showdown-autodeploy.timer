@@ -1,0 +1,12 @@
+[Unit]
+Description=Check Showdown main branch for a new release
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+RandomizedDelaySec=15s
+Persistent=true
+Unit=showdown-autodeploy.service
+
+[Install]
+WantedBy=timers.target
