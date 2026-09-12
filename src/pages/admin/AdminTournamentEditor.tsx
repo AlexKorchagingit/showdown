@@ -30,6 +30,7 @@ import {
 } from '../../lib/guestPlayer';
 import { sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
 import { isArrivedPlayer } from '../../lib/tournamentArrival';
+import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
 
 const CARD_STYLE = {
   background: '#2A211D',
@@ -424,16 +425,21 @@ function Editor({ tournament }: { tournament: Tournament }) {
       return;
     }
     const seasonById = seasonPointsByUserId(clubUsers, tournaments);
-    const nextParticipants = [
-      ...tournament.participants,
-      {
-        id,
-        nickname: nickname.trim(),
-        rating: guest ? 0 : (seasonById.get(id) ?? 0),
-        userId: guest ? null : id,
-        arrived: false,
-      },
-    ];
+    // Bust-out places follow the cashier field size, so a late entry re-opens
+    // the bottom place as soon as the new seat is checked in.
+    const nextParticipants = alignBustOutPlaces(
+      [
+        ...tournament.participants,
+        {
+          id,
+          nickname: nickname.trim(),
+          rating: guest ? 0 : (seasonById.get(id) ?? 0),
+          userId: guest ? null : id,
+          arrived: false,
+        },
+      ],
+      tournament,
+    );
     void patch({
       participants: nextParticipants,
       ...(nextParticipants.length > tournament.totalSeats
@@ -480,14 +486,20 @@ function Editor({ tournament }: { tournament: Tournament }) {
       return;
     }
     void patch({
-      participants: tournament.participants.map((p) =>
-        p.id === id ? { ...p, arrived: !arrived } : p,
+      participants: alignBustOutPlaces(
+        tournament.participants.map((p) => (p.id === id ? { ...p, arrived: !arrived } : p)),
+        tournament,
       ),
     });
   };
 
   const removeParticipant = (id: string) => {
-    patch({ participants: tournament.participants.filter((p) => p.id !== id) });
+    patch({
+      participants: alignBustOutPlaces(
+        tournament.participants.filter((p) => p.id !== id),
+        tournament,
+      ),
+    });
   };
 
   const handleCopy = async (includeParticipants: boolean) => {
