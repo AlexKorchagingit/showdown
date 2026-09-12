@@ -1,4 +1,8 @@
-import type { Transaction } from '../types/finance';
+import { TRANSACTION_TYPE_LABEL, type Transaction } from '../types/finance';
+
+function rub(amount: number): string {
+  return `${amount.toLocaleString('ru-RU')} ₽`;
+}
 
 export function isActiveTransaction(tx: Transaction): boolean {
   return !tx.voidedAt;
@@ -26,8 +30,31 @@ export function reconcileTransactionSnapshot(previous: Transaction[], incoming: 
   return incoming.map((row) => reconcile(rows.get(row.id),row));
 }
 
+function voidLabel(tx: Transaction): string {
+  return tx.type === 'ticket' ? 'билет' : `счёт на ${rub(tx.amount)}`;
+}
+
+/**
+ * Outside the tournament cashier a debt is settled from a list of look-alike
+ * rows, so a stray tap must not reach the database.
+ */
+export function settleDebtConfirm(tx: Transaction, playerName: string): string {
+  return (
+    `Вы уверены, что хотите погасить долг ${playerName}: ` +
+    `${TRANSACTION_TYPE_LABEL[tx.type]} · ${rub(tx.amount)}?`
+  );
+}
+
+export function voidTransactionConfirm(tx: Transaction, playerName: string): string {
+  return `Вы уверены, что хотите отменить ${voidLabel(tx)} — ${playerName}?`;
+}
+
+export function clearAllDebtsConfirm(playerName: string, total: number): string {
+  return `Вы уверены, что хотите погасить все долги ${playerName} на ${rub(total)}?`;
+}
+
 export function transactionVoidPrompt(tx: Transaction): string {
-  const label = tx.type === 'ticket' ? 'билет' : `счёт на ${tx.amount.toLocaleString('ru-RU')} ₽`;
+  const label = voidLabel(tx);
   return `Отменить ${label}? Запись будет исключена из расчётов кассы, но сохранится в истории.\n`
     + (tx.status === 'paid' && tx.amount > 0 ? 'Это отмена записи, НЕ возврат денег.\n' : '')
     + 'Укажите причину отмены (до 1000 символов):';

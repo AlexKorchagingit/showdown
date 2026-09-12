@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ rpc:vi.fn(),from:vi.fn() }));
 vi.mock('./supabase',()=>({supabase:mocks}));
 import { markTransactionsPaid, voidTransactionOnServer } from './financeApi';
-import { isActiveTransaction, mergeTransactionUpdates, reconcileTransactionSnapshot, transactionVoidPrompt } from './transactionVoid';
+import { clearAllDebtsConfirm, isActiveTransaction, mergeTransactionUpdates, reconcileTransactionSnapshot, settleDebtConfirm, transactionVoidPrompt, voidTransactionConfirm } from './transactionVoid';
 import { csvEscape, financeExportRows } from './exportToCSV';
 import { computeClubStatistics } from './clubStatistics';
 import { computePlayerAdminStats, hasGlobalUnpaidDebt } from './playerAnalytics';
@@ -80,6 +80,16 @@ describe('non-destructive financial cancellation',()=>{
     expect(result.rows[0][10]).toBe('Duplicate');
     expect(transactionVoidPrompt(paid)).toContain('НЕ возврат денег');
     expect(transactionVoidPrompt(tx)).toContain('сохранится в истории');
+  });
+  it('names the player and the amount before a settle or a cancellation',()=>{
+    const rub=(value:number)=>`${value.toLocaleString('ru-RU')} ₽`;
+    expect(settleDebtConfirm({...tx,type:'rebuy'},'Вася')).toBe(
+      `Вы уверены, что хотите погасить долг Вася: Ребай · ${rub(1000)}?`);
+    expect(voidTransactionConfirm({...tx,type:'ticket'},'Вася')).toBe(
+      'Вы уверены, что хотите отменить билет — Вася?');
+    expect(voidTransactionConfirm(tx,'Вася')).toContain(`счёт на ${rub(1000)}`);
+    expect(clearAllDebtsConfirm('Вася',3000)).toBe(
+      `Вы уверены, что хотите погасить все долги Вася на ${rub(3000)}?`);
   });
   it('treats formula-like exported reasons as text while preserving actual numeric values',()=>{
     expect(csvEscape('=1+1')).toBe("'=1+1");

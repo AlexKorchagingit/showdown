@@ -14,7 +14,11 @@ import { useFinance } from '../../../context/FinanceContext';
 import { FetchErrorCard } from '../../../components/FetchErrorCard';
 import { ScreenLoading } from '../../../components/ScreenLoading';
 import { useTournaments } from '../../../context/TournamentContext';
-import { transactionVoidPrompt } from '../../../lib/transactionVoid';
+import {
+  settleDebtConfirm,
+  transactionVoidPrompt,
+  voidTransactionConfirm,
+} from '../../../lib/transactionVoid';
 import { exportToCSV } from '../../../lib/exportToCSV';
 import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
 import { playerNickname } from '../../../lib/playerName';
@@ -106,8 +110,14 @@ export function CashierTab() {
         : sheet === 'voided' ? 'Нет отмен за период' : 'Нет выданных билетов за период';
 
   const handleVoid = (tx: Transaction) => {
+    if (!window.confirm(voidTransactionConfirm(tx, playerNickname(tx.userId)))) return;
     const reason = window.prompt(transactionVoidPrompt(tx), '');
     if (reason !== null) void voidTransaction(tx.id, reason);
+  };
+
+  const handleSettle = (tx: Transaction) => {
+    if (!window.confirm(settleDebtConfirm(tx, playerNickname(tx.userId)))) return;
+    void markPaid([tx.id]);
   };
 
   if (isLoading) return <ScreenLoading label="Загрузка кассы…" />;
@@ -284,13 +294,7 @@ export function CashierTab() {
                       key={tx.id}
                       tx={tx}
                       tournamentTitle={tournamentTitle(tx.tournamentId)}
-                      onSettle={
-                        sheet === 'expected'
-                          ? () => {
-                              void markPaid([tx.id]);
-                            }
-                          : undefined
-                      }
+                      onSettle={sheet === 'expected' ? () => handleSettle(tx) : undefined}
                       onVoid={
                         sheet !== 'voided'
                           ? () => void handleVoid(tx)
