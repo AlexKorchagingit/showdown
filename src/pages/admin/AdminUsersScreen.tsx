@@ -52,7 +52,11 @@ export function AdminUsersScreen() {
 
   if (showBirthdays) {
     return (
-      <AdminBirthdaysScreen users={clubUsers} onBack={() => navigate('/admin/users')} />
+      <AdminBirthdaysScreen
+        users={clubUsers}
+        loading={isLoading}
+        onBack={() => navigate('/admin/users')}
+      />
     );
   }
 

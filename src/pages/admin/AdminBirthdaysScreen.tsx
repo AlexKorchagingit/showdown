@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
+import { ScreenLoading } from '../../components/ScreenLoading';
 import {
   ageTurning,
   birthdaysInMonth,
@@ -24,9 +25,11 @@ function yearsLabel(age: number): string {
 
 export function AdminBirthdaysScreen({
   users,
+  loading = false,
   onBack,
 }: {
   users: MappedUser[];
+  loading?: boolean;
   onBack: () => void;
 }) {
   const today = useMemo(() => new Date(), []);
@@ -171,7 +174,9 @@ export function AdminBirthdaysScreen({
           )}
         </div>
 
-        {shown.length === 0 ? (
+        {loading && users.length === 0 ? (
+          <ScreenLoading label="Загрузка пользователей…" />
+        ) : shown.length === 0 ? (
           <p className="text-center text-[13px] py-8" style={{ color: '#6B6360' }}>
             {day === null
               ? 'В этом месяце дней рождения нет'
