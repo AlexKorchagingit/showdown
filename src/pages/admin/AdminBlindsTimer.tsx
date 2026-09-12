@@ -16,6 +16,7 @@ import { ScreenLoading } from '../../components/ScreenLoading';
 import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { FitText } from '../../components/FitText';
 import { useBlinds } from '../../context/BlindsContext';
+import { useFinance } from '../../context/FinanceContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
@@ -35,8 +36,8 @@ import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
+import { timerChipTotals } from '../../lib/chipStacks';
 import {
-  autoAvgStack,
   nicknamesByPlace,
   remainingPlayers,
   tournamentPlayerCounts,
@@ -101,12 +102,11 @@ export function AdminBlindsTimer() {
     skipLevel,
     adjustSeconds,
     linkedTournamentId,
-    avgStackOverride,
     chipleaderId,
     setChipleader,
-    rebuyCount,
     chipleaderStack,
   } = useBlinds();
+  const { transactions } = useFinance();
 
   const { bindTournament } = useBindPokerTimer();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -226,7 +226,12 @@ export function AdminBlindsTimer() {
   const structure = resolvedStructure;
   const tournament = boundTournament;
   const { remaining, registered } = tournamentPlayerCounts(tournament);
-  const avgStack = avgStackOverride ?? autoAvgStack(tournament);
+  const chipTotals = useMemo(
+    () => timerChipTotals(tournament, structure, transactions),
+    [tournament, structure, transactions],
+  );
+  const avgStack = chipTotals.avgStack;
+  const reentries = chipTotals.rebuys + chipTotals.addons;
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
   const eventTitle = tournament?.title ?? structure?.name ?? '';
@@ -376,8 +381,10 @@ export function AdminBlindsTimer() {
                 {remaining}
                 <span className="text-white/35"> / {registered}</span>
               </FitText>
-              {rebuyCount != null && rebuyCount > 0 && (
-                <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
+              {reentries > 0 && (
+                <p className="text-sm md:text-base font-600 text-white/60 mt-2">
+                  Ребаев: {reentries}
+                </p>
               )}
             </section>
           )}

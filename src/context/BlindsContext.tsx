@@ -67,10 +67,7 @@ interface BlindsState {
   secondsLeft: number;
   isRunning: boolean;
   linkedTournamentId: string | null;
-  avgStackOverride: number | null;
   chipleaderId: string | null;
-  totalEntries: number | null;
-  rebuyCount: number | null;
   chipleaderStack: number | null;
   levelUpNonce: number;
 }
@@ -102,10 +99,7 @@ function applySnapshot(
     secondsLeft: live.secondsLeft,
     isRunning: live.isRunning,
     linkedTournamentId: snapshot.tournamentId,
-    avgStackOverride: snapshot.avgStackOverride,
     chipleaderId: snapshot.chipleaderId,
-    totalEntries: snapshot.totalEntries,
-    rebuyCount: snapshot.rebuyCount,
     chipleaderStack: snapshot.chipleaderStack,
     levelUpNonce: leveledUp ? state.levelUpNonce + 1 : state.levelUpNonce,
   };
@@ -154,10 +148,7 @@ function bootState(): BlindsState {
     secondsLeft: live.secondsLeft,
     isRunning: live.isRunning,
     linkedTournamentId: snapshot.tournamentId,
-    avgStackOverride: snapshot.avgStackOverride,
     chipleaderId: snapshot.chipleaderId,
-    totalEntries: snapshot.totalEntries,
-    rebuyCount: snapshot.rebuyCount,
     chipleaderStack: snapshot.chipleaderStack,
     levelUpNonce: 0,
   };
@@ -181,16 +172,10 @@ interface BlindsContextValue {
   skipLevel: (delta: -1 | 1) => void;
   adjustSeconds: (delta: number) => void;
   linkedTournamentId: string | null;
-  avgStackOverride: number | null;
   chipleaderId: string | null;
-  totalEntries: number | null;
-  rebuyCount: number | null;
   chipleaderStack: number | null;
   setLinkedTournament: (tournamentId: string | null) => void;
-  setAvgStackOverride: (value: number | null) => void;
   setChipleader: (userId: string | null) => void;
-  setTotalEntries: (value: number | null) => void;
-  setRebuyCount: (value: number | null) => void;
   setChipleaderStack: (value: number | null) => void;
 }
 
@@ -671,13 +656,6 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
-  const setAvgStackOverride = useCallback(
-    (value: number | null) => {
-      commit({ avgStackOverride: value }, { persist: 'debounce' });
-    },
-    [commit],
-  );
-
   const setChipleader = useCallback(
     (userId: string | null) => {
       const current = stateRef.current.snapshot;
@@ -685,20 +663,6 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         chipleaderId: userId,
         chipleaderStack: userId === current.chipleaderId ? current.chipleaderStack : null,
       });
-    },
-    [commit],
-  );
-
-  const setTotalEntries = useCallback(
-    (value: number | null) => {
-      commit({ totalEntries: value }, { persist: 'debounce' });
-    },
-    [commit],
-  );
-
-  const setRebuyCount = useCallback(
-    (value: number | null) => {
-      commit({ rebuyCount: value }, { persist: 'debounce' });
     },
     [commit],
   );
@@ -734,16 +698,10 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       skipLevel,
       adjustSeconds,
       linkedTournamentId: state.linkedTournamentId,
-      avgStackOverride: state.avgStackOverride,
       chipleaderId: state.chipleaderId,
-      totalEntries: state.totalEntries,
-      rebuyCount: state.rebuyCount,
       chipleaderStack: state.chipleaderStack,
       setLinkedTournament,
-      setAvgStackOverride,
       setChipleader,
-      setTotalEntries,
-      setRebuyCount,
       setChipleaderStack,
     }),
     [
@@ -760,10 +718,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       skipLevel,
       adjustSeconds,
       setLinkedTournament,
-      setAvgStackOverride,
       setChipleader,
-      setTotalEntries,
-      setRebuyCount,
       setChipleaderStack,
     ],
   );
