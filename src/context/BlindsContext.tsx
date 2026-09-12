@@ -12,6 +12,7 @@ import {
 import {
   addBlindStructure,
   BLIND_STRUCTURES_STORAGE_KEY,
+  blindStructuresFingerprint,
   durationSeconds,
   inferLevelListChange,
   isCatalogBlindStructures,
@@ -422,6 +423,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         {
           ...local,
           custom: !isCatalogBlindStructures(stateRef.current.structures),
+          fingerprint: blindStructuresFingerprint(stateRef.current.structures),
         },
         snapshot,
       );

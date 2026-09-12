@@ -182,6 +182,18 @@ function rowsForSeats(
   });
 }
 
+/**
+ * True when a freshly fetched roster carries no visible change. Callers use it
+ * to skip a state update: replacing the array on every 2.5s poll re-renders
+ * every tournament consumer and re-runs their effects for nothing.
+ */
+export function participantListsEqual(left: Participant[], right: Participant[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((player, index) => sameSeat(player, right[index]))
+  );
+}
+
 function sameSeat(left: Participant, right: Participant): boolean {
   return (
     left.id === right.id &&

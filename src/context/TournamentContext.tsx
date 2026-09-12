@@ -12,6 +12,7 @@ import {
   fetchParticipants,
   fetchTournaments as loadTournaments,
   insertTournament,
+  participantListsEqual,
   syncParticipantRows,
   updateTournamentRow,
 } from '../lib/tournamentApi';
@@ -103,11 +104,13 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const refreshParticipants = useCallback(async (tournamentId: string) => {
     try {
       const participants = await fetchParticipants(tournamentId);
-      setTournaments((prev) =>
-        prev.map((tournament) =>
+      setTournaments((prev) => {
+        const current = prev.find((tournament) => tournament.id === tournamentId);
+        if (current && participantListsEqual(current.participants, participants)) return prev;
+        return prev.map((tournament) =>
           tournament.id === tournamentId ? { ...tournament, participants } : tournament,
-        ),
-      );
+        );
+      });
     } catch (error) {
       console.error(error);
     }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { BLIND_STRUCTURES, type BlindStructure } from '../data/blindStructures';
+import {
+  BLIND_STRUCTURES,
+  blindStructuresFingerprint,
+  type BlindStructure,
+} from '../data/blindStructures';
 import {
   decideBlindStructuresSync,
   parseBlindStructuresSnapshot,
@@ -80,6 +84,30 @@ describe('blind structures snapshot', () => {
         remote!,
       ),
     ).toBe('upload');
+  });
+
+  it('never uploads a ladder the server already stores', () => {
+    const structures = [customStructure()];
+    const remote = parseBlindStructuresSnapshot({
+      v: 1,
+      writeId: 'other-tab',
+      revision: 3,
+      updatedAt: 200,
+      structures,
+    });
+    expect(remote).not.toBeNull();
+    expect(
+      decideBlindStructuresSync(
+        {
+          revision: 9,
+          writeId: 'this-tab',
+          updatedAt: 500,
+          custom: true,
+          fingerprint: blindStructuresFingerprint(structures),
+        },
+        remote!,
+      ),
+    ).toBe('keep');
   });
 
   it('applies a newer remote revision', () => {

@@ -1,8 +1,7 @@
 import { supabase, logSupabaseError } from './supabase';
 import { withRequestDeadline } from './network';
+import { createLatestWriteQueue } from './latestWriteQueue';
 import { TIMER_SESSION_ROW_ID, parseTimerSnapshot, type TimerSnapshot } from './timerSession';
-
-let saveChain: Promise<void> = Promise.resolve();
 
 export async function loadTimerSession(): Promise<TimerSnapshot | null> {
   const { data, error } = await withRequestDeadline(
@@ -31,8 +30,4 @@ async function saveTimerSession(snapshot: TimerSnapshot): Promise<void> {
     throw new Error('Состояние таймера изменено другим администратором');
 }
 
-export function queueTimerSessionSave(snapshot: TimerSnapshot): void {
-  saveChain = saveChain
-    .then(() => saveTimerSession(snapshot))
-    .catch((error) => console.error(error));
-}
+export const queueTimerSessionSave = createLatestWriteQueue(saveTimerSession);

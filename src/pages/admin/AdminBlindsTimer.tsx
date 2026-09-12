@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -128,10 +128,23 @@ export function AdminBlindsTimer() {
     structures.find((row) => row.id === (structureIdParam ?? activeStructure?.id ?? '')) ??
     activeStructure;
 
+  // Each binding decision is applied once per tab. Re-applying it whenever the
+  // shared session changes made two open timer tabs overwrite each other's
+  // binding in a loop, and every round trip queued another remote save.
+  const appliedBindRef = useRef<string | null>(null);
+  const applyBind = useCallback(
+    (key: string, tournamentId: string | null) => {
+      if (appliedBindRef.current === key) return;
+      appliedBindRef.current = key;
+      bindTournament(tournamentId);
+    },
+    [bindTournament],
+  );
+
   useEffect(() => {
     if (!timerReady) return;
     if (tournamentIdParam) {
-      bindTournament(tournamentIdParam);
+      applyBind(`tournament:${tournamentIdParam}`, tournamentIdParam);
       return;
     }
     if (!structureIdParam) return;
@@ -140,16 +153,18 @@ export function AdminBlindsTimer() {
     if (!structure || tournamentsLoading) return;
     const resolved = resolveTournamentForTimer(structure, tournaments, linkedTournamentId);
     if (resolved) {
-      if (resolved.id !== linkedTournamentId) bindTournament(resolved.id);
+      if (resolved.id !== linkedTournamentId) {
+        applyBind(`structure:${structureIdParam}:${resolved.id}`, resolved.id);
+      }
       return;
     }
     if (isRunning || tournaments.length === 0) return;
-    if (linkedTournamentId) bindTournament(null);
+    if (linkedTournamentId) applyBind(`structure:${structureIdParam}:none`, null);
   }, [
     timerReady,
     tournamentIdParam,
     structureIdParam,
-    bindTournament,
+    applyBind,
     ensureTimer,
     tournaments,
     tournamentsLoading,

@@ -1,4 +1,5 @@
 import {
+  blindStructuresFingerprint,
   isCatalogBlindStructures,
   parseBlindStructureList,
   type BlindStructure,
@@ -108,12 +109,21 @@ export type StructuresSyncDecision = 'apply' | 'keep' | 'upload';
 /**
  * First club-wide save used to live only in one browser. Prefer that custom
  * local copy over a catalog seed another device uploaded as revision 0/1.
+ *
+ * `fingerprint` is the local ladder content. Passing it is what stops two open
+ * tabs from trading revisions forever: a poll that returns the server row
+ * before our own save has landed looks "behind", and uploading again bumped the
+ * revision, which made the other tab look behind in turn. Identical content
+ * needs no write at all, no matter which revision label it carries.
  */
 export function decideBlindStructuresSync(
-  local: BlindStructuresLocalMeta & { custom: boolean },
+  local: BlindStructuresLocalMeta & { custom: boolean; fingerprint?: string },
   remote: BlindStructuresSnapshot,
 ): StructuresSyncDecision {
   if (remote.writeId === local.writeId) return 'keep';
+  if (local.fingerprint != null && local.fingerprint === blindStructuresFingerprint(remote.structures)) {
+    return remote.revision > local.revision ? 'apply' : 'keep';
+  }
   const remoteCustom = !isCatalogBlindStructures(remote.structures);
   if (local.custom && !remoteCustom && local.revision <= 1 && remote.revision <= 1) {
     return 'upload';

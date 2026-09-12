@@ -1,11 +1,10 @@
 import { supabase, logSupabaseError } from './supabase';
 import { withRequestDeadline } from './network';
+import { createLatestWriteQueue } from './latestWriteQueue';
 import {
   parseBlindStructuresSnapshot,
   type BlindStructuresSnapshot,
 } from './blindStructuresSync';
-
-let saveChain: Promise<void> = Promise.resolve();
 
 export async function loadBlindStructuresSnapshot(): Promise<BlindStructuresSnapshot | null> {
   const { data, error } = await withRequestDeadline(
@@ -33,10 +32,4 @@ async function saveBlindStructures(snapshot: BlindStructuresSnapshot): Promise<v
   }
 }
 
-export function queueBlindStructuresSave(snapshot: BlindStructuresSnapshot): void {
-  saveChain = saveChain
-    .then(() => saveBlindStructures(snapshot))
-    .catch((error) => {
-      console.error(error);
-    });
-}
+export const queueBlindStructuresSave = createLatestWriteQueue(saveBlindStructures);
