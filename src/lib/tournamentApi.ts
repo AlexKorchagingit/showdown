@@ -190,7 +190,11 @@ function rowsForSeats(
 export function participantListsEqual(left: Participant[], right: Participant[]): boolean {
   return (
     left.length === right.length &&
-    left.every((player, index) => sameSeat(player, right[index]))
+    left.every(
+      (player, index) =>
+        sameSeat(player, right[index]) &&
+        (player.equippedAvatar ?? '') === (right[index].equippedAvatar ?? ''),
+    )
   );
 }
 
