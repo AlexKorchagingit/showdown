@@ -9,7 +9,11 @@ const REBUY_WORD = 'ре-?ба[йя]\\w*|re[-\\s]?buy';
 const GAP = '[\\s:—–\\-=(]*';
 /** «30 000 за аддон» keeps the amount in front of the word behind a preposition. */
 const GAP_BEFORE = `${GAP}(?:за|на|for)?${GAP}`;
-const AMOUNT = '(\\d[\\d\\s\\u00a0\\u202f]*)(к|k|тыс[а-яё.]*)?';
+/** The lookahead forbids stopping mid-number, so «1 000» never reads as «100». */
+const AMOUNT =
+  '(\\d[\\d\\s\\u00a0\\u202f]*)(?![\\d]|[\\s\\u00a0\\u202f]*\\d)(к|k|тыс[а-яё.]*)?';
+/** «Ребай — 1 000 ₽» is a price, not a stack. */
+const NOT_MONEY = '(?!\\s*(?:₽|руб|р\\.))';
 
 function toChips(digits: string, thousands: string | undefined): number | null {
   const base = Number(digits.replace(/[\s\u00a0\u202f]/g, ''));
@@ -22,7 +26,7 @@ function toChips(digits: string, thousands: string | undefined): number | null {
 export function chipAmountNear(text: string, word: string): number | null {
   const source = (text ?? '').replace(/\u00a0/g, ' ');
   if (!source.trim()) return null;
-  const after = new RegExp(`(?:${word})${GAP}${AMOUNT}`, 'i').exec(source);
+  const after = new RegExp(`(?:${word})${GAP}${AMOUNT}${NOT_MONEY}`, 'i').exec(source);
   if (after) {
     const chips = toChips(after[1], after[2]);
     if (chips !== null) return chips;
@@ -52,10 +56,15 @@ function chipSources(
   ].filter((text) => text.trim().length > 0);
 }
 
-function firstChipAmount(sources: string[], word: string): number | null {
+/**
+ * A stack far below the starting one is almost certainly the entry fee written
+ * without a currency sign, so it is ignored in favour of the starting stack.
+ */
+function declaredStack(sources: string[], word: string, startingStack: number): number | null {
+  const floor = startingStack * 0.2;
   for (const text of sources) {
     const chips = chipAmountNear(text, word);
-    if (chips !== null) return chips;
+    if (chips !== null && chips >= floor) return chips;
   }
   return null;
 }
@@ -107,8 +116,8 @@ export function timerChipTotals(
 
   const startingStack = Math.max(0, tournament.stackSize);
   const sources = chipSources(structure, tournament);
-  const declaredRebuy = firstChipAmount(sources, REBUY_WORD);
-  const declaredAddon = firstChipAmount(sources, ADDON_WORD);
+  const declaredRebuy = declaredStack(sources, REBUY_WORD, startingStack);
+  const declaredAddon = declaredStack(sources, ADDON_WORD, startingStack);
   const rebuyStack = declaredRebuy ?? startingStack;
   const addonStack = declaredAddon ?? startingStack;
 

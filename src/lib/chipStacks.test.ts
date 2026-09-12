@@ -63,6 +63,13 @@ describe('chip amounts written by hand', () => {
     expect(chipAmountNear('Аддон по желанию', addon)).toBeNull();
     expect(chipAmountNear('', addon)).toBeNull();
   });
+
+  it('does not read a price as a stack', () => {
+    const addon = 'адд?он\\w*|add[-\\s]?on';
+    expect(chipAmountNear('Аддон — 1 000 ₽', addon)).toBeNull();
+    expect(chipAmountNear('Аддон 1000 руб.', addon)).toBeNull();
+    expect(chipAmountNear('Аддон 1 000 ₽, стек 20 000 за аддон', addon)).toBe(20000);
+  });
 });
 
 describe('average stack from the cashier', () => {
@@ -127,6 +134,16 @@ describe('average stack from the cashier', () => {
       [charge('t1', 'addon')],
     );
     expect(totals.addonStack).toBe(20000);
+  });
+
+  it('ignores an entry fee described without a currency sign', () => {
+    const totals = timerChipTotals(
+      tournament(field, { features: ['Ребай 1000', 'Аддон 1000'] }),
+      structure([level()]),
+      [charge('t1', 'rebuy')],
+    );
+    expect(totals.rebuyStack).toBe(30000);
+    expect(totals.usesStartingStackFallback).toBe(true);
   });
 
   it('reads the tournament description when the ladder says nothing', () => {
