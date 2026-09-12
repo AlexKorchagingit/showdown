@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BLIND_STRUCTURES,
   breakComment,
+  copyStructureLevels,
   copyTripleLifeLadder,
   formatBlinds,
   formatNextBlinds,
@@ -189,5 +190,26 @@ describe('Triple Life ladder copy', () => {
     expect(first.migrations).toContain(TRIPLE_LIFE_LADDER_COPY_MIGRATION);
     const second = withTripleLifeLadderCopyMigration(first.structures, first.migrations);
     expect(second.changed).toBe(false);
+  });
+});
+
+describe('importing a ladder into another structure', () => {
+  it('renumbers playing levels, keeps break notes and shares no objects', () => {
+    const source = [playing(4), pause('Аддон 20 000'), playing(7)];
+    const copy = copyStructureLevels(source);
+
+    expect(copy.map((level) => level.level)).toEqual([1, 0, 2]);
+    expect(breakComment(copy[1])).toBe('Аддон 20 000');
+    expect(copy[1].isBreak).toBe(true);
+    expect(copy.every((level) => level.ante === level.bigBlind)).toBe(true);
+    expect(copy[0]).not.toBe(source[0]);
+
+    copy[0].smallBlind = 1;
+    expect(source[0].smallBlind).toBe(400);
+  });
+
+  it('drops a stale note left on a playing level', () => {
+    const copy = copyStructureLevels([{ ...playing(1), comment: 'старый комментарий' }]);
+    expect(copy[0].comment).toBeUndefined();
   });
 });
