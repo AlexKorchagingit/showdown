@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronUp, Crosshair, Gem, Link2, MessageSquare, Minus, Plus, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Crosshair, Gem, Link2, MessageSquare, Minus, Plus, X } from 'lucide-react';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { useTournaments } from '../../context/TournamentContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUser } from '../../context/UserContext';
 import { useBlinds } from '../../context/BlindsContext';
-import { TRANSACTION_TYPE_LABEL } from '../../types/finance';
+import { TRANSACTION_STATUS_LABEL, TRANSACTION_TYPE_LABEL } from '../../types/finance';
 import type { Transaction, TransactionType } from '../../types/finance';
+import { DebtPaymentModal } from '../../components/admin/DebtPaymentModal';
 import { transactionVoidPrompt } from '../../lib/transactionVoid';
 import {
   applyPlaceToParticipant,
@@ -38,12 +39,58 @@ import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnal
 import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
 import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival';
+import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
   { type: 'rebuy', label: 'Ребай' },
   { type: 'addon', label: 'Аддон' },
 ];
+
+const PAID_CHIP = 'bg-green-500/20 text-green-400 border-green-500/50';
+const UNPAID_CHIP = 'bg-red-500/15 text-red-400 border-red-500/50';
+
+function chargeOrder(a: Transaction, b: Transaction): number {
+  return Date.parse(a.date) - Date.parse(b.date);
+}
+
+/** One charge or ticket in a player row. Paid entries stay visible, in green. */
+function TransactionChip({
+  label,
+  paid,
+  title,
+  voiding,
+  voidLabel,
+  onVoid,
+}: {
+  label: string;
+  paid: boolean;
+  title?: string;
+  voiding: boolean;
+  voidLabel: string;
+  onVoid: () => void;
+}) {
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700 border ${
+        paid ? PAID_CHIP : UNPAID_CHIP
+      }`}
+    >
+      {paid ? <Check size={11} strokeWidth={3} /> : null}
+      {label}
+      <button
+        type="button"
+        disabled={voiding}
+        onClick={onVoid}
+        className="w-5 h-5 rounded flex items-center justify-center disabled:opacity-50"
+        aria-label={voidLabel}
+      >
+        <X size={12} strokeWidth={2.6} />
+      </button>
+    </span>
+  );
+}
 
 function formatHourDelta(delta: number): string {
   const abs = Math.abs(delta);
@@ -86,7 +133,7 @@ export function AdminTournamentFinance() {
     adjustDealerHours,
     unpaidForPlayer,
     unpaidTotalForPlayer,
-    markPlayerPaid,
+    markPaid,
     voidTransaction,
     isTransactionVoiding,
   } = useFinance();
@@ -96,6 +143,8 @@ export function AdminTournamentFinance() {
   const [dealerHours, setDealerHours] = useState('');
   const [hourFlash, setHourFlash] = useState<Record<string, { delta: number; token: number }>>({});
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   const [tournamentComment, setTournamentComment] = useState('');
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingRef = useRef(false);
@@ -112,12 +161,22 @@ export function AdminTournamentFinance() {
     return sortFinancePlayers(list, tournament.isClosed);
   }, [tournament, query]);
 
+  const payingPlayer = tournament?.participants.find((p) => p.id === payingId);
+  const payingUnpaid = useMemo(
+    () =>
+      tournament && payingId
+        ? unpaidForPlayer(tournament.id, payingId).slice().sort(chargeOrder)
+        : [],
+    [tournament, payingId, unpaidForPlayer],
+  );
+
   useEffect(() => {
     setTournamentComment(tournament?.adminSecretComment ?? '');
   }, [tournament?.id, tournament?.adminSecretComment]);
 
   useEffect(() => {
     closingRef.current = false;
+    setPayingId(null);
   }, [tournament?.id]);
 
   useEffect(
@@ -209,9 +268,14 @@ export function AdminTournamentFinance() {
     addCharge(tournament.id, userId, type);
   };
 
-  const handlePayDebt = (userId: string) => {
-    markPlayerPaid(tournament.id, userId);
+  const paySelectedDebt = async (transactionIds: string[]) => {
+    if (paying || transactionIds.length === 0) return;
+    setPaying(true);
+    const done = await markPaid(transactionIds);
+    setPaying(false);
+    if (done) setPayingId(null);
   };
+
   const handleVoid = (tx: Transaction) => {
     const reason = window.prompt(transactionVoidPrompt(tx), '');
     if (reason !== null) void voidTransaction(tx.id, reason);
@@ -307,8 +371,11 @@ export function AdminTournamentFinance() {
     if (!player || typeof player.place !== 'number' || tournament.isClosed) return;
     try {
       await updateTournament(tournament.id, {
-        participants: tournament.participants.map((p) =>
-          p.id === playerId ? { ...p, place: undefined } : p,
+        participants: alignBustOutPlaces(
+          tournament.participants.map((p) =>
+            p.id === playerId ? { ...p, place: undefined } : p,
+          ),
+          tournament,
         ),
       });
     } catch (error) {
@@ -349,7 +416,10 @@ export function AdminTournamentFinance() {
   const removePlayerFromTournament = (playerId: string) => {
     if (!window.confirm('Точно удалить игрока из турнира?')) return;
     void updateTournament(tournament.id, {
-      participants: tournament.participants.filter((p) => p.id !== playerId),
+      participants: alignBustOutPlaces(
+        tournament.participants.filter((p) => p.id !== playerId),
+        tournament,
+      ),
     });
   };
 
@@ -512,12 +582,11 @@ export function AdminTournamentFinance() {
               const unboundGuest = isUnboundGuestSeat(player);
               const unpaid = unpaidForPlayer(tournament.id, player.id);
               const unpaidTotal = unpaidTotalForPlayer(tournament.id, player.id);
-              const tickets = transactions.filter(
-                (tx) =>
-                  tx.tournamentId === tournament.id &&
-                  tx.userId === player.id &&
-                  tx.type === 'ticket',
+              const playerLedger = transactions.filter(
+                (tx) => tx.tournamentId === tournament.id && tx.userId === player.id,
               );
+              const charges = playerLedger.filter((tx) => tx.type !== 'ticket').sort(chargeOrder);
+              const tickets = playerLedger.filter((tx) => tx.type === 'ticket').sort(chargeOrder);
               const hours = getDealerHours(tournament.id, player.id);
               const dealerLoggedAt = getDealerLoggedAt(tournament.id, player.id);
               const hasLocalDebt = unpaid.length > 0;
@@ -649,52 +718,31 @@ export function AdminTournamentFinance() {
                     )}
                   </div>
 
-                  {(unpaid.length > 0 || tickets.length > 0) && (
+                  {(charges.length > 0 || tickets.length > 0) && (
                     <div className="flex flex-wrap gap-1.5">
-                      {unpaid.map((tx) => (
-                        <span
+                      {charges.map((tx) => (
+                        <TransactionChip
                           key={tx.id}
-                          className="inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700"
-                          style={{
-                            background: 'rgba(239,68,68,0.12)',
-                            border: '1px solid rgba(239,68,68,0.35)',
-                            color: '#f87171',
-                          }}
-                        >
-                          {TRANSACTION_TYPE_LABEL[tx.type]}
-                          <button
-                            type="button"
-                            disabled={isTransactionVoiding(tx.id)}
-                            onClick={() => handleVoid(tx)}
-                            className="w-5 h-5 rounded flex items-center justify-center"
-                            aria-label={`Отменить ${TRANSACTION_TYPE_LABEL[tx.type]}`}
-                          >
-                            <X size={12} strokeWidth={2.6} />
-                          </button>
-                        </span>
+                          label={TRANSACTION_TYPE_LABEL[tx.type]}
+                          paid={tx.status === 'paid'}
+                          title={`${TRANSACTION_TYPE_LABEL[tx.type]} · ${tx.amount.toLocaleString('ru-RU')} ₽ · ${
+                            TRANSACTION_STATUS_LABEL[tx.status]
+                          }`}
+                          voiding={isTransactionVoiding(tx.id)}
+                          voidLabel={`Отменить ${TRANSACTION_TYPE_LABEL[tx.type]}`}
+                          onVoid={() => handleVoid(tx)}
+                        />
                       ))}
                       {tickets.map((tx) => (
-                        <span
+                        <TransactionChip
                           key={tx.id}
-                          className="inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700"
-                          style={{
-                            background: 'rgba(34,197,94,0.12)',
-                            border: '1px solid rgba(34,197,94,0.35)',
-                            color: '#86efac',
-                          }}
+                          label="Билет"
+                          paid
                           title={tx.comment || 'Билет'}
-                        >
-                          Билет
-                          <button
-                            type="button"
-                            disabled={isTransactionVoiding(tx.id)}
-                            onClick={() => handleVoid(tx)}
-                            className="w-5 h-5 rounded flex items-center justify-center"
-                            aria-label="Аннулировать билет"
-                          >
-                            <X size={12} strokeWidth={2.6} />
-                          </button>
-                        </span>
+                          voiding={isTransactionVoiding(tx.id)}
+                          voidLabel="Аннулировать билет"
+                          onVoid={() => handleVoid(tx)}
+                        />
                       ))}
                     </div>
                   )}
@@ -855,10 +903,10 @@ export function AdminTournamentFinance() {
                   {hasLocalDebt && unpaidTotal > 0 && (
                     <button
                       type="button"
-                      onClick={() => handlePayDebt(player.id)}
+                      onClick={() => setPayingId(player.id)}
                       className="w-full py-3 rounded-xl text-[13px] bg-red-900/80 border border-red-500/50 text-white font-bold active:scale-[0.98] transition-transform"
                     >
-                      Оплатить {unpaidTotal.toLocaleString('ru-RU')} руб
+                      Оплатить долг · {unpaidTotal.toLocaleString('ru-RU')} ₽
                     </button>
                   )}
                 </div>
@@ -1022,6 +1070,15 @@ export function AdminTournamentFinance() {
           />
         </div>
       </div>
+
+      <DebtPaymentModal
+        open={Boolean(payingId)}
+        nickname={payingPlayer?.nickname ?? ''}
+        transactions={payingUnpaid}
+        busy={paying}
+        onClose={() => setPayingId(null)}
+        onPay={(ids) => void paySelectedDebt(ids)}
+      />
     </div>
   );
 }

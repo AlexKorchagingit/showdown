@@ -284,7 +284,13 @@ export function CashierTab() {
                       key={tx.id}
                       tx={tx}
                       tournamentTitle={tournamentTitle(tx.tournamentId)}
-                      onSettle={sheet === 'expected' ? () => markPaid([tx.id]) : undefined}
+                      onSettle={
+                        sheet === 'expected'
+                          ? () => {
+                              void markPaid([tx.id]);
+                            }
+                          : undefined
+                      }
                       onVoid={
                         sheet !== 'voided'
                           ? () => void handleVoid(tx)
