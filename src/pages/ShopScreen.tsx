@@ -7,6 +7,7 @@ import { ScreenLoading } from '../components/ScreenLoading';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { CoinBalance } from '../components/CoinBalance';
 import { RubyInfoModal } from '../components/RubyInfoModal';
+import { PurchaseConfirmModal } from '../components/PurchaseConfirmModal';
 import { type ShopItem, type ShopItemType } from '../data/shopItems';
 
 const TAB_ORDER: ShopItemType[] = ['character', 'bg'];
@@ -168,6 +169,7 @@ export function ShopScreen() {
     walletLoading, walletError, walletBusy, refreshWallet } = useProfile();
   const [tab, setTab] = useState<ShopItemType>('character');
   const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
+  const [pendingPurchase, setPendingPurchase] = useState<ShopItem | null>(null);
   if (walletLoading) return <ScreenLoading label="Загрузка магазина и баланса…" />;
   if (walletError) return <FetchErrorCard message={walletError} onRetry={() => void refreshWallet()} />;
   const items = shopItems.filter((item) => item.type === tab);
@@ -251,19 +253,17 @@ export function ShopScreen() {
                   affordable={affordable}
                   disabled={walletBusy}
                   onSelect={() => {
-                      void (async () => {
-                        if (owned) {
-                          await equipItem(item.id);
-                          return;
-                        }
-                        if (!affordable) {
-                          window.alert(
-                            `Недостаточно рубинов. Нужно ${item.price.toLocaleString('ru-RU')}, у вас ${coins.toLocaleString('ru-RU')}.`,
-                          );
-                          return;
-                        }
-                        await buyItem(item.id);
-                      })();
+                      if (owned) {
+                        void equipItem(item.id);
+                        return;
+                      }
+                      if (!affordable) {
+                        window.alert(
+                          `Недостаточно рубинов. Нужно ${item.price.toLocaleString('ru-RU')}, у вас ${coins.toLocaleString('ru-RU')}.`,
+                        );
+                        return;
+                      }
+                      setPendingPurchase(item);
                     }}
                 />
               );
@@ -273,6 +273,21 @@ export function ShopScreen() {
       </div>
 
       <RubyInfoModal open={rubyInfoOpen} onClose={() => setRubyInfoOpen(false)} />
+
+      <PurchaseConfirmModal
+        item={pendingPurchase}
+        coins={coins}
+        busy={walletBusy}
+        onCancel={() => setPendingPurchase(null)}
+        onConfirm={() => {
+          const item = pendingPurchase;
+          if (!item) return;
+          void (async () => {
+            const bought = await buyItem(item.id);
+            if (bought) setPendingPurchase(null);
+          })();
+        }}
+      />
     </div>
   );
 }
