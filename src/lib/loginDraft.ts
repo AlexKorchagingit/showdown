@@ -7,7 +7,10 @@ export const TEMP_AUTH_KEYS = [
   'temp_auth_code',
   'temp_auth_step',
   'temp_auth_expire',
+  'temp_auth_verified',
 ] as const;
+
+const VERIFIED_KEY = 'temp_auth_verified';
 
 export function readTempAuthValue(key: string): string {
   return safeLocalStorage.getItem(key) ?? '';
@@ -48,4 +51,21 @@ export function savePendingEmail(targetEmail: string, step: 'email' | 'consent')
   safeLocalStorage.setItem('temp_auth_step', step);
   safeLocalStorage.removeItem('temp_auth_code');
   safeLocalStorage.removeItem('temp_auth_expire');
+}
+
+/**
+ * The code step is behind us once the email is verified. Telegram reloads the
+ * mini app whenever it feels like it, and the consent screen must not send the
+ * user back for another code just because a React ref was lost.
+ */
+export function writeVerifiedEmail(targetEmail: string): void {
+  safeLocalStorage.setItem(VERIFIED_KEY, targetEmail.trim().toLowerCase());
+}
+
+export function readVerifiedEmail(): string {
+  return readTempAuthValue(VERIFIED_KEY).trim().toLowerCase();
+}
+
+export function clearVerifiedEmail(): void {
+  safeLocalStorage.removeItem(VERIFIED_KEY);
 }

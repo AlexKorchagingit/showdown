@@ -2,11 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearAgreementsAt,
   clearTempAuth,
+  clearVerifiedEmail,
   readAgreementsAt,
   readTempAuthValue,
+  readVerifiedEmail,
   savePendingEmail,
   saveTempAuth,
   writeAgreementsAt,
+  writeVerifiedEmail,
 } from './loginDraft';
 
 const blockedStorage = {
@@ -47,5 +50,23 @@ describe('login draft storage', () => {
     expect(readAgreementsAt()).toBe(acceptedAt);
     expect(readTempAuthValue('temp_auth_email')).toBe('new@example.test');
     expect(readTempAuthValue('temp_auth_step')).toBe('consent');
+  });
+
+  it('remembers the verified email so the consent step is not sent back for a new code', () => {
+    writeVerifiedEmail(' New@Example.test ');
+    savePendingEmail('New@Example.test', 'consent');
+
+    expect(readVerifiedEmail()).toBe('new@example.test');
+  });
+
+  it('forgets the verified email when the login draft is dropped', () => {
+    writeVerifiedEmail('new@example.test');
+
+    clearVerifiedEmail();
+    expect(readVerifiedEmail()).toBe('');
+
+    writeVerifiedEmail('new@example.test');
+    clearTempAuth();
+    expect(readVerifiedEmail()).toBe('');
   });
 });

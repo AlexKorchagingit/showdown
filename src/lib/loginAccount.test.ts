@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), upsert: vi.fn() }));
-vi.mock('./supabase', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from }, logSupabaseError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), upsert: vi.fn(), getSession: vi.fn() }));
+vi.mock('./supabase', () => ({
+  supabase: { rpc: mocks.rpc, from: mocks.from, auth: { getSession: mocks.getSession } },
+  logSupabaseError: vi.fn(),
+}));
 vi.mock('./clubDirectory', () => ({ upsertClubDirectory: mocks.upsert, getClubDirectory: vi.fn(), setClubDirectory: vi.fn() }));
-import { ConsentRequiredError, loginOrRegisterUser } from './loginAccount';
+import {
+  ConsentRequiredError,
+  SessionExpiredError,
+  loginOrRegisterUser,
+  verifiedSessionEmail,
+} from './loginAccount';
 import { RequestTimeoutError } from './network';
 import { lookupSessionAccount } from './userApi';
 
@@ -26,6 +34,31 @@ describe('server-authoritative profile binding', () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'consent_required' }, error: null });
     await expect(loginOrRegisterUser('new@example.test')).rejects.toBeInstanceOf(ConsentRequiredError);
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+  it('reports a rejected session so consent can ask for a new code instead of failing', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: '42501', message: 'Authentication required' },
+    });
+
+    await expect(loginOrRegisterUser('new@example.test', new Date().toISOString()))
+      .rejects.toBeInstanceOf(SessionExpiredError);
+  });
+  it('keeps other failures generic so they are not mistaken for a lost session', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: '22023', message: 'Invalid payload' } });
+
+    await expect(loginOrRegisterUser('new@example.test', new Date().toISOString()))
+      .rejects.toThrow('открыть профиль');
+  });
+  it('reads the verified email from the stored Auth session', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { email: 'New@Example.test' } } } });
+
+    await expect(verifiedSessionEmail()).resolves.toBe('new@example.test');
+  });
+  it('treats a missing Auth session as unverified', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: null } });
+
+    await expect(verifiedSessionEmail()).resolves.toBe('');
   });
   it('does not trust the old admin flag without a server-issued role', async () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'ready', user: { ...user, role: undefined } }, error: null });

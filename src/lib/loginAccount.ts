@@ -9,6 +9,32 @@ export class ConsentRequiredError extends Error {
   constructor() { super('Для регистрации необходимо принять соглашения'); }
 }
 
+export class SessionExpiredError extends Error {
+  constructor() { super('Подтверждение почты больше не действует'); }
+}
+
+const SESSION_REJECTION_CODES = new Set(['401', '403', '42501', 'PGRST301', 'PGRST302']);
+
+/** The server refuses club_open_session without a confirmed Auth session. */
+function isSessionRejection(error: { code?: string | null; message?: string | null }): boolean {
+  if (SESSION_REJECTION_CODES.has(String(error.code ?? ''))) return true;
+  const message = (error.message ?? '').toLowerCase();
+  return message.includes('authentication required')
+    || message.includes('verified account required')
+    || message.includes('permission denied')
+    || message.includes('jwt');
+}
+
+/** Email of the Auth session stored on this device, empty when there is none. */
+export async function verifiedSessionEmail(): Promise<string> {
+  try {
+    const { data } = await withRequestDeadline(supabase.auth.getSession(), STARTUP_TIMEOUT_MS);
+    return (data.session?.user?.email ?? '').trim().toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
 /** Identity, profile creation and role resolution happen on the server only. */
 export async function loginOrRegisterUser(
   email: string, agreementsAcceptedAt?: string,
@@ -34,6 +60,7 @@ export async function loginOrRegisterUser(
   })(),
     STARTUP_TIMEOUT_MS,
   );
+  if (error && isSessionRejection(error)) throw new SessionExpiredError();
   if (error || !data) throw new Error('Не удалось открыть профиль. Попробуйте ещё раз.');
   if (data.status === 'consent_required') throw new ConsentRequiredError();
   const row = data.user as UserRow | undefined;

@@ -1,19 +1,27 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
-import { ConsentRequiredError, loginOrRegisterUser } from '../lib/loginAccount';
+import {
+  ConsentRequiredError,
+  SessionExpiredError,
+  loginOrRegisterUser,
+  verifiedSessionEmail,
+} from '../lib/loginAccount';
 import { isUncertainNetworkError, requestErrorMessage } from '../lib/network';
 import { OtpApiError } from '../lib/otpApi';
 import { requestLoginCode, verifyLoginCode } from '../lib/loginOtp';
 import {
   clearAgreementsAt,
   clearTempAuth,
+  clearVerifiedEmail,
   readAgreementsAt,
   readTempAuthStep,
   readTempAuthValue,
+  readVerifiedEmail,
   savePendingEmail,
   saveTempAuth,
   writeAgreementsAt,
+  writeVerifiedEmail,
 } from '../lib/loginDraft';
 import type { MappedUser } from '../lib/supabaseMap';
 import { LegalImageModal } from './LegalImageModal';
@@ -97,7 +105,7 @@ export function LoginScreen({ onLogin }: Props) {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifiedRef = useRef(false);
-  const verifiedEmailRef = useRef('');
+  const verifiedEmailRef = useRef(readVerifiedEmail());
   const onLoginRef = useRef(onLogin);
   onLoginRef.current = onLogin;
 
@@ -122,13 +130,13 @@ export function LoginScreen({ onLogin }: Props) {
     setTimer(timeLeft);
   }, []);
 
-  const sendCode = useCallback(async (targetEmail: string, nextTimer: number) => {
+  const sendCode = useCallback(async (targetEmail: string, nextTimer: number, notice = '') => {
     const normalizedEmail = targetEmail.trim().toLowerCase();
     setEmail(normalizedEmail);
     setIsLoading(true);
     setLoginError('');
 
-    const openCodeStep = (timerSeconds: number, warning = '') => {
+    const openCodeStep = (timerSeconds: number, warning = notice) => {
       saveTempAuth(normalizedEmail, timerSeconds);
       setStep('code');
       setTimer(timerSeconds);
@@ -170,19 +178,44 @@ export function LoginScreen({ onLogin }: Props) {
   }, []);
 
   const handleAcceptAll = () => {
-    if (isLoading || !isEmailValid) return;
+    if (isLoading) return;
+    const normalized = email.trim().toLowerCase();
+    if (!isEmailValid) {
+      setLoginError('Не удалось определить почту. Вернитесь назад и введите её ещё раз.');
+      return;
+    }
     const timestamp = new Date().toISOString();
     setAgreementsAcceptedAt(timestamp);
     writeAgreementsAt(timestamp);
-    if (verifiedEmailRef.current !== email.trim().toLowerCase()) {
-      void sendCode(email, 60);
-      return;
-    }
     setIsLoading(true);
     setLoginError('');
-    void completeLogin(email, timestamp, onLoginRef.current)
-      .catch(() => setLoginError('Не удалось завершить регистрацию. Попробуйте ещё раз.'))
-      .finally(() => setIsLoading(false));
+    void (async () => {
+      try {
+        // Telegram can reload the mini app on this screen, so the in-memory
+        // verification flag is not trusted on its own: the stored draft and the
+        // live Auth session decide whether the code step is still needed.
+        const verified = verifiedEmailRef.current === normalized
+          || (await verifiedSessionEmail()) === normalized;
+        if (!verified) {
+          await sendCode(normalized, 60, 'Подтвердите почту кодом — согласия уже приняты.');
+          return;
+        }
+        await completeLogin(normalized, timestamp, onLoginRef.current);
+      } catch (error) {
+        console.error(error);
+        if (error instanceof SessionExpiredError) {
+          await sendCode(normalized, 60, 'Подтверждение почты истекло. Введите новый код — согласия уже приняты.');
+          return;
+        }
+        setLoginError(
+          error instanceof ConsentRequiredError
+            ? 'Сервер не принял согласия. Попробуйте ещё раз.'
+            : requestErrorMessage(error, 'Не удалось завершить регистрацию. Попробуйте ещё раз.'),
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   };
 
   const goToEmailStep = () => {
@@ -203,6 +236,7 @@ export function LoginScreen({ onLogin }: Props) {
     if (!canContinueEmail) return;
     const normalized = email.trim().toLowerCase();
     verifiedEmailRef.current = '';
+    clearVerifiedEmail();
     setAgreementsAcceptedAt('');
     clearAgreementsAt();
     void sendCode(normalized, 60);
@@ -243,6 +277,7 @@ export function LoginScreen({ onLogin }: Props) {
         }
 
         verifiedEmailRef.current = (email || readTempAuthValue('temp_auth_email')).trim().toLowerCase();
+        writeVerifiedEmail(verifiedEmailRef.current);
         try {
           await completeLogin(
             verifiedEmailRef.current,
@@ -415,6 +450,9 @@ export function LoginScreen({ onLogin }: Props) {
                 >
                   {isLoading ? 'Отправка…' : 'Принять все и продолжить'}
                 </button>
+                {loginError ? (
+                  <p className="mt-3 text-center text-[13px] font-600 text-red-400">{loginError}</p>
+                ) : null}
               </div>
               <button
                 type="button"

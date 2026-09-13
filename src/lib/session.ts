@@ -11,6 +11,7 @@ export const TEMP_AUTH_KEYS = [
   'temp_auth_code',
   'temp_auth_step',
   'temp_auth_expire',
+  'temp_auth_verified',
   'temp_auth_agreements_at',
 ] as const;
 
