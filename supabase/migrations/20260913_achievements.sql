@@ -4,6 +4,16 @@
 begin;
 set local lock_timeout='3s'; set local statement_timeout='30s';
 
+-- The new routines run as their owner, so that owner must be able to reuse the
+-- existing session helper. Fail here instead of at runtime.
+do $$
+begin
+  if not has_function_privilege(current_user,'public.club_current_account()','EXECUTE') then
+    raise exception 'Apply this migration with a role that may call public.club_current_account()';
+  end if;
+end;
+$$;
+
 create table if not exists public.user_achievements(
   user_id text primary key references public.users(id) on delete cascade,
   progress jsonb not null default '{}'::jsonb,
