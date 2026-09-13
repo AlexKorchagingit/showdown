@@ -48,6 +48,9 @@ describe('final client access matrix after the complete local cutover',()=>{let 
       revoke all on function club_private.auth_contract_owner_probe() from public,authenticated;`);
     localSql(readFileSync('supabase/migrations/20260907_server_auth_contract.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260907_server_auth_contract.sql','utf8'));
+    // API migrations after the contract must grant their own access: the
+    // contract leaves later objects private by default.
+    localSql(readFileSync('supabase/migrations/20260913_achievements.sql','utf8'));
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';
       insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
       ('${email('super')}','synthetic-hmac','ip',now()+interval '5 minutes'),
@@ -79,7 +82,7 @@ describe('final client access matrix after the complete local cutover',()=>{let 
 
   it('exposes only the explicit server API to authenticated clients',()=>{
     expect(localSql(`select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-      where n.nspname='public' and has_function_privilege('authenticated',p.oid,'EXECUTE');`)).toBe('28');
+      where n.nspname='public' and has_function_privilege('authenticated',p.oid,'EXECUTE');`)).toBe('30');
     expect(localSql(`select has_schema_privilege('authenticated','club_private','USAGE'),coalesce(bool_or(
       has_function_privilege('authenticated',p.oid,'EXECUTE')),'f') from pg_proc p
       where p.pronamespace='club_private'::regnamespace;`)).toBe('f|f');
@@ -124,6 +127,21 @@ describe('final client access matrix after the complete local cutover',()=>{let 
     expect((await rpc('club_audit_snapshot',superadmin)).status).toBe(200);
     expect(await (await fetch(`${base}/rest/v1/timer_sessions?id=eq.live`,{headers:headers(user)})).json()).toEqual([]);
     expect((await (await fetch(`${base}/rest/v1/timer_sessions?id=eq.live`,{headers:headers(admin)})).json() as unknown[]).length).toBe(1);
+  });
+
+  it('stores achievement grants on the server so every member reads the same badges',async()=>{
+    expect((await rpc('club_save_achievements',user,{p_user_id:id('user'),p_progress:{welcome:{completed:true}}})).status).toBeGreaterThanOrEqual(400);
+    expect((await rpc('club_save_achievements',admin,{p_user_id:id('user'),p_progress:{welcome:{completed:'yes'}}})).status).toBeGreaterThanOrEqual(400);
+    expect((await rpc('club_achievements_snapshot',anon,{p_user_id:id('user')})).status).toBeGreaterThanOrEqual(400);
+    const granted=await rpc('club_save_achievements',admin,{p_user_id:id('user'),p_progress:{welcome:{completed:true},fish:{progress:3}}});
+    expect(granted.status).toBe(200);
+    const [owner,other]=await Promise.all([
+      rpc('club_achievements_snapshot',user,{p_user_id:id('user')}),
+      rpc('club_achievements_snapshot',superadmin,{p_user_id:id('user')}),
+    ]);
+    expect(await owner.json()).toEqual({welcome:{completed:true},fish:{progress:3}});
+    expect(await other.json()).toEqual({welcome:{completed:true},fish:{progress:3}});
+    expect((await fetch(`${base}/rest/v1/user_achievements?select=progress`,{headers:headers(admin)})).status).toBeGreaterThanOrEqual(400);
   });
 
   it('preserves the explicit Admin and SuperAdmin assignments',()=>{
