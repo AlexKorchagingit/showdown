@@ -21,7 +21,6 @@ export function TimerSessionFields() {
   const { tournaments } = useTournaments();
   const { transactions, isLoading: financeLoading, loadError: financeError } = useFinance();
   const {
-    activeStructure,
     chipleaderId,
     linkedTournamentId,
     setChipleader,
@@ -32,8 +31,8 @@ export function TimerSessionFields() {
   const tournament = tournaments.find((row) => row.id === linkedTournamentId);
   const remaining = remainingPlayers(tournament);
   const totals = useMemo(
-    () => timerChipTotals(tournament, activeStructure, transactions),
-    [tournament, activeStructure, transactions],
+    () => timerChipTotals(tournament, transactions),
+    [tournament, transactions],
   );
 
   return (
@@ -47,7 +46,7 @@ export function TimerSessionFields() {
 
       {tournament ? (
         <p className="text-[11px] font-600 text-white/50">
-          Касса: {totals.entries} · в игре: {totals.active}
+          Входов в кассе: {totals.entries} · в игре: {totals.active}
         </p>
       ) : (
         <p className="text-[11px] font-600 text-white/50">Турнир не определён</p>
@@ -70,7 +69,8 @@ export function TimerSessionFields() {
           className={READONLY_CLASS}
         />
         <p className={HINT_CLASS}>
-          Ребаев: {totals.rebuys} · аддонов: {totals.addons}. Считается по кассе турнира.
+          Ребаев: {totals.rebuys} · аддонов: {totals.addons}. Считается по плашкам кассы;
+          отменённые не учитываются.
         </p>
       </label>
 
@@ -86,11 +86,13 @@ export function TimerSessionFields() {
         />
         <p className={HINT_CLASS}>
           {totals.active > 0
-            ? `Фишек в игре: ${chips(totals.totalChips)} на ${totals.active} игроков. ` +
-              `Старт ${chips(totals.startingStack)} · ребай ${chips(totals.rebuyStack)} · аддон ${chips(totals.addonStack)}.`
+            ? `${chips(totals.startingStack)} × ${totals.entries} входов ÷ ${totals.active} в игре.`
             : 'Появится, когда в кассе будут игроки без места.'}
-          {totals.usesStartingStackFallback && totals.entries > 0
-            ? ' Стек за ребай и аддон не указан в комментариях структуры — берём стартовый.'
+          {!totals.startingStackDeclared && totals.entries > 0
+            ? ` Начальный стек не указан в особенностях турнира — берём ${chips(totals.startingStack)} из карточки.`
+            : ''}
+          {totals.entriesFromSeats && totals.entries > 0
+            ? ' Плашек «Вход/Билет» в кассе нет — считаем по отмеченным игрокам.'
             : ''}
         </p>
       </label>

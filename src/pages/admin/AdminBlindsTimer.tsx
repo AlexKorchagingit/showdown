@@ -227,11 +227,10 @@ export function AdminBlindsTimer() {
   const tournament = boundTournament;
   const { remaining, registered } = tournamentPlayerCounts(tournament);
   const chipTotals = useMemo(
-    () => timerChipTotals(tournament, structure, transactions),
-    [tournament, structure, transactions],
+    () => timerChipTotals(tournament, transactions),
+    [tournament, transactions],
   );
   const avgStack = chipTotals.avgStack;
-  const reentries = chipTotals.rebuys + chipTotals.addons;
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
   const eventTitle = tournament?.title ?? structure?.name ?? '';
@@ -381,11 +380,12 @@ export function AdminBlindsTimer() {
                 {remaining}
                 <span className="text-white/35"> / {registered}</span>
               </FitText>
-              {reentries > 0 && (
+              {chipTotals.rebuys > 0 || chipTotals.addons > 0 ? (
                 <p className="text-sm md:text-base font-600 text-white/60 mt-2">
-                  Ребаев: {reentries}
+                  Ребаев: {chipTotals.rebuys}
+                  {chipTotals.addons > 0 ? ` · аддонов: ${chipTotals.addons}` : ''}
                 </p>
-              )}
+              ) : null}
             </section>
           )}
 

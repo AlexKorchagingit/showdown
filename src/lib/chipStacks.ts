@@ -1,19 +1,29 @@
-import { breakComment, isBreakLevel, type BlindStructure } from '../data/blindStructures';
 import type { Transaction } from '../types/finance';
 import type { Tournament } from '../types/tournament';
+import { isActiveTransaction } from './transactionVoid';
 import { cashierPlayers, cashierStillPlaying } from './tournamentArrival';
 
-const ADDON_WORD = 'адд?он\\w*|add[-\\s]?on';
-const REBUY_WORD = 'ре-?ба[йя]\\w*|re[-\\s]?buy';
 /** Only spaces and punctuation may sit between the word and its amount. */
 const GAP = '[\\s:—–\\-=(]*';
-/** «30 000 за аддон» keeps the amount in front of the word behind a preposition. */
-const GAP_BEFORE = `${GAP}(?:за|на|for)?${GAP}`;
 /** The lookahead forbids stopping mid-number, so «1 000» never reads as «100». */
 const AMOUNT =
   '(\\d[\\d\\s\\u00a0\\u202f]*)(?![\\d]|[\\s\\u00a0\\u202f]*\\d)(к|k|тыс[а-яё.]*)?';
 /** «Ребай — 1 000 ₽» is a price, not a stack. */
 const NOT_MONEY = '(?!\\s*(?:₽|руб|р\\.))';
+
+/**
+ * «ОСОБЕННОСТИ — Начальный стек 50 000 (500 бб)». The qualified wording is read
+ * first so a bare «стек» somewhere in the blurb cannot win over it.
+ */
+/** `\w` skips Cyrillic, so word endings need their own class. */
+const TAIL = '[а-яёa-z]*';
+const STACK_WORDS = [
+  `(?:начальн|стартов|глубок)${TAIL}\\s+ст[еэ]к${TAIL}`,
+  `ст[еэ]к${TAIL}`,
+];
+
+/** Below this a number is big blinds or a price, not a stack of chips. */
+const MIN_STARTING_STACK = 500;
 
 function toChips(digits: string, thousands: string | undefined): number | null {
   const base = Number(digits.replace(/[\s\u00a0\u202f]/g, ''));
@@ -22,119 +32,96 @@ function toChips(digits: string, thousands: string | undefined): number | null {
   return value >= 1 ? Math.round(value) : null;
 }
 
-/** «Аддон 20 000», «аддон: 20к», «30 000 за аддон» → chips, or null. */
+/** «Начальный стек 50 000 (500 бб)» → 50000. The bracketed big blinds are ignored. */
 export function chipAmountNear(text: string, word: string): number | null {
   const source = (text ?? '').replace(/\u00a0/g, ' ');
   if (!source.trim()) return null;
-  const after = new RegExp(`(?:${word})${GAP}${AMOUNT}${NOT_MONEY}`, 'i').exec(source);
-  if (after) {
-    const chips = toChips(after[1], after[2]);
-    if (chips !== null) return chips;
-  }
-  const before = new RegExp(`${AMOUNT}${GAP_BEFORE}(?:${word})`, 'i').exec(source);
-  if (before) return toChips(before[1], before[2]);
-  return null;
+  const match = new RegExp(`(?:${word})${GAP}${AMOUNT}${NOT_MONEY}`, 'i').exec(source);
+  return match ? toChips(match[1], match[2]) : null;
 }
 
 /**
- * Break notes on the ladder are the operative document, so they win over the
- * tournament blurb. The late-registration break is checked first: that is where
- * the club writes the addon stack.
+ * The stack a player actually receives is the one announced in the lobby, so the
+ * tournament features win over the `stackSize` field, which no screen edits.
  */
-function chipSources(
-  structure: BlindStructure | undefined,
-  tournament: Tournament | undefined,
-): string[] {
-  const breaks = (structure?.levels ?? []).filter(isBreakLevel);
-  const lateReg = breaks.filter((level) => level.isLateRegEnd === true);
-  const others = breaks.filter((level) => level.isLateRegEnd !== true);
-  return [
-    ...lateReg.map(breakComment),
-    ...others.map(breakComment),
-    ...(tournament?.features ?? []),
-    tournament?.about ?? '',
-  ].filter((text) => text.trim().length > 0);
-}
-
-/**
- * A stack far below the starting one is almost certainly the entry fee written
- * without a currency sign, so it is ignored in favour of the starting stack.
- */
-function declaredStack(sources: string[], word: string, startingStack: number): number | null {
-  const floor = startingStack * 0.2;
-  for (const text of sources) {
-    const chips = chipAmountNear(text, word);
-    if (chips !== null && chips >= floor) return chips;
+export function declaredStartingStack(tournament: Tournament | undefined): number | null {
+  if (!tournament) return null;
+  const sources = [...tournament.features, tournament.about];
+  for (const words of STACK_WORDS) {
+    for (const text of sources) {
+      const chips = chipAmountNear(text, words);
+      if (chips !== null && chips >= MIN_STARTING_STACK) return chips;
+    }
   }
   return null;
 }
 
 export type TimerChipTotals = {
-  /** Checked-in seats (cashier field). */
+  /** «Вход» and «Билет» chips in the tournament cashier — a ticket is an entry. */
   entries: number;
-  /** Seats without a finishing place. */
-  active: number;
+  /** «Ребай» chips. */
   rebuys: number;
+  /** «Аддон» chips. */
   addons: number;
+  /** Cashier seats without a finishing place. */
+  active: number;
   startingStack: number;
-  rebuyStack: number;
-  addonStack: number;
+  /** Starting stack for every entry in the cashier. */
   totalChips: number;
+  /** Whole chips: totalChips spread over the players still in the game. */
   avgStack: number;
-  /** True when the rebuy/addon stack had to fall back to the starting stack. */
-  usesStartingStackFallback: boolean;
+  /** True when the cashier has no entry charges and seats were counted instead. */
+  entriesFromSeats: boolean;
+  /** True when the lobby announced the starting stack. */
+  startingStackDeclared: boolean;
 };
 
 const EMPTY_TOTALS: TimerChipTotals = {
   entries: 0,
-  active: 0,
   rebuys: 0,
   addons: 0,
+  active: 0,
   startingStack: 0,
-  rebuyStack: 0,
-  addonStack: 0,
   totalChips: 0,
   avgStack: 0,
-  usesStartingStackFallback: true,
+  entriesFromSeats: true,
+  startingStackDeclared: false,
 };
 
 /**
- * Chips in play from the cashier ledger: starting stacks for every entry plus a
- * stack for each rebuy and addon. The average is spread over the players who
- * are still in the game.
+ * Everything the timer shows comes from the cashier: entries and rebuys are
+ * counted from its chips, and the average stack is the announced starting stack
+ * times the entries, spread over the players who are still in the game.
+ * Cancelled charges are not counted.
  */
 export function timerChipTotals(
   tournament: Tournament | undefined,
-  structure: BlindStructure | undefined,
   transactions: Transaction[],
 ): TimerChipTotals {
   if (!tournament) return EMPTY_TOTALS;
 
-  const ledger = transactions.filter((tx) => tx.tournamentId === tournament.id);
-  const rebuys = ledger.filter((tx) => tx.type === 'rebuy').length;
-  const addons = ledger.filter((tx) => tx.type === 'addon').length;
+  const ledger = transactions.filter(
+    (tx) => tx.tournamentId === tournament.id && isActiveTransaction(tx),
+  );
+  const ticketEntries = ledger.filter((tx) => tx.type === 'buy-in' || tx.type === 'ticket').length;
+  const seats = cashierPlayers(tournament.participants).length;
+  // A tournament whose charges are not entered yet still has a field to show.
+  const entries = ticketEntries > 0 ? ticketEntries : seats;
 
-  const startingStack = Math.max(0, tournament.stackSize);
-  const sources = chipSources(structure, tournament);
-  const declaredRebuy = declaredStack(sources, REBUY_WORD, startingStack);
-  const declaredAddon = declaredStack(sources, ADDON_WORD, startingStack);
-  const rebuyStack = declaredRebuy ?? startingStack;
-  const addonStack = declaredAddon ?? startingStack;
-
-  const entries = cashierPlayers(tournament.participants).length;
+  const declared = declaredStartingStack(tournament);
+  const startingStack = Math.max(0, declared ?? tournament.stackSize);
   const active = cashierStillPlaying(tournament.participants).length;
-  const totalChips = startingStack * entries + rebuyStack * rebuys + addonStack * addons;
+  const totalChips = startingStack * entries;
 
   return {
     entries,
+    rebuys: ledger.filter((tx) => tx.type === 'rebuy').length,
+    addons: ledger.filter((tx) => tx.type === 'addon').length,
     active,
-    rebuys,
-    addons,
     startingStack,
-    rebuyStack,
-    addonStack,
     totalChips,
     avgStack: active > 0 ? Math.round(totalChips / active) : 0,
-    usesStartingStackFallback: declaredRebuy === null && declaredAddon === null,
+    entriesFromSeats: ticketEntries === 0,
+    startingStackDeclared: declared !== null,
   };
 }

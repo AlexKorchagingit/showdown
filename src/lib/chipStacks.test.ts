@@ -1,19 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { chipAmountNear, timerChipTotals } from './chipStacks';
-import type { BlindLevel, BlindStructure } from '../data/blindStructures';
-import type { Transaction } from '../types/finance';
+import { chipAmountNear, declaredStartingStack, timerChipTotals } from './chipStacks';
+import type { Transaction, TransactionType } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
-
-function level(patch: Partial<BlindLevel> = {}): BlindLevel {
-  return { level: 1, smallBlind: 100, bigBlind: 200, ante: 200, durationMinutes: 20, ...patch };
-}
-
-function structure(levels: BlindLevel[]): BlindStructure {
-  return { id: 'bs', name: 'Test', levels, levelDuration: 20, guarantee: 0, payouts: [] };
-}
 
 function player(id: string, patch: Partial<Participant> = {}): Participant {
   return { id, userId: id, nickname: id, rating: 0, arrived: true, ...patch };
+}
+
+/** `n` checked-in players, the last `busted` of them with a finishing place. */
+function field(n: number, busted = 0): Participant[] {
+  return Array.from({ length: n }, (_, index) =>
+    index < n - busted ? player(`p${index}`) : player(`p${index}`, { place: n - index }));
 }
 
 function tournament(participants: Participant[], patch: Partial<Tournament> = {}): Tournament {
@@ -30,7 +27,8 @@ function tournament(participants: Participant[], patch: Partial<Tournament> = {}
     features: [],
     lateRegUntil: '21:00',
     blindStructure: 'Test',
-    stackSize: 30000,
+    // No screen edits this field, so it is only the last-resort fallback.
+    stackSize: 50000,
     levelDuration: '20 мин',
     isClosed: false,
     participants,
@@ -38,12 +36,12 @@ function tournament(participants: Participant[], patch: Partial<Tournament> = {}
   };
 }
 
-function charge(id: string, type: Transaction['type'], patch: Partial<Transaction> = {}): Transaction {
+function charge(id: string, type: TransactionType, patch: Partial<Transaction> = {}): Transaction {
   return {
     id,
     date: '2026-09-12T19:00:00Z',
     tournamentId: 'event',
-    userId: 'a',
+    userId: id,
     type,
     amount: 1000,
     status: 'unpaid',
@@ -54,118 +52,124 @@ function charge(id: string, type: Transaction['type'], patch: Partial<Transactio
   };
 }
 
-describe('chip amounts written by hand', () => {
-  it('reads the amount after or before the word, with thousand shorthands', () => {
-    const addon = 'адд?он\\w*|add[-\\s]?on';
-    expect(chipAmountNear('Аддон 20 000, вывод номинала 100', addon)).toBe(20000);
-    expect(chipAmountNear('аддон: 20к', addon)).toBe(20000);
-    expect(chipAmountNear('Даём 25 000 за аддон', addon)).toBe(25000);
-    expect(chipAmountNear('Аддон по желанию', addon)).toBeNull();
-    expect(chipAmountNear('', addon)).toBeNull();
+/** `n` charges of one type, as the cashier writes them per player. */
+function charges(type: TransactionType, n: number, patch: Partial<Transaction> = {}): Transaction[] {
+  return Array.from({ length: n }, (_, index) => charge(`${type}-${index}`, type, patch));
+}
+
+describe('starting stack announced in the lobby', () => {
+  it('reads the club wording, ignoring the big blinds in brackets', () => {
+    expect(declaredStartingStack(tournament([], { features: ['Начальный стек 30000 (300 бб)'] }))).toBe(30000);
+    expect(declaredStartingStack(tournament([], { features: ['Начальный стек 50 000 (500 бб)'] }))).toBe(50000);
+    expect(declaredStartingStack(tournament([], { features: ['Стартовый стек — 25к'] }))).toBe(25000);
+    expect(declaredStartingStack(tournament([], { about: 'Играем со стартовым стеком 50 000 фишек.' }))).toBe(50000);
+  });
+
+  it('prefers the announced stack over a stack mentioned in passing', () => {
+    expect(declaredStartingStack(tournament([], {
+      about: 'Потеряли стек на бэд-бите? Не беда.',
+      features: ['Ограничение по рэ-энтри в 1 шт. за двойной стартовый стек', 'Начальный стек 30000 (300 бб)'],
+    }))).toBe(30000);
+  });
+
+  it('reports nothing when the lobby says nothing about chips', () => {
+    expect(declaredStartingStack(tournament([], { features: ['Вход 1 000 ₽', 'Бонус 300 бб'] }))).toBeNull();
+    expect(declaredStartingStack(tournament([], { features: ['Короткий стек 30 бб'] }))).toBeNull();
+    expect(declaredStartingStack(undefined)).toBeNull();
   });
 
   it('does not read a price as a stack', () => {
-    const addon = 'адд?он\\w*|add[-\\s]?on';
-    expect(chipAmountNear('Аддон — 1 000 ₽', addon)).toBeNull();
-    expect(chipAmountNear('Аддон 1000 руб.', addon)).toBeNull();
-    expect(chipAmountNear('Аддон 1 000 ₽, стек 20 000 за аддон', addon)).toBe(20000);
+    expect(chipAmountNear('Начальный стек — 1 000 ₽', 'ст[еэ]к\\w*')).toBeNull();
+    expect(chipAmountNear('', 'ст[еэ]к\\w*')).toBeNull();
   });
 });
 
-describe('average stack from the cashier', () => {
-  const field = [
-    player('a'),
-    player('b'),
-    player('c', { place: 3 }),
-    player('lobby', { arrived: false }),
-  ];
-
-  it('spreads every bought stack over the players still in the game', () => {
+describe('timer totals for real tournaments', () => {
+  it('ROYAL 30K: 18 entries, 5 rebuys, 4 left — 30 000 × 18 / 4', () => {
     const totals = timerChipTotals(
-      tournament(field),
-      structure([
-        level(),
-        level({
-          level: 2,
-          smallBlind: 0,
-          bigBlind: 0,
-          ante: 0,
-          isBreak: true,
-          isLateRegEnd: true,
-          comment: 'Аддон 20 000, ребай 15 000',
-        }),
-      ]),
-      [charge('t1', 'rebuy'), charge('t2', 'addon'), charge('t3', 'buy-in')],
+      tournament(field(18, 14), { features: ['Начальный стек 30000 (300 бб)'] }),
+      [...charges('buy-in', 18), ...charges('rebuy', 5), ...charges('addon', 3)],
     );
 
     expect(totals).toMatchObject({
-      entries: 3,
-      active: 2,
-      rebuys: 1,
-      addons: 1,
-      rebuyStack: 15000,
-      addonStack: 20000,
-      usesStartingStackFallback: false,
+      entries: 18, rebuys: 5, addons: 3, active: 4,
+      startingStack: 30000, startingStackDeclared: true, entriesFromSeats: false,
     });
-    expect(totals.totalChips).toBe(30000 * 3 + 15000 + 20000);
-    expect(totals.avgStack).toBe(Math.round(125000 / 2));
+    expect(totals.totalChips).toBe(540000);
+    expect(totals.avgStack).toBe(135000);
+    expect(Number.isInteger(totals.avgStack)).toBe(true);
   });
 
-  it('falls back to the starting stack when no note declares one', () => {
-    const totals = timerChipTotals(tournament(field), structure([level()]), [charge('t1', 'rebuy')]);
-    expect(totals.rebuyStack).toBe(30000);
-    expect(totals.usesStartingStackFallback).toBe(true);
-    expect(totals.avgStack).toBe(Math.round((30000 * 3 + 30000) / 2));
-  });
-
-  it('prefers the late-registration break note over the tournament blurb', () => {
+  it('DEEPSTACK 50K: tickets count as entries, everyone still playing', () => {
     const totals = timerChipTotals(
-      tournament(field, { features: ['Аддон 40 000'] }),
-      structure([
-        level({
-          smallBlind: 0,
-          bigBlind: 0,
-          ante: 0,
-          isBreak: true,
-          isLateRegEnd: true,
-          comment: 'Аддон 20 000',
-        }),
-      ]),
-      [charge('t1', 'addon')],
+      tournament(field(12), { features: ['Начальный стек 50 000 (500 бб)'] }),
+      [...charges('buy-in', 9), ...charges('ticket', 3)],
     );
-    expect(totals.addonStack).toBe(20000);
+
+    expect(totals).toMatchObject({ entries: 12, active: 12, startingStack: 50000 });
+    expect(totals.avgStack).toBe(50000);
   });
 
-  it('ignores an entry fee described without a currency sign', () => {
+  it('RE-ENTRY 30K: a second entry for the same player buys another stack', () => {
     const totals = timerChipTotals(
-      tournament(field, { features: ['Ребай 1000', 'Аддон 1000'] }),
-      structure([level()]),
-      [charge('t1', 'rebuy')],
+      tournament(field(10, 4), { features: ['Начальный стек 30000 (300 бб)'] }),
+      [...charges('buy-in', 10), charge('re-entry', 'buy-in', { userId: 'p0' })],
     );
-    expect(totals.rebuyStack).toBe(30000);
-    expect(totals.usesStartingStackFallback).toBe(true);
+
+    expect(totals.entries).toBe(11);
+    expect(totals.avgStack).toBe(Math.round((30000 * 11) / 6));
+    expect(totals.avgStack).toBe(55000);
   });
 
-  it('reads the tournament description when the ladder says nothing', () => {
+  it('rounds to whole chips when the field does not divide evenly', () => {
     const totals = timerChipTotals(
-      tournament(field, { features: ['Аддон 40 000'] }),
-      structure([level()]),
-      [charge('t1', 'addon')],
+      tournament(field(7, 4), { features: ['Начальный стек 30000 (300 бб)'] }),
+      charges('buy-in', 7),
     );
-    expect(totals.addonStack).toBe(40000);
+
+    expect(totals.avgStack).toBe(70000);
+    expect(Number.isInteger(totals.avgStack)).toBe(true);
   });
 
-  it('ignores charges from other tournaments and keeps zero when nobody plays', () => {
+  it('BOUNTY 30K: a cancelled entry and a cancelled rebuy stop counting', () => {
     const totals = timerChipTotals(
-      tournament([player('a', { place: 1 })]),
-      structure([level()]),
-      [charge('t1', 'rebuy', { tournamentId: 'other' })],
+      tournament(field(9, 3), { features: ['Начальный стек 30000 (300 бб)'] }),
+      [
+        ...charges('buy-in', 9),
+        charge('void-entry', 'buy-in', { voidedAt: '2026-09-12T20:00:00Z' }),
+        ...charges('rebuy', 2),
+        charge('void-rebuy', 'rebuy', { voidedAt: '2026-09-12T20:05:00Z' }),
+      ],
     );
-    expect(totals.rebuys).toBe(0);
-    expect(totals.avgStack).toBe(0);
+
+    expect(totals).toMatchObject({ entries: 9, rebuys: 2 });
+    expect(totals.avgStack).toBe(Math.round((30000 * 9) / 6));
   });
 
-  it('reports nothing without a bound tournament', () => {
-    expect(timerChipTotals(undefined, structure([level()]), []).avgStack).toBe(0);
+  it('MONTHLY FINAL: the cashier field stands in until the charges are entered', () => {
+    const totals = timerChipTotals(
+      tournament(field(27, 9), { features: ['Начальный стек 50 000 (500 бб)'] }),
+      [],
+    );
+
+    expect(totals).toMatchObject({ entries: 27, entriesFromSeats: true, active: 18 });
+    expect(totals.avgStack).toBe(75000);
+  });
+
+  it('falls back to the tournament card when the lobby announces no stack', () => {
+    const totals = timerChipTotals(tournament(field(10, 5)), charges('buy-in', 10));
+
+    expect(totals).toMatchObject({ startingStack: 50000, startingStackDeclared: false });
+    expect(totals.avgStack).toBe(100000);
+  });
+
+  it('counts only this tournament and needs a player in the game', () => {
+    const totals = timerChipTotals(
+      tournament([player('a', { place: 1 })], { features: ['Начальный стек 30000'] }),
+      [charge('other', 'rebuy', { tournamentId: 'another-event' })],
+    );
+
+    expect(totals).toMatchObject({ rebuys: 0, active: 0, avgStack: 0 });
+    expect(timerChipTotals(undefined, []).avgStack).toBe(0);
   });
 });
