@@ -70,12 +70,14 @@ export function ProfilePage() {
   const viewedEmail = isAdmin ? (viewedUser?.email ?? '').trim() : '';
   const viewedBirthDate =
     readOnly && isAdmin ? (viewedUser?.birthDate ?? '').trim() : '';
-  const achievementsPath = readOnly && playerId
-    ? `/achievements/${encodeURIComponent(playerId)}`
-    : '/achievements';
-
   const subjectUserId =
     viewedUser?.id ?? ((readOnly ? playerId : userId)?.trim() ?? '');
+
+  // Achievements are stored per account, so the link carries the resolved id
+  // even when the profile was opened by nickname or email.
+  const achievementsPath = readOnly && playerId
+    ? `/achievements/${encodeURIComponent(subjectUserId || playerId)}`
+    : '/achievements';
 
   const statsPlayerId = subjectUserId || (readOnly ? playerId : userId) || '';
 

@@ -92,9 +92,21 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 }
 
 export function AchievementsScreen() {
-  const { userId } = useUser();
+  const { userId, clubUsers } = useUser();
   const { playerId } = useParams<{ playerId?: string }>();
-  const targetId = playerId || userId;
+
+  // Older links can carry an email or a nickname instead of the account id.
+  const targetId = useMemo(() => {
+    const needle = (playerId ?? '').trim();
+    if (!needle) return userId;
+    const lower = needle.toLowerCase();
+    const match = clubUsers.find(
+      (user) => user.id === needle
+        || user.email.trim().toLowerCase() === lower
+        || user.nickname.trim().toLowerCase() === lower,
+    );
+    return match?.id ?? needle;
+  }, [playerId, userId, clubUsers]);
 
   const [progress, setProgress] = useState<AchievementProgressMap | null>(null);
   const [error, setError] = useState('');
