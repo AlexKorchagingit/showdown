@@ -33,6 +33,12 @@ export function itmPlaceCount(totalPlayers: number): number {
   return Math.ceil(totalPlayers * ITM_FIELD_SHARE);
 }
 
+/**
+ * Every table must decrease from first place to the last paid one: a later
+ * bust-out may never be worth more than an earlier one. Each row sums to 1.
+ * Keep these in step with `club_private.tournament_place_points` in Postgres,
+ * which awards the same points when a tournament is closed.
+ */
 const PAYOUT_TEMPLATES: Record<number, number[]> = {
   1: [1],
   2: [0.65, 0.35],
@@ -40,44 +46,60 @@ const PAYOUT_TEMPLATES: Record<number, number[]> = {
   4: [0.42, 0.28, 0.18, 0.12],
   5: [0.38, 0.25, 0.17, 0.12, 0.08],
   6: [0.34, 0.22, 0.15, 0.12, 0.09, 0.08],
-  7: [0.32, 0.2, 0.14, 0.11, 0.09, 0.07, 0.07],
-  8: [0.29, 0.18, 0.13, 0.1, 0.08, 0.07, 0.07, 0.08],
+  7: [0.32, 0.2, 0.14, 0.11, 0.09, 0.08, 0.06],
+  8: [0.28, 0.19, 0.13, 0.1, 0.09, 0.08, 0.07, 0.06],
+  9: [0.28, 0.19, 0.13, 0.1, 0.08, 0.07, 0.06, 0.05, 0.04],
+  10: [0.27, 0.18, 0.125, 0.095, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03],
+  11: [0.26, 0.175, 0.12, 0.095, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02],
+  12: [0.25, 0.17, 0.115, 0.09, 0.075, 0.065, 0.055, 0.05, 0.04, 0.035, 0.03, 0.025],
 };
 
-const NINE_PLUS_HEAD = [0.27, 0.17, 0.12, 0.1, 0.08, 0.07, 0.06, 0.05, 0.04];
+/** Fields deep enough for a thirteenth paid place extend the last row. */
+const DEEPEST_TEMPLATE = PAYOUT_TEMPLATES[12];
+/** Each place past the deepest row keeps this much of the previous share. */
+const TAIL_NUMERATOR = 85;
+const TAIL_DENOMINATOR = 100;
+/** Shares are kept in millionths, the scale Postgres rounds the tail to. */
+const SHARE_UNIT = 1_000_000;
+
+/** Half away from zero on an exact ratio, the way `round()` works on numeric. */
+function divRound(numerator: number, denominator: number): number {
+  const whole = Math.floor(numerator / denominator);
+  const remainder = numerator - whole * denominator;
+  return remainder * 2 >= denominator ? whole + 1 : whole;
+}
 
 function sharesForPlaces(placeCount: number): number[] {
   if (placeCount <= 0) return [];
-  const exact = PAYOUT_TEMPLATES[placeCount];
-  if (exact) return [...exact];
+  const template = PAYOUT_TEMPLATES[placeCount] ?? DEEPEST_TEMPLATE;
+  const shares = template.map((share) => Math.round(share * SHARE_UNIT));
 
-  const shares = [...NINE_PLUS_HEAD];
-  for (let index = 9; index < placeCount; index += 1) {
-    if (index === 9) shares.push(0.04);
-    else if (index === 10) shares.push(0.03);
-    else shares.push(0.02);
+  while (shares.length < placeCount) {
+    shares.push(divRound(shares[shares.length - 1] * TAIL_NUMERATOR, TAIL_DENOMINATOR));
   }
-  const sum = shares.reduce((total, share) => total + share, 0);
-  if (sum <= 0) return shares;
-  return shares.map((share) => share / sum);
+  return shares;
 }
 
 /**
- * 35% ITM payout table. `points` are `Math.round(guarantee * share)`;
- * first place absorbs leftover rounding so the pool is conserved.
+ * 35% ITM points table. Shares are normalised to the guarantee and rounded to
+ * whole points; first place absorbs the leftover so the pool is conserved.
  */
 export function calculatePayouts(totalPlayers: number, guarantee: number): CalculatedPayout[] {
   const places = itmPlaceCount(totalPlayers);
-  if (places === 0 || guarantee <= 0) return [];
+  const pool = Math.round(guarantee);
+  if (places === 0 || pool <= 0) return [];
 
   const shares = sharesForPlaces(places);
-  const rows = shares.map((percent, index) => ({
+  const shareSum = shares.reduce((total, share) => total + share, 0);
+  if (shareSum <= 0) return [];
+
+  const rows = shares.map((share, index) => ({
     place: index + 1,
-    points: Math.round(guarantee * percent),
+    points: divRound(pool * share, shareSum),
   }));
 
-  const diff = Math.round(guarantee) - rows.reduce((total, row) => total + row.points, 0);
-  if (rows.length > 0 && diff !== 0) {
+  const diff = pool - rows.reduce((total, row) => total + row.points, 0);
+  if (diff !== 0) {
     rows[0] = { ...rows[0], points: Math.max(0, rows[0].points + diff) };
   }
   return rows;
