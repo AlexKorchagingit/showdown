@@ -65,4 +65,33 @@ begin
   return v_award;
 end $$;
 
+-- Closed tournaments keep the credited points in participants.rating, so the
+-- stored awards are rewritten from the same table the lobby now shows.
+do $backfill$
+declare v_rows integer;
+begin
+  if club_private.tournament_place_points(8,22,12000)<>720 then
+    raise exception 'Функция начисления очков не обновилась';
+  end if;
+  with field as (
+    select p.tournament_id,
+           count(*) filter (where p.arrived or p.place is not null) as players
+    from public.participants p
+    group by p.tournament_id
+  ), target as (
+    select p.id,
+           club_private.tournament_place_points(
+             coalesce(p.place,0),greatest(1,f.players::integer),t.guarantee
+           )+case when t.is_bounty then coalesce(p.knockouts,0)*100 else 0 end as rating
+    from public.participants p
+    join public.tournaments t on t.id=p.tournament_id and t.results_entered
+    join field f on f.tournament_id=p.tournament_id
+  )
+  update public.participants p set rating=target.rating
+  from target where target.id=p.id and p.rating<>target.rating;
+  get diagnostics v_rows=row_count;
+  raise notice 'Пересчитано начисленных очков: %', v_rows;
+end
+$backfill$;
+
 commit;
