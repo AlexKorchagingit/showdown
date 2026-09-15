@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { autoAvgStack, remainingPlayers, tournamentPlayerCounts } from './tournamentStats';
+import { remainingPlayers, tournamentPlayerCounts } from './tournamentStats';
 import type { Participant, Tournament } from '../types/tournament';
 
 function player(id: string, patch: Partial<Participant> = {}): Participant {
@@ -38,12 +38,12 @@ describe('timer counts from the cashier', () => {
     expect(tournamentPlayerCounts(tournament)).toEqual({ remaining: 1, registered: 2 });
   });
 
-  it('builds average stack from the cashier field, not the whole lobby', () => {
+  it('counts the cashier field, not the whole lobby', () => {
     const tournament = event([
       player('a', { arrived: true }),
       player('b', { arrived: true }),
       player('ghost', { arrived: false }),
     ]);
-    expect(autoAvgStack(tournament)).toBe(30000);
+    expect(tournamentPlayerCounts(tournament)).toEqual({ remaining: 2, registered: 2 });
   });
 });

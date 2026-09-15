@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -16,6 +16,7 @@ import { ScreenLoading } from '../../components/ScreenLoading';
 import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { FitText } from '../../components/FitText';
 import { useBlinds } from '../../context/BlindsContext';
+import { useFinance } from '../../context/FinanceContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
@@ -35,8 +36,8 @@ import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
+import { timerChipTotals } from '../../lib/chipStacks';
 import {
-  autoAvgStack,
   nicknamesByPlace,
   remainingPlayers,
   tournamentPlayerCounts,
@@ -101,12 +102,11 @@ export function AdminBlindsTimer() {
     skipLevel,
     adjustSeconds,
     linkedTournamentId,
-    avgStackOverride,
     chipleaderId,
     setChipleader,
-    rebuyCount,
     chipleaderStack,
   } = useBlinds();
+  const { transactions } = useFinance();
 
   const { bindTournament } = useBindPokerTimer();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -128,10 +128,23 @@ export function AdminBlindsTimer() {
     structures.find((row) => row.id === (structureIdParam ?? activeStructure?.id ?? '')) ??
     activeStructure;
 
+  // Each binding decision is applied once per tab. Re-applying it whenever the
+  // shared session changes made two open timer tabs overwrite each other's
+  // binding in a loop, and every round trip queued another remote save.
+  const appliedBindRef = useRef<string | null>(null);
+  const applyBind = useCallback(
+    (key: string, tournamentId: string | null) => {
+      if (appliedBindRef.current === key) return;
+      appliedBindRef.current = key;
+      bindTournament(tournamentId);
+    },
+    [bindTournament],
+  );
+
   useEffect(() => {
     if (!timerReady) return;
     if (tournamentIdParam) {
-      bindTournament(tournamentIdParam);
+      applyBind(`tournament:${tournamentIdParam}`, tournamentIdParam);
       return;
     }
     if (!structureIdParam) return;
@@ -140,16 +153,18 @@ export function AdminBlindsTimer() {
     if (!structure || tournamentsLoading) return;
     const resolved = resolveTournamentForTimer(structure, tournaments, linkedTournamentId);
     if (resolved) {
-      if (resolved.id !== linkedTournamentId) bindTournament(resolved.id);
+      if (resolved.id !== linkedTournamentId) {
+        applyBind(`structure:${structureIdParam}:${resolved.id}`, resolved.id);
+      }
       return;
     }
     if (isRunning || tournaments.length === 0) return;
-    if (linkedTournamentId) bindTournament(null);
+    if (linkedTournamentId) applyBind(`structure:${structureIdParam}:none`, null);
   }, [
     timerReady,
     tournamentIdParam,
     structureIdParam,
-    bindTournament,
+    applyBind,
     ensureTimer,
     tournaments,
     tournamentsLoading,
@@ -211,7 +226,12 @@ export function AdminBlindsTimer() {
   const structure = resolvedStructure;
   const tournament = boundTournament;
   const { remaining, registered } = tournamentPlayerCounts(tournament);
-  const avgStack = avgStackOverride ?? autoAvgStack(tournament);
+  const chipTotals = useMemo(
+    () => timerChipTotals(tournament, structure, transactions),
+    [tournament, structure, transactions],
+  );
+  const avgStack = chipTotals.avgStack;
+  const reentries = chipTotals.rebuys + chipTotals.addons;
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
   const eventTitle = tournament?.title ?? structure?.name ?? '';
@@ -361,8 +381,10 @@ export function AdminBlindsTimer() {
                 {remaining}
                 <span className="text-white/35"> / {registered}</span>
               </FitText>
-              {rebuyCount != null && rebuyCount > 0 && (
-                <p className="text-sm md:text-base font-600 text-white/60 mt-2">Ребаев: {rebuyCount}</p>
+              {reentries > 0 && (
+                <p className="text-sm md:text-base font-600 text-white/60 mt-2">
+                  Ребаев: {reentries}
+                </p>
               )}
             </section>
           )}

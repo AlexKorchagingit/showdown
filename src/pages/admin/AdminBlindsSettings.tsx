@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, Download, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
+import { ChevronRight, CopyPlus, Download, Pencil, Plus, Timer, Trash2 } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
+import { ImportStructureModal } from '../../components/admin/ImportStructureModal';
 import { useBlinds } from '../../context/BlindsContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
@@ -11,6 +12,7 @@ import { exportBlindStructuresToExcel } from '../../lib/exportBlindStructures';
 import {
   BREAK_COMMENT_MAX,
   buildLevels,
+  copyStructureLevels,
   DEFAULT_PAYOUTS,
   breakComment,
   insertBreakAfter,
@@ -139,21 +141,25 @@ function StructuresHeaderButton({ onClick }: { onClick: () => void }) {
 
 function StructureEditorScreen({
   structure,
+  structures,
   timerRunning,
   onBack,
   onTimer,
   onSave,
 }: {
   structure: BlindStructure;
+  structures: BlindStructure[];
   timerRunning: boolean;
   onBack: () => void;
   onTimer: () => void;
   onSave: (levels: BlindLevel[]) => void;
 }) {
   const [draft, setDraft] = useState(structure.levels);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     setDraft(structure.levels);
+    setImportOpen(false);
   }, [structure.id]);
 
   const dirty =
@@ -234,11 +240,35 @@ function StructureEditorScreen({
             Изменения не применены, пока не нажмёте «Сохранить».
           </p>
         ) : null}
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 mb-3 rounded-xl text-[13px] font-700"
+          style={{
+            background: 'rgba(217,153,98,0.12)',
+            border: '1px solid rgba(217,153,98,0.35)',
+            color: '#F2D8A7',
+          }}
+        >
+          <CopyPlus size={16} strokeWidth={2.4} />
+          Импортировать структуру из…
+        </button>
         <LevelEditor
           structure={{ ...structure, levels: draft }}
           onChange={(levels) => setDraft(levels)}
         />
       </div>
+
+      <ImportStructureModal
+        open={importOpen}
+        currentId={structure.id}
+        structures={structures}
+        onClose={() => setImportOpen(false)}
+        onImport={(source) => {
+          setDraft(copyStructureLevels(source.levels));
+          setImportOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -676,6 +706,7 @@ export function AdminBlindsSettings() {
     return (
       <StructureEditorScreen
         structure={editing}
+        structures={structures}
         timerRunning={isRunning && activeStructureId === editing.id}
         onBack={backFromEditor}
         onTimer={() => openTimerForStructure(editing.id)}

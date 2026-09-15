@@ -46,9 +46,8 @@ interface FinanceContextValue {
     type: Exclude<TransactionType, 'ticket'>,
   ) => void;
   addTicket: (tournamentId: string, userId: string, comment: string) => void;
-  markPaid: (transactionIds: string[]) => void;
+  markPaid: (transactionIds: string[]) => Promise<boolean>;
   voidTransaction: (transactionId: string, reason: string) => Promise<boolean>;
-  markPlayerPaid: (tournamentId: string, userId: string) => void;
   markAllUnpaidForPlayer: (userId: string) => void;
   unpaidForPlayer: (tournamentId: string, userId: string) => Transaction[];
   unpaidTotalForPlayer: (tournamentId: string, userId: string) => number;
@@ -180,16 +179,17 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }, [submitCharge],
   );
 
-  const markPaid = useCallback((transactionIds: string[]) => {
-    if (transactionIds.length === 0) return;
-    void markTransactionsPaid(transactionIds)
-      .then((saved) => {
-        mutationVersion.current++;
-        setTransactions((prev) => mergeTransactionUpdates(prev, saved));
-      })
-      .catch((error) => {
-        window.alert(error instanceof Error ? error.message : 'Не удалось отметить оплату');
-      });
+  const markPaid = useCallback(async (transactionIds: string[]): Promise<boolean> => {
+    if (transactionIds.length === 0) return false;
+    try {
+      const saved = await markTransactionsPaid(transactionIds);
+      mutationVersion.current++;
+      setTransactions((prev) => mergeTransactionUpdates(prev, saved));
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось отметить оплату');
+      return false;
+    }
   }, []);
 
   const isTransactionVoiding = useCallback((transactionId: string) => pendingVoids.has(transactionId), [pendingVoids]);
@@ -228,20 +228,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     [unpaidForPlayer],
   );
 
-  const markPlayerPaid = useCallback(
-    (tournamentId: string, userId: string) => {
-      const ids = unpaidForPlayer(tournamentId, userId).map((tx) => tx.id);
-      if (ids.length) markPaid(ids);
-    },
-    [unpaidForPlayer, markPaid],
-  );
-
   const markAllUnpaidForPlayer = useCallback(
     (userId: string) => {
       const ids = transactions
         .filter((tx) => tx.userId === userId && tx.status === 'unpaid' && isActiveTransaction(tx))
         .map((tx) => tx.id);
-      if (ids.length) markPaid(ids);
+      if (ids.length) void markPaid(ids);
     },
     [transactions, markPaid],
   );
@@ -264,7 +256,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addTicket,
       markPaid,
       voidTransaction,
-      markPlayerPaid,
       markAllUnpaidForPlayer,
       unpaidForPlayer,
       unpaidTotalForPlayer,
@@ -284,7 +275,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addTicket,
       markPaid,
       voidTransaction,
-      markPlayerPaid,
       markAllUnpaidForPlayer,
       unpaidForPlayer,
       unpaidTotalForPlayer,

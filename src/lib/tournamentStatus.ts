@@ -76,15 +76,25 @@ export function sortByPlace<T extends { place?: number }>(participants: T[]): T[
   });
 }
 
-/** Open events: A–Z by nickname. Closed events: finishing place 1…N. */
+function byNickname(a: { nickname: string }, b: { nickname: string }): number {
+  return a.nickname.localeCompare(b.nickname, 'ru', { sensitivity: 'base' });
+}
+
+/**
+ * Cashier order for a live event: players still in the game A–Z, then the
+ * bust-outs in the order they left (N…1). Closed events keep the results
+ * order — finishing place 1…N.
+ */
 export function sortFinancePlayers<T extends { place?: number; nickname: string }>(
   participants: T[],
   closed: boolean,
 ): T[] {
   if (closed) return sortByPlace(participants);
-  return [...participants].sort((a, b) =>
-    a.nickname.localeCompare(b.nickname, 'ru', { sensitivity: 'base' }),
-  );
+  const isEliminated = (player: T) => typeof player.place === 'number' && player.place >= 1;
+  return [
+    ...participants.filter((player) => !isEliminated(player)).sort(byNickname),
+    ...participants.filter(isEliminated).sort((a, b) => (b.place ?? 0) - (a.place ?? 0)),
+  ];
 }
 
 /** True when the field can be closed: N−1 eliminated (winner left) or every seat has a place. */

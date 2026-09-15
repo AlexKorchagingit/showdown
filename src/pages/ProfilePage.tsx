@@ -17,6 +17,7 @@ import {
 import { formatBirthDate, resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 import { clubRatingPlayers } from '../lib/clubRating';
 import { collectPlayerGameHistory, computePlayerAdminStats, summarizePlayerGameHistory } from '../lib/playerAnalytics';
+import { clearAllDebtsConfirm } from '../lib/transactionVoid';
 import { AdminPlayerStats } from '../components/admin/AdminPlayerStats';
 import { GameHistorySheet } from '../components/GameHistorySheet';
 
@@ -322,6 +323,9 @@ export function ProfilePage() {
           onClearDebts={
             statsPlayerId
               ? () => {
+                  if (!window.confirm(clearAllDebtsConfirm(displayNickname, adminStats.clubDebt))) {
+                    return;
+                  }
                   markAllUnpaidForPlayer(statsPlayerId);
                 }
               : undefined

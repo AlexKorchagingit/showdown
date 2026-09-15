@@ -342,6 +342,11 @@ function cloneLevel(level: BlindLevel): BlindLevel {
   return next;
 }
 
+/** Independent copy of a ladder, renumbered so it can replace another one. */
+export function copyStructureLevels(levels: BlindLevel[]): BlindLevel[] {
+  return renumberLevels(levels.map(cloneLevel));
+}
+
 function withBreakBlinds(levels: BlindLevel[]): BlindLevel[] {
   return levels.map((level, index) => {
     if (!isBreakLevel(level)) return withAnteFromBigBlind(level);
