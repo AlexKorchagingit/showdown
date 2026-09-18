@@ -1,5 +1,6 @@
--- Award ITM points strictly by place: a later bust-out never beats an earlier one.
--- Mirrors PAYOUT_TEMPLATES in src/data/prizeStructure.ts.
+-- Award ITM points strictly by place on every field size, not just the eight
+-- paid places fixed in 20260916. Mirrors PAYOUT_TEMPLATES in
+-- src/data/prizeStructure.ts and rewrites points already credited.
 begin;
 set local lock_timeout='3s';
 set local statement_timeout='30s';
@@ -43,7 +44,7 @@ begin
     when 5 then array[0.38,0.25,0.17,0.12,0.08]::numeric[]
     when 6 then array[0.34,0.22,0.15,0.12,0.09,0.08]::numeric[]
     when 7 then array[0.32,0.20,0.14,0.11,0.09,0.08,0.06]::numeric[]
-    when 8 then array[0.28,0.19,0.13,0.10,0.09,0.08,0.07,0.06]::numeric[]
+    when 8 then array[0.29,0.18,0.13,0.10,0.09,0.08,0.07,0.06]::numeric[]
     when 9 then array[0.28,0.19,0.13,0.10,0.08,0.07,0.06,0.05,0.04]::numeric[]
     when 10 then array[0.27,0.18,0.125,0.095,0.08,0.07,0.06,0.05,0.04,0.03]::numeric[]
     when 11 then array[0.26,0.175,0.12,0.095,0.08,0.07,0.06,0.05,0.04,0.03,0.02]::numeric[]
@@ -70,7 +71,8 @@ end $$;
 do $backfill$
 declare v_rows integer;
 begin
-  if club_private.tournament_place_points(8,22,12000)<>720 then
+  -- 18 players pay seven places; sixth used to tie with seventh at 840.
+  if club_private.tournament_place_points(6,18,12000)<>960 then
     raise exception 'Функция начисления очков не обновилась';
   end if;
   with field as (
@@ -94,4 +96,5 @@ begin
 end
 $backfill$;
 
+revoke all on function club_private.tournament_place_points(integer,integer,integer) from public,anon,authenticated;
 commit;

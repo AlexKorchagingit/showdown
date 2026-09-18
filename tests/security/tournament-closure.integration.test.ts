@@ -76,6 +76,8 @@ describe('atomic tournament closure', () => {
       from public.users where id like '${prefix}%';`);
     localSql(migration());
     localSql(migration());
+    localSql(readFileSync('supabase/migrations/20260916_fix_eight_place_payout.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260917_fair_itm_points.sql','utf8'));
     expect(localSql(`select count(*),count(*) filter(where is_admin),sum(ruby_balance)
       from public.users where id like '${prefix}%';`)).toBe(before);
     for (let attempt=0; attempt<20; attempt++) {
@@ -87,6 +89,14 @@ describe('atomic tournament closure', () => {
     [admin,owner,user] = await Promise.all([login('admin'),login('owner'),login('user')]);
   });
 
+  it('awards eighth place less than seventh after the payout migration', () => {
+    expect(localSql("select club_private.tournament_place_points(7,22,12000), club_private.tournament_place_points(8,22,12000), (select sum(club_private.tournament_place_points(place,22,12000)) from generate_series(1,8) place);"))
+      .toBe('840|720|12000');
+  });
+  it('keeps every paid place apart on a seven-handed money bubble', () => {
+    expect(localSql("select club_private.tournament_place_points(6,18,12000), club_private.tournament_place_points(7,18,12000), (select sum(club_private.tournament_place_points(place,18,12000)) from generate_series(1,7) place);"))
+      .toBe('960|720|12000');
+  });
   it('allows only verified administrators and keeps private helpers inaccessible', async () => {
     const tournament = seedTournament('denied');
     const args = { p_request_id: randomUUID(), p_tournament_id: tournament, p_results: results(tournament) };

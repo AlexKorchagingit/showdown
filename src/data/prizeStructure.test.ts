@@ -4,14 +4,21 @@ import { calculatePayouts, itmPlaceCount, ratingPointsForPlace } from './prizeSt
 const GUARANTEES = [500, 1000, 3000, 12000, 25000, 100000];
 
 describe('ITM points ladder', () => {
-  it('pays the Tuesday freeroll strictly by place', () => {
-    // 22 players in the cashier, 12 000 guaranteed points, 8 paid places.
+  it('keeps the pool intact and awards eighth place less than seventh', () => {
     const payouts = calculatePayouts(22, 12000);
 
+    expect(payouts).toHaveLength(8);
     expect(payouts.map((row) => row.points)).toEqual([
-      3360, 2280, 1560, 1200, 1080, 960, 840, 720,
+      3480, 2160, 1560, 1200, 1080, 960, 840, 720,
     ]);
-    expect(payouts.reduce((total, row) => total + row.points, 0)).toBe(12000);
+    expect(payouts.reduce((sum, row) => sum + row.points, 0)).toBe(12000);
+  });
+
+  it('splits seventh and sixth place on a seven-handed money bubble', () => {
+    // 18 players in the cashier: both places used to be worth 840.
+    const payouts = calculatePayouts(18, 12000);
+
+    expect(payouts.map((row) => row.points)).toEqual([3840, 2400, 1680, 1320, 1080, 960, 720]);
   });
 
   it('keeps every place apart on a club-sized field', () => {
