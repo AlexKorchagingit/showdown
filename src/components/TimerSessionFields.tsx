@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useBlinds } from '../context/BlindsContext';
 import { useFinance } from '../context/FinanceContext';
 import { useTournaments } from '../context/TournamentContext';
-import { timerChipTotals } from '../lib/chipStacks';
+import { timerChipTotals, type TimerChipTotals } from '../lib/chipStacks';
 import { remainingPlayers } from '../lib/tournamentStats';
 
 const FIELD_CLASS =
@@ -14,6 +14,14 @@ const HINT_CLASS = 'mt-1 text-[10px] font-600 leading-snug text-white/40';
 
 function chips(value: number): string {
   return value.toLocaleString('ru-RU');
+}
+
+/** Spells out the average stack the way the club counts it on paper. */
+function formula(totals: TimerChipTotals): string {
+  const parts = [`${chips(totals.startingStack)} × ${totals.entries} входов`];
+  if (totals.rebuys > 0) parts.push(`${chips(totals.rebuyStack)} × ${totals.rebuys} ребаев`);
+  if (totals.addons > 0) parts.push(`${chips(totals.addonStack)} × ${totals.addons} аддонов`);
+  return `(${parts.join(' + ')}) ÷ ${totals.active} в игре`;
 }
 
 /** Chipleader picker plus the cashier-derived rebuy count and average stack. */
@@ -47,7 +55,7 @@ export function TimerSessionFields() {
 
       {tournament ? (
         <p className="text-[11px] font-600 text-white/50">
-          Касса: {totals.entries} · в игре: {totals.active}
+          Входов: {totals.entries} · в игре: {totals.active}
         </p>
       ) : (
         <p className="text-[11px] font-600 text-white/50">Турнир не определён</p>
@@ -70,7 +78,12 @@ export function TimerSessionFields() {
           className={READONLY_CLASS}
         />
         <p className={HINT_CLASS}>
-          Ребаев: {totals.rebuys} · аддонов: {totals.addons}. Считается по кассе турнира.
+          Ребаев: {totals.rebuys} · аддонов: {totals.addons}. Считаем плашки «Ребай» и «Аддон»
+          в кассе турнира, отменённые не берём.
+          {totals.rebuysBeyondLimit > 0
+            ? ` Лишних плашек «Ребай» сверх лимита турнира (${totals.rebuyLimit} на игрока): ` +
+              `${totals.rebuysBeyondLimit} — в стеке не учитываем.`
+            : ''}
         </p>
       </label>
 
@@ -85,12 +98,15 @@ export function TimerSessionFields() {
           className={READONLY_CLASS}
         />
         <p className={HINT_CLASS}>
-          {totals.active > 0
-            ? `Фишек в игре: ${chips(totals.totalChips)} на ${totals.active} игроков. ` +
-              `Старт ${chips(totals.startingStack)} · ребай ${chips(totals.rebuyStack)} · аддон ${chips(totals.addonStack)}.`
-            : 'Появится, когда в кассе будут игроки без места.'}
-          {totals.usesStartingStackFallback && totals.entries > 0
-            ? ' Стек за ребай и аддон не указан в комментариях структуры — берём стартовый.'
+          {totals.active > 0 ? `${formula(totals)} = ${chips(totals.avgStack)}.` : 'Появится, когда в кассе будут игроки без места.'}
+          {totals.startingStackDeclared || totals.entries === 0
+            ? ''
+            : ` Начальный стек не заявлен в особенностях турнира — берём ${chips(totals.startingStack)} из карточки.`}
+          {totals.entriesFromSeats
+            ? ' Плашек «Вход/Билет» в кассе нет — считаем по отмеченным игрокам.'
+            : ''}
+          {totals.rebuyStackMultiplier
+            ? ` Ребай по правилам турнира — ${totals.rebuyStackMultiplier} стартовых стека.`
             : ''}
         </p>
       </label>
