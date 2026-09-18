@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONSENT_DOCUMENTS, consentClubDocument, type ClubLegalDocument, type ConsentLink } from '../data/legalDocuments';
-import { ConsentRequiredError, loginOrRegisterUser } from '../lib/loginAccount';
+import {
+  ConsentRequiredError,
+  ProfileLinkedError,
+  SessionExpiredError,
+  loginOrRegisterUser,
+  verifiedSessionEmail,
+} from '../lib/loginAccount';
 import { isUncertainNetworkError, requestErrorMessage } from '../lib/network';
 import { OtpApiError } from '../lib/otpApi';
 import { requestLoginCode, verifyLoginCode } from '../lib/loginOtp';
@@ -28,6 +34,12 @@ interface Props {
 }
 
 type Step = 'consent' | 'email' | 'code';
+
+/** Errors that already carry a message for the player keep it. */
+function loginErrorText(error: unknown, fallback: string): string {
+  if (error instanceof ProfileLinkedError || error instanceof OtpApiError) return error.message;
+  return requestErrorMessage(error, fallback);
+}
 
 async function completeLogin(
   email: string,
@@ -122,7 +134,7 @@ export function LoginScreen({ onLogin }: Props) {
     setTimer(timeLeft);
   }, []);
 
-  const sendCode = useCallback(async (targetEmail: string, nextTimer: number) => {
+  const sendCode = useCallback(async (targetEmail: string, nextTimer: number, notice = '') => {
     const normalizedEmail = targetEmail.trim().toLowerCase();
     setEmail(normalizedEmail);
     setIsLoading(true);
@@ -142,7 +154,7 @@ export function LoginScreen({ onLogin }: Props) {
 
     try {
       await requestLoginCode(normalizedEmail);
-      openCodeStep(nextTimer);
+      openCodeStep(nextTimer, notice);
     } catch (err) {
       console.error(err);
 
@@ -170,19 +182,52 @@ export function LoginScreen({ onLogin }: Props) {
   }, []);
 
   const handleAcceptAll = () => {
-    if (isLoading || !isEmailValid) return;
+    if (isLoading) return;
+    const normalized = email.trim().toLowerCase();
+    if (!isEmailValid) {
+      setLoginError('Не удалось определить почту. Нажмите «Изменить email» и введите её ещё раз.');
+      return;
+    }
+
     const timestamp = new Date().toISOString();
     setAgreementsAcceptedAt(timestamp);
     writeAgreementsAt(timestamp);
-    if (verifiedEmailRef.current !== email.trim().toLowerCase()) {
-      void sendCode(email, 60);
-      return;
-    }
     setIsLoading(true);
     setLoginError('');
-    void completeLogin(email, timestamp, onLoginRef.current)
-      .catch(() => setLoginError('Не удалось завершить регистрацию. Попробуйте ещё раз.'))
-      .finally(() => setIsLoading(false));
+
+    void (async () => {
+      try {
+        // A reload drops the in-memory flag, so the stored session is the proof.
+        const confirmed =
+          verifiedEmailRef.current === normalized || (await verifiedSessionEmail()) === normalized;
+        if (!confirmed) {
+          await sendCode(
+            normalized,
+            60,
+            'Согласия сохранены. Введите код из письма, чтобы завершить регистрацию.',
+          );
+          return;
+        }
+        await completeLogin(normalized, timestamp, onLoginRef.current);
+      } catch (error) {
+        console.error(error);
+        if (error instanceof SessionExpiredError) {
+          await sendCode(
+            normalized,
+            60,
+            'Подтверждение почты истекло. Согласия сохранены — введите новый код.',
+          );
+          return;
+        }
+        setLoginError(
+          error instanceof ConsentRequiredError
+            ? 'Сервер не принял согласия. Нажмите «Принять все и продолжить» ещё раз.'
+            : loginErrorText(error, 'Не удалось завершить регистрацию. Попробуйте ещё раз.'),
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   };
 
   const goToEmailStep = () => {
@@ -264,11 +309,7 @@ export function LoginScreen({ onLogin }: Props) {
         verifiedRef.current = false;
         setIsSuccess(false);
         setOtp(['', '', '', '']);
-        setLoginError(
-          error instanceof OtpApiError
-            ? error.message
-            : requestErrorMessage(error, 'Не удалось войти. Попробуйте ещё раз.'),
-        );
+        setLoginError(loginErrorText(error, 'Не удалось войти. Попробуйте ещё раз.'));
         inputRefs.current[0]?.focus();
       })
       .finally(() => {
@@ -415,6 +456,9 @@ export function LoginScreen({ onLogin }: Props) {
                 >
                   {isLoading ? 'Отправка…' : 'Принять все и продолжить'}
                 </button>
+                {loginError ? (
+                  <p className="mt-3 text-center text-[13px] font-600 text-red-400">{loginError}</p>
+                ) : null}
               </div>
               <button
                 type="button"
