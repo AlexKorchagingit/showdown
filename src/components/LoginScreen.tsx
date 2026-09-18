@@ -547,16 +547,6 @@ export function LoginScreen({ onLogin }: Props) {
       {activeDocument ? (
         <LegalImageModal key={activeDocument.id} document={activeDocument} onClose={() => setActiveDocument(null)} />
       ) : null}
-
-      <style>{`
-        @keyframes loginBgPulse {
-          0%, 100% { opacity: 0.88; }
-          50%       { opacity: 1; }
-        }
-        .login-bg-pulse {
-          animation: loginBgPulse 5s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 }
