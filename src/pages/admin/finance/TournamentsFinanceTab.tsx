@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTournaments } from '../../../context/TournamentContext';
 import { useBlinds } from '../../../context/BlindsContext';
 import { TournamentCard } from '../../../components/TournamentCard';
-import { compareByStart, isFinished } from '../../../lib/tournamentStatus';
+import { compareByStart, isFinished, isHidden } from '../../../lib/tournamentStatus';
 
 export function TournamentsFinanceTab() {
   const navigate = useNavigate();
@@ -28,7 +28,9 @@ export function TournamentsFinanceTab() {
       {sorted.map((tournament) => (
         <div
           key={tournament.id}
-          className={isFinished(tournament) ? 'opacity-55' : ''}
+          className={
+            isHidden(tournament) ? 'opacity-45' : isFinished(tournament) ? 'opacity-55' : ''
+          }
         >
           <TournamentCard
             tournament={tournament}

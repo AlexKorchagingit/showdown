@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Link2, Plus, UserPlus } from 'lucide-react';
+import { Link2, Plus, Search, UserPlus } from 'lucide-react';
 import { PlayerAvatar } from '../PlayerAvatar';
 import { GUEST_NICKNAME_MAX } from '../../lib/guestPlayer';
+import { matchesPlayerSearch } from '../../lib/playerSearch';
 import type { MappedUser } from '../../lib/supabaseMap';
 
 export function TournamentPlayerPicker({
@@ -20,6 +21,8 @@ export function TournamentPlayerPicker({
 }) {
   const [guestNickOpen, setGuestNickOpen] = useState(false);
   const [guestNick, setGuestNick] = useState('');
+  const [query, setQuery] = useState('');
+  const filtered = users.filter((user) => matchesPlayerSearch(user, query));
 
   return (
     <AnimatePresence
@@ -27,6 +30,7 @@ export function TournamentPlayerPicker({
       onExitComplete={() => {
         setGuestNickOpen(false);
         setGuestNick('');
+        setQuery('');
       }}
     >
       {open && (
@@ -38,7 +42,7 @@ export function TournamentPlayerPicker({
           className="overflow-hidden"
         >
           <div
-            className="mt-2 max-h-64 scrollable space-y-1.5 rounded-xl p-2"
+            className="mt-2 rounded-xl p-2 space-y-2"
             style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             {linkingNickname ? (
@@ -46,90 +50,116 @@ export function TournamentPlayerPicker({
                 Выберите пользователя системы для ника «{linkingNickname}»
               </p>
             ) : null}
-            {users.length === 0 ? (
-              <p className="text-center text-[12px] py-3" style={{ color: '#6B6360' }}>
-                {linkingNickname
-                  ? 'Нет свободных пользователей для привязки'
-                  : 'Все пользователи уже в турнире'}
-              </p>
-            ) : (
-              users.map((user) => (
-                <button
-                  key={user.id}
-                  type="button"
-                  onClick={() => onPickUser(user)}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg active:scale-[0.98]"
-                  style={{ background: '#231A16' }}
-                >
-                  <span className="min-w-0 text-left flex-1 flex items-center gap-3">
-                    <PlayerAvatar playerId={user.id} nickname={user.nickname} size="sm" />
-                    <span className="min-w-0">
-                      <span className="block text-[13px] font-700 text-white truncate">
-                        {user.nickname}
-                      </span>
-                      {user.email ? (
-                        <span className="block text-[11px] text-white/80 truncate">{user.email}</span>
-                      ) : null}
-                    </span>
-                  </span>
-                  {linkingNickname ? (
-                    <Link2 size={15} strokeWidth={2.4} style={{ color: '#D99962' }} />
-                  ) : (
-                    <Plus size={15} strokeWidth={2.4} style={{ color: '#D99962' }} />
-                  )}
-                </button>
-              ))
-            )}
-            {!linkingNickname && onAddGuestNick ? (
-              <div className="pt-1.5 mt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                {guestNickOpen ? (
-                  <form
-                    className="flex gap-2"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      onAddGuestNick(guestNick);
-                      setGuestNick('');
-                    }}
+            {users.length > 0 ? (
+              <label className="relative block">
+                <Search
+                  size={14}
+                  strokeWidth={2.4}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: '#A39B98' }}
+                />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Поиск по нику или email"
+                  className="w-full h-10 rounded-lg pl-9 pr-3 text-[13px] text-white outline-none"
+                  style={{
+                    background: '#231A16',
+                    border: '1px solid rgba(217,153,98,0.35)',
+                  }}
+                />
+              </label>
+            ) : null}
+            <div className="max-h-64 scrollable space-y-1.5">
+              {users.length === 0 ? (
+                <p className="text-center text-[12px] py-3" style={{ color: '#6B6360' }}>
+                  {linkingNickname
+                    ? 'Нет свободных пользователей для привязки'
+                    : 'Все пользователи уже в турнире'}
+                </p>
+              ) : filtered.length === 0 ? (
+                <p className="text-center text-[12px] py-3" style={{ color: '#6B6360' }}>
+                  Никого не найдено
+                </p>
+              ) : (
+                filtered.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => onPickUser(user)}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg active:scale-[0.98]"
+                    style={{ background: '#231A16' }}
                   >
-                    <input
-                      value={guestNick}
-                      onChange={(e) => setGuestNick(e.target.value)}
-                      maxLength={GUEST_NICKNAME_MAX}
-                      placeholder="Ник игрока"
-                      autoFocus
-                      className="flex-1 min-w-0 h-10 rounded-lg px-3 text-[13px] text-white outline-none"
-                      style={{
-                        background: '#231A16',
-                        border: '1px solid rgba(217,153,98,0.35)',
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      className="h-10 px-3 rounded-lg text-[12px] font-800 shrink-0"
-                      style={{
-                        background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                        color: '#0A0908',
+                    <span className="min-w-0 text-left flex-1 flex items-center gap-3">
+                      <PlayerAvatar playerId={user.id} nickname={user.nickname} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-700 text-white truncate">
+                          {user.nickname}
+                        </span>
+                        {user.email ? (
+                          <span className="block text-[11px] text-white/80 truncate">{user.email}</span>
+                        ) : null}
+                      </span>
+                    </span>
+                    {linkingNickname ? (
+                      <Link2 size={15} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                    ) : (
+                      <Plus size={15} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                    )}
+                  </button>
+                ))
+              )}
+              {!linkingNickname && onAddGuestNick ? (
+                <div className="pt-1.5 mt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  {guestNickOpen ? (
+                    <form
+                      className="flex gap-2"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        onAddGuestNick(guestNick);
+                        setGuestNick('');
                       }}
                     >
-                      Ок
+                      <input
+                        value={guestNick}
+                        onChange={(e) => setGuestNick(e.target.value)}
+                        maxLength={GUEST_NICKNAME_MAX}
+                        placeholder="Ник игрока"
+                        autoFocus
+                        className="flex-1 min-w-0 h-10 rounded-lg px-3 text-[13px] text-white outline-none"
+                        style={{
+                          background: '#231A16',
+                          border: '1px solid rgba(217,153,98,0.35)',
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        className="h-10 px-3 rounded-lg text-[12px] font-800 shrink-0"
+                        style={{
+                          background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                          color: '#0A0908',
+                        }}
+                      >
+                        Ок
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setGuestNickOpen(true)}
+                      className="w-full h-10 rounded-lg text-[12px] font-800 active:scale-[0.98]"
+                      style={{
+                        background: 'rgba(217,153,98,0.12)',
+                        border: '1px solid rgba(217,153,98,0.35)',
+                        color: '#F2D8A7',
+                      }}
+                    >
+                      Добавить ник игрока
                     </button>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setGuestNickOpen(true)}
-                    className="w-full h-10 rounded-lg text-[12px] font-800 active:scale-[0.98]"
-                    style={{
-                      background: 'rgba(217,153,98,0.12)',
-                      border: '1px solid rgba(217,153,98,0.35)',
-                      color: '#F2D8A7',
-                    }}
-                  >
-                    Добавить ник игрока
-                  </button>
-                )}
-              </div>
-            ) : null}
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         </motion.div>
       )}

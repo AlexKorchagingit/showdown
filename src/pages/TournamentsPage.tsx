@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Tournament } from '../types/tournament';
 import { TournamentCard } from '../components/TournamentCard';
 import { useTournaments } from '../context/TournamentContext';
-import { compareByStart, isFinished } from '../lib/tournamentStatus';
+import { compareByStart, isFinished, isHidden } from '../lib/tournamentStatus';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 
 type Tab = 'upcoming' | 'finished';
@@ -32,6 +32,7 @@ export function TournamentsPage() {
 
   // Status is derived from the start moment: soonest first, latest finished first.
   const filtered = tournaments
+    .filter((t) => !isHidden(t))
     .filter((t) => (activeTab === 'upcoming' ? !isFinished(t) : isFinished(t)))
     .sort((a, b) => (activeTab === 'upcoming' ? compareByStart(a, b) : compareByStart(b, a)));
 

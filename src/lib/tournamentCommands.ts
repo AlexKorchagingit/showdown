@@ -6,7 +6,8 @@ export type TournamentValues = Pick<TournamentRow,
   'title'|'image_url'|'address'|'start_date'|'start_time'|'total_seats'|'guarantee'|'about'|
   'features'|'late_reg_until'|'blind_structure'|'blind_structure_id'|'stack_size'|'level_duration'|
   'is_bounty'|'admin_secret_comment'>;
-export type TournamentChanges = Partial<TournamentValues>;
+/** `hidden` is optional on create, so it only travels with explicit changes. */
+export type TournamentChanges = Partial<TournamentValues & Pick<TournamentRow, 'hidden'>>;
 
 type CreateIntent={values:TournamentValues};
 type UpdateIntent={tournamentId:string;changes:TournamentChanges};

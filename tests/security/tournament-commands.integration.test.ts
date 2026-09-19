@@ -39,6 +39,7 @@ describe('protected tournament creation and editing',()=>{let admin='',user='';c
     localSql(readFileSync('supabase/migrations/20260903_auth_foundation.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260904_authenticated_policies.sql','utf8'));
     const migration=readFileSync('supabase/migrations/20260904_tournament_commands.sql','utf8');localSql(migration);localSql(migration);
+    localSql(readFileSync('supabase/migrations/20260918_tournament_hidden.sql','utf8'));
     for(let attempt=0;attempt<20;attempt++){if((await rpc('club_create_tournament',anon,{p_request_id:randomUUID(),p_values:values()})).status!==404)break;
       await new Promise(resolve=>setTimeout(resolve,100));}
     localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
@@ -107,5 +108,20 @@ describe('protected tournament creation and editing',()=>{let admin='',user='';c
       expect(localSql(`select about from public.tournaments where id='${existing}';`)).toBe('Safe edit');
       expect(localSql(`select count(*) from club_private.tournament_write_requests where request_id='${requestId}';`)).toBe('0');
     }finally{localSql('drop trigger fail_tournament_write_log on public.logs;drop function public.fail_tournament_write_log();')}
+  });
+
+  it('hides an event from player snapshots without dropping it for admins',async()=>{
+    const created=await rpc('club_create_tournament',admin,{p_request_id:randomUUID(),p_values:values('Hidden board')});
+    expect(created.status).toBe(200);
+    const tournamentId=(await created.json() as {tournament_id:string}).tournament_id;
+    expect((await rpc('club_update_tournament',admin,{p_request_id:randomUUID(),p_tournament_id:tournamentId,p_changes:{hidden:true}})).status).toBe(200);
+    const [userResponse,adminResponse]=await Promise.all([
+      rpc('club_tournament_snapshot',user,{}),rpc('club_tournament_snapshot',admin,{})]);
+    expect(userResponse.status).toBe(200);expect(adminResponse.status).toBe(200);
+    const userRow=(await userResponse.json() as Array<Record<string,unknown>>).find(row=>row.id===tournamentId);
+    const adminRow=(await adminResponse.json() as Array<Record<string,unknown>>).find(row=>row.id===tournamentId)!;
+    expect(userRow).toBeUndefined();
+    expect(adminRow.hidden).toBe(true);
+    expect(localSql(`select hidden from public.tournaments where id='${tournamentId}';`)).toBe('t');
   });
 });

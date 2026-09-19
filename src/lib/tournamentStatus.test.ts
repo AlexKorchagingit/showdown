@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextEliminatedPlace, sortFinancePlayers } from './tournamentStatus';
+import { nextEliminatedPlace, sortFinancePlayers, isHidden } from './tournamentStatus';
 import type { Participant } from '../types/tournament';
 
 function player(id: string, nickname: string, place?: number): Participant {
@@ -47,5 +47,13 @@ describe('nextEliminatedPlace', () => {
     const field = Array.from({ length: 11 }, (_, index) => player(`p${index}`, `p${index}`));
     field[0] = player('p0', 'p0', 11);
     expect(nextEliminatedPlace(field)).toBe(10);
+  });
+});
+
+describe('isHidden', () => {
+  it('treats only an explicit true flag as hidden', () => {
+    expect(isHidden({})).toBe(false);
+    expect(isHidden({ hidden: false })).toBe(false);
+    expect(isHidden({ hidden: true })).toBe(true);
   });
 });

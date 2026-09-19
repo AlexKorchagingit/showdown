@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Crosshair, Gem, Link2, MessageSquare, Minus, Plus, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Crosshair, Gem, Link2, MessageSquare, Minus, Pencil, Plus, Search, X } from 'lucide-react';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { useTournaments } from '../../context/TournamentContext';
@@ -139,6 +139,8 @@ export function AdminTournamentFinance() {
   } = useFinance();
 
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [dealerName, setDealerName] = useState('');
   const [dealerHours, setDealerHours] = useState('');
   const [hourFlash, setHourFlash] = useState<Record<string, { delta: number; token: number }>>({});
@@ -171,12 +173,18 @@ export function AdminTournamentFinance() {
   );
 
   useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  useEffect(() => {
     setTournamentComment(tournament?.adminSecretComment ?? '');
   }, [tournament?.id, tournament?.adminSecretComment]);
 
   useEffect(() => {
     closingRef.current = false;
     setPayingId(null);
+    setQuery('');
+    setSearchOpen(false);
   }, [tournament?.id]);
 
   useEffect(
@@ -498,19 +506,52 @@ export function AdminTournamentFinance() {
           >
             <ArrowLeft size={20} strokeWidth={2.2} style={{ color: '#D99962' }} />
           </button>
-          <h1 className="shrink-0 text-[12px] font-800 tracking-[0.14em] text-white uppercase">
-            Касса турнира
-          </h1>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск…"
-            className="flex-1 min-w-0 h-10 rounded-xl px-3 text-[13px] text-white outline-none"
+          {searchOpen || query.trim() ? (
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onBlur={() => {
+                if (!query.trim()) setSearchOpen(false);
+              }}
+              placeholder="Поиск…"
+              className="flex-1 min-w-0 h-10 rounded-xl px-3 text-[13px] text-white outline-none"
+              style={{
+                background: '#231A16',
+                border: '1px solid rgba(217,153,98,0.35)',
+              }}
+            />
+          ) : (
+            <>
+              <h1 className="flex-1 min-w-0 text-[12px] font-800 tracking-[0.14em] text-white uppercase truncate">
+                Касса турнира
+              </h1>
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{
+                  background: 'rgba(28,20,16,0.78)',
+                  border: '1px solid rgba(217,153,98,0.28)',
+                }}
+                aria-label="Поиск"
+              >
+                <Search size={18} strokeWidth={2.2} style={{ color: '#D99962' }} />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate(`/admin/tournaments/${tournament.id}`)}
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
             style={{
-              background: '#231A16',
-              border: '1px solid rgba(217,153,98,0.35)',
+              background: 'rgba(28,20,16,0.78)',
+              border: '1px solid rgba(217,153,98,0.28)',
             }}
-          />
+            aria-label="Редактор турнира"
+          >
+            <Pencil size={18} strokeWidth={2.2} style={{ color: '#D99962' }} />
+          </button>
         </div>
 
         <div className="flex items-center gap-3 min-w-0 px-1">

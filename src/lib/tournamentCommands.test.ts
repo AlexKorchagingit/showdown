@@ -37,4 +37,12 @@ describe('protected tournament command client',()=>{
     expect(()=>createTournamentCommand('',values)).toThrow('администратора');
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
+
+  it('forwards an explicit hidden flag on update',async()=>{
+    mocks.rpc.mockImplementation(async(_name:string,args:{p_request_id:string})=>({data:{request_id:args.p_request_id,
+      tournament_id:'server-event',tournament:{...row,id:'server-event',hidden:true}},error:null}));
+    await updateTournamentCommand('verified-admin-3','server-event',{hidden:true});
+    expect(mocks.rpc).toHaveBeenCalledWith('club_update_tournament',{p_request_id:expect.any(String),
+      p_tournament_id:'server-event',p_changes:{hidden:true}});
+  });
 });

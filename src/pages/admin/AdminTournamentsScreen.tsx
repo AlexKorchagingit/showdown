@@ -8,7 +8,7 @@ import { CompactHeader } from '../../components/CompactHeader';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
-import { compareByStart, isFinished } from '../../lib/tournamentStatus';
+import { compareByStart, isFinished, isHidden } from '../../lib/tournamentStatus';
 import { exportTournamentsToCSV, tournamentExportFilename } from '../../lib/exportToCSV';
 import { formatIsoDay, startOfDay } from '../../lib/financePeriod';
 import { filterTournamentsByStartDate, statsPeriodBounds } from '../../lib/statsPeriod';
@@ -392,7 +392,13 @@ export function AdminTournamentsScreen() {
                 {sortedTournaments.map((tournament) => (
                   <div
                     key={tournament.id}
-                    className={isFinished(tournament) ? 'opacity-50 grayscale' : ''}
+                    className={
+                      isHidden(tournament)
+                        ? 'opacity-45'
+                        : isFinished(tournament)
+                          ? 'opacity-50 grayscale'
+                          : ''
+                    }
                   >
                     <TournamentCard
                       tournament={tournament}

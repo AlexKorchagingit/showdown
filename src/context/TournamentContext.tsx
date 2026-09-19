@@ -56,13 +56,15 @@ function isSeatOfUser(player: Participant, userId: string): boolean {
 }
 
 export function TournamentProvider({ children }: { children: React.ReactNode }) {
-  const { account, userId, clubUsers } = useUser();
+  const { account, userId, clubUsers, isAdmin } = useUser();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const personnel = usePersonnel(account?.id ?? '', account?.role);
-  const visibleTournaments = useMemo(() => tournaments.map((row) => withPersonnel(row, personnel.rosters[row.id])),
-    [tournaments, personnel.rosters]);
+  const visibleTournaments = useMemo(() => {
+    const rows = tournaments.map((row) => withPersonnel(row, personnel.rosters[row.id]));
+    return isAdmin ? rows : rows.filter((row) => row.hidden !== true);
+  }, [isAdmin, tournaments, personnel.rosters]);
 
   const resolveUserId = useCallback(
     (player: Participant): string | null => {
@@ -140,7 +142,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         window.alert('Турнир не найден');
         return;
       }
-      if (tournament.isClosed) {
+      if (tournament.isClosed || tournament.hidden) {
         window.alert('Регистрация закрыта');
         return;
       }
@@ -283,6 +285,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         participants: copiedSeats,
         features: [...current.features],
         isClosed: false,
+        hidden: false,
         rubiesDistributed: false,
         resultsEntered: false,
         dealers: undefined,

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Calendar, Check, Clock, ImagePlus, Link2, Star, Timer, X,
+  ArrowLeft, Calendar, Check, Clock, Eye, EyeOff, ImagePlus, Link2, Star, Timer, Wallet, X,
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
@@ -640,6 +640,19 @@ function Editor({ tournament }: { tournament: Tournament }) {
                 Запустить таймер
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => navigate(`/admin/finance/tournaments/${tournament.id}`)}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-700 active:scale-[0.98] transition-transform"
+              style={{
+                background: 'rgba(217,153,98,0.12)',
+                border: '1px solid rgba(217,153,98,0.4)',
+                color: '#F2D8A7',
+              }}
+            >
+              <Wallet size={16} strokeWidth={2.4} />
+              Касса турнира
+            </button>
           </div>
 
           {/* Info */}
@@ -727,6 +740,24 @@ function Editor({ tournament }: { tournament: Tournament }) {
             style={{ border: '1px solid #D99962' }}
           >
             Скопировать турнир
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const hide = tournament.hidden !== true;
+              const ok = window.confirm(
+                hide
+                  ? 'Скрыть турнир из списка игроков? Состав, касса и история сохранятся. Игроки не увидят его в текущих и прошедших.'
+                  : 'Вернуть турнир в общий список игроков?',
+              );
+              if (ok) void patch({ hidden: hide });
+            }}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white active:scale-[0.98] transition-transform"
+            style={{ background: '#463129', border: '1px solid #D99962' }}
+          >
+            {tournament.hidden ? <Eye size={16} strokeWidth={2.4} /> : <EyeOff size={16} strokeWidth={2.4} />}
+            {tournament.hidden ? 'Показать турнир' : 'Скрыть турнир'}
           </button>
 
           <button

@@ -142,6 +142,7 @@ export function filterStatisticTournaments(
 ): Tournament[] {
   const needle = formatTitle.trim().toLowerCase();
   return tournaments.filter((tournament) => {
+    if (tournament.hidden === true) return false;
     if (needle && needle !== 'all') {
       const title = tournament.title.trim().toLowerCase();
       const structure = tournament.blindStructure.trim().toLowerCase();

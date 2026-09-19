@@ -10,9 +10,11 @@ import {
   YAxis,
 } from 'recharts';
 import { CompactHeader } from '../../components/CompactHeader';
+import { MetricsLegend } from '../../components/admin/MetricsLegend';
 import { useFinance } from '../../context/FinanceContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useUser } from '../../context/UserContext';
+import { CLUB_STATISTIC_METRICS } from '../../lib/metricsCopy';
 import {
   formatAddonRate,
   formatAvgRebuys,
@@ -193,12 +195,12 @@ export function AdminStatisticScreen() {
           <StatCard
             label="Средний чек"
             value={formatRub(stats.averageCheck)}
-            hint="выручка / входы"
+            hint="paid, без билетов"
           />
           <StatCard
             label="% должников"
             value={`${stats.debtorPercent.toFixed(stats.debtorPercent % 1 === 0 ? 0 : 1).replace('.', ',')}%`}
-            hint="unpaid / все транзакции"
+            hint="деньги unpaid / все не-void"
           />
           <div className="col-span-2">
             <StatCard
@@ -330,6 +332,7 @@ export function AdminStatisticScreen() {
             suffix="КО"
             empty="Нет нокаутов в выборке"
           />
+          <MetricsLegend title="Как считаются цифры" notes={CLUB_STATISTIC_METRICS} />
         </div>
       </div>
     </div>

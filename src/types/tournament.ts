@@ -78,6 +78,8 @@ export interface Tournament {
   isClosed: boolean;
   /** Knockout / bounty format: extra rating for knockouts on close. */
   isBounty?: boolean;
+  /** Hidden by an admin: players do not see it in the Tournaments tab. */
+  hidden?: boolean;
   /** True after finishing places / rating awards have been submitted. */
   resultsEntered?: boolean;
   /** True after ruby payouts were written to player balances (once per event). */
