@@ -19,7 +19,7 @@ function art(id: string): string {
   return asset(`/achievements/${id}.webp`);
 }
 
-/** Per-user override saved in localStorage by the admin editor. */
+/** Per-user override saved on the server by the admin editor. */
 export interface AchievementProgress {
   progress?: number;
   completed?: boolean;

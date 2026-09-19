@@ -22,10 +22,6 @@ function readKey(key: string): string | null {
   return safeLocalStorage.getItem(key);
 }
 
-function writeKey(key: string, value: string) {
-  safeLocalStorage.setItem(key, value);
-}
-
 /** One-time wipe of every `achievements_*` row on this device. */
 export function applyAchievementEpochReset(): void {
   const current = Number(safeLocalStorage.getItem(EPOCH_KEY) ?? '0');
@@ -58,21 +54,29 @@ function parseProgress(raw: string | null): Record<string, AchievementProgress> 
   }
 }
 
-export function loadAchievementProgress(userKey: string): Record<string, AchievementProgress> {
-  applyAchievementEpochReset();
-  const empty = createDefaultAchievementProgress();
-  if (!userKey) return empty;
-  const stored = parseProgress(readKey(achievementsStorageKey(userKey)));
-  if (!stored) return empty;
-  return { ...empty, ...stored };
+export function hasAchievementGrants(progress: Record<string, AchievementProgress>): boolean {
+  return Object.values(progress).some(
+    (entry) => entry.completed === true || (entry.progress ?? 0) > 0,
+  );
 }
 
-export function saveAchievementProgress(
-  userKey: string,
+/**
+ * Grants used to live in the granting browser only, which is why players never
+ * saw them. The server owns them now; this read is left for the admin editor so
+ * progress typed on this device can be pushed to the club once.
+ */
+export function readLegacyAchievementProgress(userKey: string): Record<string, AchievementProgress> {
+  applyAchievementEpochReset();
+  if (!userKey) return {};
+  const stored = parseProgress(readKey(achievementsStorageKey(userKey))) ?? {};
+  return hasAchievementGrants(stored) ? stored : {};
+}
+
+/** Catalogue defaults filled in with whatever the server knows about a player. */
+export function mergeAchievementProgress(
   progress: Record<string, AchievementProgress>,
-) {
-  if (!userKey) return;
-  writeKey(achievementsStorageKey(userKey), JSON.stringify(progress));
+): Record<string, AchievementProgress> {
+  return { ...createDefaultAchievementProgress(), ...progress };
 }
 
 /** Merge catalogue definitions with a user's saved progress. */

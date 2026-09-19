@@ -1,13 +1,16 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { SectionScreen } from '../components/SectionScreen';
+import { ScreenLoading } from '../components/ScreenLoading';
+import { FetchErrorCard } from '../components/FetchErrorCard';
 import { useUser } from '../context/UserContext';
 import { isAchievementDone, type Achievement } from '../data/achievements';
 import {
-  loadAchievementProgress,
+  mergeAchievementProgress,
   resolveAchievements,
   sortAchievements,
 } from '../lib/achievementStorage';
+import { fetchAchievementProgress, type AchievementProgressMap } from '../lib/achievementsApi';
 
 const DEFAULT_ART = '5.25rem';
 const BIGGER_ART = '5.9rem';
@@ -89,14 +92,32 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 }
 
 export function AchievementsScreen() {
-  const { email } = useUser();
+  const { userId } = useUser();
   const { playerId } = useParams<{ playerId?: string }>();
-  const progressKey = playerId || email;
+  const targetId = playerId || userId;
 
-  const achievements = useMemo(() => {
-    const progress = loadAchievementProgress(progressKey);
-    return sortAchievements(resolveAchievements(progress));
-  }, [progressKey]);
+  const [progress, setProgress] = useState<AchievementProgressMap | null>(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      setProgress(await fetchAchievementProgress(targetId));
+    } catch (failure) {
+      setProgress(null);
+      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить достижения');
+    }
+  }, [targetId]);
+
+  useEffect(() => {
+    setProgress(null);
+    void load();
+  }, [load]);
+
+  const achievements = useMemo(
+    () => sortAchievements(resolveAchievements(mergeAchievementProgress(progress ?? {}))),
+    [progress],
+  );
 
   const done = achievements.filter(isAchievementDone).length;
 
@@ -108,16 +129,24 @@ export function AchievementsScreen() {
       headerClassName="py-5"
       contentPaddingBottom="calc(env(safe-area-inset-bottom, 0px) + 8rem)"
       right={
-        <span className="text-lg font-bold text-[#D99962] tabular-nums">
-          {done}/{achievements.length}
-        </span>
+        progress ? (
+          <span className="text-lg font-bold text-[#D99962] tabular-nums">
+            {done}/{achievements.length}
+          </span>
+        ) : null
       }
     >
-      <div className="-mx-5 grid grid-cols-2 gap-6 px-4 pb-32">
-        {achievements.map((achievement) => (
-          <AchievementCard key={achievement.id} achievement={achievement} />
-        ))}
-      </div>
+      {error ? (
+        <FetchErrorCard message={error} onRetry={() => void load()} />
+      ) : !progress ? (
+        <ScreenLoading label="Загрузка достижений…" />
+      ) : (
+        <div className="-mx-5 grid grid-cols-2 gap-6 px-4 pb-32">
+          {achievements.map((achievement) => (
+            <AchievementCard key={achievement.id} achievement={achievement} />
+          ))}
+        </div>
+      )}
     </SectionScreen>
   );
 }

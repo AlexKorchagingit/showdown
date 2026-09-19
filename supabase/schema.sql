@@ -46,6 +46,20 @@ create table if not exists public.users (
 create index if not exists users_email_idx on public.users (email);
 
 -- ---------------------------------------------------------------------------
+-- user_achievements  (admin-granted trophy progress; RPC only)
+-- ---------------------------------------------------------------------------
+create table if not exists public.user_achievements (
+  user_id text primary key references public.users (id) on delete cascade,
+  progress jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  updated_by text references public.users (id) on delete set null,
+  constraint user_achievements_progress_object check (jsonb_typeof(progress) = 'object')
+);
+
+alter table public.user_achievements enable row level security;
+revoke all on public.user_achievements from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
 -- tournaments
 -- ---------------------------------------------------------------------------
 create table if not exists public.tournaments (
