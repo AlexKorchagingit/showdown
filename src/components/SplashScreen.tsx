@@ -4,11 +4,10 @@ import { asset } from '../lib/assets';
 export function SplashScreen({ label = 'Открываем приложение…' }: { label?: string }) {
   return (
     <motion.div
-      className="absolute inset-0 z-[200] flex items-center justify-center"
+      className="splash-gradient absolute inset-0 z-[200] flex items-center justify-center"
       style={{
         background: 'linear-gradient(135deg, #8C4C27 0%, #D99962 35%, #F2D8A7 55%, #D99962 80%, #8C4C27 100%)',
         backgroundSize: '300% 300%',
-        animation: 'splashGrad 2.5s ease infinite',
       }}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.04 }}
@@ -47,13 +46,6 @@ export function SplashScreen({ label = 'Открываем приложение�
       >
         {label}
       </motion.p>
-
-      <style>{`
-        @keyframes splashGrad {
-          0%, 100% { background-position: 0% 50%; }
-          50%       { background-position: 100% 50%; }
-        }
-      `}</style>
     </motion.div>
   );
 }

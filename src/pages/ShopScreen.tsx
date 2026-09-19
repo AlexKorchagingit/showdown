@@ -6,6 +6,7 @@ import { useProfile } from '../context/ProfileContext';
 import { ScreenLoading } from '../components/ScreenLoading';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { CoinBalance } from '../components/CoinBalance';
+import { PurchaseConfirmModal } from '../components/PurchaseConfirmModal';
 import { RubyInfoModal } from '../components/RubyInfoModal';
 import { type ShopItem, type ShopItemType } from '../data/shopItems';
 
@@ -117,7 +118,7 @@ function ItemCard({
   const isBackground = item.type === 'bg';
   const rarity = isBackground ? { wrap: '', card: '' } : characterRarity(item.price);
 
-  const cardClass = `relative aspect-[3/4] w-full text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${rarity.card} ${
+  const cardClass = `relative aspect-[3/4] w-full select-none text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${rarity.card} ${
     locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'
   }`;
 
@@ -133,10 +134,18 @@ function ItemCard({
 
   // Backgrounds are shown edge to edge with the control floating on the artwork
   const card = isBackground ? (
-    <button type="button" disabled={disabled} onClick={onSelect} className={`${cardClass} disabled:opacity-50`}>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onSelect}
+      aria-label={item.name}
+      className={`${cardClass} disabled:opacity-50`}
+    >
       <img
         src={item.image}
-        alt={item.name}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
         className="absolute inset-0 w-full h-full object-cover rounded-2xl"
       />
       <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90%] z-10">{status}</span>
@@ -146,7 +155,9 @@ function ItemCard({
       <div className="relative min-h-0 flex-1 overflow-hidden bg-[#1d0b07]">
         <img
           src={item.image}
-          alt={item.name}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
           className="absolute inset-0 h-full w-full object-contain object-bottom px-0.5 pt-1 pb-0"
         />
       </div>
@@ -168,6 +179,7 @@ export function ShopScreen() {
     walletLoading, walletError, walletBusy, refreshWallet } = useProfile();
   const [tab, setTab] = useState<ShopItemType>('character');
   const [rubyInfoOpen, setRubyInfoOpen] = useState(false);
+  const [pendingPurchase, setPendingPurchase] = useState<ShopItem | null>(null);
   if (walletLoading) return <ScreenLoading label="Загрузка магазина и баланса…" />;
   if (walletError) return <FetchErrorCard message={walletError} onRetry={() => void refreshWallet()} />;
   const items = shopItems.filter((item) => item.type === tab);
@@ -251,19 +263,17 @@ export function ShopScreen() {
                   affordable={affordable}
                   disabled={walletBusy}
                   onSelect={() => {
-                      void (async () => {
-                        if (owned) {
-                          await equipItem(item.id);
-                          return;
-                        }
-                        if (!affordable) {
-                          window.alert(
-                            `Недостаточно рубинов. Нужно ${item.price.toLocaleString('ru-RU')}, у вас ${coins.toLocaleString('ru-RU')}.`,
-                          );
-                          return;
-                        }
-                        await buyItem(item.id);
-                      })();
+                      if (owned) {
+                        void equipItem(item.id);
+                        return;
+                      }
+                      if (!affordable) {
+                        window.alert(
+                          `Недостаточно рубинов. Нужно ${item.price.toLocaleString('ru-RU')}, у вас ${coins.toLocaleString('ru-RU')}.`,
+                        );
+                        return;
+                      }
+                      setPendingPurchase(item);
                     }}
                 />
               );
@@ -271,6 +281,22 @@ export function ShopScreen() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      <PurchaseConfirmModal
+        item={pendingPurchase}
+        coins={coins}
+        busy={walletBusy}
+        onCancel={() => setPendingPurchase(null)}
+        onConfirm={() => {
+          const item = pendingPurchase;
+          if (!item) return;
+          void (async () => {
+            const bought = await buyItem(item.id);
+            // A rejected purchase keeps the sheet open with the price in view.
+            if (bought) setPendingPurchase(null);
+          })();
+        }}
+      />
 
       <RubyInfoModal open={rubyInfoOpen} onClose={() => setRubyInfoOpen(false)} />
     </div>

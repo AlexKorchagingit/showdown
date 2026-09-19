@@ -1,8 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), upsert: vi.fn() }));
-vi.mock('./supabase', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from }, logSupabaseError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), upsert: vi.fn(), getSession: vi.fn() }));
+vi.mock('./supabase', () => ({
+  supabase: { rpc: mocks.rpc, from: mocks.from, auth: { getSession: mocks.getSession } },
+  logSupabaseError: vi.fn(),
+}));
 vi.mock('./clubDirectory', () => ({ upsertClubDirectory: mocks.upsert, getClubDirectory: vi.fn(), setClubDirectory: vi.fn() }));
-import { ConsentRequiredError, loginOrRegisterUser } from './loginAccount';
+import {
+  ConsentRequiredError,
+  ProfileLinkedError,
+  SessionExpiredError,
+  loginOrRegisterUser,
+  verifiedSessionEmail,
+} from './loginAccount';
 import { RequestTimeoutError } from './network';
 import { lookupSessionAccount } from './userApi';
 
@@ -26,6 +35,30 @@ describe('server-authoritative profile binding', () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'consent_required' }, error: null });
     await expect(loginOrRegisterUser('new@example.test')).rejects.toBeInstanceOf(ConsentRequiredError);
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+  it('reports an expired confirmation instead of a generic failure', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: 'PGRST301', message: 'JWT expired' } });
+    await expect(loginOrRegisterUser('new@example.test', '2026-09-18T10:00:00Z'))
+      .rejects.toBeInstanceOf(SessionExpiredError);
+  });
+  it('names the conflict when the email is bound to another sign-in', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: '42501', message: 'Profile already linked' } });
+    await expect(loginOrRegisterUser('new@example.test', '2026-09-18T10:00:00Z'))
+      .rejects.toBeInstanceOf(ProfileLinkedError);
+  });
+  it('keeps the generic message for a server failure that is not about the session', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: '500', message: 'boom' } });
+    await expect(loginOrRegisterUser('new@example.test')).rejects.toThrow('открыть профиль');
+  });
+  it('reads the confirmed email from the stored session', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { email: ' New@Example.test ' } } } });
+    await expect(verifiedSessionEmail()).resolves.toBe('new@example.test');
+
+    mocks.getSession.mockResolvedValue({ data: { session: null } });
+    await expect(verifiedSessionEmail()).resolves.toBe('');
+
+    mocks.getSession.mockRejectedValue(new Error('storage locked'));
+    await expect(verifiedSessionEmail()).resolves.toBe('');
   });
   it('does not trust the old admin flag without a server-issued role', async () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'ready', user: { ...user, role: undefined } }, error: null });

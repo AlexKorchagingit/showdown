@@ -8,6 +8,11 @@
     -webkit-touch-callout: none;
   }
 
+  /* An Android WebView that misses the default rule would paint the CSS text. */
+  style, noscript {
+    display: none !important;
+  }
+
   html, body, #root {
     height: 100%;
     width: 100%;
@@ -60,4 +65,23 @@
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
+
+  /* Screen animations live here so no <style> tag is rendered inside the app. */
+  .splash-gradient {
+    animation: splashGrad 2.5s ease infinite;
+  }
+
+  .login-bg-pulse {
+    animation: loginBgPulse 5s ease-in-out infinite;
+  }
+}
+
+@keyframes splashGrad {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+@keyframes loginBgPulse {
+  0%, 100% { opacity: 0.88; }
+  50%      { opacity: 1; }
 }
