@@ -22,6 +22,11 @@ export function isFinished(tournament: Pick<Tournament, 'isClosed'>): boolean {
   return tournament.isClosed === true;
 }
 
+/** Hidden events stay in the cashier and admin list, but leave the player board. */
+export function isHidden(tournament: Pick<Tournament, 'hidden'>): boolean {
+  return tournament.hidden === true;
+}
+
 /** @deprecated Use isFinished(tournament); kept for call sites that still pass date/time. */
 export function isTournamentPast(_dateString: string, _timeString: string): boolean {
   return false;

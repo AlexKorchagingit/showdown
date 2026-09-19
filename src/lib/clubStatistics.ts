@@ -55,7 +55,7 @@ const EMPTY_STATS: ClubStatistics = {
 };
 
 export function tournamentTitles(tournaments: Tournament[]): string[] {
-  return [...new Set(tournaments.map((tournament) => tournament.title))];
+  return [...new Set(tournaments.filter((tournament) => tournament.hidden !== true).map((tournament) => tournament.title))];
 }
 
 function topThree(map: Map<string, { nickname: string; value: number }>): ClubLeader[] {

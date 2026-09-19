@@ -6,7 +6,7 @@ import {
   ExternalLink, Mail, X, Send,
 } from 'lucide-react';
 import { useTournaments } from '../context/TournamentContext';
-import { compareByStart, isFinished } from '../lib/tournamentStatus';
+import { compareByStart, isFinished, isHidden } from '../lib/tournamentStatus';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
@@ -492,8 +492,9 @@ export function HomePage() {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isSocialsOpen, setIsSocialsOpen] = useState(false);
 
+  const board = tournaments.filter((t) => !isHidden(t));
   const nextTournament =
-    tournaments.filter((t) => !isFinished(t)).sort(compareByStart)[0] ?? tournaments[0];
+    board.filter((t) => !isFinished(t)).sort(compareByStart)[0] ?? board[0];
 
   return (
     <div className="flex flex-col h-full bg-obsidian">

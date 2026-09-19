@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { CalendarDays, Clock, Landmark, Medal, Percent, PlusCircle, RefreshCw, Trophy, Wallet, X } from 'lucide-react';
+import { MetricsLegend } from './MetricsLegend';
 import {
   formatAddonRate,
   formatAvgRebuys,
@@ -7,6 +8,7 @@ import {
   type PlayerLedgerRow,
   type PlayerTournamentRow,
 } from '../../lib/playerAnalytics';
+import { PLAYER_DASHBOARD_METRICS } from '../../lib/metricsCopy';
 
 function formatMoney(amount: number): string {
   return `${amount.toLocaleString('ru-RU')} ₽`;
@@ -259,14 +261,14 @@ export function AdminPlayerStats({
             icon={<Wallet size={16} strokeWidth={2.3} />}
             label="LTV"
             value={formatMoney(stats.ltv)}
-            hint="Всего занесено (paid)"
+            hint="оплаченные транзакции кассы, без void"
             onClick={() => setDrill('ltv')}
           />
           <StatCard
             icon={<Landmark size={16} strokeWidth={2.3} />}
             label="Долг клуба"
             value={formatMoney(stats.clubDebt)}
-            hint="Сумма unpaid"
+            hint="unpaid, без void"
             accent={stats.clubDebt > 0 ? '#f87171' : '#D99962'}
             onClick={() => setDrill('debt')}
             footer={
@@ -285,14 +287,14 @@ export function AdminPlayerStats({
             icon={<Percent size={16} strokeWidth={2.3} />}
             label="ROI / винрейт"
             value={`${stats.winrate.toFixed(stats.winrate % 1 === 0 ? 0 : 1).replace('.', ',')}%`}
-            hint={`ITM ${stats.itmCount} из ${stats.tournamentsPlayed}`}
+            hint={`ITM ${stats.itmCount} из ${stats.tournamentsPlayed} · не денежный ROI`}
             onClick={() => setDrill('history')}
           />
           <StatCard
             icon={<Clock size={16} strokeWidth={2.3} />}
             label="Всего дилерил"
             value={formatHours(stats.dealerHours)}
-            hint="Часы за столом"
+            hint="по user id в кассе дилеров"
             onClick={() => setDrill('dealer')}
           />
           <StatCard
@@ -305,7 +307,7 @@ export function AdminPlayerStats({
             icon={<Medal size={16} strokeWidth={2.3} />}
             label="Сумма призовых"
             value={stats.prizePoints.toLocaleString('ru-RU')}
-            hint="Выиграно очков"
+            hint="место + knockout-очки"
             onClick={() => setDrill('prizes')}
           />
           <StatCard
@@ -331,9 +333,12 @@ export function AdminPlayerStats({
               icon={<Trophy size={16} strokeWidth={2.3} />}
               label="Любимый турнир"
               value={favorite}
-              hint="Где чаще всего играл"
+              hint="точное название среди визитов"
             />
           </div>
+        </div>
+        <div className="mt-4">
+          <MetricsLegend title="Как считаются цифры" notes={PLAYER_DASHBOARD_METRICS} />
         </div>
       </div>
 

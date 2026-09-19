@@ -80,6 +80,7 @@ create table if not exists public.tournaments (
   level_duration text not null default '20 мин',
   is_closed boolean not null default false,
   is_bounty boolean not null default false,
+  hidden boolean not null default false,
   results_entered boolean not null default false,
   rubies_distributed boolean not null default false,
   admin_secret_comment text,

@@ -2,15 +2,21 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ScreenLoading } from '../components/ScreenLoading';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { useTournaments } from '../context/TournamentContext';
+import { useUser } from '../context/UserContext';
+import { isHidden } from '../lib/tournamentStatus';
 import { TournamentDetailPage } from './TournamentDetailPage';
 
 export function TournamentDetailRoute() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin } = useUser();
   const { tournaments, isLoading, loadError, fetchTournaments } = useTournaments();
 
   const tournament = tournaments.find((t) => t.id === id);
+  if (tournament && isHidden(tournament) && !isAdmin) {
+    return <Navigate to="/tournaments" replace />;
+  }
 
   if (!tournament && isLoading) {
     return (

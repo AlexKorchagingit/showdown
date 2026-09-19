@@ -119,6 +119,7 @@ function tournamentChanges(patch: Partial<Tournament>): TournamentChanges {
   if('stackSize' in patch)changes.stack_size=patch.stackSize!;
   if('levelDuration' in patch)changes.level_duration=patch.levelDuration!;
   if('isBounty' in patch)changes.is_bounty=patch.isBounty===true;
+  if('hidden' in patch)changes.hidden=patch.hidden===true;
   if('adminSecretComment' in patch)changes.admin_secret_comment=patch.adminSecretComment??null;
   return changes;
 }

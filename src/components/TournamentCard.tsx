@@ -76,6 +76,14 @@ export function TournamentCard({ tournament, onClick, timerRunning = false }: Pr
         >
           {title}
         </h3>
+        {tournament.hidden ? (
+          <p
+            className="mt-1 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-800 uppercase tracking-[0.14em]"
+            style={{ background: 'rgba(17,11,9,0.72)', color: '#F2D8A7', border: '1px solid rgba(217,153,98,0.35)' }}
+          >
+            Скрыт
+          </p>
+        ) : null}
 
         <div className="space-y-2 mt-3">
           <div className="flex flex-col gap-2 text-[12px]">
