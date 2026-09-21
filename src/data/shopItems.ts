@@ -8,6 +8,8 @@ export interface ShopItem {
   name: string;
   image: string;
   price: number;
+  /** When false, rubies cannot buy it — only an achievement or admin grant. */
+  buyable?: boolean;
 }
 
 export const DEFAULT_CHARACTER_ID = 'char_base';
@@ -26,6 +28,7 @@ const CHARACTER_AVATAR_FILES: Record<string, string> = {
   char_duchess: 'duchess.png',
   char_baron: 'baron.png',
   char_king: 'king.png',
+  char_karen: 'karen.png',
 };
 
 export const DEFAULT_AVATAR_URL = asset(`/avatars/${DEFAULT_AVATAR_FILE}`);
@@ -46,6 +49,7 @@ export const CHARACTER_PROFILE_LEFT: Record<string, string> = {
   char_villain: '26%',
   char_baron: '22%',
   char_duchess: '26%',
+  char_karen: '22%',
 };
 
 export function characterProfileLeft(id: string): string {
@@ -63,6 +67,7 @@ const CHARACTERS: ShopItem[] = [
   { id: 'char_duchess', type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 12000 },
   { id: 'char_baron',   type: 'character', name: 'Барон',     image: asset('/characters/char_baron.png'),   price: 12000 },
   { id: 'char_king',    type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 25000 },
+  { id: 'char_karen',   type: 'character', name: 'Карен',     image: asset('/characters/char_karen.png'),   price: 0, buyable: false },
 ];
 
 /** Paid arts only — `bg_1.jpg` is a duplicate of the free base background. */
@@ -81,8 +86,13 @@ const BACKGROUNDS: ShopItem[] = [
 
 export const SHOP_ITEMS: ShopItem[] = [...CHARACTERS, ...BACKGROUNDS];
 
-/** Free items are owned from the very first launch. */
-export const FREE_ITEM_IDS = SHOP_ITEMS.filter((item) => item.price === 0).map((item) => item.id);
+/** Catalogue rows that every account owns without a purchase or grant. */
+export function isIncludedFree(item: Pick<ShopItem, 'price' | 'buyable'>): boolean {
+  return item.buyable !== false && item.price === 0;
+}
+
+/** Free items are owned from the very first launch. Achievement skins are not. */
+export const FREE_ITEM_IDS = SHOP_ITEMS.filter(isIncludedFree).map((item) => item.id);
 
 /**
  * Sentinel stored in `owned_items` after the one-time club reset

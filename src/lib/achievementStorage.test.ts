@@ -18,5 +18,10 @@ describe('achievementStorage helpers', () => {
     expect(merged.welcome).toEqual({ completed: false });
     expect(merged.fish).toEqual({ progress: 0 });
     expect(resolveAchievements(merged).find((row) => row.id === 'winner')?.completed).toBe(true);
+    const karen = resolveAchievements(merged).find((row) => row.id === 'knock-karen');
+    expect(karen?.title).toBe('Выбить Карена');
+    expect(karen?.target).toBeUndefined();
+    expect(karen?.completed).toBe(false);
+    expect(karen?.imageUrl).toBe('');
   });
 });

@@ -17,7 +17,14 @@ const TAB_LABEL: Record<ShopItemType, string> = {
 };
 
 /** Rarity glow: steel / purple / ruby / gold. Outer wrap is not clipped by the card. */
-function characterRarity(price: number): { wrap: string; card: string } {
+function characterRarity(item: ShopItem): { wrap: string; card: string } {
+  if (item.buyable === false) {
+    return {
+      wrap: 'rounded-2xl shadow-[0_0_20px_rgba(225,29,72,0.3)] ring-1 ring-rose-500/50',
+      card: '',
+    };
+  }
+  const price = item.price;
   if (price >= 25000) {
     return {
       wrap: 'rounded-2xl ring-2 ring-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)]',
@@ -60,6 +67,17 @@ function ItemStatus({
   overlay: boolean;
 }) {
   if (!owned) {
+    if (item.buyable === false) {
+      return (
+        <span
+          className={`w-full h-9 rounded-xl flex items-center justify-center text-[12px] font-700 text-[#F2D8A7] border border-[#D99962]/35 ${
+            overlay ? 'bg-[#1d0b07]/85' : 'bg-[#1d0b07]'
+          }`}
+        >
+          Достижение
+        </span>
+      );
+    }
     return (
       <span
         className={`w-full h-9 rounded-xl flex items-center justify-center gap-1.5 text-[13px] font-bold ${
@@ -93,7 +111,7 @@ function ItemStatus({
         overlay ? 'bg-[#1d0b07]/85' : 'bg-[#1d0b07]'
       }`}
     >
-      Куплено
+      {item.buyable === false ? 'Получено' : 'Куплено'}
     </span>
   );
 }
@@ -114,9 +132,9 @@ function ItemCard({
   onSelect: () => void;
   disabled: boolean;
 }) {
-  const locked = !owned && !affordable;
+  const locked = !owned && item.buyable !== false && !affordable;
   const isBackground = item.type === 'bg';
-  const rarity = isBackground ? { wrap: '', card: '' } : characterRarity(item.price);
+  const rarity = isBackground ? { wrap: '', card: '' } : characterRarity(item);
 
   const cardClass = `relative aspect-[3/4] w-full select-none text-left rounded-2xl overflow-hidden bg-[#231A16] border border-white/[0.06] transition-transform ${rarity.card} ${
     locked ? 'cursor-not-allowed' : 'active:scale-[0.97]'
@@ -265,6 +283,12 @@ export function ShopScreen() {
                   onSelect={() => {
                       if (owned) {
                         void equipItem(item.id);
+                        return;
+                      }
+                      if (item.buyable === false) {
+                        window.alert(
+                          `${item.name} выдаётся за достижение и не продаётся за рубины.`,
+                        );
                         return;
                       }
                       if (!affordable) {

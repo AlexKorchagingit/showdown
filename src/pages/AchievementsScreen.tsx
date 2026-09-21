@@ -64,16 +64,27 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 
       <div className="relative z-10 w-full flex flex-col justify-start items-center">
         <div className="h-16 w-full flex items-center justify-center mb-2">
-          <img
-            src={achievement.imageUrl}
-            alt=""
-            aria-hidden
-            className={[
-              'relative z-10 max-h-full max-w-full object-contain',
-              done ? '' : 'opacity-55 grayscale-[0.35]',
-            ].join(' ')}
-            style={{ width: artSize, height: artSize, maxHeight: '4rem' }}
-          />
+          {achievement.imageUrl ? (
+            <img
+              src={achievement.imageUrl}
+              alt=""
+              aria-hidden
+              className={[
+                'relative z-10 max-h-full max-w-full object-contain',
+                done ? '' : 'opacity-55 grayscale-[0.35]',
+              ].join(' ')}
+              style={{ width: artSize, height: artSize, maxHeight: '4rem' }}
+            />
+          ) : (
+            <div
+              className={[
+                'relative z-10 rounded-full border border-[#D99962]/35',
+                done ? 'bg-[#8C4C27]/50' : 'bg-black/40 opacity-55',
+              ].join(' ')}
+              style={{ width: '2.75rem', height: '2.75rem' }}
+              aria-hidden
+            />
+          )}
         </div>
         <p
           className={[

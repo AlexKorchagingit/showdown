@@ -51,6 +51,8 @@ describe('final client access matrix after the complete local cutover',()=>{let 
     // API migrations after the contract must grant their own access: the
     // contract leaves later objects private by default.
     localSql(readFileSync('supabase/migrations/20260913_achievements.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260921_char_karen.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260921_char_karen_reward.sql','utf8'));
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';
       insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
       ('${email('super')}','synthetic-hmac','ip',now()+interval '5 minutes'),
@@ -139,14 +141,15 @@ describe('final client access matrix after the complete local cutover',()=>{let 
     expect((await rpc('club_save_achievements',user,{p_user_id:id('user'),p_progress:{welcome:{completed:true}}})).status).toBeGreaterThanOrEqual(400);
     expect((await rpc('club_save_achievements',admin,{p_user_id:id('user'),p_progress:{welcome:{completed:'yes'}}})).status).toBeGreaterThanOrEqual(400);
     expect((await rpc('club_achievements_snapshot',anon,{p_user_id:id('user')})).status).toBeGreaterThanOrEqual(400);
-    const granted=await rpc('club_save_achievements',admin,{p_user_id:id('user'),p_progress:{welcome:{completed:true},fish:{progress:3}}});
+    const granted=await rpc('club_save_achievements',admin,{p_user_id:id('user'),p_progress:{welcome:{completed:true},fish:{progress:3},'knock-karen':{completed:true}}});
     expect(granted.status).toBe(200);
+    expect(localSql(`select 'char_karen'=any(owned_items) from public.users where id='${id('user')}';`)).toBe('t');
     const [owner,other]=await Promise.all([
       rpc('club_achievements_snapshot',user,{p_user_id:id('user')}),
       rpc('club_achievements_snapshot',superadmin,{p_user_id:id('user')}),
     ]);
-    expect(await owner.json()).toEqual({welcome:{completed:true},fish:{progress:3}});
-    expect(await other.json()).toEqual({welcome:{completed:true},fish:{progress:3}});
+    expect(await owner.json()).toEqual({welcome:{completed:true},fish:{progress:3},'knock-karen':{completed:true}});
+    expect(await other.json()).toEqual({welcome:{completed:true},fish:{progress:3},'knock-karen':{completed:true}});
     expect((await fetch(`${base}/rest/v1/user_achievements?select=progress`,{headers:headers(admin)})).status).toBeGreaterThanOrEqual(400);
   });
 

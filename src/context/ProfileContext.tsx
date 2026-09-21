@@ -72,7 +72,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [patchAccount]);
 
   const isOwned = useCallback(
-    (itemId: string) => data.ownedItems.includes(itemId) || wallet?.catalog.some((item) => item.id === itemId && item.price === 0) === true,
+    (itemId: string) =>
+      data.ownedItems.includes(itemId)
+      || wallet?.catalog.some((item) => item.id === itemId && item.price === 0 && item.buyable !== false) === true,
     [data.ownedItems, wallet],
   );
 

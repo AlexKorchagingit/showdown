@@ -6,7 +6,7 @@ import {
 } from '../data/shopItems';
 import { findClubUserByIdOrNick } from './clubDirectory';
 
-const CHARACTERS = shopItemsOfType('character');
+const CHARACTERS = shopItemsOfType('character').filter((item) => item.buyable !== false);
 
 /** Resolve a player's equipped character id (own profile, club directory, or a stable fallback). */
 export function equippedCharForPlayer(

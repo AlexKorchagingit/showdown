@@ -24,7 +24,7 @@ async function rpc(name: string, access: string, args: object = {}) {
 }
 type WalletRow = {user_id:string;ruby_balance:number;revision:number;owned_items:string[];equipped_char:string;equipped_bg:string;
   equipped_avatar:string[];pending_notifications:Array<{id:string;amount:number;message:string}>;
-  catalog:Array<{id:string;type:string;name:string;price:number;revision:number;active:boolean}>};
+  catalog:Array<{id:string;type:string;name:string;price:number;revision:number;active:boolean;buyable?:boolean}>};
 async function snapshot(access: string): Promise<WalletRow> {
   const response = await rpc('club_wallet_snapshot',access);
   expect(response.status).toBe(200);
@@ -79,6 +79,7 @@ describe('isolated shop and one-time wallet claims',() => {
       +readFileSync('supabase/migrations/20260903_auth_foundation.sql','utf8'));
     baseline=sourceHash();
     localSql(migration()); localSql(migration()); localSql(grantMigration()); localSql(grantMigration());
+    localSql(readFileSync('supabase/migrations/20260921_char_karen.sql','utf8'));
     for(let attempt=0;attempt<20;attempt++) {
       if((await rpc('club_wallet_snapshot',anon)).status!==404) break;
       await new Promise((resolve)=>setTimeout(resolve,100));
@@ -105,6 +106,13 @@ describe('isolated shop and one-time wallet claims',() => {
       expect((await rpc('club_buy_item',buyer,purchase('char_jester',extra))).status).toBe(404);
     }
   });
+  it('does not sell or auto-grant the achievement-only Karen skin',async () => {
+    expect((await rpc('club_buy_item',buyer,purchase('char_karen'))).status).toBeGreaterThanOrEqual(400);
+    expect((await rpc('club_equip_item',buyer,{p_request_id:randomUUID(),p_item_id:'char_karen'})).status).toBe(403);
+    const wallet=await snapshot(buyer);
+    expect(wallet.owned_items).not.toContain('char_karen');
+    expect(wallet.catalog.find((row)=>row.id==='char_karen')).toMatchObject({name:'Карен',price:0,buyable:false});
+  });
   it('denies anonymous RPCs and direct access to new private objects; snapshots are own-only',async () => {
     for(const [name,args] of [['club_wallet_snapshot',{}],['club_buy_item',purchase()],
       ['club_equip_item',{p_request_id:randomUUID(),p_item_id:'char_base'}],
@@ -128,6 +136,7 @@ describe('isolated shop and one-time wallet claims',() => {
     expect(current.ruby_balance).toBe(6000);
     expect(current.owned_items.filter((item)=>item==='char_jester')).toHaveLength(1);
     expect(current.owned_items).toContain('legacy-special');
+    expect(current.owned_items).not.toContain('char_karen');
     expect(current.equipped_char).toBe('char_jester');
     expect(current.equipped_avatar).toEqual(['/avatars/jester.png','char_jester','bg_base']);
     expect(current.pending_notifications).toHaveLength(2);

@@ -4,7 +4,10 @@ import { SHOP_ITEMS, type ShopItem } from '../data/shopItems';
 import { createOperationRequests, type RequestPersistence } from './operationRequests';
 import type { PendingNotification } from './userStorage';
 
-export type CatalogItem = { id: string; type: 'character' | 'bg'; name: string; price: number; active: boolean; revision: number };
+export type CatalogItem = {
+  id: string; type: 'character' | 'bg'; name: string; price: number; active: boolean; revision: number;
+  buyable: boolean;
+};
 export type Wallet = {
   userId: string; revision: number; coins: number; ownedItems: string[];
   equippedChar: string; equippedBg: string; pendingNotifications: PendingNotification[]; catalog: CatalogItem[];
@@ -31,9 +34,13 @@ export function parseWallet(value: unknown, userId: string): Wallet {
   const catalog = value.catalog.map((c): CatalogItem => {
     if (!record(c) || typeof c.id !== 'string' || !c.id || ids.has(c.id) || typeof c.name !== 'string'
       || (c.type !== 'bg' && c.type !== 'character') || !integer(c.price) || c.price > 2147483647
-      || !integer(c.revision) || c.revision < 1 || typeof c.active !== 'boolean') throw new Error(ERROR);
+      || !integer(c.revision) || c.revision < 1 || typeof c.active !== 'boolean'
+      || ('buyable' in c && typeof c.buyable !== 'boolean')) throw new Error(ERROR);
     ids.add(c.id);
-    return { id: c.id, name: c.name, type: c.type, price: c.price, revision: c.revision, active: c.active };
+    return {
+      id: c.id, name: c.name, type: c.type, price: c.price, revision: c.revision, active: c.active,
+      buyable: c.buyable !== false,
+    };
   });
   return { userId, revision: value.revision, coins: value.ruby_balance, ownedItems: value.owned_items,
     equippedChar: value.equipped_char, equippedBg: value.equipped_bg, pendingNotifications, catalog };
@@ -92,6 +99,11 @@ export function shopCatalogItems(wallet: Wallet): ShopItem[] {
   return SHOP_ITEMS.flatMap((art) => {
     const entry = catalog.get(art.id);
     if (!entry || art.type !== entry.type || (!entry.active && !wallet.ownedItems.includes(entry.id))) return [];
-    return [{ ...art, name: entry.name, price: entry.price }];
+    return [{
+      ...art,
+      name: entry.name,
+      price: entry.price,
+      buyable: art.buyable === false ? false : entry.buyable,
+    }];
   });
 }

@@ -180,6 +180,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     imageUrl: art('giant-slayer'),
     tier: 'ruby',
   },
+  {
+    id: 'knock-karen',
+    title: 'Выбить Карена',
+    description: 'Выбить Карена из турнира. Награда: персонаж Карен.',
+    imageUrl: '',
+    tier: 'ruby',
+  },
 ];
 
 export function isAchievementDone(a: Achievement): boolean {
