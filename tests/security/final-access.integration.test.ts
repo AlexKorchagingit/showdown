@@ -53,6 +53,7 @@ describe('final client access matrix after the complete local cutover',()=>{let 
     localSql(readFileSync('supabase/migrations/20260913_achievements.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260921_char_karen.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260921_char_karen_reward.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260921_rename_char_karen_discus.sql','utf8'));
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';
       insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
       ('${email('super')}','synthetic-hmac','ip',now()+interval '5 minutes'),

@@ -7,13 +7,13 @@ import {
   isIncludedFree,
 } from './shopItems';
 
-describe('Karen achievement character', () => {
+describe('DISCUS achievement character', () => {
   it('is in the shop catalogue but is not a free starter skin', () => {
     const karen = findShopItem('char_karen');
     expect(karen).toMatchObject({
       id: 'char_karen',
       type: 'character',
-      name: 'Карен',
+      name: 'DISCUS',
       price: 0,
       buyable: false,
     });

@@ -80,6 +80,7 @@ describe('isolated shop and one-time wallet claims',() => {
     baseline=sourceHash();
     localSql(migration()); localSql(migration()); localSql(grantMigration()); localSql(grantMigration());
     localSql(readFileSync('supabase/migrations/20260921_char_karen.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260921_rename_char_karen_discus.sql','utf8'));
     for(let attempt=0;attempt<20;attempt++) {
       if((await rpc('club_wallet_snapshot',anon)).status!==404) break;
       await new Promise((resolve)=>setTimeout(resolve,100));
@@ -111,7 +112,7 @@ describe('isolated shop and one-time wallet claims',() => {
     expect((await rpc('club_equip_item',buyer,{p_request_id:randomUUID(),p_item_id:'char_karen'})).status).toBe(403);
     const wallet=await snapshot(buyer);
     expect(wallet.owned_items).not.toContain('char_karen');
-    expect(wallet.catalog.find((row)=>row.id==='char_karen')).toMatchObject({name:'Карен',price:0,buyable:false});
+    expect(wallet.catalog.find((row)=>row.id==='char_karen')).toMatchObject({name:'DISCUS',price:0,buyable:false});
   });
   it('denies anonymous RPCs and direct access to new private objects; snapshots are own-only',async () => {
     for(const [name,args] of [['club_wallet_snapshot',{}],['club_buy_item',purchase()],

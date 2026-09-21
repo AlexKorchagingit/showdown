@@ -87,9 +87,9 @@ describe('server-authoritative shop and wallet',()=>{
     expect(shopCatalogItems({...saved,catalog:[{...saved.catalog[1],id:'future-art'}]})).toEqual([]);
     expect(saved.catalog.every((item)=>item.buyable)).toBe(true);
     expect(()=>parseWallet({...raw,catalog:[{...raw.catalog[0],buyable:'yes'}]},'user')).toThrow();
-    const karenCatalog=[{id:'char_karen',type:'character',name:'Карен',price:0,active:true,revision:1,buyable:false}];
+    const karenCatalog=[{id:'char_karen',type:'character',name:'DISCUS',price:0,active:true,revision:1,buyable:false}];
     const karenShop=shopCatalogItems({...saved,catalog:karenCatalog as typeof saved.catalog});
-    expect(karenShop).toEqual([expect.objectContaining({id:'char_karen',buyable:false,price:0})]);
+    expect(karenShop).toEqual([expect.objectContaining({id:'char_karen',name:'DISCUS',buyable:false,price:0})]);
   });
   it('rejects generic inventory/appearance writes before any table request while leaving ordinary profile fields intact',async()=>{
     for(const patch of [{owned_items:['char_king']},{equipped_char:'char_king'},{equipped_bg:'bg_5'},{equipped_avatar:['forged']}]) {

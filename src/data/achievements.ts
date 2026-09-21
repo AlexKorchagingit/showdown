@@ -183,7 +183,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'knock-karen',
     title: 'Выбить Карена',
-    description: 'Выбить Карена из турнира. Награда: персонаж Карен.',
+    description: 'Выбить Карена из турнира. Награда: персонаж DISCUS.',
     imageUrl: '',
     tier: 'ruby',
   },

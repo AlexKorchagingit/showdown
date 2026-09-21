@@ -67,7 +67,7 @@ const CHARACTERS: ShopItem[] = [
   { id: 'char_duchess', type: 'character', name: 'Герцогиня', image: asset('/characters/char_duchess.png'), price: 12000 },
   { id: 'char_baron',   type: 'character', name: 'Барон',     image: asset('/characters/char_baron.png'),   price: 12000 },
   { id: 'char_king',    type: 'character', name: 'Король',    image: asset('/characters/char_king.png'),    price: 25000 },
-  { id: 'char_karen',   type: 'character', name: 'Карен',     image: asset('/characters/char_karen.png'),   price: 0, buyable: false },
+  { id: 'char_karen',   type: 'character', name: 'DISCUS',    image: asset('/characters/char_karen.png'),   price: 0, buyable: false },
 ];
 
 /** Paid arts only — `bg_1.jpg` is a duplicate of the free base background. */
