@@ -16,6 +16,7 @@ import {
   syncParticipantRows,
   updateTournamentRow,
 } from '../lib/tournamentApi';
+import { copiedTournamentDraft } from '../lib/copyTournament';
 import { resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { clubUserIdSet, lobbySeatedPlayers } from '../lib/clubRating';
 import { usePersonnel } from '../hooks/usePersonnel';
@@ -278,20 +279,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         ).map(resetCopiedParticipant);
       }
 
-      const { id: _id, ...rest } = current;
-      return addTournament({
-        ...rest,
-        title: `${current.title} Copy`,
-        participants: copiedSeats,
-        features: [...current.features],
-        isClosed: false,
-        hidden: false,
-        rubiesDistributed: false,
-        resultsEntered: false,
-        dealers: undefined,
-        staff: undefined,
-        results: undefined,
-      });
+      return addTournament(copiedTournamentDraft(current, copiedSeats));
     },
     [addTournament, clubUsers, tournaments],
   );
