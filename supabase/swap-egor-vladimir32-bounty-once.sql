@@ -207,7 +207,7 @@ begin
     )::text
   );
 
-  raise notice 'Swapped BOUNTY HUNTER 2026-09-20: Егор 1st/11 KO +%s rubies, Владимир 32 12th/0 KO %s rubies',
+  raise notice 'Swapped BOUNTY HUNTER 2026-09-20: Егор 1st/11 KO +% rubies, Владимир 32 12th/0 KO % rubies',
     v_egor_delta, v_vlad_delta;
 end $$;
 
