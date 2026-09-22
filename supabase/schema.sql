@@ -109,6 +109,7 @@ create table if not exists public.participants (
   rubies_awarded integer,
   comment text,
   arrived boolean not null default false,
+  team_partner_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint participants_place_positive check (place is null or place >= 1),

@@ -19,6 +19,11 @@ export interface Participant {
   arrived?: boolean;
   /** Head-shot from the joined `users.equipped_avatar` column. */
   equippedAvatar?: string;
+  /**
+   * TEAM BATTLE partner seat identity (`users.id` or `guest-…`).
+   * Mutual A↔B pairs only; omitted / empty means the player is solo.
+   */
+  teamPartnerId?: string;
 }
 
 export interface TournamentStaffMember {

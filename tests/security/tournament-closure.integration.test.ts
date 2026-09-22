@@ -77,6 +77,8 @@ describe('atomic tournament closure', () => {
     localSql(migration());
     localSql(migration());
     localSql(readFileSync('supabase/migrations/20260916_fix_eight_place_payout.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260922_team_battle.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260922_team_battle.sql','utf8'));
     expect(localSql(`select count(*),count(*) filter(where is_admin),sum(ruby_balance)
       from public.users where id like '${prefix}%';`)).toBe(before);
     for (let attempt=0; attempt<20; attempt++) {
@@ -113,6 +115,21 @@ describe('atomic tournament closure', () => {
     expect(localSql(`select ruby_balance from public.users where id in ('${id('p1')}','${id('p2')}','${id('p3')}') order by id;`))
       .toBe('2010\n2670\n3405');
     expect(localSql(`select count(*) from public.logs where target_tournament_id='${tournament}' and action_type='Закрыл турнир';`)).toBe('1');
+  });
+
+  it('splits TEAM BATTLE place points between the paired cashier seats', async () => {
+    const tournament = seedTournament('team-battle', 4, false, 1000);
+    localSql(`update public.tournaments set title='TEAM BATTLE' where id='${tournament}';
+      update public.participants set team_partner_id='${id('p2')}' where id='${tournament}:p1';
+      update public.participants set team_partner_id='${id('p1')}' where id='${tournament}:p2';
+      update public.participants set team_partner_id='p4' where id='${tournament}:p3';
+      update public.participants set team_partner_id='${id('p3')}' where id='${tournament}:p4';`);
+    const response = await rpc('club_close_tournament', admin, {
+      p_request_id: randomUUID(), p_tournament_id: tournament, p_results: results(tournament, 4),
+    });
+    expect(response.status).toBe(200);
+    expect(localSql(`select place,rating from public.participants where tournament_id='${tournament}' order by place;`))
+      .toBe('1|335\n2|345\n3|30\n4|40');
   });
 
   it('settles only players checked in at the lobby and leaves no-shows untouched', async () => {

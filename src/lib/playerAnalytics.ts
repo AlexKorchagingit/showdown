@@ -1,5 +1,6 @@
-import { itmPlaceCount, knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
+import { itmPlaceCount, knockoutBountyPoints } from '../data/prizeStructure';
 import { calculateRubies, isBountyEvent } from './calculateRubies';
+import { displayedTeamPlace, teamRatingPointsForPlayer } from './teamBattle';
 import { guestSeatKey } from './guestPlayer';
 import { sanitizeParticipantUserId } from './supabaseMap';
 import { cashierPlayers, isArrivedPlayer } from './tournamentArrival';
@@ -72,10 +73,11 @@ export function collectPlayerGameHistory(
       cashierPlayers(tournament.participants).length,
       tournament.results?.length ?? 0,
     );
-    const place = typeof participant.place === 'number' ? participant.place : null;
+    const place = displayedTeamPlace(participant, tournament) ??
+      (typeof participant.place === 'number' ? participant.place : null);
     const knockouts = Math.max(0, Math.floor(Number(participant.knockouts) || 0));
     const ratingAwarded =
-      (place != null ? ratingPointsForPlace(place, tournament.guarantee, field) : 0) +
+      teamRatingPointsForPlayer(participant, tournament, field) +
       knockoutBountyPoints(knockouts, tournament.isBounty === true);
     const storedRubies =
       typeof participant.rubiesAwarded === 'number' ? Math.max(0, Math.floor(participant.rubiesAwarded)) : null;
@@ -237,7 +239,10 @@ export function computePlayerAdminStats(
       id: tournament.id,
       title: tournament.title,
       date: formatTxDate(`${tournament.startDate}T12:00:00`),
-      place: typeof participant?.place === 'number' ? participant.place : null,
+      place: participant
+        ? (displayedTeamPlace(participant, tournament) ??
+          (typeof participant.place === 'number' ? participant.place : null))
+        : null,
       field,
       itm: itmPlaceCount(field),
     };
@@ -284,10 +289,7 @@ export function computePlayerAdminStats(
     );
     if (!participant) continue;
     const field = Math.max(cashierPlayers(tournament.participants).length, 0) || tournament.participants.length;
-    let points = 0;
-    if (typeof participant.place === 'number') {
-      points += ratingPointsForPlace(participant.place, tournament.guarantee, field);
-    }
+    let points = teamRatingPointsForPlayer(participant, tournament, field);
     points += knockoutBountyPoints(participant.knockouts, tournament.isBounty === true);
     prizePoints += points;
     prizeRows.push({

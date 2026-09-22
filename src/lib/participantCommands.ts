@@ -2,7 +2,7 @@ import { createOperationRequests } from './operationRequests';
 import { supabase } from './supabase';
 
 export type ParticipantCommandRow={source_id:string|null;seat_id:string;user_id:string|null;nickname:string;
-  place:number|null;knockouts:number;comment:string|null;arrived:boolean};
+  place:number|null;knockouts:number;comment:string|null;arrived:boolean;team_partner_id:string|null};
 type Intent={tournamentId:string;rows:ParticipantCommandRow[]};
 type Result={request_id:string;tournament_id:string;participants:number};
 const queues=new Map<string,ReturnType<typeof createOperationRequests<Intent,Result>>>();

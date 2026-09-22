@@ -39,6 +39,7 @@ import { supabase } from '../../lib/supabase';
 import { timerChipTotals } from '../../lib/chipStacks';
 import {
   nicknamesByPlace,
+  prizePointsForTimerPlace,
   remainingPlayers,
   tournamentPlayerCounts,
 } from '../../lib/tournamentStats';
@@ -340,6 +341,9 @@ export function AdminBlindsTimer() {
                         const awarded = place > activePlayersCount;
                         const nickname = awarded ? eliminatedNickByPlace.get(place) : undefined;
                         const label = nickname ?? `${place} место`;
+                        const shownPoints = awarded
+                          ? prizePointsForTimerPlace(tournament, place, points, fieldSize)
+                          : points;
                         return (
                           <div
                             key={place}
@@ -359,7 +363,7 @@ export function AdminBlindsTimer() {
                                 awarded ? '' : 'text-[#D99962]'
                               }`}
                             >
-                              {points.toLocaleString('ru-RU')}
+                              {shownPoints.toLocaleString('ru-RU')}
                             </span>
                           </div>
                         );

@@ -64,6 +64,7 @@ export type ParticipantRow = {
   rubies_awarded: number | null;
   comment: string | null;
   arrived?: boolean;
+  team_partner_id?: string | null;
 };
 
 /** Postgres `transactions` row. */
@@ -347,6 +348,7 @@ export function participantToRow(
     rubies_awarded: typeof participant.rubiesAwarded === 'number' ? participant.rubiesAwarded : null,
     comment: participant.comment ?? null,
     arrived: participant.arrived === true,
+    team_partner_id: participant.teamPartnerId?.trim() || null,
   };
 }
 
@@ -362,6 +364,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
     rubiesAwarded: row.rubies_awarded ?? undefined,
     comment: row.comment || undefined,
     arrived: row.arrived === true,
+    teamPartnerId: row.team_partner_id?.trim() || undefined,
   };
 }
 
