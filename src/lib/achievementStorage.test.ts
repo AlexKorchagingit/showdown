@@ -22,6 +22,6 @@ describe('achievementStorage helpers', () => {
     expect(karen?.title).toBe('Выбить Карена');
     expect(karen?.target).toBeUndefined();
     expect(karen?.completed).toBe(false);
-    expect(karen?.imageUrl).toBe('');
+    expect(karen?.imageUrl).toContain('/achievements/knock-karen.webp');
   });
 });
