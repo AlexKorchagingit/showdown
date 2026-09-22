@@ -209,7 +209,8 @@ function sameSeat(left: Participant, right: Participant): boolean {
     (left.knockouts ?? 0) === (right.knockouts ?? 0) &&
     left.rubiesAwarded === right.rubiesAwarded &&
     left.comment === right.comment &&
-    (left.arrived === true) === (right.arrived === true)
+    (left.arrived === true) === (right.arrived === true) &&
+    (left.teamPartnerId ?? '') === (right.teamPartnerId ?? '')
   );
 }
 
@@ -240,7 +241,7 @@ export async function syncParticipantRows(
       userId:removed[0].userId,nickname:removed[0].nickname}))source=removed[0];
     return {source_id:source?participantRowId(tournamentId,source.id):null,seat_id:row.id,user_id:row.user_id,
       nickname:row.nickname,place:row.place,knockouts:row.knockouts,comment:row.comment,
-      arrived:row.arrived===true};
+      arrived:row.arrived===true,team_partner_id:row.team_partner_id??player.teamPartnerId?.trim()??null};
   });
   await replaceParticipants(actorId,tournamentId,rows);
 

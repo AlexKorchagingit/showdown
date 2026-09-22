@@ -26,6 +26,7 @@ describe('roster equality guard', () => {
       [roster[0], { ...roster[1], nickname: 'Другой' }],
       [roster[0], { ...roster[1], knockouts: 2 }],
       [roster[0], { ...roster[1], comment: 'должен 1000' }],
+      [roster[0], { ...roster[1], teamPartnerId: 'a' }],
       [roster[0], { ...roster[1], equippedAvatar: 'cat.png' }],
       [roster[1], roster[0]],
     ];

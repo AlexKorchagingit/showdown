@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Calendar, Check, Clock, Eye, EyeOff, ImagePlus, Link2, Star, Timer, Wallet, X,
+  ArrowLeft, Calendar, Check, Clock, Eye, EyeOff, ImagePlus, Link2, Star, Timer, Users, Wallet, X,
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
@@ -31,6 +31,15 @@ import {
 import { sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
 import { isArrivedPlayer } from '../../lib/tournamentArrival';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
+import {
+  assignRandomTeamPairs,
+  findTeamPartner,
+  hasAnyTeamPair,
+  isTeamBattleEvent,
+  rebindTeamPartnerIdentity,
+  removeSeatKeepingTeams,
+  setTeamPartner,
+} from '../../lib/teamBattle';
 
 const CARD_STYLE = {
   background: '#2A211D',
@@ -181,6 +190,10 @@ function ParticipantsEditor({
   participants,
   totalSeats,
   clubUsers,
+  tournamentId,
+  teamBattle,
+  pairingEnabled,
+  pairingPlayerId,
   addOpen,
   linkingNickname,
   pickerUsers,
@@ -190,10 +203,18 @@ function ParticipantsEditor({
   onToggleArrived,
   onBindGuest,
   onRemove,
+  onDistributeTeams,
+  onStartPairing,
+  onPickPartner,
+  onClearPartner,
 }: {
   participants: Participant[];
   totalSeats: number;
   clubUsers: MappedUser[];
+  tournamentId: string;
+  teamBattle: boolean;
+  pairingEnabled: boolean;
+  pairingPlayerId: string | null;
   addOpen: boolean;
   linkingNickname?: string;
   pickerUsers: MappedUser[];
@@ -203,11 +224,21 @@ function ParticipantsEditor({
   onToggleArrived: (id: string) => void;
   onBindGuest: (id: string) => void;
   onRemove: (id: string) => void;
+  onDistributeTeams: () => void;
+  onStartPairing: (id: string) => void;
+  onPickPartner: (playerId: string, partnerId: string) => void;
+  onClearPartner: (playerId: string) => void;
 }) {
   const { tournaments } = useTournaments();
   const seasonById = seasonPointsByUserId(clubUsers, tournaments);
   const ranked = sortByRating(participants.map((p) => withClubSeasonRating(p, seasonById)));
   const emailById = new Map(clubUsers.map((user) => [user.id, user.email]));
+  const pairingPlayer = pairingPlayerId
+    ? participants.find((player) => player.id === pairingPlayerId)
+    : undefined;
+  const partnerChoices = pairingPlayer
+    ? participants.filter((player) => player.id !== pairingPlayer.id && isArrivedPlayer(player))
+    : [];
 
   return (
     <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
@@ -223,6 +254,63 @@ function ParticipantsEditor({
           onPickUser={onPickUser}
           onAddGuestNick={linkingNickname ? undefined : onAddGuestNick}
         />
+        {teamBattle && pairingEnabled ? (
+          <button
+            type="button"
+            onClick={onDistributeTeams}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-700 active:scale-[0.98] transition-transform"
+            style={{
+              background: 'rgba(217,153,98,0.12)',
+              border: '1px solid rgba(217,153,98,0.4)',
+              color: '#F2D8A7',
+            }}
+          >
+            <Users size={16} strokeWidth={2.4} />
+            Распределить команды
+          </button>
+        ) : null}
+        {teamBattle && pairingEnabled && pairingPlayer ? (
+          <div
+            className="rounded-xl p-3 space-y-2"
+            style={{ background: '#231A16', border: '1px solid rgba(217,153,98,0.35)' }}
+          >
+            <p className="text-[11px] font-600" style={{ color: '#A39B98' }}>
+              Пара для «{pairingPlayer.nickname}»
+            </p>
+            {pairingPlayer.teamPartnerId ? (
+              <button
+                type="button"
+                onClick={() => onClearPartner(pairingPlayer.id)}
+                className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-600"
+                style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
+              >
+                Без пары
+              </button>
+            ) : null}
+            {partnerChoices.length === 0 ? (
+              <p className="text-[12px] px-1" style={{ color: '#6B6360' }}>
+                Нет других игроков из кассы
+              </p>
+            ) : (
+              partnerChoices.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  onClick={() => onPickPartner(pairingPlayer.id, candidate.id)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-600 text-white"
+                  style={{
+                    background:
+                      pairingPlayer.teamPartnerId === candidate.id
+                        ? 'rgba(217,153,98,0.22)'
+                        : 'rgba(255,255,255,0.04)',
+                  }}
+                >
+                  {candidate.nickname}
+                </button>
+              ))
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -249,15 +337,21 @@ function ParticipantsEditor({
             const unboundGuest = isUnboundGuestSeat(p);
             const uid = sanitizeParticipantUserId(p.userId ?? p.id);
             const email = unboundGuest ? '' : ((uid && emailById.get(uid)) || '').trim();
+            const partner = teamBattle ? findTeamPartner(participants, p, tournamentId) : undefined;
+            const pairingThis = pairingPlayerId === p.id;
 
             return (
+              <div key={p.id}>
               <div
-                key={p.id}
                 className="flex items-center gap-3 px-5 py-3"
                 style={{
                   borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  background: arrived ? 'rgba(34,197,94,0.28)' : undefined,
-                  boxShadow: arrived ? 'inset 4px 0 0 #4ade80' : undefined,
+                  background: pairingThis
+                    ? 'rgba(217,153,98,0.18)'
+                    : arrived
+                      ? 'rgba(34,197,94,0.28)'
+                      : undefined,
+                  boxShadow: arrived && !pairingThis ? 'inset 4px 0 0 #4ade80' : undefined,
                 }}
               >
                 <button
@@ -285,16 +379,43 @@ function ParticipantsEditor({
 
                 <PlayerAvatar playerId={p.id} nickname={p.nickname} size="sm" />
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
-                  {email ? (
-                    <p className="text-[11px] text-white/80 truncate">{email}</p>
-                  ) : unboundGuest ? (
-                    <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
-                      Ник без аккаунта
-                    </p>
-                  ) : null}
-                </div>
+                {pairingEnabled && teamBattle ? (
+                  <button
+                    type="button"
+                    onClick={() => onStartPairing(p.id)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
+                    {email ? (
+                      <p className="text-[11px] text-white/80 truncate">{email}</p>
+                    ) : unboundGuest ? (
+                      <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
+                        Ник без аккаунта
+                      </p>
+                    ) : null}
+                    {partner ? (
+                      <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
+                        {partner.nickname}
+                      </p>
+                    ) : null}
+                  </button>
+                ) : (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
+                    {email ? (
+                      <p className="text-[11px] text-white/80 truncate">{email}</p>
+                    ) : unboundGuest ? (
+                      <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
+                        Ник без аккаунта
+                      </p>
+                    ) : null}
+                    {partner ? (
+                      <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
+                        {partner.nickname}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
 
                 <span
                   className="text-[12px] font-700 block text-right min-w-[52px] shrink-0"
@@ -331,6 +452,7 @@ function ParticipantsEditor({
                   <X size={13} strokeWidth={2.6} style={{ color: '#f87171' }} />
                 </button>
               </div>
+              </div>
             );
           })}
         </div>
@@ -351,9 +473,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const [copying, setCopying] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [pairingPlayerId, setPairingPlayerId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFinished = hasFinished(tournament);
+  const teamBattle = isTeamBattleEvent(tournament);
   const occupiedSeats = tournament.participants.length;
   const copyPlayerCount = countOccupiedLobbySeats(
     tournament.participants,
@@ -397,18 +521,19 @@ function Editor({ tournament }: { tournament: Tournament }) {
       const guestSeat = tournament.participants.find((p) => p.id === linkingId);
       const user = clubUsers.find((row) => row.id === id);
       if (!guestSeat || !user) return;
+      const rebound = tournament.participants.map((p) =>
+        p.id === linkingId
+          ? {
+              ...p,
+              id: user.id,
+              userId: user.id,
+              nickname: user.nickname,
+              equippedAvatar: user.equippedAvatar,
+            }
+          : p,
+      );
       void patch({
-        participants: tournament.participants.map((p) =>
-          p.id === linkingId
-            ? {
-                ...p,
-                id: user.id,
-                userId: user.id,
-                nickname: user.nickname,
-                equippedAvatar: user.equippedAvatar,
-              }
-            : p,
-        ),
+        participants: rebindTeamPartnerIdentity(rebound, linkingId, user.id),
       });
       setLinkingId(null);
       setAddOpen(false);
@@ -485,21 +610,53 @@ function Editor({ tournament }: { tournament: Tournament }) {
       window.alert('Нельзя снять отметку: игрок уже выбыл в кассе');
       return;
     }
+    const toggled = tournament.participants.map((p) => (p.id === id ? { ...p, arrived: !arrived } : p));
+    const next = arrived ? setTeamPartner(toggled, id, null, tournament.id) : toggled;
     void patch({
+      participants: alignBustOutPlaces(next, tournament),
+    });
+  };
+
+  const removeParticipant = (id: string) => {
+    if (pairingPlayerId === id) setPairingPlayerId(null);
+    patch({
       participants: alignBustOutPlaces(
-        tournament.participants.map((p) => (p.id === id ? { ...p, arrived: !arrived } : p)),
+        removeSeatKeepingTeams(tournament.participants, id, tournament.id),
         tournament,
       ),
     });
   };
 
-  const removeParticipant = (id: string) => {
-    patch({
-      participants: alignBustOutPlaces(
-        tournament.participants.filter((p) => p.id !== id),
-        tournament,
-      ),
+  const distributeTeams = () => {
+    const arrived = tournament.participants.filter(isArrivedPlayer);
+    if (arrived.length < 2) {
+      window.alert('Отметьте в кассе хотя бы двух игроков');
+      return;
+    }
+    if (hasAnyTeamPair(tournament.participants)) {
+      window.alert('Команды уже распределены. Нажмите на игрока, чтобы сменить пару.');
+      return;
+    }
+    if (!window.confirm('Случайно распределить пары среди игроков, которые пришли на турнир?')) {
+      return;
+    }
+    void patch({
+      participants: assignRandomTeamPairs(tournament.participants, tournament.id),
     });
+  };
+
+  const pickPartner = (playerId: string, partnerId: string) => {
+    void patch({
+      participants: setTeamPartner(tournament.participants, playerId, partnerId, tournament.id),
+    });
+    setPairingPlayerId(null);
+  };
+
+  const clearPartner = (playerId: string) => {
+    void patch({
+      participants: setTeamPartner(tournament.participants, playerId, null, tournament.id),
+    });
+    setPairingPlayerId(null);
   };
 
   const handleCopy = async (includeParticipants: boolean) => {
@@ -713,6 +870,10 @@ function Editor({ tournament }: { tournament: Tournament }) {
             participants={tournament.participants}
             totalSeats={tournament.totalSeats}
             clubUsers={clubUsers}
+            tournamentId={tournament.id}
+            teamBattle={teamBattle}
+            pairingEnabled={!isFinished}
+            pairingPlayerId={pairingPlayerId}
             addOpen={addOpen}
             linkingNickname={linkingPlayer?.nickname}
             pickerUsers={pickerUsers}
@@ -731,6 +892,10 @@ function Editor({ tournament }: { tournament: Tournament }) {
               setAddOpen(true);
             }}
             onRemove={removeParticipant}
+            onDistributeTeams={distributeTeams}
+            onStartPairing={(id) => setPairingPlayerId((current) => (current === id ? null : id))}
+            onPickPartner={pickPartner}
+            onClearPartner={clearPartner}
           />
 
           <button

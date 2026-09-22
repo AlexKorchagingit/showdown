@@ -10,11 +10,17 @@ import { useUser } from '../context/UserContext';
 import {
   isFinished as hasFinished,
   sortByRating,
-  sortByPlace,
   hasMissingPlaces,
 } from '../lib/tournamentStatus';
 import { knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
+import {
+  displayedTeamPlace,
+  findTeamPartner,
+  isTeamBattleEvent,
+  teamBattleFinalTableSize,
+  teamRatingPointsForPlayer,
+} from '../lib/teamBattle';
 import {
   clubUserIdSet,
   lobbySeatedPlayers,
@@ -175,9 +181,25 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     withClubSeasonRating(player, seasonById),
   );
   const visible = tournamentFinished ? finishedLobbyPlayers(seated) : seated;
-  const participants = tournamentFinished ? sortByPlace(visible) : sortByRating(visible);
+  const teamBattle = isTeamBattleEvent(live);
+  const participants = tournamentFinished
+    ? [...visible].sort((a, b) => {
+        const teamA = displayedTeamPlace(a, live) ?? a.place ?? Number.POSITIVE_INFINITY;
+        const teamB = displayedTeamPlace(b, live) ?? b.place ?? Number.POSITIVE_INFINITY;
+        if (teamA !== teamB) return teamA - teamB;
+        const placeA = a.place ?? Number.POSITIVE_INFINITY;
+        const placeB = b.place ?? Number.POSITIVE_INFINITY;
+        if (placeA !== placeB) return placeA - placeB;
+        return a.nickname.localeCompare(b.nickname, 'ru');
+      })
+    : sortByRating(visible);
   const occupiedSeats = tournamentFinished ? participants.length : seated.length;
   const fieldSize = Math.max(cashierFieldSize(live), participants.length);
+  const finalTableSize = teamBattle ? teamBattleFinalTableSize(fieldSize) : 9;
+  const lastFinalTableIndex = participants.reduce((last, row, index) => {
+    const place = displayedTeamPlace(row, live);
+    return place === finalTableSize ? index : last;
+  }, -1);
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
   const playingDealers = live.participants
     .map((p) => ({ name: p.nickname, hours: getDealerHours(live.id, p.id) }))
@@ -324,22 +346,28 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 <div>
                   {participants.map((p, idx) => {
                     const isClosedRow  = tournamentFinished;
+                    const partner = teamBattle
+                      ? findTeamPartner(live.participants, p, live.id)
+                      : undefined;
+                    const teamPlace = displayedTeamPlace(p, live);
                     // Open lobby: position in this field, not leftover finishing place.
-                    const placeNum = isClosedRow ? (p.place ?? null) : idx + 1;
-                    const isPodium     = isClosedRow && p.place != null && p.place <= 3;
-                    const isFinalTable = isClosedRow && p.place != null && p.place <= 9;
-                    const wreathColor  = p.place != null
-                      ? ['#D99962', '#8c8c88', '#8C4C27'][p.place - 1] ?? null
+                    const placeNum = isClosedRow ? (teamPlace ?? p.place ?? null) : idx + 1;
+                    const isPodium     = isClosedRow && teamPlace != null && teamPlace <= 3;
+                    const isFinalTable = isClosedRow && teamPlace != null && teamPlace <= finalTableSize;
+                    const wreathColor  = teamPlace != null
+                      ? ['#D99962', '#8c8c88', '#8C4C27'][teamPlace - 1] ?? null
                       : null;
-                    const award = p.place != null
-                      ? ratingPointsForPlace(p.place, live.guarantee, fieldSize)
+                    const award = isClosedRow
+                      ? teamBattle
+                        ? teamRatingPointsForPlayer(p, live, fieldSize)
+                        : (p.place != null ? ratingPointsForPlace(p.place, live.guarantee, fieldSize) : 0)
                       : 0;
                     const knockouts = p.knockouts ?? 0;
                     const koBonus = knockoutBountyPoints(knockouts, live.isBounty === true);
 
                     return (
                       <div key={p.id}>
-                        {isClosedRow && idx === 0 && participants.some((row) => (row.place ?? 99) <= 9) && (
+                        {isClosedRow && idx === 0 && participants.some((row) => (displayedTeamPlace(row, live) ?? 99) <= finalTableSize) && (
                           <>
                             <div className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
                                  style={{ color: '#D99962' }}>
@@ -390,6 +418,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                                   : { color: '#ffffff' }
                               }
                             />
+                            {partner ? (
+                              <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
+                                {partner.nickname}
+                              </p>
+                            ) : null}
                             {isAdmin && p.comment?.trim() && (
                               <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: '#f87171' }}>
                                 {p.comment}
@@ -424,7 +457,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
                         </div>
 
-                        {isClosedRow && p.place === 9 && participants.some((row) => (row.place ?? 0) > 9) && (
+                        {isClosedRow && idx === lastFinalTableIndex && participants.some((row) => (displayedTeamPlace(row, live) ?? 0) > finalTableSize) && (
                           <div style={{ height: 2, background: 'rgba(217,153,98,0.35)', margin: '4px 16px' }} />
                         )}
                       </div>
