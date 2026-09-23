@@ -221,17 +221,15 @@ export function displayedTeamPlace(
   );
 }
 
-/** Floor-half each; the leftover point goes to the better individual place. */
+/** Floor-half each when paired; leftover odd point is dropped so both get the same. */
 export function splitTeamPlacePoints(
   pool: number,
-  ownPlace: number,
+  _ownPlace: number,
   partnerPlace: number | undefined,
 ): number {
   if (pool <= 0) return 0;
   if (partnerPlace == null || partnerPlace < 1) return pool;
-  const half = Math.floor(pool / 2);
-  if (ownPlace < partnerPlace) return half + (pool % 2);
-  return half;
+  return Math.floor(pool / 2);
 }
 
 export function teamRatingPointsForPlayer(

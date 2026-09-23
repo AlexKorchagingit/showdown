@@ -108,7 +108,7 @@ describe('TEAM BATTLE pairing', () => {
 });
 
 describe('TEAM BATTLE scoring', () => {
-  it('uses the better individual place and splits points, remainder to the better seat', () => {
+  it('uses the better individual place and splits points equally between the pair', () => {
     const participants = [
       player('a', { place: 1, teamPartnerId: 'b' }),
       player('b', { place: 4, teamPartnerId: 'a' }),
@@ -188,6 +188,8 @@ describe('TEAM BATTLE scoring', () => {
     expect(teamPrizeAtPlace(tournament, 9, 23)?.names).toEqual(['t9a', 't9b']);
     expect(payouts[0]!.points).toBe(3375);
     expect(teamPrizeAtPlace(tournament, 1, 23)?.pointsEach).toBe(1687);
+    expect(teamRatingPointsForPlayer(participants[0]!, tournament, 23)).toBe(1687);
+    expect(teamRatingPointsForPlayer(participants[1]!, tournament, 23)).toBe(1687);
   });
 
   it('shifts finished teams down while other teams are still alive', () => {
@@ -207,9 +209,9 @@ describe('TEAM BATTLE scoring', () => {
     expect(teamPrizeAtPlace(event(participants), 8, 23)).toBeUndefined();
   });
 
-  it('gives a solo player the full place award', () => {
+  it('gives a solo player the full place award and the same floor-half to both teammates', () => {
     expect(splitTeamPlacePoints(3481, 1, undefined)).toBe(3481);
-    expect(splitTeamPlacePoints(3481, 1, 2)).toBe(1741);
+    expect(splitTeamPlacePoints(3481, 1, 2)).toBe(1740);
     expect(splitTeamPlacePoints(3481, 2, 1)).toBe(1740);
   });
 
