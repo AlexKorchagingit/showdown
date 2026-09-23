@@ -125,6 +125,82 @@ describe('TEAM BATTLE scoring', () => {
     expect(displayedTeamPlace(participants[1]!, tournament)).toBe(1);
   });
 
+  it('ranks finished teams consecutively so worse teammate places do not leave holes', () => {
+    const participants = [
+      player('a', { place: 1, teamPartnerId: 'b' }),
+      player('b', { place: 4, teamPartnerId: 'a' }),
+      player('c', { place: 2, teamPartnerId: 'd' }),
+      player('d', { place: 5, teamPartnerId: 'c' }),
+      player('e', { place: 3, teamPartnerId: 'f' }),
+      player('f', { place: 8, teamPartnerId: 'e' }),
+      player('g', { place: 6, teamPartnerId: 'h' }),
+      player('h', { place: 10, teamPartnerId: 'g' }),
+      player('i', { place: 7, teamPartnerId: 'j' }),
+      player('j', { place: 11, teamPartnerId: 'i' }),
+      player('k', { place: 9, teamPartnerId: 'l' }),
+      player('l', { place: 12, teamPartnerId: 'k' }),
+    ];
+    const tournament = event(participants);
+    expect(teamScoringPlace(participants[0]!, participants)).toBe(1);
+    expect(teamScoringPlace(participants[2]!, participants)).toBe(2);
+    expect(teamScoringPlace(participants[4]!, participants)).toBe(3);
+    expect(teamScoringPlace(participants[6]!, participants)).toBe(4);
+    expect(teamScoringPlace(participants[8]!, participants)).toBe(5);
+    expect(teamScoringPlace(participants[10]!, participants)).toBe(6);
+    // 12 players, ITM = 5. Fourth team gets 4th-place points, not 6th.
+    const fourth = calculatePayouts(12, 12_000)[3]!;
+    expect(teamPrizeAtPlace(tournament, 4, 12)?.names).toEqual(['g', 'h']);
+    expect(teamPrizeAtPlace(tournament, 4, 12)?.pointsEach).toBe(Math.floor(fourth.points / 2));
+    expect(teamPrizeAtPlace(tournament, 6, 12)?.names).toEqual(['k', 'l']);
+    expect(teamPrizeAtPlace(tournament, 8, 12)).toBeUndefined();
+    expect(teamRatingPointsForPlayer(participants[6]!, tournament, 12)).toBe(Math.floor(fourth.points / 2));
+  });
+
+  it('fills consecutive timer rows for the 23-player ITM table instead of teammate holes', () => {
+    const pairs: [string, string, number, number][] = [
+      ['Энвилоуп', 'Freedom', 1, 4],
+      ['HEYDAS', 'Rinswind', 2, 5],
+      ['KEVIN', 'Useless', 3, 8],
+      ['Dayya', 'DISCUS', 6, 10],
+      ['Denven032', 'MariaSubbota', 7, 11],
+      ['Владимир 32', 'Evgenchip', 9, 12],
+      ['t7a', 't7b', 13, 14],
+      ['t8a', 't8b', 15, 16],
+      ['t9a', 't9b', 17, 18],
+      ['t10a', 't10b', 19, 20],
+      ['t11a', 't11b', 21, 22],
+    ];
+    const participants = [
+      ...pairs.flatMap(([left, right, leftPlace, rightPlace]) => [
+        player(left, { place: leftPlace, teamPartnerId: right, nickname: left }),
+        player(right, { place: rightPlace, teamPartnerId: left, nickname: right }),
+      ]),
+      player('solo', { place: 23, nickname: 'solo' }),
+    ];
+    const tournament = event(participants);
+    const payouts = calculatePayouts(23, 12_000);
+    expect(payouts).toHaveLength(9);
+    expect(teamPrizeAtPlace(tournament, 1, 23)?.names).toEqual(['Freedom', 'Энвилоуп']);
+    expect(teamPrizeAtPlace(tournament, 1, 23)?.pointsEach).toBe(Math.floor(payouts[0]!.points / 2));
+    expect(teamPrizeAtPlace(tournament, 4, 23)?.names).toEqual(['DISCUS', 'Dayya']);
+    expect(teamPrizeAtPlace(tournament, 4, 23)?.pointsEach).toBe(Math.floor(payouts[3]!.points / 2));
+    expect(teamPrizeAtPlace(tournament, 8, 23)?.names).toEqual(['t8a', 't8b']);
+    expect(teamPrizeAtPlace(tournament, 9, 23)?.names).toEqual(['t9a', 't9b']);
+    expect(payouts[0]!.points).toBe(3375);
+    expect(teamPrizeAtPlace(tournament, 1, 23)?.pointsEach).toBe(1687);
+  });
+
+  it('shifts finished teams down while other teams are still alive', () => {
+    const participants = [
+      player('alive-a', { teamPartnerId: 'alive-b' }),
+      player('alive-b', { teamPartnerId: 'alive-a' }),
+      player('out-a', { place: 6, teamPartnerId: 'out-b' }),
+      player('out-b', { place: 7, teamPartnerId: 'out-a' }),
+    ];
+    expect(teamScoringPlace(participants[2]!, participants)).toBe(2);
+    expect(teamScoringPlace(participants[0]!, participants)).toBeUndefined();
+  });
+
   it('keeps a team alive while the partner is still playing', () => {
     const participants = [player('a', { place: 8, teamPartnerId: 'b' }), player('b', { teamPartnerId: 'a' })];
     expect(teamScoringPlace(participants[0]!, participants)).toBeUndefined();

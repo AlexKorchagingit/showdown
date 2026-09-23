@@ -61,6 +61,8 @@ describe('TEAM BATTLE timer labels', () => {
       guarantee: 12_000,
     };
     expect(nicknamesByPlace(tournament).get(1)).toBe('Алиса / Борис');
+    expect(nicknamesByPlace(tournament).get(2)).toBe('solo-a');
+    expect(nicknamesByPlace(tournament).get(3)).toBe('solo-b');
     expect(nicknamesByPlace(tournament).has(4)).toBe(false);
     expect(prizePointsForTimerPlace(tournament, 1, 7800, 4)).toBe(3900);
     expect(prizePointsForTimerPlace(tournament, 2, 4200, 4)).toBe(4200);
