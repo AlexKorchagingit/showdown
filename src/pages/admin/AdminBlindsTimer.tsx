@@ -43,6 +43,7 @@ import {
   remainingPlayers,
   tournamentPlayerCounts,
 } from '../../lib/tournamentStats';
+import { isTeamBattleEvent, teamPrizeAtPlace } from '../../lib/teamBattle';
 
 const SETTINGS_ROUTE = '/admin/blinds/settings';
 const CIRCLE_SIZE = 420;
@@ -331,19 +332,32 @@ export function AdminBlindsTimer() {
               {hasEntries ? (
                 <>
                   <p className="text-xs font-700 uppercase tracking-[0.14em] text-white/40 mb-3">
-                    В призах: {payouts.length} чел. ({itmSharePercent()}%)
+                    В призах: {payouts.length}{' '}
+                    {isTeamBattleEvent(tournament) ? 'мест' : 'чел.'} ({itmSharePercent()}%)
                   </p>
                   {payouts.length === 0 ? (
                     <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
                   ) : (
                     <div className="space-y-2.5">
                       {payouts.map(({ place, points }) => {
-                        const awarded = place > activePlayersCount;
-                        const nickname = awarded ? eliminatedNickByPlace.get(place) : undefined;
+                        const teamBattle = isTeamBattleEvent(tournament);
+                        const teamRow =
+                          teamBattle && tournament
+                            ? teamPrizeAtPlace(tournament, place, fieldSize)
+                            : undefined;
+                        const awarded = teamBattle
+                          ? Boolean(teamRow)
+                          : place > activePlayersCount;
+                        const nickname = teamBattle
+                          ? teamRow?.names.join(' / ')
+                          : awarded
+                            ? eliminatedNickByPlace.get(place)
+                            : undefined;
                         const label = nickname ?? `${place} место`;
-                        const shownPoints = awarded
-                          ? prizePointsForTimerPlace(tournament, place, points, fieldSize)
-                          : points;
+                        const shownPoints =
+                          teamRow && teamRow.names.length > 1
+                            ? prizePointsForTimerPlace(tournament, place, points, fieldSize)
+                            : points;
                         return (
                           <div
                             key={place}

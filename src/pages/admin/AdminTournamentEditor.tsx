@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Calendar, Check, Clock, Eye, EyeOff, ImagePlus, Link2, Star, Timer, Users, Wallet, X,
+  ArrowLeft, Calendar, Check, Clock, Eye, EyeOff, ImagePlus, Link2, Star, Timer, UserPlus, Users, Wallet, X,
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
@@ -269,48 +269,6 @@ function ParticipantsEditor({
             Распределить команды
           </button>
         ) : null}
-        {teamBattle && pairingEnabled && pairingPlayer ? (
-          <div
-            className="rounded-xl p-3 space-y-2"
-            style={{ background: '#231A16', border: '1px solid rgba(217,153,98,0.35)' }}
-          >
-            <p className="text-[11px] font-600" style={{ color: '#A39B98' }}>
-              Пара для «{pairingPlayer.nickname}»
-            </p>
-            {pairingPlayer.teamPartnerId ? (
-              <button
-                type="button"
-                onClick={() => onClearPartner(pairingPlayer.id)}
-                className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-600"
-                style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
-              >
-                Без пары
-              </button>
-            ) : null}
-            {partnerChoices.length === 0 ? (
-              <p className="text-[12px] px-1" style={{ color: '#6B6360' }}>
-                Нет других игроков из кассы
-              </p>
-            ) : (
-              partnerChoices.map((candidate) => (
-                <button
-                  key={candidate.id}
-                  type="button"
-                  onClick={() => onPickPartner(pairingPlayer.id, candidate.id)}
-                  className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-600 text-white"
-                  style={{
-                    background:
-                      pairingPlayer.teamPartnerId === candidate.id
-                        ? 'rgba(217,153,98,0.22)'
-                        : 'rgba(255,255,255,0.04)',
-                  }}
-                >
-                  {candidate.nickname}
-                </button>
-              ))
-            )}
-          </div>
-        ) : null}
       </div>
 
       <div
@@ -379,43 +337,21 @@ function ParticipantsEditor({
 
                 <PlayerAvatar playerId={p.id} nickname={p.nickname} size="sm" />
 
-                {pairingEnabled && teamBattle ? (
-                  <button
-                    type="button"
-                    onClick={() => onStartPairing(p.id)}
-                    className="flex-1 min-w-0 text-left"
-                  >
-                    <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
-                    {email ? (
-                      <p className="text-[11px] text-white/80 truncate">{email}</p>
-                    ) : unboundGuest ? (
-                      <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
-                        Ник без аккаунта
-                      </p>
-                    ) : null}
-                    {partner ? (
-                      <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
-                        {partner.nickname}
-                      </p>
-                    ) : null}
-                  </button>
-                ) : (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
-                    {email ? (
-                      <p className="text-[11px] text-white/80 truncate">{email}</p>
-                    ) : unboundGuest ? (
-                      <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
-                        Ник без аккаунта
-                      </p>
-                    ) : null}
-                    {partner ? (
-                      <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
-                        {partner.nickname}
-                      </p>
-                    ) : null}
-                  </div>
-                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
+                  {email ? (
+                    <p className="text-[11px] text-white/80 truncate">{email}</p>
+                  ) : unboundGuest ? (
+                    <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
+                      Ник без аккаунта
+                    </p>
+                  ) : null}
+                  {partner ? (
+                    <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
+                      {partner.nickname}
+                    </p>
+                  ) : null}
+                </div>
 
                 <span
                   className="text-[12px] font-700 block text-right min-w-[52px] shrink-0"
@@ -423,6 +359,26 @@ function ParticipantsEditor({
                 >
                   {p.rating.toLocaleString('ru-RU')}
                 </span>
+
+                {teamBattle && pairingEnabled ? (
+                  <button
+                    type="button"
+                    onClick={() => onStartPairing(p.id)}
+                    disabled={!arrived}
+                    aria-label={`Выбрать пару для ${p.nickname}`}
+                    title={arrived ? 'Выбрать или сменить сокомандника' : 'Сначала отметьте, что игрок пришёл'}
+                    className="shrink-0 h-7 px-2 rounded-lg flex items-center justify-center gap-1 active:scale-95 disabled:opacity-40"
+                    style={{
+                      background: pairingThis ? 'rgba(217,153,98,0.28)' : 'rgba(217,153,98,0.12)',
+                      border: '1px solid rgba(217,153,98,0.35)',
+                    }}
+                  >
+                    <UserPlus size={13} strokeWidth={2.4} style={{ color: '#D99962' }} />
+                    <span className="text-[10px] font-800 uppercase tracking-[0.06em]" style={{ color: '#D99962' }}>
+                      Пара
+                    </span>
+                  </button>
+                ) : null}
 
                 {unboundGuest ? (
                   <button
@@ -452,6 +408,48 @@ function ParticipantsEditor({
                   <X size={13} strokeWidth={2.6} style={{ color: '#f87171' }} />
                 </button>
               </div>
+              {pairingThis && pairingPlayer ? (
+                <div
+                  className="mx-5 mb-3 rounded-xl p-3 space-y-2"
+                  style={{ background: '#231A16', border: '1px solid rgba(217,153,98,0.35)' }}
+                >
+                  <p className="text-[11px] font-600" style={{ color: '#A39B98' }}>
+                    Пара для «{pairingPlayer.nickname}»
+                  </p>
+                  {pairingPlayer.teamPartnerId ? (
+                    <button
+                      type="button"
+                      onClick={() => onClearPartner(pairingPlayer.id)}
+                      className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-600"
+                      style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
+                    >
+                      Без пары
+                    </button>
+                  ) : null}
+                  {partnerChoices.length === 0 ? (
+                    <p className="text-[12px] px-1" style={{ color: '#6B6360' }}>
+                      Нет других игроков из кассы
+                    </p>
+                  ) : (
+                    partnerChoices.map((candidate) => (
+                      <button
+                        key={candidate.id}
+                        type="button"
+                        onClick={() => onPickPartner(pairingPlayer.id, candidate.id)}
+                        className="w-full text-left px-3 py-2 rounded-lg text-[13px] font-600 text-white"
+                        style={{
+                          background:
+                            pairingPlayer.teamPartnerId === candidate.id
+                              ? 'rgba(217,153,98,0.22)'
+                              : 'rgba(255,255,255,0.04)',
+                        }}
+                      >
+                        {candidate.nickname}
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
               </div>
             );
           })}
@@ -634,7 +632,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
       return;
     }
     if (hasAnyTeamPair(tournament.participants)) {
-      window.alert('Команды уже распределены. Нажмите на игрока, чтобы сменить пару.');
+      window.alert('Команды уже распределены. Нажмите кнопку пары у игрока, чтобы сменить сокомандника.');
       return;
     }
     if (!window.confirm('Случайно распределить пары среди игроков, которые пришли на турнир?')) {

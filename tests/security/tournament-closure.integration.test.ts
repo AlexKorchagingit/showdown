@@ -79,6 +79,8 @@ describe('atomic tournament closure', () => {
     localSql(readFileSync('supabase/migrations/20260916_fix_eight_place_payout.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260922_team_battle.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260922_team_battle.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260923_team_battle_ranks.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260923_team_battle_ranks.sql','utf8'));
     expect(localSql(`select count(*),count(*) filter(where is_admin),sum(ruby_balance)
       from public.users where id like '${prefix}%';`)).toBe(before);
     for (let attempt=0; attempt<20; attempt++) {
@@ -129,7 +131,7 @@ describe('atomic tournament closure', () => {
     });
     expect(response.status).toBe(200);
     expect(localSql(`select place,rating from public.participants where tournament_id='${tournament}' order by place;`))
-      .toBe('1|335\n2|345\n3|30\n4|40');
+      .toBe('1|335\n2|345\n3|205\n4|215');
   });
 
   it('settles only players checked in at the lobby and leaves no-shows untouched', async () => {

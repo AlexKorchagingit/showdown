@@ -142,23 +142,70 @@ export function assignRandomTeamPairs(
 }
 
 /**
- * One place per team: min of the two individual places, only once both
- * members have busted. A still-playing partner means the team is alive.
- * Solo players keep their own place.
+ * One place per team: finished teams are ranked 1, 2, 3… by their better
+ * individual place (holes from the worse teammate are compacted). A still-
+ * playing partner keeps the team off the board. Solo players are a team of one.
  */
+function teamKey(
+  player: Pick<Participant, 'id' | 'userId' | 'teamPartnerId'>,
+  players: readonly Participant[],
+  tournamentId: string,
+): string {
+  const self = participantSeatIdentity(player, tournamentId);
+  const partner = findTeamPartner(players, player, tournamentId);
+  if (!partner) return self;
+  const other = participantSeatIdentity(partner, tournamentId);
+  return self < other ? `${self}\0${other}` : `${other}\0${self}`;
+}
+
+function individualPlace(player: Participant | undefined): number | undefined {
+  if (!player || typeof player.place !== 'number' || player.place < 1) return undefined;
+  return player.place;
+}
+
+/** Better individual place of a fully finished team; undefined if the team is still alive. */
+export function teamMinPlace(
+  player: Participant,
+  players: readonly Participant[],
+  tournamentId = '',
+): number | undefined {
+  const own = individualPlace(player);
+  if (own == null) return undefined;
+  const partner = findTeamPartner(players, player, tournamentId);
+  if (!partner) return own;
+  const partnerPlace = individualPlace(partner);
+  if (partnerPlace == null) return undefined;
+  return Math.min(own, partnerPlace);
+}
+
+function aliveTeamCount(players: readonly Participant[], tournamentId: string): number {
+  const keys = new Set<string>();
+  for (const player of players) {
+    if (!isArrivedPlayer(player) && individualPlace(player) == null) continue;
+    if (teamMinPlace(player, players, tournamentId) != null) continue;
+    keys.add(teamKey(player, players, tournamentId));
+  }
+  return keys.size;
+}
+
 export function teamScoringPlace(
   player: Participant,
   players: readonly Participant[],
   tournamentId = '',
 ): number | undefined {
-  const own = typeof player.place === 'number' && player.place >= 1 ? player.place : undefined;
-  if (own == null) return undefined;
-  const partner = findTeamPartner(players, player, tournamentId);
-  if (!partner) return own;
-  const partnerPlace =
-    typeof partner.place === 'number' && partner.place >= 1 ? partner.place : undefined;
-  if (partnerPlace == null) return undefined;
-  return Math.min(own, partnerPlace);
+  const min = teamMinPlace(player, players, tournamentId);
+  if (min == null) return undefined;
+  const finishedMins = [
+    ...new Set(
+      players.flatMap((candidate) => {
+        const value = teamMinPlace(candidate, players, tournamentId);
+        return value != null ? [value] : [];
+      }),
+    ),
+  ].sort((left, right) => left - right);
+  const rankAmongFinished = finishedMins.indexOf(min) + 1;
+  if (rankAmongFinished < 1) return undefined;
+  return aliveTeamCount(players, tournamentId) + rankAmongFinished;
 }
 
 export function displayedTeamPlace(
