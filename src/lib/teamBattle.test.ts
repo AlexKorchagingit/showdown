@@ -180,9 +180,9 @@ describe('TEAM BATTLE scoring', () => {
     const tournament = event(participants);
     const payouts = calculatePayouts(23, 12_000);
     expect(payouts).toHaveLength(9);
-    expect(teamPrizeAtPlace(tournament, 1, 23)?.names).toEqual(['Freedom', 'Энвилоуп']);
+    expect(teamPrizeAtPlace(tournament, 1, 23)?.names).toEqual(['Энвилоуп', 'Freedom']);
     expect(teamPrizeAtPlace(tournament, 1, 23)?.pointsEach).toBe(Math.floor(payouts[0]!.points / 2));
-    expect(teamPrizeAtPlace(tournament, 4, 23)?.names).toEqual(['DISCUS', 'Dayya']);
+    expect(teamPrizeAtPlace(tournament, 4, 23)?.names).toEqual(['Dayya', 'DISCUS']);
     expect(teamPrizeAtPlace(tournament, 4, 23)?.pointsEach).toBe(Math.floor(payouts[3]!.points / 2));
     expect(teamPrizeAtPlace(tournament, 8, 23)?.names).toEqual(['t8a', 't8b']);
     expect(teamPrizeAtPlace(tournament, 9, 23)?.names).toEqual(['t9a', 't9b']);
