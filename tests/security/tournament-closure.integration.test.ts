@@ -81,6 +81,8 @@ describe('atomic tournament closure', () => {
     localSql(readFileSync('supabase/migrations/20260922_team_battle.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260923_team_battle_ranks.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260923_team_battle_ranks.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260924_team_battle_even_split.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260924_team_battle_even_split.sql','utf8'));
     expect(localSql(`select count(*),count(*) filter(where is_admin),sum(ruby_balance)
       from public.users where id like '${prefix}%';`)).toBe(before);
     for (let attempt=0; attempt<20; attempt++) {
