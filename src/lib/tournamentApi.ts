@@ -21,6 +21,8 @@ import {
   type TournamentChanges,
   type TournamentValues,
 } from './tournamentCommands';
+import { alignBustOutPlaces } from './bustOutPlaces';
+import { findRosterSeat, rebaseParticipantRoster, rosterSeatKey } from './participantRoster';
 
 /** Nested user preview. Rating lives on `participants`, not `users`. */
 const PARTICIPANT_SELECT_WITH_USER = '*, users (nickname, equipped_avatar, equipped_char)';
@@ -220,6 +222,7 @@ export async function syncParticipantRows(
   next: Participant[],
   resolveUserId: (player: Participant) => string | null,
   actorId: string,
+  options?: { isClosed?: boolean },
 ): Promise<Participant[]> {
   let baseline = previous;
   try {
@@ -229,21 +232,41 @@ export async function syncParticipantRows(
   }
 
   const realIds = await fetchKnownUserIds();
-  const desired=rowsForSeats(tournamentId,next,resolveUserId,realIds);
-  const previousById=new Map(baseline.map((player)=>[player.id,player]));
-  const removed=baseline.filter((player)=>!next.some((candidate)=>candidate.id===player.id));
-  const added=next.filter((player)=>!previousById.has(player.id));
-  const rows:ParticipantCommandRow[]=desired.map((row,index)=>{
-    const player=next[index];
-    let source=previousById.get(player.id);
-    if(!source&&added.length===1&&removed.length===1&&!removed[0].userId&&Boolean(player.userId)
-      &&sameSeat(removed[0],{...player,id:removed[0].id,
-      userId:removed[0].userId,nickname:removed[0].nickname}))source=removed[0];
-    return {source_id:source?participantRowId(tournamentId,source.id):null,seat_id:row.id,user_id:row.user_id,
-      nickname:row.nickname,place:row.place,knockouts:row.knockouts,comment:row.comment,
-      arrived:row.arrived===true,team_partner_id:row.team_partner_id??player.teamPartnerId?.trim()??null};
+  const rebased = rebaseParticipantRoster(tournamentId, previous, next, baseline);
+  const desiredRoster = alignBustOutPlaces(rebased, { isClosed: options?.isClosed === true });
+  const desired = rowsForSeats(tournamentId, desiredRoster, resolveUserId, realIds);
+  const uiRemoved = previous.filter(
+    (player) => !next.some((candidate) => rosterSeatKey(candidate, tournamentId) === rosterSeatKey(player, tournamentId)),
+  );
+  const uiAdded = next.filter(
+    (player) => !previous.some((candidate) => rosterSeatKey(candidate, tournamentId) === rosterSeatKey(player, tournamentId)),
+  );
+  const rows: ParticipantCommandRow[] = desired.map((row, index) => {
+    const player = desiredRoster[index]!;
+    let source = findRosterSeat(baseline, player, tournamentId);
+    if (
+      !source &&
+      uiAdded.length === 1 &&
+      uiRemoved.length === 1 &&
+      !uiRemoved[0]!.userId &&
+      Boolean(player.userId) &&
+      rosterSeatKey(player, tournamentId) === rosterSeatKey(uiAdded[0]!, tournamentId)
+    ) {
+      source = findRosterSeat(baseline, uiRemoved[0]!, tournamentId);
+    }
+    return {
+      source_id: source ? participantRowId(tournamentId, source.id) : null,
+      seat_id: row.id,
+      user_id: row.user_id,
+      nickname: row.nickname,
+      place: row.place,
+      knockouts: row.knockouts,
+      comment: row.comment,
+      arrived: row.arrived === true,
+      team_partner_id: row.team_partner_id ?? player.teamPartnerId?.trim() ?? null,
+    };
   });
-  await replaceParticipants(actorId,tournamentId,rows);
+  await replaceParticipants(actorId, tournamentId, rows);
 
   return fetchParticipants(tournamentId);
 }

@@ -198,6 +198,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             participants,
             resolveUserId,
             account.id,
+            { isClosed: current.isClosed === true },
           );
         }
         setTournaments((prev) => prev.map((row) => row.id === tournamentId ? {
