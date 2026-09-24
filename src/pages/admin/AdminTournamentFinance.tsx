@@ -40,6 +40,7 @@ import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
 import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
+import { rebindTeamPartnerIdentity, removeSeatKeepingTeams } from '../../lib/teamBattle';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
@@ -406,16 +407,20 @@ export function AdminTournamentFinance() {
       return;
     }
     void updateTournament(tournament.id, {
-      participants: tournament.participants.map((p) =>
-        p.id === guestSeatId
-          ? {
-              ...p,
-              id: user.id,
-              userId: user.id,
-              nickname: user.nickname,
-              equippedAvatar: user.equippedAvatar,
-            }
-          : p,
+      participants: rebindTeamPartnerIdentity(
+        tournament.participants.map((p) =>
+          p.id === guestSeatId
+            ? {
+                ...p,
+                id: user.id,
+                userId: user.id,
+                nickname: user.nickname,
+                equippedAvatar: user.equippedAvatar,
+              }
+            : p,
+        ),
+        guestSeatId,
+        user.id,
       ),
     });
     setLinkingId(null);
@@ -425,7 +430,7 @@ export function AdminTournamentFinance() {
     if (!window.confirm('Точно удалить игрока из турнира?')) return;
     void updateTournament(tournament.id, {
       participants: alignBustOutPlaces(
-        tournament.participants.filter((p) => p.id !== playerId),
+        removeSeatKeepingTeams(tournament.participants, playerId, tournament.id),
         tournament,
       ),
     });
