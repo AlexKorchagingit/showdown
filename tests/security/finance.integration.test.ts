@@ -53,14 +53,20 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
       ('${id('admin')}','${email('admin')}','Synthetic cashier',true,1234),
       ('${id('owner')}','${email('owner')}','Synthetic owner',true,2345),
       ('${id('user')}','${email('user')}','Synthetic player',false,3456);
-      insert into public.tournaments(id,title,start_date,features) values
-      ('${id('event')}','Synthetic event',current_date,array['Аддон']),
-      ('${id('no-addon')}','Synthetic event without addon',current_date,'{}');
+      insert into public.tournaments(id,title,start_date,features,is_closed,blind_structure) values
+      ('${id('event')}','Synthetic event',current_date,array['Аддон'],false,''),
+      ('${id('no-addon')}','Synthetic event without addon',current_date,'{}',false,''),
+      ('${id('freeze')}','Friday Freezeout',current_date,'{}',false,'Freezeout'),
+      ('${id('freeze-closed')}','Old Freezeout',current_date,'{}',true,'Freezeout');
       insert into public.transactions(id,tournament_id,user_id,type,amount,status,dealer_hours,is_dealer,updated_at)
-      values ('${id('legacy')}','${id('event')}','${id('user')}','buy-in',1000,'paid',2.5,true,'2026-08-01T12:00:00Z');`);
+      values
+        ('${id('legacy')}','${id('event')}','${id('user')}','buy-in',1000,'paid',2.5,true,'2026-08-01T12:00:00Z'),
+        ('${id('old-freeze')}','${id('freeze-closed')}','${id('user')}','buy-in',1000,'paid',0,false,'2026-08-01T12:00:00Z');`);
     localSql(readFileSync('supabase/migrations/20260903_auth_foundation.sql', 'utf8'));
     localSql(migration());
     localSql(migration());
+    localSql(readFileSync('supabase/migrations/20260925_freezeout_entry_fee.sql', 'utf8'));
+    localSql(readFileSync('supabase/migrations/20260925_freezeout_entry_fee.sql', 'utf8'));
     // Synthetic owner fixture only; no real account is chosen or changed.
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('owner')}';`);
     for (let attempt=0; attempt<20; attempt++) {
@@ -91,6 +97,16 @@ describe('isolated cashier commands: authorization, idempotency and atomic audit
     for (const extra of [{ p_amount: 1 }, { p_status: 'paid' }, { p_admin_id: id('owner') }, { p_date: '2000-01-01' }]) {
       expect((await rpc('club_create_charge',admin,charge(extra))).status).toBe(404);
     }
+  });
+  it('rewrites closed freezeout buy-ins to 1200 and leaves other tariffs', () => {
+    expect(localSql(`select amount from public.transactions where id='${id('old-freeze')}';`)).toBe('1200');
+    expect(localSql(`select amount from public.transactions where id='${id('legacy')}';`)).toBe('1000');
+  });
+  it('charges 1200 on freezeout and 1000 on other events', async () => {
+    const freeze = await (await rpc('club_create_charge',admin,charge({ p_tournament_id: id('freeze') }))).json();
+    expect(freeze.amount).toBe(1200);
+    const regular = await (await rpc('club_create_charge',admin,charge({ p_type:'rebuy' }))).json();
+    expect(regular.amount).toBe(1000);
   });
   it('uses the existing server tariff for charges and zero for a paid ticket', async () => {
     for (const type of ['buy-in','rebuy','addon','ticket']) {

@@ -8,6 +8,24 @@
     -webkit-touch-callout: none;
   }
 
+  /*
+    Tailwind preflight sets `-webkit-appearance: button`. iOS / Telegram WKWebView
+    then paint a native gloss over the fill, so lobby checks and cashier chips
+    look half-dark / half-light. appearance:none removes that overlay.
+    Do not use !important: CTA buttons set an inline linear-gradient.
+  */
+  button,
+  [type='button'],
+  [type='reset'],
+  [type='submit'] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  button svg {
+    display: block;
+  }
+
   /* An Android WebView that misses the default rule would paint the CSS text. */
   style, noscript {
     display: none !important;

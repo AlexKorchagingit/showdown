@@ -317,7 +317,7 @@ function ParticipantsEditor({
                   onClick={() => onToggleArrived(p.id)}
                   aria-pressed={arrived}
                   aria-label={arrived ? `Снять отметку: ${p.nickname} пришёл` : `Отметить: ${p.nickname} пришёл`}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 active:scale-95"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 appearance-none active:scale-95"
                   style={{
                     background: arrived ? 'rgba(34,197,94,0.28)' : 'rgba(255,255,255,0.06)',
                     border: arrived

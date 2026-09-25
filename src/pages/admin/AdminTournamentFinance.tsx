@@ -48,8 +48,16 @@ const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string 
   { type: 'addon', label: 'Аддон' },
 ];
 
-const PAID_CHIP = 'bg-green-500/20 text-green-400 border-green-500/50';
-const UNPAID_CHIP = 'bg-red-500/15 text-red-400 border-red-500/50';
+const PAID_CHIP = {
+  background: 'rgba(34,197,94,0.2)',
+  color: '#4ade80',
+  border: '1px solid rgba(34,197,94,0.5)',
+} as const;
+const UNPAID_CHIP = {
+  background: 'rgba(239,68,68,0.15)',
+  color: '#f87171',
+  border: '1px solid rgba(239,68,68,0.5)',
+} as const;
 
 function chargeOrder(a: Transaction, b: Transaction): number {
   return Date.parse(a.date) - Date.parse(b.date);
@@ -74,9 +82,8 @@ function TransactionChip({
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700 border ${
-        paid ? PAID_CHIP : UNPAID_CHIP
-      }`}
+      className="inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700"
+      style={paid ? PAID_CHIP : UNPAID_CHIP}
     >
       {paid ? <Check size={11} strokeWidth={3} /> : null}
       {label}
@@ -820,7 +827,7 @@ export function AdminTournamentFinance() {
                         key={type}
                         type="button"
                         onClick={() => handleCharge(player.id, type)}
-                        className="py-2 rounded-lg text-[11px] font-700 active:scale-95 transition-transform"
+                        className="py-2 rounded-lg text-[11px] font-700 appearance-none active:scale-95 transition-transform"
                         style={{
                           background: 'rgba(217,153,98,0.12)',
                           border: '1px solid rgba(217,153,98,0.35)',
@@ -833,7 +840,7 @@ export function AdminTournamentFinance() {
                     <button
                       type="button"
                       onClick={() => handleTicket(player.id, player.nickname)}
-                      className="py-2 rounded-lg text-[11px] font-700 active:scale-95 transition-transform"
+                      className="py-2 rounded-lg text-[11px] font-700 appearance-none active:scale-95 transition-transform"
                       style={{
                         background: 'rgba(34,197,94,0.12)',
                         border: '1px solid rgba(34,197,94,0.35)',
