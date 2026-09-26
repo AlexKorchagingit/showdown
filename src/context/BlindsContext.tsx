@@ -14,7 +14,6 @@ import {
   BLIND_STRUCTURES_STORAGE_KEY,
   blindStructuresFingerprint,
   durationSeconds,
-  inferLevelListChange,
   isCatalogBlindStructures,
   persistBlindStructuresLocal,
   readBlindStructuresLocalMeta,
@@ -29,10 +28,11 @@ import { loadBlindStructuresSnapshot, queueBlindStructuresSave } from '../lib/bl
 import {
   BLIND_STRUCTURES_CHANNEL,
   BLIND_STRUCTURES_ROW_ID,
-  decideBlindStructuresSync,
   makeBlindStructuresSnapshot,
   parseBlindStructuresSnapshot,
   parseBlindStructuresStorageSnapshot,
+  planBlindStructuresRemoteApply,
+  type BlindStructuresRemoteApplyOptions,
   type BlindStructuresSnapshot,
 } from '../lib/blindStructuresSync';
 import {
@@ -51,8 +51,10 @@ import {
   freezeTimerSnapshot,
   parseTimerSnapshot,
   readTimerSessionCache,
+  structureWithLiveLevels,
   timerPatchForStructure,
   writeTimerSessionCache,
+  cloneTimerLevels,
   type TimerSnapshot,
 } from '../lib/timerSession';
 import {
@@ -177,6 +179,7 @@ interface BlindsContextValue {
   setLinkedTournament: (tournamentId: string | null) => void;
   setChipleader: (userId: string | null) => void;
   setChipleaderStack: (value: number | null) => void;
+  liveLevels: BlindLevel[] | undefined;
 }
 
 const BlindsContext = createContext<BlindsContextValue | null>(null);
@@ -401,47 +404,41 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   );
 
   const applyRemoteStructures = useCallback(
-    (snapshot: BlindStructuresSnapshot) => {
+    (snapshot: BlindStructuresSnapshot, options?: BlindStructuresRemoteApplyOptions) => {
       if (snapshot.writeId === lastStructuresWriteIdRef.current) return;
-      const local = structuresMetaRef.current;
-      const decision = decideBlindStructuresSync(
+      const current = stateRef.current.structures;
+      const plan = planBlindStructuresRemoteApply(
         {
-          ...local,
-          custom: !isCatalogBlindStructures(stateRef.current.structures),
-          fingerprint: blindStructuresFingerprint(stateRef.current.structures),
+          ...structuresMetaRef.current,
+          custom: !isCatalogBlindStructures(current),
+          fingerprint: blindStructuresFingerprint(current),
         },
         snapshot,
+        options,
       );
-      if (decision === 'keep') return;
-      if (decision === 'upload') {
-        publishStructures(stateRef.current.structures, 'now');
+      if (plan.kind === 'keep') return;
+      if (plan.kind === 'upload') {
+        publishStructures(current, 'now');
         return;
       }
-      const migrated = withTripleLifeLadderCopyMigration(
-        snapshot.structures,
-        snapshot.migrations ?? [],
-      );
-      const previous = stateRef.current.structures;
-      lastStructuresWriteIdRef.current = snapshot.writeId;
+      lastStructuresWriteIdRef.current = plan.writeId;
       structuresMetaRef.current = {
-        revision: snapshot.revision,
-        writeId: snapshot.writeId,
-        updatedAt: snapshot.updatedAt,
-        migrations: migrated.migrations,
+        revision: plan.revision,
+        writeId: plan.writeId,
+        updatedAt: plan.updatedAt,
+        migrations: plan.migrations,
       };
-      persistBlindStructuresLocal(migrated.structures, structuresMetaRef.current);
-      dispatch({ type: 'setStructures', structures: migrated.structures });
-      const activeId = stateRef.current.snapshot.structureId;
-      if (activeId) {
-        const next = migrated.structures.find((row) => row.id === activeId);
-        const prev = previous.find((row) => row.id === activeId);
-        if (next) {
-          syncTimerToStructure(next, prev ? inferLevelListChange(prev.levels, next.levels) : undefined);
-        }
+      if (plan.kind === 'meta') {
+        persistBlindStructuresLocal(current, structuresMetaRef.current);
+      } else {
+        persistBlindStructuresLocal(plan.structures, structuresMetaRef.current);
+        dispatch({ type: 'setStructures', structures: plan.structures });
       }
-      if (migrated.changed) publishStructures(migrated.structures, 'now');
+      if (plan.republish) {
+        publishStructures(plan.kind === 'replace' ? plan.structures : current, 'now');
+      }
     },
-    [publishStructures, syncTimerToStructure],
+    [publishStructures],
   );
 
   useEffect(() => {
@@ -481,7 +478,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
           publishStructures(stateRef.current.structures, 'now');
           return;
         }
-        applyRemoteStructures(remote);
+        applyRemoteStructures(remote, { allowUpload: true, allowRepublishMigration: true });
       })
       .catch((error) => {
         console.error(error);
@@ -575,11 +572,12 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       const structure = current.structures.find((row) => row.id === structureId);
       if (!structure) return;
       if (current.snapshot.structureId === structureId) {
-        syncTimerToStructure(structure);
+        if (!current.snapshot.levels?.length) syncTimerToStructure(structure);
         return;
       }
       if (live.isRunning) return;
       const durations = durationsFromStructure(structure);
+      const liveLadder = cloneTimerLevels(structure.levels);
       commit(
         {
           structureId,
@@ -587,6 +585,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
           secondsLeft: durations[0] ?? 20 * 60,
           isRunning: false,
           levelDurations: durations,
+          ...(liveLadder.length ? { levels: liveLadder } : {}),
         },
         { persist: 'now', silent: true },
       );
@@ -674,7 +673,8 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
-  const activeStructure = findStructure(state, state.snapshot.structureId);
+  const catalogActive = findStructure(state, state.snapshot.structureId);
+  const activeStructure = structureWithLiveLevels(catalogActive, state.snapshot);
   const levelDurationSeconds =
     state.snapshot.levelDurations[state.levelIndex] ??
     durationSeconds(activeStructure?.levels[state.levelIndex], activeStructure?.levelDuration);
@@ -703,6 +703,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       setLinkedTournament,
       setChipleader,
       setChipleaderStack,
+      liveLevels: state.snapshot.levels,
     }),
     [
       timerReady,
