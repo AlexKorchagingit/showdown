@@ -12,13 +12,12 @@ import {
   sortByRating,
   hasMissingPlaces,
 } from '../lib/tournamentStatus';
-import { knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
+import { finalTableSize, knockoutBountyPoints, ratingPointsForPlace } from '../data/prizeStructure';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
 import {
   displayedTeamPlace,
   findTeamPartner,
   isTeamBattleEvent,
-  teamBattleFinalTableSize,
   teamRatingPointsForPlayer,
 } from '../lib/teamBattle';
 import {
@@ -195,10 +194,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     : sortByRating(visible);
   const occupiedSeats = tournamentFinished ? participants.length : seated.length;
   const fieldSize = Math.max(cashierFieldSize(live), participants.length);
-  const finalTableSize = teamBattle ? teamBattleFinalTableSize(fieldSize) : 9;
+  const tableSize = finalTableSize(fieldSize);
   const lastFinalTableIndex = participants.reduce((last, row, index) => {
     const place = displayedTeamPlace(row, live);
-    return place === finalTableSize ? index : last;
+    return place === tableSize ? index : last;
   }, -1);
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
   const playingDealers = live.participants
@@ -353,7 +352,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     // Open lobby: position in this field, not leftover finishing place.
                     const placeNum = isClosedRow ? (teamPlace ?? p.place ?? null) : idx + 1;
                     const isPodium     = isClosedRow && teamPlace != null && teamPlace <= 3;
-                    const isFinalTable = isClosedRow && teamPlace != null && teamPlace <= finalTableSize;
+                    const isFinalTable = isClosedRow && teamPlace != null && teamPlace <= tableSize;
                     const wreathColor  = teamPlace != null
                       ? ['#D99962', '#8c8c88', '#8C4C27'][teamPlace - 1] ?? null
                       : null;
@@ -367,7 +366,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
                     return (
                       <div key={p.id}>
-                        {isClosedRow && idx === 0 && participants.some((row) => (displayedTeamPlace(row, live) ?? 99) <= finalTableSize) && (
+                        {isClosedRow && idx === 0 && participants.some((row) => (displayedTeamPlace(row, live) ?? 99) <= tableSize) && (
                           <>
                             <div className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
                                  style={{ color: '#D99962' }}>
@@ -457,7 +456,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
                         </div>
 
-                        {isClosedRow && idx === lastFinalTableIndex && participants.some((row) => (displayedTeamPlace(row, live) ?? 0) > finalTableSize) && (
+                        {isClosedRow && idx === lastFinalTableIndex && participants.some((row) => (displayedTeamPlace(row, live) ?? 0) > tableSize) && (
                           <div style={{ height: 2, background: 'rgba(217,153,98,0.35)', margin: '4px 16px' }} />
                         )}
                       </div>

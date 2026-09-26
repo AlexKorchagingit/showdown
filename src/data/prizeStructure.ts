@@ -33,6 +33,20 @@ export function itmPlaceCount(totalPlayers: number): number {
   return Math.ceil(totalPlayers * ITM_FIELD_SHARE);
 }
 
+/** First bust-out outside the prize list — the bubble fight. */
+export function bubblePlace(totalPlayers: number): number {
+  const itm = itmPlaceCount(totalPlayers);
+  return itm > 0 ? itm + 1 : 0;
+}
+
+/**
+ * Closed lobby final table: everyone who scored prize points, plus the bubble.
+ * Gold nicks and the gold rule sit on this set.
+ */
+export function finalTableSize(totalPlayers: number): number {
+  return bubblePlace(totalPlayers);
+}
+
 const PAYOUT_TEMPLATES: Record<number, number[]> = {
   1: [1],
   2: [0.65, 0.35],

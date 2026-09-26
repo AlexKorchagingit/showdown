@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { SectionScreen } from '../../components/SectionScreen';
-import { ACHIEVEMENTS, type AchievementProgress } from '../../data/achievements';
+import { ACHIEVEMENTS, AUTO_ACHIEVEMENT_ID_SET, type AchievementProgress } from '../../data/achievements';
 import { useUser } from '../../context/UserContext';
+import { useTournaments } from '../../context/TournamentContext';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { readLegacyAchievementProgress } from '../../lib/achievementStorage';
+import { computeAutoAchievementProgress, mergeAutoAndSavedProgress } from '../../lib/achievementAuto';
 import {
   fetchAchievementProgress,
   saveAchievementProgress,
@@ -26,6 +28,7 @@ function sameProgress(left: AchievementProgressMap, right: AchievementProgressMa
 export function AdminAchievementsEditor() {
   const { userId } = useParams<{ userId: string }>();
   const { clubUsers, isLoading } = useUser();
+  const { tournaments } = useTournaments();
   const user = useMemo(
     () => clubUsers.find((u) => u.id === userId),
     [clubUsers, userId],
@@ -37,9 +40,16 @@ export function AdminAchievementsEditor() {
   const [saveError, setSaveError] = useState('');
   const [busy, setBusy] = useState(false);
   const [fromDevice, setFromDevice] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   const targetId = user?.id ?? '';
   const targetEmail = user?.email ?? '';
+  const auto = useMemo(
+    () => (targetId ? computeAutoAchievementProgress(targetId, tournaments, clubUsers) : {}),
+    [targetId, tournaments, clubUsers],
+  );
+  const autoRef = useRef(auto);
+  autoRef.current = auto;
 
   const load = useCallback(async () => {
     if (!targetId) return;
@@ -48,13 +58,16 @@ export function AdminAchievementsEditor() {
     try {
       const remote = await fetchAchievementProgress(targetId);
       setSaved(remote);
+      setTouched(false);
       // Grants typed on this device before achievements moved to the server are
       // offered as an unsaved draft instead of being silently lost.
       const legacy = Object.keys(remote).length === 0
         ? readLegacyAchievementProgress(targetEmail)
         : {};
       setFromDevice(Object.keys(legacy).length > 0);
-      setDraft(Object.keys(legacy).length > 0 ? legacy : remote);
+      const seed = Object.keys(legacy).length > 0 ? legacy : remote;
+      setDraft(mergeAutoAndSavedProgress(seed, autoRef.current));
+      if (Object.keys(legacy).length > 0) setTouched(true);
     } catch (failure) {
       setSaved(null);
       setDraft(null);
@@ -65,8 +78,14 @@ export function AdminAchievementsEditor() {
   useEffect(() => {
     setDraft(null);
     setSaved(null);
+    setTouched(false);
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (touched || saved === null) return;
+    setDraft(mergeAutoAndSavedProgress(saved, auto));
+  }, [auto, saved, touched]);
 
   if (!user) {
     if (isLoading) {
@@ -79,14 +98,17 @@ export function AdminAchievementsEditor() {
     return <Navigate to="/admin/achievements/users" replace />;
   }
 
-  const dirty = draft !== null && saved !== null && !sameProgress(draft, saved);
+  const baseline = mergeAutoAndSavedProgress(saved ?? {}, auto);
+  const dirty = draft !== null && saved !== null && !sameProgress(draft, baseline);
 
   const setProgress = (id: string, value: number, max: number) => {
     const clamped = Math.max(0, Math.min(max, Number.isFinite(value) ? Math.trunc(value) : 0));
+    setTouched(true);
     setDraft((prev) => ({ ...prev, [id]: { progress: clamped } }));
   };
 
   const setCompleted = (id: string, completed: boolean) => {
+    setTouched(true);
     setDraft((prev) => ({ ...prev, [id]: { completed } }));
   };
 
@@ -97,7 +119,8 @@ export function AdminAchievementsEditor() {
     void saveAchievementProgress(user.id, draft)
       .then((confirmed) => {
         setSaved(confirmed);
-        setDraft(confirmed);
+        setDraft(mergeAutoAndSavedProgress(confirmed, auto));
+        setTouched(false);
         setFromDevice(false);
       })
       .catch((failure: unknown) => {
@@ -110,6 +133,10 @@ export function AdminAchievementsEditor() {
     <SectionScreen title={user.nickname} backTo="/admin/achievements/users">
       <p className="text-[12px] font-500 mb-3" style={{ color: '#6B6360' }}>
         {user.email}
+      </p>
+      <p className="text-[12px] font-500 mb-4 leading-relaxed" style={{ color: '#8c8c88' }}>
+        Рыбка, баббл, финалист и другие игровые значки считаются сами. Число или галку
+        всё равно можно поменять вручную: автомат не уменьшит выдачу, только дополнит.
       </p>
 
       {loadError ? (
@@ -156,6 +183,7 @@ export function AdminAchievementsEditor() {
                       <p className="text-white font-700 text-[14px] leading-tight">{achievement.title}</p>
                       <p className="text-[11px] font-500 mt-0.5 mb-3" style={{ color: '#8c8c88' }}>
                         {achievement.description}
+                        {AUTO_ACHIEVEMENT_ID_SET.has(achievement.id) ? ' · считается автоматически' : ''}
                       </p>
                     </div>
                   </div>
