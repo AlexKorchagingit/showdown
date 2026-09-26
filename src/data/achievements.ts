@@ -25,7 +25,32 @@ export interface AchievementProgress {
   completed?: boolean;
 }
 
-/** Catalogue starts locked. Admins grant progress; nothing is pre-unlocked. */
+/**
+ * These badges fill from closed results. Admins can still raise them by hand;
+ * auto-calc is a floor and does not wipe a larger grant.
+ */
+export const AUTO_ACHIEVEMENT_IDS = [
+  'fish',
+  'crucian',
+  'shark',
+  'megalodon',
+  'welcome',
+  'the-best',
+  'bounty-king',
+  'predator',
+  'headhunter',
+  'winner',
+  'finalist',
+  'paparazzi',
+  'bubble',
+  'resident',
+] as const;
+
+export type AutoAchievementId = (typeof AUTO_ACHIEVEMENT_IDS)[number];
+
+export const AUTO_ACHIEVEMENT_ID_SET: ReadonlySet<string> = new Set(AUTO_ACHIEVEMENT_IDS);
+
+/** Catalogue starts locked. Listed badges also fill from closed results. */
 export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'fish',
@@ -134,7 +159,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'finalist',
     title: 'Финалист',
-    description: 'Попасть в топ-9 финального стола',
+    description: 'Попасть за финальный стол (призовая зона + баббл)',
     imageUrl: art('finalist'),
     tier: 'silver',
   },

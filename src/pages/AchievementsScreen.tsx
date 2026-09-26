@@ -4,12 +4,14 @@ import { SectionScreen } from '../components/SectionScreen';
 import { ScreenLoading } from '../components/ScreenLoading';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { useUser } from '../context/UserContext';
+import { useTournaments } from '../context/TournamentContext';
 import { isAchievementDone, type Achievement } from '../data/achievements';
 import {
   mergeAchievementProgress,
   resolveAchievements,
   sortAchievements,
 } from '../lib/achievementStorage';
+import { computeAutoAchievementProgress, mergeAutoAndSavedProgress } from '../lib/achievementAuto';
 import { fetchAchievementProgress, type AchievementProgressMap } from '../lib/achievementsApi';
 
 const DEFAULT_ART = '5.25rem';
@@ -103,7 +105,8 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 }
 
 export function AchievementsScreen() {
-  const { userId } = useUser();
+  const { userId, clubUsers } = useUser();
+  const { tournaments } = useTournaments();
   const { playerId } = useParams<{ playerId?: string }>();
   const targetId = playerId || userId;
 
@@ -125,10 +128,12 @@ export function AchievementsScreen() {
     void load();
   }, [load]);
 
-  const achievements = useMemo(
-    () => sortAchievements(resolveAchievements(mergeAchievementProgress(progress ?? {}))),
-    [progress],
-  );
+  const achievements = useMemo(() => {
+    const auto = computeAutoAchievementProgress(targetId, tournaments, clubUsers);
+    return sortAchievements(
+      resolveAchievements(mergeAchievementProgress(mergeAutoAndSavedProgress(progress ?? {}, auto))),
+    );
+  }, [progress, targetId, tournaments, clubUsers]);
 
   const done = achievements.filter(isAchievementDone).length;
 

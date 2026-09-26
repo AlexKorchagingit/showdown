@@ -1,4 +1,4 @@
-import { itmPlaceCount, ratingPointsForPlace } from '../data/prizeStructure';
+import { finalTableSize, ratingPointsForPlace } from '../data/prizeStructure';
 import type { Participant, Tournament } from '../types/tournament';
 import { sanitizeParticipantUserId, unwrapParticipantSeatKey } from './supabaseMap';
 import { isArrivedPlayer } from './tournamentArrival';
@@ -252,10 +252,9 @@ export function teamRatingPointsForPlayer(
   return splitTeamPlacePoints(pool, ownPlace, partnerPlace);
 }
 
-/** Final table = ITM places + 1 (bubble). */
+/** Final table = ITM places + 1 (bubble). Same rule as every closed lobby. */
 export function teamBattleFinalTableSize(fieldSize: number): number {
-  const itm = itmPlaceCount(fieldSize);
-  return itm > 0 ? itm + 1 : 0;
+  return finalTableSize(fieldSize);
 }
 
 export function teamPrizeAtPlace(
