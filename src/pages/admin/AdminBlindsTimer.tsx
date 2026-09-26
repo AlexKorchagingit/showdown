@@ -21,6 +21,7 @@ import { useProfile } from '../../context/ProfileContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { resolveStructureForTournament, resolveTournamentForTimer } from '../../lib/timerTournament';
+import { structureWithLiveLevels } from '../../lib/timerSession';
 import {
   breakComment,
   formatNextBlinds,
@@ -107,6 +108,7 @@ export function AdminBlindsTimer() {
     chipleaderId,
     setChipleader,
     chipleaderStack,
+    liveLevels,
   } = useBlinds();
   const { transactions } = useFinance();
 
@@ -225,7 +227,10 @@ export function AdminBlindsTimer() {
     };
   }, [liveTournamentId, refreshParticipants]);
 
-  const structure = resolvedStructure;
+  const structure = structureWithLiveLevels(resolvedStructure, {
+    structureId: activeStructureId,
+    levels: liveLevels,
+  });
   const tournament = boundTournament;
   const { remaining, registered } = tournamentPlayerCounts(tournament);
   const chipTotals = useMemo(

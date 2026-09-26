@@ -43,6 +43,8 @@ describe('protected audit and live timer',()=>{let superadmin='',admin='',user='
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';`);
     localSql(readFileSync('supabase/migrations/20260904_authenticated_policies.sql','utf8'));
     const migration=readFileSync('supabase/migrations/20260905_audit_timer_commands.sql','utf8');localSql(migration);localSql(migration);
+    localSql(readFileSync('supabase/migrations/20260926_timer_live_ladder.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260926_timer_live_ladder.sql','utf8'));
     for(let attempt=0;attempt<20;attempt++){if((await rpc('club_audit_snapshot',anon)).status!==404)break;
       await new Promise(resolve=>setTimeout(resolve,100));}
     localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
@@ -116,6 +118,10 @@ describe('protected audit and live timer',()=>{let superadmin='',admin='',user='
   it('rejects unknown fields, invalid bounds and nonexistent tournament links',async()=>{for(const invalid of [
     snapshot('extra',6,{forged:true}),snapshot('duration',6,{levelDurations:[0]}),
     snapshot('level',6,{levelIndex:2}),snapshot('unknown',6,{tournamentId:id('missing')}),
+    snapshot('levels-empty',6,{levels:[]}),
+    snapshot('levels-mismatch',6,{levelDurations:[1200,1200],levels:[
+      {level:1,smallBlind:100,bigBlind:200,ante:200,durationMinutes:20},
+    ]}),
   ])expect((await rpc('club_save_timer_session',admin,{p_snapshot:invalid})).status).toBe(400);});
 
   it('is idempotent by write id and refuses a delayed older revision',async()=>{
@@ -125,6 +131,16 @@ describe('protected audit and live timer',()=>{let superadmin='',admin='',user='
     const stale=await rpc('club_save_timer_session',admin,{p_snapshot:snapshot('stale-write',4,{secondsLeft:1})});
     expect(stale.status).toBe(200);expect((await stale.json() as {writeId:string}).writeId).toBe('admin-write');
     expect(localSql(`select payload->>'writeId',payload->>'secondsLeft' from public.timer_sessions where id='live';`)).toBe('admin-write|1200');
+  });
+
+  it('accepts an optional live ladder on the timer snapshot',async()=>{
+    const response=await rpc('club_save_timer_session',admin,{p_snapshot:snapshot('admin-levels',8,{
+      levels:[{level:1,smallBlind:150,bigBlind:300,ante:300,durationMinutes:20,isBreak:false}],
+    })});
+    expect(response.status).toBe(200);
+    const saved=await response.json() as {writeId:string;levels:Array<{smallBlind:number}>};
+    expect(saved.writeId).toBe('admin-levels');
+    expect(saved.levels[0]?.smallBlind).toBe(150);
   });
 
   it('does not alter the existing Admin or SuperAdmin assignments',()=>{

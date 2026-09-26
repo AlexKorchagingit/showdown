@@ -1,5 +1,7 @@
 import {
   durationSeconds,
+  parseBlindLevel,
+  type BlindLevel,
   type BlindStructure,
   type LevelListChange,
 } from '../data/blindStructures';
@@ -26,6 +28,8 @@ export type TimerSnapshot = {
   totalEntries: number | null;
   rebuyCount: number | null;
   chipleaderStack: number | null;
+  /** Live ladder for the bound structure. Optional so older snapshots still parse. */
+  levels?: BlindLevel[];
 };
 
 export type LiveTimerClock = {
@@ -55,6 +59,51 @@ function asDurationList(value: unknown): number[] {
   if (!Array.isArray(value) || value.length === 0) return [20 * 60];
   const durations = value.map((item) => Math.max(1, Math.trunc(asFiniteNumber(item, 20 * 60))));
   return durations.length ? durations : [20 * 60];
+}
+
+export function cloneTimerLevels(levels: BlindLevel[]): BlindLevel[] {
+  return levels.flatMap((row) => {
+    const parsed = parseBlindLevel(row);
+    return parsed ? [parsed] : [];
+  });
+}
+
+export function parseTimerLevels(raw: unknown): BlindLevel[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const levels = cloneTimerLevels(raw as BlindLevel[]);
+  return levels.length === raw.length ? levels : undefined;
+}
+
+function liveLevelKey(level: BlindLevel): string {
+  return [
+    level.level,
+    level.smallBlind,
+    level.bigBlind,
+    level.ante,
+    level.durationMinutes,
+    level.isBreak === true ? 'b' : 'p',
+    level.isLateRegEnd === true ? 'lr' : '',
+    level.comment ?? '',
+  ].join(':');
+}
+
+export function liveLevelsEqual(left: BlindLevel[] | undefined, right: BlindLevel[]): boolean {
+  if (!left || left.length !== right.length) return false;
+  return left.every((level, index) => liveLevelKey(level) === liveLevelKey(right[index]));
+}
+
+/**
+ * The clock tab paints SB/BB from this overlay so a SAVE reaches the timer
+ * through the live session, not the 25 KB catalog poll.
+ */
+export function structureWithLiveLevels(
+  structure: BlindStructure | undefined,
+  snapshot: Pick<TimerSnapshot, 'structureId' | 'levels'>,
+): BlindStructure | undefined {
+  if (!structure) return undefined;
+  if (snapshot.structureId !== structure.id) return structure;
+  if (!snapshot.levels?.length) return structure;
+  return { ...structure, levels: snapshot.levels };
 }
 
 export function newTimerWriteId(): string {
@@ -110,6 +159,7 @@ export function parseTimerSnapshot(raw: unknown): TimerSnapshot | null {
   const levelDurations = asDurationList(row.levelDurations);
   const last = Math.max(0, levelDurations.length - 1);
   const levelIndex = Math.min(last, Math.max(0, Math.trunc(asFiniteNumber(row.levelIndex, 0))));
+  const levels = parseTimerLevels(row.levels);
 
   return {
     v: 1,
@@ -128,6 +178,7 @@ export function parseTimerSnapshot(raw: unknown): TimerSnapshot | null {
     totalEntries: asNullableNumber(row.totalEntries),
     rebuyCount: asNullableNumber(row.rebuyCount),
     chipleaderStack: asNullableNumber(row.chipleaderStack),
+    ...(levels ? { levels } : {}),
   };
 }
 
@@ -183,15 +234,18 @@ export function timerPatchForStructure(
   levelIndex = Math.min(last, Math.max(0, levelIndex));
   const nextDuration = nextDurations[levelIndex] ?? 20 * 60;
   const secondsLeft = Math.min(Math.max(0, live.secondsLeft), nextDuration);
+  const nextLevels = cloneTimerLevels(structure.levels);
   const durationsChanged = !durationsEqual(nextDurations, snapshot.levelDurations);
   const indexChanged = levelIndex !== live.levelIndex;
   const capped = secondsLeft + 0.05 < live.secondsLeft;
-  if (!durationsChanged && !indexChanged && !capped) return null;
+  const levelsChanged = nextLevels.length > 0 && !liveLevelsEqual(snapshot.levels, nextLevels);
+  if (!durationsChanged && !indexChanged && !capped && !levelsChanged) return null;
   return {
     levelIndex,
     secondsLeft,
     isRunning: live.isRunning && secondsLeft > 0,
     levelDurations: nextDurations,
+    ...(nextLevels.length ? { levels: nextLevels } : {}),
   };
 }
 

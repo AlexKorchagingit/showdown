@@ -2,6 +2,7 @@ import {
   blindStructuresFingerprint,
   isCatalogBlindStructures,
   parseBlindStructureList,
+  withTripleLifeLadderCopyMigration,
   type BlindStructure,
   type BlindStructuresLocalMeta,
 } from '../data/blindStructures';
@@ -138,4 +139,67 @@ export function decideBlindStructuresSync(
     return 'keep';
   }
   return 'apply';
+}
+
+export type BlindStructuresRemoteApplyOptions = {
+  allowUpload?: boolean;
+  allowRepublishMigration?: boolean;
+};
+
+export type BlindStructuresRemoteApplyPlan =
+  | { kind: 'keep' }
+  | { kind: 'upload' }
+  | {
+      kind: 'meta';
+      writeId: string;
+      revision: number;
+      updatedAt: number;
+      migrations: string[];
+      republish: boolean;
+    }
+  | {
+      kind: 'replace';
+      writeId: string;
+      revision: number;
+      updatedAt: number;
+      structures: BlindStructure[];
+      migrations: string[];
+      republish: boolean;
+    };
+
+/**
+ * Poll/realtime/channel must never upload: a stale 25 KB catalog reply used to
+ * make two admin tabs rewrite `blind-structures` until the timer tab froze.
+ * Matching fingerprints only adopt revision metadata so React does not rebuild
+ * the ladder on every 2.5s tick.
+ */
+export function planBlindStructuresRemoteApply(
+  local: BlindStructuresLocalMeta & {
+    custom: boolean;
+    fingerprint: string;
+  },
+  remote: BlindStructuresSnapshot,
+  options: BlindStructuresRemoteApplyOptions = {},
+): BlindStructuresRemoteApplyPlan {
+  const decision = decideBlindStructuresSync(local, remote);
+  if (decision === 'keep') return { kind: 'keep' };
+  if (decision === 'upload') {
+    return options.allowUpload === true ? { kind: 'upload' } : { kind: 'keep' };
+  }
+  const migrated = withTripleLifeLadderCopyMigration(
+    remote.structures,
+    remote.migrations ?? [],
+  );
+  const republish = options.allowRepublishMigration === true && migrated.changed;
+  const meta = {
+    writeId: remote.writeId,
+    revision: remote.revision,
+    updatedAt: remote.updatedAt,
+    migrations: migrated.migrations,
+    republish,
+  };
+  if (local.fingerprint === blindStructuresFingerprint(migrated.structures)) {
+    return { kind: 'meta', ...meta };
+  }
+  return { kind: 'replace', ...meta, structures: migrated.structures };
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { BlindStructure } from '../data/blindStructures';
-import { emptyTimerSnapshot, freezeTimerSnapshot, timerPatchForStructure } from './timerSession';
+import {
+  emptyTimerSnapshot,
+  freezeTimerSnapshot,
+  parseTimerSnapshot,
+  structureWithLiveLevels,
+  timerPatchForStructure,
+} from './timerSession';
 
 function sampleStructure(levels: BlindStructure['levels']): BlindStructure {
   return {
@@ -67,7 +73,7 @@ describe('timerPatchForStructure', () => {
     expect(patch?.levelDurations?.[0]).toBe(600);
   });
 
-  it('does nothing when only blinds change', () => {
+  it('copies the live ladder when only blinds change', () => {
     const structure = sampleStructure([playing(1), playing(2)]);
     structure.levels[0] = { ...structure.levels[0], smallBlind: 150, bigBlind: 300, ante: 300 };
     const snapshot = freezeTimerSnapshot(emptyTimerSnapshot(), {
@@ -77,6 +83,69 @@ describe('timerPatchForStructure', () => {
       isRunning: false,
       levelDurations: [1200, 1200],
     });
+    const patch = timerPatchForStructure(snapshot, structure);
+    expect(patch).not.toBeNull();
+    expect(patch?.levelIndex).toBe(0);
+    expect(patch?.secondsLeft).toBe(900);
+    expect(patch?.levelDurations).toEqual([1200, 1200]);
+    expect(patch?.levels?.[0]).toMatchObject({ smallBlind: 150, bigBlind: 300, ante: 300 });
+  });
+
+  it('does nothing when the live ladder is already on the snapshot', () => {
+    const structure = sampleStructure([playing(1), playing(2)]);
+    const snapshot = freezeTimerSnapshot(emptyTimerSnapshot(), {
+      structureId: 'bs-test',
+      levelIndex: 0,
+      secondsLeft: 900,
+      isRunning: false,
+      levelDurations: [1200, 1200],
+      levels: structure.levels,
+    });
     expect(timerPatchForStructure(snapshot, structure)).toBeNull();
+  });
+});
+
+describe('structureWithLiveLevels', () => {
+  it('overlays the snapshot ladder onto the matching catalog row', () => {
+    const catalog = sampleStructure([playing(1), playing(2)]);
+    const live = sampleStructure([
+      { ...playing(1), smallBlind: 250, bigBlind: 500, ante: 500 },
+      playing(2),
+    ]);
+    const overlay = structureWithLiveLevels(catalog, {
+      structureId: 'bs-test',
+      levels: live.levels,
+    });
+    expect(overlay?.levels[0]?.smallBlind).toBe(250);
+    expect(catalog.levels[0]?.smallBlind).toBe(100);
+  });
+
+  it('leaves a different catalog row untouched', () => {
+    const catalog = sampleStructure([playing(1)]);
+    catalog.id = 'bs-other';
+    const overlay = structureWithLiveLevels(catalog, {
+      structureId: 'bs-test',
+      levels: [{ ...playing(1), smallBlind: 250, bigBlind: 500, ante: 500 }],
+    });
+    expect(overlay?.levels[0]?.smallBlind).toBe(100);
+  });
+});
+
+describe('parseTimerSnapshot', () => {
+  it('keeps an optional live ladder and still parses snapshots without one', () => {
+    const without = parseTimerSnapshot({
+      ...emptyTimerSnapshot(),
+      writeId: 'plain',
+      anchorAt: '2026-09-26T12:00:00.000Z',
+    });
+    expect(without?.levels).toBeUndefined();
+    const withLevels = parseTimerSnapshot({
+      ...emptyTimerSnapshot(),
+      writeId: 'ladder',
+      anchorAt: '2026-09-26T12:00:00.000Z',
+      levels: [playing(1), playing(2)],
+    });
+    expect(withLevels?.levels).toHaveLength(2);
+    expect(withLevels?.levels?.[0]).toMatchObject({ smallBlind: 100, bigBlind: 200, ante: 200 });
   });
 });

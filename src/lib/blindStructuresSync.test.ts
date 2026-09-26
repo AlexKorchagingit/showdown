@@ -8,6 +8,7 @@ import {
   decideBlindStructuresSync,
   parseBlindStructuresSnapshot,
   parseBlindStructuresStorageSnapshot,
+  planBlindStructuresRemoteApply,
 } from './blindStructuresSync';
 
 function customStructure(): BlindStructure {
@@ -125,5 +126,85 @@ describe('blind structures snapshot', () => {
         remote!,
       ),
     ).toBe('apply');
+  });
+
+  it('never uploads from a stale poll even when the local revision is ahead', () => {
+    const localStructures = [customStructure()];
+    const remote = parseBlindStructuresSnapshot({
+      v: 1,
+      writeId: 'stale-server',
+      revision: 3,
+      updatedAt: 100,
+      structures: BLIND_STRUCTURES,
+    });
+    expect(remote).not.toBeNull();
+    expect(
+      planBlindStructuresRemoteApply(
+        {
+          revision: 9,
+          writeId: 'this-tab',
+          updatedAt: 500,
+          custom: true,
+          fingerprint: blindStructuresFingerprint(localStructures),
+        },
+        remote!,
+      ),
+    ).toEqual({ kind: 'keep' });
+  });
+
+  it('adopts a newer matching snapshot as metadata only', () => {
+    const structures = [customStructure()];
+    const remote = parseBlindStructuresSnapshot({
+      v: 1,
+      writeId: 'other-tab',
+      revision: 12,
+      updatedAt: 800,
+      structures,
+      migrations: ['copy-triple-life-ladder-v1'],
+    });
+    expect(remote).not.toBeNull();
+    const plan = planBlindStructuresRemoteApply(
+      {
+        revision: 9,
+        writeId: 'this-tab',
+        updatedAt: 500,
+        custom: true,
+        fingerprint: blindStructuresFingerprint(structures),
+      },
+      remote!,
+    );
+    expect(plan).toMatchObject({
+      kind: 'meta',
+      writeId: 'other-tab',
+      revision: 12,
+      republish: false,
+    });
+  });
+
+  it('replaces when the remote ladder actually changed', () => {
+    const remote = parseBlindStructuresSnapshot({
+      v: 1,
+      writeId: 'editor',
+      revision: 10,
+      updatedAt: 900,
+      structures: [customStructure()],
+      migrations: ['copy-triple-life-ladder-v1'],
+    });
+    expect(remote).not.toBeNull();
+    const plan = planBlindStructuresRemoteApply(
+      {
+        revision: 9,
+        writeId: 'timer-tab',
+        updatedAt: 400,
+        custom: true,
+        fingerprint: blindStructuresFingerprint(BLIND_STRUCTURES),
+      },
+      remote!,
+    );
+    expect(plan.kind).toBe('replace');
+    if (plan.kind === 'replace') {
+      expect(plan.structures[0]?.id).toBe('bs-custom');
+      expect(plan.republish).toBe(false);
+    }
   });
 });

@@ -32,5 +32,7 @@ export const TRANSACTION_STATUS_LABEL: Record<TransactionStatus, string> = {
   unpaid: 'Не оплачено',
 };
 
-/** Fixed cash amount for buy-in / rebuy / addon charges. */
+/** Default cash amount for buy-in / rebuy / addon charges. */
 export const DEFAULT_ENTRY_FEE = 1000;
+/** Freezeout buy-in / rebuy / addon (server `club_create_charge` is the source of truth). */
+export const FREEZEOUT_ENTRY_FEE = 1200;
