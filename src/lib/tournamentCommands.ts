@@ -11,9 +11,12 @@ export type TournamentChanges = Partial<TournamentValues & Pick<TournamentRow, '
 
 type CreateIntent={values:TournamentValues};
 type UpdateIntent={tournamentId:string;changes:TournamentChanges};
+type DeleteIntent={tournamentId:string};
 type Result={request_id:string;tournament_id:string;tournament:TournamentRow};
+type DeleteResult={request_id:string;tournament_id:string;deleted:boolean};
 const createQueues=new Map<string,ReturnType<typeof createOperationRequests<CreateIntent,Result>>>();
 const updateQueues=new Map<string,ReturnType<typeof createOperationRequests<UpdateIntent,Result>>>();
+const deleteQueues=new Map<string,ReturnType<typeof createOperationRequests<DeleteIntent,DeleteResult>>>();
 
 function persistence(actorId:string) {
   return {scope:actorId,storage:()=>window.sessionStorage};
@@ -58,4 +61,26 @@ export function createTournamentCommand(actorId:string,values:TournamentValues) 
 export function updateTournamentCommand(actorId:string,tournamentId:string,changes:TournamentChanges) {
   if(!actorId.trim())throw new Error('Не удалось подтвердить администратора');
   return updateQueue(actorId)({tournamentId,changes});
+}
+
+function deleteQueue(actorId:string) {
+  let current=deleteQueues.get(actorId); if(current)return current;
+  current=createOperationRequests(async(input)=>{
+    const {data,error}=await supabase.rpc('club_delete_tournament',{
+      p_request_id:input.requestId,p_tournament_id:input.tournamentId,
+    });
+    if(error)throw new Error(error.message||'Не удалось удалить турнир');
+    const result=data as DeleteResult|null;
+    if(!result||result.request_id!==input.requestId||result.tournament_id!==input.tournamentId
+      ||result.deleted!==true)throw new Error('Сервер не подтвердил удаление турнира');
+    return result;
+  },(intent)=>({tournamentId:intent.tournamentId.trim()}),
+  'showdown.tournament.delete.v1',undefined,persistence(actorId));
+  deleteQueues.set(actorId,current); return current;
+}
+
+export function deleteTournamentCommand(actorId:string,tournamentId:string) {
+  if(!actorId.trim())throw new Error('Не удалось подтвердить администратора');
+  if(!tournamentId.trim())throw new Error('Не удалось определить турнир');
+  return deleteQueue(actorId)({tournamentId});
 }

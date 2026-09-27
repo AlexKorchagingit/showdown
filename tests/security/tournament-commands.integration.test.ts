@@ -40,7 +40,9 @@ describe('protected tournament creation and editing',()=>{let admin='',user='';c
     localSql(readFileSync('supabase/migrations/20260904_authenticated_policies.sql','utf8'));
     const migration=readFileSync('supabase/migrations/20260904_tournament_commands.sql','utf8');localSql(migration);localSql(migration);
     localSql(readFileSync('supabase/migrations/20260918_tournament_hidden.sql','utf8'));
-    for(let attempt=0;attempt<20;attempt++){if((await rpc('club_create_tournament',anon,{p_request_id:randomUUID(),p_values:values()})).status!==404)break;
+    localSql(readFileSync('supabase/migrations/20260927_delete_tournament.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260927_delete_tournament.sql','utf8'));
+    for(let attempt=0;attempt<20;attempt++){if((await rpc('club_delete_tournament',anon,{p_request_id:randomUUID(),p_tournament_id:existing})).status!==404)break;
       await new Promise(resolve=>setTimeout(resolve,100));}
     localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
       ('${email('admin')}','synthetic-hmac','ip',now()+interval '5 minutes'),
@@ -50,7 +52,8 @@ describe('protected tournament creation and editing',()=>{let admin='',user='';c
 
   it('denies anonymous and ordinary users',async()=>{for(const access of [anon,user]){
     expect((await rpc('club_create_tournament',access,{p_request_id:randomUUID(),p_values:values()})).status).toBeGreaterThanOrEqual(400);
-    expect((await rpc('club_update_tournament',access,{p_request_id:randomUUID(),p_tournament_id:existing,p_changes:{title:'Forged'}})).status).toBeGreaterThanOrEqual(400);}});
+    expect((await rpc('club_update_tournament',access,{p_request_id:randomUUID(),p_tournament_id:existing,p_changes:{title:'Forged'}})).status).toBeGreaterThanOrEqual(400);
+    expect((await rpc('club_delete_tournament',access,{p_request_id:randomUUID(),p_tournament_id:existing})).status).toBeGreaterThanOrEqual(400);}});
 
   it('returns a role-filtered snapshot without exposing private legacy fields',async()=>{const [userResponse,adminResponse]=await Promise.all([
     rpc('club_tournament_snapshot',user,{}),rpc('club_tournament_snapshot',admin,{})]);
@@ -123,5 +126,50 @@ describe('protected tournament creation and editing',()=>{let admin='',user='';c
     expect(userRow).toBeUndefined();
     expect(adminRow.hidden).toBe(true);
     expect(localSql(`select hidden from public.tournaments where id='${tournamentId}';`)).toBe('t');
+  });
+
+  it('deletes an open event with its payments and seats',async()=>{
+    const created=await rpc('club_create_tournament',admin,{p_request_id:randomUUID(),p_values:values('Disposable')});
+    expect(created.status).toBe(200);
+    const tournamentId=(await created.json() as {tournament_id:string}).tournament_id;
+    localSql(`insert into public.participants(id,tournament_id,user_id,nickname,rating) values
+      ('${tournamentId}:${id('player')}','${tournamentId}','${id('player')}','Player',12);
+      insert into public.transactions(id,tournament_id,user_id,type,amount,status) values
+      ('${id('open-tx')}','${tournamentId}','${id('player')}','buy-in',1000,'unpaid');`);
+    const requestId=randomUUID();
+    const responses=await Promise.all([
+      rpc('club_delete_tournament',admin,{p_request_id:requestId,p_tournament_id:tournamentId}),
+      rpc('club_delete_tournament',admin,{p_request_id:requestId,p_tournament_id:tournamentId}),
+    ]);
+    expect(responses.map(row=>row.status)).toEqual([200,200]);
+    const result=await responses[0].json() as {deleted:boolean;payments_deleted:number;participants_deleted:number};
+    expect(result.deleted).toBe(true);
+    expect(result.payments_deleted).toBe(1);
+    expect(result.participants_deleted).toBe(1);
+    expect(localSql(`select count(*) from public.tournaments where id='${tournamentId}';`)).toBe('0');
+    expect(localSql(`select count(*) from public.participants where tournament_id='${tournamentId}';`)).toBe('0');
+    expect(localSql(`select count(*) from public.transactions where tournament_id='${tournamentId}';`)).toBe('0');
+    expect(localSql(`select count(*) from public.logs where action_type='Удалил турнир' and target_tournament_name='Disposable';`)).toBe('1');
+    expect((await rpc('club_delete_tournament',admin,{p_request_id:requestId,p_tournament_id:existing})).status).toBe(400);
+  });
+
+  it('drops closed-event payments and places without reversing ruby wallets',async()=>{
+    const tournamentId=id('closed-delete');
+    localSql(`update public.users set ruby_balance=77 where id='${id('player')}';
+      insert into public.tournaments(id,title,start_date,total_seats,guarantee,is_closed,results_entered,rubies_distributed)
+        values('${tournamentId}','Closed delete','2026-08-01',2,1000,true,true,true);
+      insert into public.participants(id,tournament_id,user_id,nickname,rating,place,rubies_awarded) values
+        ('${tournamentId}:${id('player')}','${tournamentId}','${id('player')}','Player',40,1,15);
+      insert into public.transactions(id,tournament_id,user_id,type,amount,status) values
+        ('${id('closed-tx')}','${tournamentId}','${id('player')}','buy-in',1500,'paid');
+      update public.timer_sessions set payload=jsonb_build_object('tournamentId','${tournamentId}') where id='live';`);
+    const requestId=randomUUID();
+    expect((await rpc('club_delete_tournament',admin,{p_request_id:requestId,p_tournament_id:tournamentId})).status).toBe(200);
+    expect((await rpc('club_delete_tournament',admin,{p_request_id:requestId,p_tournament_id:tournamentId})).status).toBe(200);
+    expect(localSql(`select count(*) from public.tournaments where id='${tournamentId}';`)).toBe('0');
+    expect(localSql(`select count(*) from public.transactions where id='${id('closed-tx')}';`)).toBe('0');
+    expect(localSql(`select count(*) from public.participants where tournament_id='${tournamentId}';`)).toBe('0');
+    expect(localSql(`select ruby_balance from public.users where id='${id('player')}';`)).toBe('77');
+    expect(localSql(`select (payload->>'tournamentId') is null from public.timer_sessions where id='live';`)).toBe('t');
   });
 });

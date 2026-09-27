@@ -1,7 +1,7 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({rpc:vi.fn()}));
 vi.mock('./supabase',()=>({supabase:mocks}));
-import {createTournamentCommand,updateTournamentCommand,type TournamentValues} from './tournamentCommands';
+import {createTournamentCommand,deleteTournamentCommand,updateTournamentCommand,type TournamentValues} from './tournamentCommands';
 
 const storageValues=new Map<string,string>();
 const storage={getItem:(key:string)=>storageValues.get(key)??null,setItem:(key:string,value:string)=>storageValues.set(key,value),
@@ -44,5 +44,25 @@ describe('protected tournament command client',()=>{
     await updateTournamentCommand('verified-admin-3','server-event',{hidden:true});
     expect(mocks.rpc).toHaveBeenCalledWith('club_update_tournament',{p_request_id:expect.any(String),
       p_tournament_id:'server-event',p_changes:{hidden:true}});
+  });
+
+  it('sends a delete command and rejects a wrong-target confirmation',async()=>{
+    mocks.rpc.mockImplementation(async(_name:string,args:{p_request_id:string})=>({data:{request_id:args.p_request_id,
+      tournament_id:'other',deleted:true},error:null}));
+    await expect(deleteTournamentCommand('verified-admin-4','server-event')).rejects.toThrow('не подтвердил');
+    expect(mocks.rpc).toHaveBeenCalledWith('club_delete_tournament',{p_request_id:expect.any(String),
+      p_tournament_id:'server-event'});
+  });
+
+  it('accepts a matching delete confirmation',async()=>{
+    mocks.rpc.mockImplementation(async(_name:string,args:{p_request_id:string})=>({data:{request_id:args.p_request_id,
+      tournament_id:'server-event',deleted:true},error:null}));
+    await expect(deleteTournamentCommand('verified-admin-5','server-event')).resolves.toMatchObject({
+      tournament_id:'server-event',deleted:true});
+  });
+
+  it('refuses to delete without a verified administrator identity',()=>{
+    expect(()=>deleteTournamentCommand('','server-event')).toThrow('администратора');
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });
