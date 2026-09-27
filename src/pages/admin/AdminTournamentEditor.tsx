@@ -31,6 +31,8 @@ import {
 } from '../../lib/guestPlayer';
 import { sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
 import { isArrivedPlayer } from '../../lib/tournamentArrival';
+import { lobbyArrivedHitStyle, lobbyArrivedRowStyle, TMA_FILL } from '../../lib/tmaFill';
+import { FlatHit } from '../../components/FlatHit';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
 import {
   assignRandomTeamPairs,
@@ -302,32 +304,22 @@ function ParticipantsEditor({
             return (
               <div key={p.id}>
               <div
-                className="flex items-center gap-3 px-5 py-3"
-                style={{
-                  borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  background: pairingThis
-                    ? 'rgba(217,153,98,0.18)'
-                    : arrived
-                      ? 'rgba(34,197,94,0.28)'
-                      : undefined,
-                  boxShadow: arrived && !pairingThis ? 'inset 4px 0 0 #4ade80' : undefined,
-                }}
+                className="tma-opaque flex items-center gap-3 px-5 py-3 overflow-hidden"
+                style={lobbyArrivedRowStyle({ idx, arrived, pairingThis })}
               >
-                <button
-                  type="button"
+                <FlatHit
                   onClick={() => onToggleArrived(p.id)}
                   aria-pressed={arrived}
                   aria-label={arrived ? `Снять отметку: ${p.nickname} пришёл` : `Отметить: ${p.nickname} пришёл`}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 appearance-none active:scale-95"
-                  style={{
-                    background: arrived ? 'rgba(34,197,94,0.28)' : 'rgba(255,255,255,0.06)',
-                    border: arrived
-                      ? '1px solid rgba(74,222,128,0.7)'
-                      : '1px solid rgba(255,255,255,0.12)',
-                  }}
+                  className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0 active:scale-95"
+                  style={lobbyArrivedHitStyle(arrived)}
                 >
-                  <Check size={16} strokeWidth={2.8} style={{ color: arrived ? '#4ade80' : '#6B6360' }} />
-                </button>
+                  <Check
+                    size={16}
+                    strokeWidth={2.8}
+                    style={{ color: arrived ? TMA_FILL.arrivedBar : TMA_FILL.checkIdle }}
+                  />
+                </FlatHit>
 
                 <span
                   className="text-[11px] font-700 w-5 text-right shrink-0"

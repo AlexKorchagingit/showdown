@@ -41,23 +41,20 @@ import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
 import { rebindTeamPartnerIdentity, removeSeatKeepingTeams } from '../../lib/teamBattle';
+import {
+  GOLD_HIT_STYLE,
+  PAID_CHIP_STYLE,
+  TICKET_HIT_STYLE,
+  UNPAID_CHIP_STYLE,
+  tmaPaint,
+} from '../../lib/tmaFill';
+import { FlatHit } from '../../components/FlatHit';
 
 const CHARGE_ACTIONS: { type: Exclude<TransactionType, 'ticket'>; label: string }[] = [
   { type: 'buy-in', label: 'Вход' },
   { type: 'rebuy', label: 'Ребай' },
   { type: 'addon', label: 'Аддон' },
 ];
-
-const PAID_CHIP = {
-  background: 'rgba(34,197,94,0.2)',
-  color: '#4ade80',
-  border: '1px solid rgba(34,197,94,0.5)',
-} as const;
-const UNPAID_CHIP = {
-  background: 'rgba(239,68,68,0.15)',
-  color: '#f87171',
-  border: '1px solid rgba(239,68,68,0.5)',
-} as const;
 
 function chargeOrder(a: Transaction, b: Transaction): number {
   return Date.parse(a.date) - Date.parse(b.date);
@@ -82,24 +79,20 @@ function TransactionChip({
   return (
     <span
       title={title}
-      className="inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700 appearance-none"
-      style={{
-        ...(paid ? PAID_CHIP : UNPAID_CHIP),
-        backgroundClip: 'padding-box',
-        WebkitBackgroundClip: 'padding-box',
-      }}
+      className="tma-opaque inline-flex items-center gap-1 rounded-lg overflow-hidden pl-2 pr-1 py-1 text-[11px] font-700"
+      style={paid ? PAID_CHIP_STYLE : UNPAID_CHIP_STYLE}
     >
       {paid ? <Check size={11} strokeWidth={3} /> : null}
       {label}
-      <button
-        type="button"
+      <FlatHit
         disabled={voiding}
         onClick={onVoid}
-        className="w-5 h-5 rounded flex items-center justify-center disabled:opacity-50"
+        className={`w-5 h-5 rounded flex items-center justify-center ${voiding ? 'opacity-50' : ''}`}
+        style={tmaPaint('transparent')}
         aria-label={voidLabel}
       >
         <X size={12} strokeWidth={2.6} />
-      </button>
+      </FlatHit>
     </span>
   );
 }
@@ -827,32 +820,22 @@ export function AdminTournamentFinance() {
                   ) : (
                   <div className={`grid gap-1.5 ${allowsAddon ? 'grid-cols-4' : 'grid-cols-3'}`}>
                     {chargeActions.map(({ type, label }) => (
-                      <button
+                      <FlatHit
                         key={type}
-                        type="button"
                         onClick={() => handleCharge(player.id, type)}
-                        className="py-2 rounded-lg text-[11px] font-700 appearance-none active:scale-95 transition-transform"
-                        style={{
-                          background: 'rgba(217,153,98,0.12)',
-                          border: '1px solid rgba(217,153,98,0.35)',
-                          color: '#F2D8A7',
-                        }}
+                        className="py-2 rounded-lg overflow-hidden text-[11px] font-700 flex items-center justify-center active:scale-95 transition-transform"
+                        style={GOLD_HIT_STYLE}
                       >
                         {label}
-                      </button>
+                      </FlatHit>
                     ))}
-                    <button
-                      type="button"
+                    <FlatHit
                       onClick={() => handleTicket(player.id, player.nickname)}
-                      className="py-2 rounded-lg text-[11px] font-700 appearance-none active:scale-95 transition-transform"
-                      style={{
-                        background: 'rgba(34,197,94,0.12)',
-                        border: '1px solid rgba(34,197,94,0.35)',
-                        color: '#86efac',
-                      }}
+                      className="py-2 rounded-lg overflow-hidden text-[11px] font-700 flex items-center justify-center active:scale-95 transition-transform"
+                      style={TICKET_HIT_STYLE}
                     >
                       Билет
-                    </button>
+                    </FlatHit>
                   </div>
                   )}
 
@@ -871,18 +854,13 @@ export function AdminTournamentFinance() {
                     </button>
                   )}
                   {eliminated && !tournament.isClosed && (
-                    <button
-                      type="button"
+                    <FlatHit
                       onClick={() => void returnPlayerToGame(player.id)}
-                      className="w-full py-2.5 rounded-xl text-[12px] font-800 appearance-none active:scale-[0.98] transition-transform"
-                      style={{
-                        background: 'rgba(34,197,94,0.12)',
-                        border: '1px solid rgba(34,197,94,0.35)',
-                        color: '#86efac',
-                      }}
+                      className="w-full py-2.5 rounded-xl text-[12px] font-800 flex items-center justify-center active:scale-[0.98] transition-transform"
+                      style={TICKET_HIT_STYLE}
                     >
                       Вернулся в игру
-                    </button>
+                    </FlatHit>
                   )}
 
                   {unboundGuest ? null : (

@@ -117,3 +117,31 @@ button,
   -webkit-appearance: none !important;
   appearance: none !important;
 }
+
+/*
+  Opaque plates / non-button hits. Android WebView still gradients a native
+  `<button>` fill even with appearance:none; kill background-image here too.
+  Do not put .tma-flat on CTA buttons that use a linear-gradient fill.
+*/
+.tma-opaque,
+.tma-flat {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+.tma-flat {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.tma-flat:focus {
+  outline: none;
+}
+
+.tma-flat[aria-disabled='true'] {
+  cursor: default;
+  pointer-events: none;
+}
