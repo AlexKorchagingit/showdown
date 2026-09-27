@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Camera, FileText, GraduationCap, Trophy } from 'lucide-react';
+import { ArrowLeft, FileText, GraduationCap, Trophy } from 'lucide-react';
 import { CLUB_LEGAL_DOCUMENTS, type ClubLegalDocument } from '../data/legalDocuments';
+import { CLUB_PHOTOS, clubPhotoSrc } from '../data/clubPhotos';
 import { LegalImageModal } from '../components/LegalImageModal';
 
 type AboutTab = 'general' | 'legal';
@@ -27,42 +28,33 @@ const RULES = [
   },
 ];
 
-const PHOTO_SLOTS = ['Зал клуба', 'Игровой стол', 'Атмосфера', 'Комьюнити'];
-
 function PhotoCarousel() {
   return (
     <div className="-mx-5 mb-6">
       <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-5 pb-4 hide-scrollbar">
-        {PHOTO_SLOTS.map((label, index) => (
-          <div
-            key={label}
-            className="w-[80vw] max-w-[340px] shrink-0 snap-center h-[200px] bg-[#231A16] rounded-2xl border border-white/10 overflow-hidden relative"
+        {CLUB_PHOTOS.map((photo, index) => (
+          <figure
+            key={photo.file}
+            className="w-[72vw] max-w-[280px] shrink-0 snap-center aspect-[3/4] rounded-2xl border border-white/10 overflow-hidden relative bg-[#231A16]"
           >
-            <div
-              className="absolute inset-0 opacity-40"
-              style={{
-                background:
-                  index % 2 === 0
-                    ? 'radial-gradient(circle at 30% 20%, rgba(217,153,98,0.35), transparent 55%)'
-                    : 'radial-gradient(circle at 70% 80%, rgba(242,216,167,0.22), transparent 50%)',
-              }}
+            <img
+              src={clubPhotoSrc(photo.file)}
+              alt={photo.label}
+              className="absolute inset-0 h-full w-full object-cover"
+              draggable={false}
             />
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: 'rgba(17,11,9,0.65)',
-                  border: '1px solid rgba(217,153,98,0.35)',
-                }}
-              >
-                <Camera size={26} strokeWidth={1.8} className="text-[#D99962]" />
-              </div>
-              <p className="text-[12px] font-600 tracking-wide uppercase text-white/45">{label}</p>
+            <div
+              className="absolute inset-x-0 bottom-0 px-3 pt-10 pb-3"
+              style={{ background: 'linear-gradient(to top, rgba(10,9,8,0.88), transparent)' }}
+            >
+              <figcaption className="text-[12px] font-700 tracking-wide uppercase text-[#F2D8A7]">
+                {photo.label}
+              </figcaption>
             </div>
-            <div className="absolute bottom-3 right-3 text-[11px] font-700 text-[#D99962]/70 tabular-nums">
-              {String(index + 1).padStart(2, '0')} / {String(PHOTO_SLOTS.length).padStart(2, '0')}
+            <div className="absolute top-3 right-3 text-[11px] font-700 text-white/80 tabular-nums">
+              {String(index + 1).padStart(2, '0')} / {String(CLUB_PHOTOS.length).padStart(2, '0')}
             </div>
-          </div>
+          </figure>
         ))}
       </div>
     </div>
