@@ -70,7 +70,7 @@ export interface Tournament {
   features: string[];
   /** Occupied seats are always derived from this list — never stored separately. */
   participants: Participant[];
-  /** Optional finishing table; statistic finalists also read `participants.place`. */
+  /** Optional finishing table; statistic finalists also read displayed team place. */
   results?: Participant[];
   lateRegUntil: string;
   /** Catalog name of the blind ladder (display / fallback lookup). */

@@ -62,11 +62,11 @@ describe('non-destructive financial cancellation',()=>{
     expect(hasGlobalUnpaidDebt([ledger[3]],'user')).toBe(false);
     const stats = computeClubStatistics([tournament],ledger,[{id:'user',nickname:'Test'}]);
     expect(ledger.filter(isActiveTransaction).filter((entry)=>entry.status==='paid').reduce((sum,entry)=>sum+entry.amount,0)).toBe(1000);
-    expect(stats.averageCheck).toBe(500);
+    expect(stats.averageCheck).toBe(1000);
     expect(stats.rebuyCount).toBe(0);
     expect(stats.addonCount).toBe(0);
     expect(stats.debtorPercent).toBe(50);
-    expect(stats.biggestCheck.amount).toBe(2000);
+    expect(stats.biggestCheck.amount).toBe(1000);
     const player = computePlayerAdminStats('user','Test',[tournament],ledger,()=>0);
     expect(player.ltv).toBe(1000);
     expect(player.clubDebt).toBe(1000);

@@ -1,9 +1,9 @@
-import { itmPlaceCount, knockoutBountyPoints } from '../data/prizeStructure';
+import { itmPlaceCount, knockoutBountyPoints, finalTableSize } from '../data/prizeStructure';
 import { calculateRubies, isBountyEvent } from './calculateRubies';
 import { displayedTeamPlace, teamRatingPointsForPlayer } from './teamBattle';
 import { guestSeatKey } from './guestPlayer';
 import { sanitizeParticipantUserId } from './supabaseMap';
-import { cashierPlayers, isArrivedPlayer } from './tournamentArrival';
+import { isArrivedPlayer, scoringFieldSize } from './tournamentArrival';
 import { formatTxDate } from './transactionDisplay';
 import type { Transaction } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
@@ -69,10 +69,7 @@ export function collectPlayerGameHistory(
     if (!participant) continue;
     if (typeof participant.place !== 'number' || participant.place < 1) continue;
 
-    const field = Math.max(
-      cashierPlayers(tournament.participants).length,
-      tournament.results?.length ?? 0,
-    );
+    const field = scoringFieldSize(tournament);
     const place = displayedTeamPlace(participant, tournament) ??
       (typeof participant.place === 'number' ? participant.place : null);
     const knockouts = Math.max(0, Math.floor(Number(participant.knockouts) || 0));
@@ -114,6 +111,7 @@ export type PlayerProfileStats = {
   knockouts: number;
   headsUp: number;
   top3: number;
+  top9: number;
 };
 
 /** Same closed-event rows as the game-history sheet, rolled up for the profile column. */
@@ -123,6 +121,7 @@ export function summarizePlayerGameHistory(history: PlayerGameHistoryRow[]): Pla
   let knockouts = 0;
   let headsUp = 0;
   let top3 = 0;
+  let top9 = 0;
   for (const row of history) {
     knockouts += row.knockouts;
     const place = row.place;
@@ -130,7 +129,9 @@ export function summarizePlayerGameHistory(history: PlayerGameHistoryRow[]): Pla
     if (place === 1) wins += 1;
     if (place <= 2) headsUp += 1;
     if (place <= 3) top3 += 1;
-    if (place <= 9) finals += 1;
+    if (place <= 9) top9 += 1;
+    const table = finalTableSize(row.field);
+    if (table > 0 && place <= table) finals += 1;
   }
   return {
     games: history.length,
@@ -139,6 +140,7 @@ export function summarizePlayerGameHistory(history: PlayerGameHistoryRow[]): Pla
     knockouts,
     headsUp,
     top3,
+    top9,
   };
 }
 
@@ -146,6 +148,7 @@ export type PlayerAdminStats = {
   ltv: number;
   clubDebt: number;
   tournamentsPlayed: number;
+  finishedCount: number;
   itmCount: number;
   winrate: number;
   dealerHours: number;
@@ -220,7 +223,7 @@ export function computePlayerAdminStats(
 
   const ids = new Set([playerId].filter(Boolean));
   const played = tournaments.filter((tournament) => {
-    const participant = tournament.participants.find((row) => participantMatches(row, ids));
+    const participant = findPlayerInTournament(tournament, ids);
     if (!participant) return false;
     if (typeof participant.place === 'number' && participant.place >= 1) return true;
     return !tournament.isClosed && isArrivedPlayer(participant);
@@ -231,10 +234,8 @@ export function computePlayerAdminStats(
   const addonRate = addonDenom === 0 ? 0 : (addons.length / addonDenom) * 100;
 
   const tournamentHistory: PlayerTournamentRow[] = played.map((tournament) => {
-    const participant = tournament.participants.find((row) =>
-      participantMatches(row, ids),
-    );
-    const field = Math.max(cashierPlayers(tournament.participants).length, 0) || tournament.participants.length;
+    const participant = findPlayerInTournament(tournament, ids);
+    const field = scoringFieldSize(tournament);
     return {
       id: tournament.id,
       title: tournament.title,
@@ -248,10 +249,11 @@ export function computePlayerAdminStats(
     };
   });
 
+  const finishedCount = tournamentHistory.filter((row) => row.place != null && row.place >= 1).length;
   const itmCount = tournamentHistory.filter(
     (row) => row.place != null && row.itm > 0 && row.place <= row.itm,
   ).length;
-  const winrate = played.length === 0 ? 0 : (itmCount / played.length) * 100;
+  const winrate = finishedCount === 0 ? 0 : (itmCount / finishedCount) * 100;
 
   let dealerHours = 0;
   const dealerRows: PlayerLedgerRow[] = [];
@@ -284,13 +286,16 @@ export function computePlayerAdminStats(
   let prizePoints = 0;
   const prizeRows: PlayerLedgerRow[] = [];
   for (const tournament of played) {
-    const participant = tournament.participants.find((row) =>
-      participantMatches(row, ids),
-    );
+    const participant = findPlayerInTournament(tournament, ids);
     if (!participant) continue;
-    const field = Math.max(cashierPlayers(tournament.participants).length, 0) || tournament.participants.length;
-    let points = teamRatingPointsForPlayer(participant, tournament, field);
-    points += knockoutBountyPoints(participant.knockouts, tournament.isBounty === true);
+    const scoringPlace =
+      displayedTeamPlace(participant, tournament) ??
+      (typeof participant.place === 'number' && participant.place >= 1 ? participant.place : null);
+    if (scoringPlace == null) continue;
+    const field = scoringFieldSize(tournament);
+    const points =
+      teamRatingPointsForPlayer(participant, tournament, field) +
+      knockoutBountyPoints(participant.knockouts, tournament.isBounty === true);
     prizePoints += points;
     prizeRows.push({
       id: `prize-${tournament.id}`,
@@ -311,6 +316,7 @@ export function computePlayerAdminStats(
     ltv,
     clubDebt,
     tournamentsPlayed: played.length,
+    finishedCount,
     itmCount,
     winrate,
     dealerHours,

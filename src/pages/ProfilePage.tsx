@@ -130,7 +130,7 @@ export function ProfilePage() {
       [
         { label: 'Хедз-ап', value: liveStats.headsUp },
         { label: 'Топ 3', value: liveStats.top3 },
-        { label: 'Топ 9', value: liveStats.finals },
+          { label: 'Топ 9', value: liveStats.top9 },
       ].filter((stat) => stat.value > 0),
     [liveStats],
   );

@@ -287,7 +287,7 @@ export function AdminPlayerStats({
             icon={<Percent size={16} strokeWidth={2.3} />}
             label="ROI / винрейт"
             value={`${stats.winrate.toFixed(stats.winrate % 1 === 0 ? 0 : 1).replace('.', ',')}%`}
-            hint={`ITM ${stats.itmCount} из ${stats.tournamentsPlayed} · не денежный ROI`}
+            hint={`ITM ${stats.itmCount} из ${stats.finishedCount} закрытых · не денежный ROI`}
             onClick={() => setDrill('history')}
           />
           <StatCard

@@ -6,6 +6,7 @@ import {
   finishedLobbyPlayers,
   hasArrivedWithoutPlace,
   isArrivedPlayer,
+  scoringFieldSize,
 } from './tournamentArrival';
 import type { Participant, Tournament } from '../types/tournament';
 
@@ -28,6 +29,18 @@ describe('tournament arrival', () => {
     ];
     expect(cashierPlayers(participants).map((row) => row.id)).toEqual(['showed']);
     expect(cashierFieldSize({ participants } as Tournament)).toBe(1);
+  });
+
+  it('sizes the prize field from arrived seats, not the full signup list', () => {
+    const tournament = {
+      participants: [
+        player('showed', { arrived: true }),
+        player('ghost', { arrived: false }),
+        player('winner', { place: 1 }),
+      ],
+      results: [player('winner', { place: 1 }), player('ghost', { arrived: false })],
+    };
+    expect(scoringFieldSize(tournament)).toBe(2);
   });
 
   it('still lists finishers who already have a place', () => {
