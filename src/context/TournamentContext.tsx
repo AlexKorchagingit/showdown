@@ -15,6 +15,7 @@ import {
   participantListsEqual,
   syncParticipantRows,
   updateTournamentRow,
+  deleteTournamentRow,
 } from '../lib/tournamentApi';
 import { resetCopiedParticipant, sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { clubUserIdSet, lobbySeatedPlayers } from '../lib/clubRating';
@@ -40,6 +41,7 @@ interface TournamentContextValue {
     sourceId: string,
     options: { includeParticipants: boolean },
   ) => Promise<string>;
+  deleteTournament: (tournamentId: string) => Promise<boolean>;
   personnelRosters: Record<string, PersonnelRoster>;
   personnelCommand: (intent: PersonnelIntent) => Promise<boolean>;
   isPersonnelPending: (tournamentId: string) => boolean;
@@ -297,6 +299,25 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     [addTournament, clubUsers, tournaments],
   );
 
+  const deleteTournament = useCallback(
+    async (tournamentId: string) => {
+      if (!account?.id) {
+        window.alert('Не удалось подтвердить администратора');
+        return false;
+      }
+      try {
+        await deleteTournamentRow(tournamentId, account.id);
+        setTournaments((prev) => prev.filter((row) => row.id !== tournamentId));
+        return true;
+      } catch (error) {
+        console.error(error);
+        window.alert(error instanceof Error ? error.message : 'Не удалось удалить турнир');
+        return false;
+      }
+    },
+    [account?.id],
+  );
+
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchTournaments(), personnel.refresh()]);
   }, [fetchTournaments, personnel.refresh]);
@@ -316,10 +337,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       updateTournament,
       addTournament,
       duplicateTournament,
+      deleteTournament,
     }),
     [
       addTournament,
       duplicateTournament,
+      deleteTournament,
       fetchTournaments,
       isLoading,
       loadError,

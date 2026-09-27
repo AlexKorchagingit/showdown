@@ -17,6 +17,7 @@ import { getClubDirectory } from './clubDirectory';
 import { replaceParticipants, type ParticipantCommandRow } from './participantCommands';
 import {
   createTournamentCommand,
+  deleteTournamentCommand,
   updateTournamentCommand,
   type TournamentChanges,
   type TournamentValues,
@@ -137,6 +138,10 @@ export async function insertTournament(tournament: Tournament,actorId:string): P
 export async function updateTournamentRow(tournamentId:string,patch:Partial<Tournament>,actorId:string): Promise<Tournament> {
   const saved=await updateTournamentCommand(actorId,tournamentId,tournamentChanges(patch));
   return tournamentFromRow(saved.tournament,[]);
+}
+
+export async function deleteTournamentRow(tournamentId:string,actorId:string): Promise<void> {
+  await deleteTournamentCommand(actorId,tournamentId);
 }
 
 async function fetchKnownUserIds(): Promise<Set<string>> {

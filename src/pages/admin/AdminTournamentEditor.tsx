@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Calendar, Check, Clock, Eye, EyeOff, ImagePlus, Link2, Star, Timer, UserPlus, Users, Wallet, X,
+  ArrowLeft, Calendar, Check, Clock, Eye, EyeOff, ImagePlus, Link2, Star, Timer, Trash2, UserPlus, Users, Wallet, X,
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
@@ -18,6 +18,7 @@ import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countOccupiedLobbySeats } from '../../lib/clubRating';
 import { CopyTournamentModal } from '../../components/admin/CopyTournamentModal';
+import { DeleteTournamentModal } from '../../components/admin/DeleteTournamentModal';
 import {
   AddTournamentPlayerButton,
   TournamentPlayerPicker,
@@ -462,13 +463,15 @@ function ParticipantsEditor({
 /* ── Editor body ────────────────────────────────────────────────────────── */
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
-  const { tournaments, updateTournament, duplicateTournament } = useTournaments();
+  const { tournaments, updateTournament, duplicateTournament, deleteTournament } = useTournaments();
   const { clubUsers } = useUser();
   const { openTimerForTournament } = useBindPokerTimer();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [pairingPlayerId, setPairingPlayerId] = useState<string | null>(null);
@@ -665,6 +668,16 @@ function Editor({ tournament }: { tournament: Tournament }) {
     if (!newId) return;
     setCopyOpen(false);
     navigate(`/admin/tournaments/${newId}`);
+  };
+
+  const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    const ok = await deleteTournament(tournament.id);
+    setDeleting(false);
+    if (!ok) return;
+    setDeleteOpen(false);
+    navigate('/admin/tournaments');
   };
 
   return (
@@ -925,12 +938,12 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
           <button
             type="button"
-            disabled
-            title="Физическое удаление может уничтожить состав и финансовую историю"
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[13px] font-700 cursor-not-allowed opacity-70"
-            style={{ color:'#A39B98',background:'#231A16',border:'1px solid rgba(255,255,255,0.08)' }}
+            onClick={() => setDeleteOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[15px] font-700 text-white active:scale-[0.98] transition-transform"
+            style={{ background: 'rgba(127,29,29,0.35)', border: '1px solid rgba(248,113,113,0.45)' }}
           >
-            Удаление отключено — история сохраняется
+            <Trash2 size={16} strokeWidth={2.4} />
+            Удалить турнир
           </button>
         </div>
       </div>
@@ -944,6 +957,16 @@ function Editor({ tournament }: { tournament: Tournament }) {
         }}
         onCopyWithPlayers={() => void handleCopy(true)}
         onCopyWithoutPlayers={() => void handleCopy(false)}
+      />
+      <DeleteTournamentModal
+        open={deleteOpen}
+        busy={deleting}
+        closed={isFinished}
+        title={tournament.title}
+        onClose={() => {
+          if (!deleting) setDeleteOpen(false);
+        }}
+        onConfirm={() => void handleDelete()}
       />
     </div>
   );

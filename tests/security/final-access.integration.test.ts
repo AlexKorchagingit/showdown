@@ -53,17 +53,19 @@ describe('final client access matrix after the complete local cutover',()=>{let 
     localSql(readFileSync('supabase/migrations/20260913_achievements.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260921_char_karen.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260921_char_karen_reward.sql','utf8'));
+    localSql(readFileSync('supabase/migrations/20260927_delete_tournament.sql','utf8'));
     localSql(`update club_private.profile_roles set role='superadmin' where user_id='${id('super')}';
       insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
       ('${email('super')}','synthetic-hmac','ip',now()+interval '5 minutes'),
       ('${email('admin')}','synthetic-hmac','ip',now()+interval '5 minutes'),
       ('${email('user')}','synthetic-hmac','ip',now()+interval '5 minutes');`);
     for(let attempt=0;attempt<20;attempt++){
-      const [audit,achievements]=await Promise.all([
+      const [audit,achievements,del]=await Promise.all([
         rpc('club_audit_snapshot',anon),
         rpc('club_achievements_snapshot',anon,{p_user_id:id('user')}),
+        rpc('club_delete_tournament',anon,{p_request_id:randomUUID(),p_tournament_id:event}),
       ]);
-      if(audit.status!==404 && achievements.status!==404)break;
+      if(audit.status!==404 && achievements.status!==404 && del.status!==404)break;
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     [superadmin,admin,user]=await Promise.all([login('super'),login('admin'),login('user')]);
@@ -90,7 +92,7 @@ describe('final client access matrix after the complete local cutover',()=>{let 
 
   it('exposes only the explicit server API to authenticated clients',()=>{
     expect(localSql(`select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-      where n.nspname='public' and has_function_privilege('authenticated',p.oid,'EXECUTE');`)).toBe('30');
+      where n.nspname='public' and has_function_privilege('authenticated',p.oid,'EXECUTE');`)).toBe('31');
     expect(localSql(`select has_schema_privilege('authenticated','club_private','USAGE'),coalesce(bool_or(
       has_function_privilege('authenticated',p.oid,'EXECUTE')),'f') from pg_proc p
       where p.pronamespace='club_private'::regnamespace;`)).toBe('f|f');
