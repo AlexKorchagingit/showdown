@@ -82,8 +82,12 @@ function TransactionChip({
   return (
     <span
       title={title}
-      className="inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700"
-      style={paid ? PAID_CHIP : UNPAID_CHIP}
+      className="inline-flex items-center gap-1 rounded-lg pl-2 pr-1 py-1 text-[11px] font-700 appearance-none"
+      style={{
+        ...(paid ? PAID_CHIP : UNPAID_CHIP),
+        backgroundClip: 'padding-box',
+        WebkitBackgroundClip: 'padding-box',
+      }}
     >
       {paid ? <Check size={11} strokeWidth={3} /> : null}
       {label}
@@ -709,7 +713,7 @@ export function AdminTournamentFinance() {
                     <button
                       type="button"
                       onClick={() => setPlayerComment(player.id, player.nickname, player.comment)}
-                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 appearance-none"
                       style={{
                         background: 'rgba(217,153,98,0.12)',
                         border: '1px solid rgba(217,153,98,0.35)',
@@ -724,7 +728,7 @@ export function AdminTournamentFinance() {
                         onClick={() => {
                           setLinkingId(player.id);
                         }}
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 appearance-none"
                         style={{
                           background: 'rgba(217,153,98,0.12)',
                           border: '1px solid rgba(217,153,98,0.35)',
@@ -738,7 +742,7 @@ export function AdminTournamentFinance() {
                     <button
                       type="button"
                       onClick={() => removePlayerFromTournament(player.id)}
-                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 appearance-none"
                       style={{
                         background: 'rgba(239,68,68,0.12)',
                         border: '1px solid rgba(239,68,68,0.35)',
@@ -810,7 +814,7 @@ export function AdminTournamentFinance() {
                         onClick={() => {
                           setLinkingId(player.id);
                         }}
-                        className="w-full py-2.5 rounded-xl text-[12px] font-800 active:scale-[0.98] transition-transform"
+                        className="w-full py-2.5 rounded-xl text-[12px] font-800 appearance-none active:scale-[0.98] transition-transform"
                         style={{
                           background: 'rgba(217,153,98,0.12)',
                           border: '1px solid rgba(217,153,98,0.35)',
@@ -856,7 +860,7 @@ export function AdminTournamentFinance() {
                     <button
                       type="button"
                       onClick={() => eliminatePlayer(player.id)}
-                      className="w-full py-2.5 rounded-xl text-[12px] font-800 active:scale-[0.98] transition-transform"
+                      className="w-full py-2.5 rounded-xl text-[12px] font-800 appearance-none active:scale-[0.98] transition-transform"
                       style={{
                         background: 'rgba(255,255,255,0.06)',
                         border: '1px solid rgba(255,255,255,0.12)',
@@ -870,7 +874,7 @@ export function AdminTournamentFinance() {
                     <button
                       type="button"
                       onClick={() => void returnPlayerToGame(player.id)}
-                      className="w-full py-2.5 rounded-xl text-[12px] font-800 active:scale-[0.98] transition-transform"
+                      className="w-full py-2.5 rounded-xl text-[12px] font-800 appearance-none active:scale-[0.98] transition-transform"
                       style={{
                         background: 'rgba(34,197,94,0.12)',
                         border: '1px solid rgba(34,197,94,0.35)',

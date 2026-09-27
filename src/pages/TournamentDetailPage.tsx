@@ -280,7 +280,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 <h3 className="text-[12px] font-700 uppercase tracking-[0.2em] mb-3" style={{ color: '#F2D8A7' }}>
                   О турнире
                 </h3>
-                <p className="text-[13px] font-400 leading-relaxed text-white/80">
+                <p className="text-[13px] font-400 leading-relaxed text-white/80 whitespace-pre-wrap break-words">
                   {live.about}
                 </p>
               </section>
@@ -408,12 +408,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                               className="text-[13px] font-600 truncate block"
                               style={
                                 isFinalTable
-                                  ? {
-                                      background: 'linear-gradient(to right, #D99962, #F2D8A7)',
-                                      WebkitBackgroundClip: 'text',
-                                      WebkitTextFillColor: 'transparent',
-                                      backgroundClip: 'text',
-                                    }
+                                  ? { color: '#D99962' }
                                   : { color: '#ffffff' }
                               }
                             />

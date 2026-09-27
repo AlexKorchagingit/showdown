@@ -5,6 +5,7 @@ import {
   freezeTimerSnapshot,
   parseTimerSnapshot,
   structureWithLiveLevels,
+  timerPatchForSavedStructure,
   timerPatchForStructure,
 } from './timerSession';
 
@@ -102,6 +103,52 @@ describe('timerPatchForStructure', () => {
       levels: structure.levels,
     });
     expect(timerPatchForStructure(snapshot, structure)).toBeNull();
+  });
+});
+
+describe('timerPatchForSavedStructure', () => {
+  it('pushes the saved ladder onto the bound live clock', () => {
+    const structure = sampleStructure([playing(1), playing(2)]);
+    structure.levels[0] = { ...structure.levels[0], smallBlind: 150, bigBlind: 300, ante: 300 };
+    const snapshot = freezeTimerSnapshot(emptyTimerSnapshot(), {
+      structureId: 'bs-test',
+      levelIndex: 1,
+      secondsLeft: 700,
+      isRunning: false,
+      levelDurations: [1200, 1200],
+    });
+    const patch = timerPatchForSavedStructure(snapshot, structure);
+    expect(patch).not.toBeNull();
+    expect(patch?.levelIndex).toBe(1);
+    expect(patch?.secondsLeft).toBe(700);
+    expect(patch?.levels?.[0]).toMatchObject({ smallBlind: 150, bigBlind: 300, ante: 300 });
+  });
+
+  it('leaves the timer alone when a different catalog row is saved', () => {
+    const structure = sampleStructure([playing(1), playing(2)]);
+    structure.id = 'bs-other';
+    const snapshot = freezeTimerSnapshot(emptyTimerSnapshot(), {
+      structureId: 'bs-test',
+      levelIndex: 0,
+      secondsLeft: 900,
+      isRunning: true,
+      levelDurations: [1200, 1200],
+      levels: [playing(1), playing(2)],
+    });
+    expect(timerPatchForSavedStructure(snapshot, structure)).toBeNull();
+  });
+
+  it('does not rewrite a timer that already has the saved ladder', () => {
+    const structure = sampleStructure([playing(1), playing(2)]);
+    const snapshot = freezeTimerSnapshot(emptyTimerSnapshot(), {
+      structureId: 'bs-test',
+      levelIndex: 0,
+      secondsLeft: 900,
+      isRunning: false,
+      levelDurations: [1200, 1200],
+      levels: structure.levels,
+    });
+    expect(timerPatchForSavedStructure(snapshot, structure)).toBeNull();
   });
 });
 

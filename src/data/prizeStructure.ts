@@ -39,12 +39,17 @@ export function bubblePlace(totalPlayers: number): number {
   return itm > 0 ? itm + 1 : 0;
 }
 
+/** Closed lobby never paints more than ten seats as the final table. */
+export const MAX_FINAL_TABLE_SIZE = 10;
+
 /**
- * Closed lobby final table: everyone who scored prize points, plus the bubble.
- * Gold nicks and the gold rule sit on this set.
+ * Closed lobby final table: everyone who scored prize points, plus the bubble,
+ * never more than ten people. Gold nicks and the gold rule sit on this set.
  */
 export function finalTableSize(totalPlayers: number): number {
-  return bubblePlace(totalPlayers);
+  const withBubble = bubblePlace(totalPlayers);
+  if (withBubble <= 0) return 0;
+  return Math.min(withBubble, MAX_FINAL_TABLE_SIZE);
 }
 
 const PAYOUT_TEMPLATES: Record<number, number[]> = {

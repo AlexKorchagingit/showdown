@@ -837,7 +837,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
                 placeholder="Расскажите об этом турнире"
                 renderValue={(v) => (
                   <p
-                    className="text-[13px] font-400 leading-relaxed"
+                    className="text-[13px] font-400 leading-relaxed whitespace-pre-wrap break-words"
                     style={{ color: v ? '#A39B98' : '#6B6360' }}
                   >
                     {v || 'Описание не заполнено'}
