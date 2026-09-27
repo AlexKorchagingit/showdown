@@ -103,3 +103,17 @@
   0%, 100% { opacity: 0.88; }
   50%      { opacity: 1; }
 }
+
+/*
+  Unlayered on purpose: Tailwind preflight lives in @layer base and would
+  otherwise keep `-webkit-appearance: button`. iOS / Telegram then paint a
+  native gloss over lobby checks and cashier chips (two-tone / mixed fill).
+  appearance only — never a background, so CTA gradients stay intact.
+*/
+button,
+[type='button'],
+[type='reset'],
+[type='submit'] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}

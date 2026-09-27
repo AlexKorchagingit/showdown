@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Pencil, X } from 'lucide-react';
+import { insertLineBreak } from '../../lib/textInput';
 
 interface Props {
   value: string;
@@ -70,7 +71,29 @@ export function EditableText({
             maxLength={maxLength}
             placeholder={placeholder}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') cancel(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                cancel();
+                return;
+              }
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                commit();
+                return;
+              }
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                const el = e.currentTarget;
+                const start = el.selectionStart ?? draft.length;
+                const end = el.selectionEnd ?? draft.length;
+                const next = insertLineBreak(draft, start, end);
+                setDraft(next.value);
+                requestAnimationFrame(() => {
+                  el.selectionStart = next.caret;
+                  el.selectionEnd = next.caret;
+                });
+              }
+            }}
             className={`${INPUT_BASE} resize-none ${inputClassName}`}
           />
         ) : (

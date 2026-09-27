@@ -249,6 +249,20 @@ export function timerPatchForStructure(
   };
 }
 
+/**
+ * SAVE on a blinds editor only reaches the live clock when that structure is
+ * already bound. Another catalog row must not rewrite the timer tab.
+ */
+export function timerPatchForSavedStructure(
+  snapshot: TimerSnapshot,
+  structure: BlindStructure,
+  change?: LevelListChange,
+  nowMs = Date.now(),
+): Partial<TimerSnapshot> | null {
+  if (snapshot.structureId !== structure.id) return null;
+  return timerPatchForStructure(snapshot, structure, change, nowMs);
+}
+
 export function freezeTimerSnapshot(
   snapshot: TimerSnapshot,
   patch: Partial<TimerSnapshot>,

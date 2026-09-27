@@ -52,7 +52,7 @@ import {
   parseTimerSnapshot,
   readTimerSessionCache,
   structureWithLiveLevels,
-  timerPatchForStructure,
+  timerPatchForSavedStructure,
   writeTimerSessionCache,
   cloneTimerLevels,
   type TimerSnapshot,
@@ -353,8 +353,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   const syncTimerToStructure = useCallback(
     (structure: BlindStructure, change?: LevelListChange) => {
       const snapshot = stateRef.current.snapshot;
-      if (snapshot.structureId !== structure.id) return;
-      const patch = timerPatchForStructure(snapshot, structure, change);
+      const patch = timerPatchForSavedStructure(snapshot, structure, change);
       if (patch) commit(patch, { persist: 'now', silent: true });
     },
     [commit],

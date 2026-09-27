@@ -24,4 +24,14 @@ describe('closed lobby final table', () => {
     expect(finalTableSize(23)).toBe(10);
     expect(finalTableSize(0)).toBe(0);
   });
+
+  it('never lists more than ten seats even when ITM plus bubble is larger', () => {
+    expect(itmPlaceCount(28)).toBe(10);
+    expect(bubblePlace(28)).toBe(11);
+    expect(finalTableSize(28)).toBe(10);
+    expect(itmPlaceCount(29)).toBe(11);
+    expect(bubblePlace(29)).toBe(12);
+    expect(finalTableSize(29)).toBe(10);
+    expect(finalTableSize(40)).toBe(10);
+  });
 });

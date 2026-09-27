@@ -252,7 +252,7 @@ export function teamRatingPointsForPlayer(
   return splitTeamPlacePoints(pool, ownPlace, partnerPlace);
 }
 
-/** Final table = ITM places + 1 (bubble). Same rule as every closed lobby. */
+/** Final table = ITM places + 1 (bubble), never more than ten. Same as every closed lobby. */
 export function teamBattleFinalTableSize(fieldSize: number): number {
   return finalTableSize(fieldSize);
 }

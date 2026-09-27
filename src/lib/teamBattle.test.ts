@@ -227,9 +227,10 @@ describe('TEAM BATTLE scoring', () => {
     expect(row?.pointsEach).toBe(Math.floor(first.points / 2));
   });
 
-  it('sizes the final table as ITM places + 1', () => {
+  it('sizes the final table as ITM places + 1, capped at 10', () => {
     expect(teamBattleFinalTableSize(23)).toBe(10);
     expect(teamBattleFinalTableSize(22)).toBe(9);
+    expect(teamBattleFinalTableSize(29)).toBe(10);
     expect(teamBattleFinalTableSize(0)).toBe(0);
   });
 });
