@@ -1,6 +1,9 @@
 import { clubUserIdSet, isRegisteredClubSeat } from './clubRating';
 import { tournamentOffersAddon } from './playerAnalytics';
 import { buildAttendanceChart, type AttendanceSeed, type StatsPeriod } from './statsPeriod';
+import { cashierPlayers, scoringFieldSize } from './tournamentArrival';
+import { displayedTeamPlace } from './teamBattle';
+import { finalTableSize } from '../data/prizeStructure';
 import type { Transaction } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
 
@@ -79,6 +82,15 @@ export function parseFinishingPlace(raw: unknown): number | null {
   return null;
 }
 
+function clubCashierSeats(
+  tournament: Pick<Tournament, 'participants'>,
+  knownIds: Set<string>,
+): Participant[] {
+  return cashierPlayers(tournament.participants).filter((player) =>
+    isRegisteredClubSeat(player, knownIds),
+  );
+}
+
 function clubSeatId(participant: Participant, knownIds: Set<string>): string | null {
   if (!isRegisteredClubSeat(participant, knownIds)) return null;
   return String(participant.userId ?? participant.id ?? '').trim() || null;
@@ -105,7 +117,7 @@ function nicknameFor(
   return names.get(userId) || fallback || userId;
 }
 
-/** Top-9 finishes from the already filtered tournament list, grouped by club user id. */
+/** Final-table finishes from the already filtered tournament list, grouped by club user id. */
 export function collectTopFinalists(
   tournaments: Tournament[],
   knownIds: Set<string>,
@@ -114,12 +126,16 @@ export function collectTopFinalists(
   const finalists = new Map<string, { nickname: string; value: number }>();
 
   for (const tournament of tournaments) {
+    const field = scoringFieldSize(tournament);
+    const table = finalTableSize(field);
+    if (table <= 0) continue;
     const rows = [...tournament.participants, ...(tournament.results ?? [])];
     const counted = new Set<string>();
 
     for (const participant of rows) {
-      const place = parseFinishingPlace(participant.place);
-      if (place == null || place < 1 || place > 9) continue;
+      const place =
+        displayedTeamPlace(participant, tournament) ?? parseFinishingPlace(participant.place);
+      if (place == null || place < 1 || place > table) continue;
       const userId = clubSeatId(participant, knownIds);
       if (!userId || counted.has(userId)) continue;
       counted.add(userId);
@@ -153,7 +169,7 @@ export function computeClubStatistics(
   );
 
   const seatedByTournament = tournaments.map((tournament) =>
-    tournament.participants.filter((player) => isRegisteredClubSeat(player, knownIds)),
+    clubCashierSeats(tournament, knownIds),
   );
   const seatedCount = seatedByTournament.reduce((sum, seats) => sum + seats.length, 0);
   const averageAttendance = seatedCount / tournaments.length;
@@ -174,11 +190,9 @@ export function computeClubStatistics(
     }
   }
 
-  const revenue = ledger
-    .filter((tx) => tx.status === 'paid')
-    .reduce((sum, tx) => sum + tx.amount, 0);
-  const entries = ledger.filter((tx) => tx.type !== 'ticket').length;
-  const averageCheck = entries > 0 ? revenue / entries : 0;
+  const paidCharges = ledger.filter((tx) => tx.status === 'paid' && tx.type !== 'ticket');
+  const revenue = paidCharges.reduce((sum, tx) => sum + tx.amount, 0);
+  const averageCheck = paidCharges.length > 0 ? revenue / paidCharges.length : 0;
 
   const unpaidSum = ledger
     .filter((tx) => tx.status === 'unpaid')
@@ -187,7 +201,7 @@ export function computeClubStatistics(
   const debtorPercent = allSum > 0 ? (unpaidSum / allSum) * 100 : 0;
 
   const checkByPlayerEvent = new Map<string, { amount: number; userId: string; tournamentId: string }>();
-  for (const tx of ledger) {
+  for (const tx of paidCharges) {
     const key = `${tx.userId}::${tx.tournamentId}`;
     const prev = checkByPlayerEvent.get(key);
     checkByPlayerEvent.set(key, {

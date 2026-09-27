@@ -195,7 +195,7 @@ export function AdminStatisticScreen() {
           <StatCard
             label="Средний чек"
             value={formatRub(stats.averageCheck)}
-            hint="paid, без билетов"
+            hint="paid без билетов"
           />
           <StatCard
             label="% должников"
@@ -324,7 +324,7 @@ export function AdminStatisticScreen() {
             title="Топ-3 финалистов"
             rows={stats.topFinalists}
             suffix="финалов"
-            empty="Нет попаданий в топ-9"
+            empty="Нет попаданий на финальный стол"
           />
           <LeaderList
             title="Топ-3 баунти-хантеров"

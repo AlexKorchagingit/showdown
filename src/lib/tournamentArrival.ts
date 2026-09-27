@@ -26,6 +26,29 @@ export function cashierFieldSize(tournament: Pick<Tournament, 'participants'>): 
   return cashierPlayers(tournament.participants).length;
 }
 
+function scoringSeatKey(player: Pick<Participant, 'id' | 'userId'>): string {
+  const uid = String(player.userId ?? '').trim();
+  if (uid) return `u:${uid}`;
+  const id = String(player.id ?? '').trim();
+  const colon = id.lastIndexOf(':');
+  return `s:${colon >= 0 ? id.slice(colon + 1) : id}`;
+}
+
+/** Prize-table field: unique arrived seats across the live roster and archived results. */
+export function scoringFieldSize(
+  tournament: Pick<Tournament, 'participants' | 'results'>,
+): number {
+  const seats = new Set<string>();
+  for (const player of [
+    ...cashierPlayers(tournament.participants),
+    ...cashierPlayers(tournament.results ?? []),
+  ]) {
+    const key = scoringSeatKey(player);
+    if (key !== 's:') seats.add(key);
+  }
+  return seats.size;
+}
+
 /** Bust-outs from the cashier (`place` set). Closed public lobby uses this list. */
 export function finishedLobbyPlayers(participants: Participant[]): Participant[] {
   return participants.filter((player) => typeof player.place === 'number' && player.place >= 1);
