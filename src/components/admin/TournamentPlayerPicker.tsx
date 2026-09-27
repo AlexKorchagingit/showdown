@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link2, Plus, Search, UserPlus } from 'lucide-react';
 import { PlayerAvatar } from '../PlayerAvatar';
+import { FlatHit } from '../FlatHit';
 import { GUEST_NICKNAME_MAX } from '../../lib/guestPlayer';
 import { matchesPlayerSearch } from '../../lib/playerSearch';
+import { GOLD_HIT_STYLE } from '../../lib/tmaFill';
 import type { MappedUser } from '../../lib/supabaseMap';
 
 export function TournamentPlayerPicker({
@@ -144,18 +146,13 @@ export function TournamentPlayerPicker({
                       </button>
                     </form>
                   ) : (
-                    <button
-                      type="button"
+                    <FlatHit
                       onClick={() => setGuestNickOpen(true)}
-                      className="w-full h-10 rounded-lg text-[12px] font-800 active:scale-[0.98]"
-                      style={{
-                        background: 'rgba(217,153,98,0.12)',
-                        border: '1px solid rgba(217,153,98,0.35)',
-                        color: '#F2D8A7',
-                      }}
+                      className="w-full h-10 rounded-lg overflow-hidden text-[12px] font-800 flex items-center justify-center active:scale-[0.98]"
+                      style={GOLD_HIT_STYLE}
                     >
                       Добавить ник игрока
-                    </button>
+                    </FlatHit>
                   )}
                 </div>
               ) : null}
@@ -175,18 +172,13 @@ export function AddTournamentPlayerButton({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <FlatHit
       onClick={onClick}
-      className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-800 active:scale-[0.98] transition-transform"
-      style={{
-        background: 'rgba(217,153,98,0.12)',
-        border: '1px solid rgba(217,153,98,0.4)',
-        color: '#F2D8A7',
-      }}
+      className="w-full h-11 rounded-xl overflow-hidden flex items-center justify-center gap-2 text-[13px] font-800 active:scale-[0.98] transition-transform"
+      style={GOLD_HIT_STYLE}
     >
       <UserPlus size={16} strokeWidth={2.3} />
       {label}
-    </button>
+    </FlatHit>
   );
 }
