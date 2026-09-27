@@ -66,6 +66,7 @@ describe('tmaFill', () => {
 describe('lobby and cashier screens', () => {
   const editor = readFileSync(resolve('src/pages/admin/AdminTournamentEditor.tsx'), 'utf8');
   const finance = readFileSync(resolve('src/pages/admin/AdminTournamentFinance.tsx'), 'utf8');
+  const picker = readFileSync(resolve('src/components/admin/TournamentPlayerPicker.tsx'), 'utf8');
 
   it('do not use translucent green fills or inset bars', () => {
     expect(editor).not.toMatch(/rgba\(\s*34\s*,\s*197\s*,\s*94/);
@@ -83,5 +84,14 @@ describe('lobby and cashier screens', () => {
     expect(finance).toMatch(/GOLD_HIT_STYLE/);
     expect(finance).toMatch(/TICKET_HIT_STYLE/);
     expect(finance).toMatch(/<FlatHit/);
+  });
+
+  it('paints the lobby add-player plate as an opaque non-button hit', () => {
+    expect(picker).toMatch(/GOLD_HIT_STYLE/);
+    expect(picker).not.toMatch(/background:\s*'rgba\(\s*217\s*,\s*153\s*,\s*98/);
+    const addButton = picker.slice(picker.indexOf('export function AddTournamentPlayerButton'));
+    expect(addButton).toMatch(/<FlatHit/);
+    expect(addButton).not.toMatch(/<button/);
+    expect(addButton).not.toMatch(/rgba\(/);
   });
 });
