@@ -1,7 +1,8 @@
 import { ChevronRight, Clock } from 'lucide-react';
 import type { Tournament } from '../types/tournament';
 import { isFinished } from '../lib/tournamentStatus';
-import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
+import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
+import { TournamentArtImage } from './TournamentArtImage';
 import { TimerRunningBadge } from './TimerRunningBadge';
 import { useUser } from '../context/UserContext';
 import { clubUserIdSet, countOccupiedLobbySeats } from '../lib/clubRating';
@@ -43,23 +44,7 @@ export function TournamentCard({ tournament, onClick, timerRunning = false }: Pr
     >
       {/* Fully transparent art wrapper — no bg / border / ring / shadow */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-transparent border-0 shadow-none ring-0 outline-none">
-        {tournament.imageUrl.trim() ? (
-          <img
-            src={tournament.imageUrl}
-            alt=""
-            aria-hidden
-            className={tournamentArtClassName(tournament.id)}
-            style={{
-              opacity: 0.85,
-              filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
-              border: 'none',
-              outline: 'none',
-              boxShadow: 'none',
-              background: 'transparent',
-              ...TOURNAMENT_ART_MASK,
-            }}
-          />
-        ) : null}
+        <TournamentArtImage src={tournament.imageUrl} tournamentId={tournament.id} />
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
           style={TOURNAMENT_ART_FADE}

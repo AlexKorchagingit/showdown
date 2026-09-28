@@ -14,7 +14,9 @@ import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
-import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../../lib/tournamentArt';
+import { TOURNAMENT_ART_FADE } from '../../lib/tournamentArt';
+import { TournamentArtImage } from '../../components/TournamentArtImage';
+import { fileToTournamentImageUrl } from '../../lib/tournamentPhoto';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countOccupiedLobbySeats } from '../../lib/clubRating';
 import { CopyTournamentModal } from '../../components/admin/CopyTournamentModal';
@@ -61,16 +63,17 @@ function formatDate(iso: string): string {
 function EditableHero({
   tournament,
   photoOverride,
+  photoBusy,
   onPatch,
   onPickPhoto,
 }: {
   tournament: Tournament;
   photoOverride: string | null;
+  photoBusy: boolean;
   onPatch: (patch: Partial<Tournament>) => void;
   onPickPhoto: () => void;
 }) {
   const heroImage = photoOverride ?? tournament.imageUrl;
-  const isCustomPhoto = photoOverride !== null;
 
   return (
     <div
@@ -78,35 +81,10 @@ function EditableHero({
       style={{ minHeight: 180, background: '#1d0b07' }}
     >
       <div className="absolute inset-0 z-0 overflow-hidden bg-transparent border-0 shadow-none ring-0 outline-none">
-        <img
+        <TournamentArtImage
           src={heroImage}
-          alt=""
-          aria-hidden
-          className={`absolute pointer-events-none select-none bg-transparent border-0 shadow-none ring-0 outline-none ${
-            isCustomPhoto
-              ? 'inset-0 w-full h-full object-cover'
-              : tournamentArtClassName(tournament.id)
-          }`}
-          style={
-            isCustomPhoto
-              ? {
-                  opacity: 0.65,
-                  border: 'none',
-                  outline: 'none',
-                  boxShadow: 'none',
-                  background: 'transparent',
-                  ...TOURNAMENT_ART_MASK,
-                }
-              : {
-                  opacity: 0.8,
-                  filter: 'brightness(1.12) contrast(1.06) saturate(1.08)',
-                  border: 'none',
-                  outline: 'none',
-                  boxShadow: 'none',
-                  background: 'transparent',
-                  ...TOURNAMENT_ART_MASK,
-                }
-          }
+          tournamentId={tournament.id}
+          custom={photoOverride !== null ? true : undefined}
         />
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
@@ -118,8 +96,9 @@ function EditableHero({
       <button
         type="button"
         onClick={onPickPhoto}
+        disabled={photoBusy}
         aria-label="Изменить фото"
-        className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+        className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
         style={{
           background: 'rgba(28,20,16,0.85)',
           backdropFilter: 'blur(12px)',
@@ -460,6 +439,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const { openTimerForTournament } = useBindPokerTimer();
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [copying, setCopying] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -497,15 +477,27 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
   // Revoke the temporary object URL when it is replaced or the editor unmounts
   useEffect(() => {
-    if (!photoPreview) return;
+    if (!photoPreview?.startsWith('blob:')) return;
     return () => URL.revokeObjectURL(photoPreview);
   }, [photoPreview]);
 
   const patch = (p: Partial<Tournament>) => updateTournament(tournament.id, p);
 
   const handleFileChange = (file: File | undefined) => {
-    if (!file) return;
-    setPhotoPreview(URL.createObjectURL(file));
+    if (!file || photoBusy) return;
+    const preview = URL.createObjectURL(file);
+    setPhotoPreview(preview);
+    setPhotoBusy(true);
+    void fileToTournamentImageUrl(file)
+      .then((imageUrl) => patch({ imageUrl }))
+      .catch((error: unknown) => {
+        window.alert(error instanceof Error ? error.message : 'Не удалось сохранить фото');
+      })
+      .finally(() => {
+        setPhotoPreview(null);
+        setPhotoBusy(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      });
   };
 
   const addParticipant = (id: string, nickname: string, options?: { guest?: boolean }) => {
@@ -693,7 +685,10 @@ function Editor({ tournament }: { tournament: Tournament }) {
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(e) => handleFileChange(e.target.files?.[0])}
+        onChange={(e) => {
+          handleFileChange(e.target.files?.[0]);
+          e.currentTarget.value = '';
+        }}
       />
 
       <div
@@ -703,8 +698,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
         <EditableHero
           tournament={tournament}
           photoOverride={photoPreview}
+          photoBusy={photoBusy}
           onPatch={patch}
-          onPickPhoto={() => fileInputRef.current?.click()}
+          onPickPhoto={() => {
+            if (!photoBusy) fileInputRef.current?.click();
+          }}
         />
 
         <div className="px-5 pt-4 space-y-5">

@@ -9,7 +9,8 @@ import { useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished, isHidden } from '../lib/tournamentStatus';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
-import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
+import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
+import { TournamentArtImage } from '../components/TournamentArtImage';
 import { BrandLogo } from '../components/BrandLogo';
 import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useProfile } from '../context/ProfileContext';
@@ -214,23 +215,7 @@ function HeroCard({ tournament, onPress }: { tournament: Tournament; onPress: ()
     >
       {/* Fully transparent art wrapper — no bg / border / ring / shadow */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-transparent border-0 shadow-none ring-0 outline-none">
-        {tournament.imageUrl.trim() ? (
-          <img
-            src={tournament.imageUrl}
-            alt=""
-            aria-hidden
-            className={tournamentArtClassName(tournament.id)}
-            style={{
-              opacity: 0.85,
-              filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
-              border: 'none',
-              outline: 'none',
-              boxShadow: 'none',
-              background: 'transparent',
-              ...TOURNAMENT_ART_MASK,
-            }}
-          />
-        ) : null}
+        <TournamentArtImage src={tournament.imageUrl} tournamentId={tournament.id} />
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
           style={TOURNAMENT_ART_FADE}

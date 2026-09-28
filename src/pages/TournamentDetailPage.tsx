@@ -1,5 +1,6 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair, Pencil } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
 import { PlayerNameLink } from '../components/PlayerNameLink';
@@ -27,7 +28,8 @@ import {
   withClubSeasonRating,
 } from '../lib/clubRating';
 import { cashierFieldSize, finishedLobbyPlayers } from '../lib/tournamentArrival';
-import { tournamentArtClassName, TOURNAMENT_ART_FADE, TOURNAMENT_ART_MASK } from '../lib/tournamentArt';
+import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
+import { TournamentArtImage } from '../components/TournamentArtImage';
 import { formatTxDateTime } from '../lib/transactionDisplay';
 
 interface Props {
@@ -61,6 +63,7 @@ function LobbyHero({
   imageUrl,
   tournamentId,
   onBack,
+  onOpenAdmin,
 }: {
   title: string;
   formattedDate: string;
@@ -68,6 +71,7 @@ function LobbyHero({
   imageUrl: string;
   tournamentId: string;
   onBack: () => void;
+  onOpenAdmin?: () => void;
 }) {
   return (
     <div
@@ -76,21 +80,7 @@ function LobbyHero({
     >
       {/* Fully transparent art wrapper — no bg / border / ring / shadow */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-transparent border-0 shadow-none ring-0 outline-none">
-        <img
-          src={imageUrl}
-          alt=""
-          aria-hidden
-          className={tournamentArtClassName(tournamentId)}
-          style={{
-            opacity: 0.85,
-            filter: 'brightness(1.08) contrast(1.04) saturate(1.04)',
-            border: 'none',
-            outline: 'none',
-            boxShadow: 'none',
-            background: 'transparent',
-            ...TOURNAMENT_ART_MASK,
-          }}
-        />
+        <TournamentArtImage src={imageUrl} tournamentId={tournamentId} />
         <div
           className="absolute inset-0 pointer-events-none border-0 shadow-none ring-0"
           style={TOURNAMENT_ART_FADE}
@@ -142,6 +132,25 @@ function LobbyHero({
       >
         <ArrowLeft size={22} strokeWidth={2.2} style={{ color: '#D99962' }} />
       </button>
+      {onOpenAdmin ? (
+        <button
+          type="button"
+          onClick={onOpenAdmin}
+          className="absolute top-4 right-4 z-50 h-12 px-3 rounded-full flex items-center justify-center gap-1.5"
+          style={{
+            background: 'rgba(28,20,16,0.78)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(217,153,98,0.28)',
+          }}
+          aria-label="Открыть лобби в Tournaments"
+        >
+          <Pencil size={16} strokeWidth={2.2} style={{ color: '#D99962' }} />
+          <span className="text-[11px] font-800 uppercase tracking-[0.12em]" style={{ color: '#F2D8A7' }}>
+            Tournaments
+          </span>
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -155,6 +164,7 @@ function formatDealerHours(hours: number, minutes = 0): string {
 }
 
 export function TournamentDetailPage({ tournament, onBack }: Props) {
+  const navigate = useNavigate();
   const { isRegistered, toggleRegistration, tournaments, refreshParticipants, isLoading } = useTournaments();
   const { getDealerHours } = useFinance();
   const { isAdmin, clubUsers } = useUser();
@@ -224,6 +234,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             imageUrl={live.imageUrl}
             tournamentId={live.id}
             onBack={onBack}
+            onOpenAdmin={isAdmin ? () => navigate(`/admin/tournaments/${live.id}`) : undefined}
           />
 
           {missingPlaces && (
