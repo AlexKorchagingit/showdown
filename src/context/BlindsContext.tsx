@@ -166,7 +166,7 @@ interface BlindsContextValue {
   isRunning: boolean;
   activeStructure: BlindStructure | undefined;
   addStructure: (structure: BlindStructure) => void;
-  updateStructure: (structure: BlindStructure) => void;
+  updateStructure: (structure: BlindStructure, change?: LevelListChange) => void;
   updateLevels: (structureId: string, levels: BlindLevel[], change?: LevelListChange) => void;
   ensureTimer: (structureId: string | null) => void;
   setRunning: (value: boolean) => void;
@@ -541,11 +541,11 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   );
 
   const updateStructure = useCallback(
-    (structure: BlindStructure) => {
+    (structure: BlindStructure, change?: LevelListChange) => {
       replaceBlindStructure(structure);
       dispatch({ type: 'replace', structure });
       publishStructures(replaceStructureList(stateRef.current.structures, structure), 'debounce');
-      syncTimerToStructure(structure);
+      syncTimerToStructure(structure, change);
     },
     [publishStructures, syncTimerToStructure],
   );

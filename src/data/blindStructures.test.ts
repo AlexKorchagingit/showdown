@@ -11,10 +11,12 @@ import {
   insertPlayingLevelAfter,
   isBreakLevel,
   parseBlindLevel,
+  parseBlindStructure,
   TRIPLE_LIFE_LADDER_COPY_MIGRATION,
   TRIPLE_LIFE_LADDER_TARGET_IDS,
   upcomingBreakLevel,
   withAnteFromBigBlind,
+  withNoAnteFlag,
   withTripleLifeLadderCopyMigration,
   type BlindLevel,
 } from './blindStructures';
@@ -59,6 +61,7 @@ describe('break comments', () => {
     expect(formatNextBlinds(pause('Вывод 100 номинала'))).toBe('Перерыв');
     expect(formatNextBlinds(pause())).toBe('Перерыв');
     expect(formatNextBlinds(playing(3))).toBe('300/600 (600)');
+    expect(formatNextBlinds(playing(3), { hideAnte: true })).toBe('300/600');
     expect(formatNextBlinds(undefined)).toBe('финальный уровень');
   });
 });
@@ -211,5 +214,24 @@ describe('importing a ladder into another structure', () => {
   it('drops a stale note left on a playing level', () => {
     const copy = copyStructureLevels([{ ...playing(1), comment: 'старый комментарий' }]);
     expect(copy[0].comment).toBeUndefined();
+  });
+});
+
+describe('noAnte structure flag', () => {
+  it('parses and strips the timer-only flag without changing stored antes', () => {
+    const raw = {
+      id: 'bs-no-ante',
+      name: 'No Ante',
+      levelDuration: 20,
+      guarantee: 1000,
+      levels: [playing(1)],
+      payouts: [{ place: 1, share: 100 }],
+      noAnte: true,
+    };
+    const parsed = parseBlindStructure(raw);
+    expect(parsed?.noAnte).toBe(true);
+    expect(parsed?.levels[0]?.ante).toBe(parsed?.levels[0]?.bigBlind);
+    expect(parseBlindStructure({ ...raw, noAnte: false })?.noAnte).toBeUndefined();
+    expect(withNoAnteFlag(parsed!, false).noAnte).toBeUndefined();
   });
 });

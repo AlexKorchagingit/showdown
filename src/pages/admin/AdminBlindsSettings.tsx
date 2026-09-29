@@ -21,6 +21,7 @@ import {
   isBreakLevel,
   renumberLevels,
   structureDurationLabel,
+  withNoAnteFlag,
   type BlindLevel,
   type BlindStructure,
   type LevelListChange,
@@ -152,17 +153,20 @@ function StructureEditorScreen({
   timerRunning: boolean;
   onBack: () => void;
   onTimer: () => void;
-  onSave: (levels: BlindLevel[]) => void;
+  onSave: (levels: BlindLevel[], noAnte: boolean) => void;
 }) {
   const [draft, setDraft] = useState(structure.levels);
+  const [noAnte, setNoAnte] = useState(structure.noAnte === true);
   const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     setDraft(structure.levels);
+    setNoAnte(structure.noAnte === true);
     setImportOpen(false);
   }, [structure.id]);
 
   const dirty =
+    noAnte !== (structure.noAnte === true) ||
     JSON.stringify(
       draft.map((level) => [
         level.level,
@@ -214,7 +218,7 @@ function StructureEditorScreen({
             <button
               type="button"
               disabled={!dirty}
-              onClick={() => onSave(draft)}
+              onClick={() => onSave(draft, noAnte)}
               className="h-10 px-3 rounded-full text-[11px] font-800 uppercase tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: dirty ? 'linear-gradient(to right, #8C4C27, #D99962)' : '#514F4C',
@@ -253,8 +257,19 @@ function StructureEditorScreen({
           <CopyPlus size={16} strokeWidth={2.4} />
           Импортировать структуру из…
         </button>
+        <label className="mb-3 flex items-center gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer select-none"
+          style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <input
+            type="checkbox"
+            checked={noAnte}
+            onChange={(event) => setNoAnte(event.target.checked)}
+            className="h-4 w-4 shrink-0 rounded border-[#D99962]/60 bg-[#231A16] accent-[#D99962] cursor-pointer"
+          />
+          <span className="text-[13px] font-700 text-white">Без анте</span>
+        </label>
         <LevelEditor
-          structure={{ ...structure, levels: draft }}
+          structure={withNoAnteFlag({ ...structure, levels: draft }, noAnte)}
           onChange={(levels) => setDraft(levels)}
         />
       </div>
@@ -539,7 +554,7 @@ function LevelEditor({
               </label>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className={`grid gap-1.5 ${structure.noAnte === true ? 'grid-cols-3' : 'grid-cols-4'}`}>
               {(
                 [
                   ['smallBlind', 'SB'],
@@ -556,19 +571,21 @@ function LevelEditor({
                   />
                 </label>
               ))}
-              <label className="min-w-0">
-                <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
-                  Ante
-                </span>
-                <input
-                  type="text"
-                  readOnly
-                  tabIndex={-1}
-                  value={String(level.bigBlind)}
-                  aria-label="Анте равно большому блайнду"
-                  className={`${FIELD_CLASS} opacity-70 cursor-default`}
-                />
-              </label>
+              {structure.noAnte === true ? null : (
+                <label className="min-w-0">
+                  <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
+                    Ante
+                  </span>
+                  <input
+                    type="text"
+                    readOnly
+                    tabIndex={-1}
+                    value={String(level.bigBlind)}
+                    aria-label="Анте равно большому блайнду"
+                    className={`${FIELD_CLASS} opacity-70 cursor-default`}
+                  />
+                </label>
+              )}
               <label className="min-w-0">
                 <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
                   Мин
@@ -660,7 +677,7 @@ export function AdminBlindsSettings() {
   const {
     structures,
     addStructure,
-    updateLevels,
+    updateStructure,
     activeStructureId,
     isRunning,
     linkedTournamentId,
@@ -710,9 +727,12 @@ export function AdminBlindsSettings() {
         timerRunning={isRunning && activeStructureId === editing.id}
         onBack={backFromEditor}
         onTimer={() => openTimerForStructure(editing.id)}
-        onSave={(levels) =>
-          updateLevels(editing.id, levels, inferLevelListChange(editing.levels, levels))
-        }
+        onSave={(levels, noAnte) => {
+          updateStructure(
+            withNoAnteFlag({ ...editing, levels }, noAnte),
+            inferLevelListChange(editing.levels, levels),
+          );
+        }}
       />
     );
   }

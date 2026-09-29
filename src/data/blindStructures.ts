@@ -48,6 +48,8 @@ export interface BlindStructure extends TournamentStructure {
   levelDuration: number;
   guarantee: number;
   payouts: PrizePlace[];
+  /** When true, the timer hides ante — the structure still stores ante = BB. */
+  noAnte?: boolean;
 }
 
 export const DEFAULT_PAYOUTS: PrizePlace[] = [
@@ -550,6 +552,7 @@ export function parseBlindStructure(raw: unknown): BlindStructure | null {
     guarantee: Math.max(0, asFiniteNumber(row.guarantee, 0)),
     levels,
     payouts: payouts.length ? payouts : DEFAULT_PAYOUTS.map((place) => ({ ...place })),
+    ...(row.noAnte === true ? { noAnte: true } : {}),
   });
 }
 
@@ -664,6 +667,7 @@ export function blindStructuresFingerprint(structures: BlindStructure[]): string
         comment: breakComment(level),
       })),
       payouts: structure.payouts,
+      ...(structure.noAnte === true ? { noAnte: true } : {}),
     })),
   );
 }
@@ -707,10 +711,24 @@ export function formatBlinds(level: BlindLevel | undefined): string {
 }
 
 /** Label under the timer clock: denomination, or «Перерыв» when the next rung is a break. */
-export function formatNextBlinds(level: BlindLevel | undefined): string {
+export function formatNextBlinds(
+  level: BlindLevel | undefined,
+  options?: { hideAnte?: boolean },
+): string {
   if (!level) return 'финальный уровень';
   if (isBreakLevel(level)) return 'Перерыв';
+  if (options?.hideAnte === true) {
+    return `${level.smallBlind.toLocaleString('ru-RU')}/${level.bigBlind.toLocaleString('ru-RU')}`;
+  }
   return formatBlinds(level);
+}
+
+export function withNoAnteFlag(structure: BlindStructure, noAnte: boolean): BlindStructure {
+  if (!noAnte) {
+    const { noAnte: _drop, ...rest } = structure;
+    return rest;
+  }
+  return { ...structure, noAnte: true };
 }
 
 export function renumberLevels(levels: BlindLevel[]): BlindLevel[] {

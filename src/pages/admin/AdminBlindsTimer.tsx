@@ -315,6 +315,7 @@ export function AdminBlindsTimer() {
     : currentLevel && currentLevel.ante > 0
       ? `Ante ${currentLevel.ante.toLocaleString('ru-RU')}`
       : 'Ante —';
+  const hideAnte = structure?.noAnte === true;
   const levelBadge = isBreak
     ? currentLevel?.isLateRegEnd
       ? 'Конец реги'
@@ -523,9 +524,11 @@ export function AdminBlindsTimer() {
                       <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
                         {blindsLabel}
                       </p>
-                      <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
-                        {anteLabel}
-                      </p>
+                      {hideAnte ? null : (
+                        <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
+                          {anteLabel}
+                        </p>
+                      )}
                       <p className="mt-1.5 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                         {formatClock(secondsLeft)}
                       </p>
@@ -551,7 +554,7 @@ export function AdminBlindsTimer() {
           <p className="mt-2.5 mb-1.5 shrink-0 text-center text-[1.24rem] font-bold leading-snug text-white/70 md:text-[1.38rem]">
             Next Blinds:{' '}
             <span className="text-[#D99962]">
-              {formatNextBlinds(nextLevel)}
+              {formatNextBlinds(nextLevel, { hideAnte })}
             </span>
           </p>
         </div>

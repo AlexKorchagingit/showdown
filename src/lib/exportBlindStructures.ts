@@ -128,6 +128,7 @@ export function buildBlindStructureSheetRows(
     kv('Поздняя регистрация до', lateUntil.join(', ') || '—'),
     kv('Стартовый стек', stacks.length > 0 ? stacks.map((n) => n.toLocaleString('ru-RU')).join(', ') : '—'),
     kv('Bounty', linked.length === 0 ? '—' : bounty ? 'Да' : 'Нет'),
+    kv('Анте', structure.noAnte === true ? 'Нет' : 'Да'),
     [],
     ['Особенности турнира'],
   ];

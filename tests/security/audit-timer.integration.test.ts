@@ -45,6 +45,7 @@ describe('protected audit and live timer',()=>{let superadmin='',admin='',user='
     const migration=readFileSync('supabase/migrations/20260905_audit_timer_commands.sql','utf8');localSql(migration);localSql(migration);
     localSql(readFileSync('supabase/migrations/20260926_timer_live_ladder.sql','utf8'));
     localSql(readFileSync('supabase/migrations/20260926_timer_live_ladder.sql','utf8'));
+    const noAnte=readFileSync('supabase/migrations/20260929_blind_structure_no_ante.sql','utf8');localSql(noAnte);localSql(noAnte);
     for(let attempt=0;attempt<20;attempt++){if((await rpc('club_audit_snapshot',anon)).status!==404)break;
       await new Promise(resolve=>setTimeout(resolve,100));}
     localSql(`insert into public.login_otp_requests(email,code_hash,request_ip_hash,expires_at) values
@@ -113,6 +114,17 @@ describe('protected audit and live timer',()=>{let superadmin='',admin='',user='
     const response=await rpc('club_save_blind_structures',admin,{p_snapshot:blindSnapshot('admin-blinds',4)});
     expect(response.status).toBe(200);expect((await response.json() as {writeId:string}).writeId).toBe('admin-blinds');
     expect((await rpc('club_save_blind_structures',admin,{p_snapshot:blindSnapshot('invalid-blinds',5,{forged:true})})).status).toBe(400);
+  });
+
+  it('accepts an optional noAnte flag on a structure and still rejects unknown keys',async()=>{
+    const withFlag=blindSnapshot('admin-no-ante',20);
+    withFlag.structures=[{...withFlag.structures[0],noAnte:true}];
+    const saved=await rpc('club_save_blind_structures',admin,{p_snapshot:withFlag});
+    expect(saved.status).toBe(200);
+    expect((await saved.json() as {structures:Array<{noAnte?:boolean}>}).structures[0]?.noAnte).toBe(true);
+    const forged=blindSnapshot('admin-no-ante-forged',21);
+    forged.structures=[{...forged.structures[0],forged:true}];
+    expect((await rpc('club_save_blind_structures',admin,{p_snapshot:forged})).status).toBe(400);
   });
 
   it('rejects unknown fields, invalid bounds and nonexistent tournament links',async()=>{for(const invalid of [

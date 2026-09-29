@@ -116,5 +116,6 @@ describe('blind structure Excel export', () => {
     const rows = buildBlindStructureSheetRows(structure('Custom', [playing(1)]), []);
     const featuresIndex = rows.findIndex((row) => row[0] === 'Особенности турнира');
     expect(rows[featuresIndex + 1]?.[0]).toBe('—');
+    expect(rows.find((row) => row[0] === 'Анте')?.[1]).toBe('Да');
   });
 });
