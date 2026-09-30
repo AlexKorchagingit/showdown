@@ -322,4 +322,26 @@ describe('timer totals from the tournament cashier', () => {
   it('reports nothing without a bound tournament', () => {
     expect(timerChipTotals(undefined, structure([level()]), []).avgStack).toBe(0);
   });
+
+  it('does not let a lobby check-in without a cashier entry pull the average under the starting stack', () => {
+    const seats = Array.from({ length: 25 }, (_, index) => player(`p${index + 1}`));
+    const totals = timerChipTotals(
+      tournament(seats, {
+        features: ['Начальный стек 50 000 (500 бб)'],
+        stackSize: 50000,
+        title: 'DEEPSTACK',
+      }),
+      structure([level()]),
+      badges('buy-in', 22),
+    );
+
+    expect(totals).toMatchObject({
+      entries: 22,
+      active: 25,
+      stackPlayers: 22,
+      startingStack: 50000,
+    });
+    expect(totals.totalChips).toBe(50_000 * 22);
+    expect(totals.avgStack).toBe(50_000);
+  });
 });

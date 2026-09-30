@@ -1,6 +1,6 @@
 import { breakComment, isBreakLevel, type BlindStructure } from '../data/blindStructures';
 import type { Transaction } from '../types/finance';
-import type { Tournament } from '../types/tournament';
+import type { Participant, Tournament } from '../types/tournament';
 import { isActiveTransaction } from './transactionVoid';
 import { cashierPlayers, cashierStillPlaying } from './tournamentArrival';
 
@@ -151,6 +151,37 @@ function rebuyLimit(tournament: Tournament | undefined): number | null {
   return null;
 }
 
+function identityKeys(value: string | null | undefined): string[] {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return [];
+  const keys = [trimmed];
+  const colon = trimmed.lastIndexOf(':');
+  if (colon >= 0 && colon < trimmed.length - 1) keys.push(trimmed.slice(colon + 1));
+  return keys;
+}
+
+function seatKeys(player: Participant): string[] {
+  return [...new Set([...identityKeys(player.userId), ...identityKeys(player.id)])];
+}
+
+/**
+ * People still in the tournament who have a cashier chip badge.
+ * A green lobby tick without «Вход» or «Билет» is not a stack yet.
+ * When the badges cannot be matched to seats, never divide by more people
+ * than the cashier actually charged.
+ */
+function stackPlayerCount(
+  participants: Participant[],
+  chipUserIds: Set<string>,
+  entryCount: number,
+): number {
+  const still = cashierStillPlaying(participants);
+  if (chipUserIds.size === 0) return still.length;
+  const matched = still.filter((player) => seatKeys(player).some((key) => chipUserIds.has(key))).length;
+  if (matched > 0) return matched;
+  return Math.min(still.length, Math.max(entryCount, 0));
+}
+
 /** Rebuy badges beyond the tournament limit cannot have put chips on the table. */
 function countWithinLimit(rows: Transaction[], limit: number | null): number {
   if (limit === null) return rows.length;
@@ -173,8 +204,14 @@ export type TimerChipTotals = {
   entriesFromSeats: boolean;
   /** Checked-in seats, including the players already out. */
   seats: number;
-  /** Seats without a finishing place. */
+  /** Seats without a finishing place, including check-ins that have no cashier entry yet. */
   active: number;
+  /**
+   * Still-playing seats that actually received chips.
+   * Checked-in players without an entry badge are not in this count, so they
+   * cannot pull the average below the starting stack.
+   */
+  stackPlayers: number;
   rebuys: number;
   /** Rebuy badges dropped because the tournament allows fewer per player. */
   rebuysBeyondLimit: number;
@@ -197,6 +234,7 @@ const EMPTY_TOTALS: TimerChipTotals = {
   entriesFromSeats: false,
   seats: 0,
   active: 0,
+  stackPlayers: 0,
   rebuys: 0,
   rebuysBeyondLimit: 0,
   rebuyLimit: null,
@@ -212,8 +250,8 @@ const EMPTY_TOTALS: TimerChipTotals = {
 
 /**
  * Chips in play come from the cashier badges: a starting stack per entry plus
- * the stack behind every rebuy and addon. The average is spread over the players
- * who are still in the game and is always a whole number of chips.
+ * the stack behind every rebuy and addon. The average is spread over the
+ * players who are still in and who actually received those chips.
  */
 export function timerChipTotals(
   tournament: Tournament | undefined,
@@ -234,6 +272,14 @@ export function timerChipTotals(
   // A freeroll charges nobody, so the checked-in field is the only entry count.
   const entriesFromSeats = entryBadges.length === 0;
   const entries = entriesFromSeats ? seats : entryBadges.length;
+  const chipUserIds = new Set(
+    ledger
+      .filter((tx) => tx.type === 'buy-in' || tx.type === 'ticket' || tx.type === 'rebuy' || tx.type === 'addon')
+      .flatMap((tx) => identityKeys(tx.userId)),
+  );
+  const stackPlayers = entriesFromSeats
+    ? active
+    : stackPlayerCount(tournament.participants, chipUserIds, entries);
 
   const limit = rebuyLimit(tournament);
   const rebuys = countWithinLimit(rebuyBadges, limit);
@@ -253,6 +299,7 @@ export function timerChipTotals(
     entriesFromSeats: entriesFromSeats && seats > 0,
     seats,
     active,
+    stackPlayers,
     rebuys,
     rebuysBeyondLimit: rebuyBadges.length - rebuys,
     rebuyLimit: limit,
@@ -263,6 +310,6 @@ export function timerChipTotals(
     rebuyStackMultiplier: rebuyMultiplier,
     addonStack,
     totalChips,
-    avgStack: active > 0 ? Math.round(totalChips / active) : 0,
+    avgStack: stackPlayers > 0 ? Math.round(totalChips / stackPlayers) : 0,
   };
 }

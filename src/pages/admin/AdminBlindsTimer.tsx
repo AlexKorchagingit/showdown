@@ -315,7 +315,8 @@ export function AdminBlindsTimer() {
     : currentLevel && currentLevel.ante > 0
       ? `Ante ${currentLevel.ante.toLocaleString('ru-RU')}`
       : 'Ante —';
-  const hideAnte = structure?.noAnte === true;
+  const catalogForClock = structures.find((row) => row.id === structure?.id);
+  const hideAnte = (catalogForClock ?? structure)?.noAnte === true;
   const levelBadge = isBreak
     ? currentLevel?.isLateRegEnd
       ? 'Конец реги'

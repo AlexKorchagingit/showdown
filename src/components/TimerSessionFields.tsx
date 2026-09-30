@@ -21,7 +21,7 @@ function formula(totals: TimerChipTotals): string {
   const parts = [`${chips(totals.startingStack)} × ${totals.entries} входов`];
   if (totals.rebuys > 0) parts.push(`${chips(totals.rebuyStack)} × ${totals.rebuys} ребаев`);
   if (totals.addons > 0) parts.push(`${chips(totals.addonStack)} × ${totals.addons} аддонов`);
-  return `(${parts.join(' + ')}) ÷ ${totals.active} в игре`;
+  return `(${parts.join(' + ')}) ÷ ${totals.stackPlayers} в игре`;
 }
 
 /** Chipleader picker plus the cashier-derived rebuy count and average stack. */
@@ -98,7 +98,10 @@ export function TimerSessionFields() {
           className={READONLY_CLASS}
         />
         <p className={HINT_CLASS}>
-          {totals.active > 0 ? `${formula(totals)} = ${chips(totals.avgStack)}.` : 'Появится, когда в кассе будут игроки без места.'}
+          {totals.stackPlayers > 0 ? `${formula(totals)} = ${chips(totals.avgStack)}.` : 'Появится, когда в кассе будут игроки без места.'}
+          {totals.active > totals.stackPlayers
+            ? ` ${totals.active - totals.stackPlayers} в лобби без входа в кассе в средний стек не входят.`
+            : ''}
           {totals.startingStackDeclared || totals.entries === 0
             ? ''
             : ` Начальный стек не заявлен в особенностях турнира — берём ${chips(totals.startingStack)} из карточки.`}
