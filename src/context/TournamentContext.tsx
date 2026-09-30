@@ -35,7 +35,7 @@ interface TournamentContextValue {
   refreshParticipants: (tournamentId: string) => Promise<void>;
   toggleRegistration: (tournamentId: string) => Promise<void>;
   isRegistered: (tournamentId: string) => boolean;
-  updateTournament: (tournamentId: string, patch: Partial<Tournament>) => Promise<void>;
+  updateTournament: (tournamentId: string, patch: Partial<Tournament>) => Promise<boolean>;
   addTournament: (tournament: Omit<Tournament, 'id'>) => Promise<string>;
   duplicateTournament: (
     sourceId: string,
@@ -173,18 +173,18 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     async (tournamentId: string, patch: Partial<Tournament>) => {
       if ('staff' in patch || 'dealers' in patch) {
         window.alert('Персонал изменяется только отдельной серверной командой');
-        return;
+        return false;
       }
       if ('isClosed' in patch || 'resultsEntered' in patch || 'rubiesDistributed' in patch) {
         window.alert('Закрытие и начисления выполняются только отдельной серверной командой');
-        return;
+        return false;
       }
       if (!account?.id) {
         window.alert('Не удалось подтвердить администратора');
-        return;
+        return false;
       }
       const current = tournaments.find((row) => row.id === tournamentId);
-      if (!current) return;
+      if (!current) return false;
       const { participants,staff:_staff,dealers:_dealers,results:_results,
         isClosed:_isClosed,resultsEntered:_resultsEntered,rubiesDistributed:_rubiesDistributed,
         id:_id,...metadataPatch }=patch;
@@ -211,7 +211,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       } catch (error) {
         console.error(error);
         window.alert(error instanceof Error ? error.message : 'Не удалось сохранить турнир');
+        return false;
       }
+      return true;
     },
     [account, resolveUserId, tournaments],
   );

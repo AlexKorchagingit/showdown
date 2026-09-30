@@ -129,7 +129,8 @@ create table if not exists public.transactions (
   id text primary key default gen_random_uuid()::text,
   date timestamptz not null default now(),
   tournament_id text not null references public.tournaments (id) on delete cascade,
-  user_id text not null references public.users (id) on delete restrict,
+  user_id text references public.users (id) on delete restrict,
+  guest_seat_id text,
   type text not null,
   amount integer not null default 0,
   status text not null default 'unpaid',
@@ -140,7 +141,11 @@ create table if not exists public.transactions (
   created_at timestamptz not null default now(),
   constraint transactions_type_check check (type in ('buy-in', 'rebuy', 'addon', 'ticket')),
   constraint transactions_status_check check (status in ('paid', 'unpaid')),
-  constraint transactions_dealer_hours_nonnegative check (dealer_hours >= 0)
+  constraint transactions_dealer_hours_nonnegative check (dealer_hours >= 0),
+  constraint transactions_payer_present check (
+    (user_id is not null and guest_seat_id is null)
+    or (user_id is null and guest_seat_id is not null)
+  )
 );
 
 create index if not exists transactions_tournament_id_idx on public.transactions (tournament_id);

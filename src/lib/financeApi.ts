@@ -6,10 +6,16 @@ import type { DealerHours, DealerHoursInput } from './dealerHours';
 
 function asTransactionRow(data: unknown): TransactionRow | null {
   if (!data || typeof data !== 'object' || !('id' in data) || !('user_id' in data)) return null;
-  const row = data as Record<string,unknown>;
+  const row = data as Record<string, unknown>;
   if (row.voided_at != null && (typeof row.voided_at !== 'string' || !Number.isFinite(Date.parse(row.voided_at)))) return null;
   if (row.void_reason != null && typeof row.void_reason !== 'string') return null;
-  return data as TransactionRow;
+  const userId = typeof row.user_id === 'string' && row.user_id.trim()
+    ? row.user_id
+    : typeof row.guest_seat_id === 'string' && row.guest_seat_id.trim()
+      ? row.guest_seat_id
+      : '';
+  if (!userId) return null;
+  return { ...(data as TransactionRow), user_id: userId };
 }
 
 function dealerHoursFromRow(data: unknown): DealerHours {

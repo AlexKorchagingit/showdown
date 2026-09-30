@@ -3,12 +3,10 @@ import {
   type AchievementProgress,
 } from '../data/achievements';
 import { bubblePlace, finalTableSize } from '../data/prizeStructure';
-import { guestUsersFromTournaments } from './guestPlayer';
 import {
   collectPlayerGameHistory,
   type PlayerGameHistoryRow,
 } from './playerAnalytics';
-import { clubUserIdSet } from './clubRating';
 import type { MappedUser } from './supabaseMap';
 import type { Tournament } from '../types/tournament';
 import type { AchievementProgressMap } from './achievementsApi';
@@ -29,12 +27,10 @@ function closedMonthKeys(tournaments: Tournament[]): string[] {
 }
 
 function rosterForAuto(
-  tournaments: Tournament[],
+  _tournaments: Tournament[],
   clubUsers: MappedUser[],
 ): MappedUser[] {
-  const knownIds = clubUserIdSet(clubUsers);
-  const guests = guestUsersFromTournaments(tournaments).filter((guest) => !knownIds.has(guest.id));
-  return [...clubUsers, ...guests];
+  return clubUsers;
 }
 
 function historyInMonth(rows: PlayerGameHistoryRow[], ym: string): PlayerGameHistoryRow[] {

@@ -22,6 +22,7 @@ import {
 import { exportToCSV } from '../../../lib/exportToCSV';
 import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
 import { isComplimentaryCharge } from '../../../lib/entryFee';
+import { guestSeatKey } from '../../../lib/guestPlayer';
 import { playerNickname } from '../../../lib/playerName';
 import { formatTxDate, formatTxTime, ledgerTimestamp } from '../../../lib/transactionDisplay';
 import {
@@ -37,13 +38,28 @@ const PERIODS: { id: FinancePeriod; label: string }[] = [
   { id: 'all', label: 'Все время' },
 ];
 
-type SheetKind = 'revenue' | 'expected' | 'voided';
+type SheetKind = 'revenue' | 'expected' | 'tickets' | 'voided';
 
 const SHEET_TITLE: Record<SheetKind, string> = {
   revenue: 'Оплаченные транзакции',
   expected: 'Долги',
+  tickets: 'Выданные билеты',
   voided: 'История отмен',
 };
+
+function cashierPlayerName(
+  userId: string,
+  tournamentId: string,
+  tournaments: { id: string; participants: { id: string; nickname: string }[] }[],
+): string {
+  const named = playerNickname(userId);
+  if (named !== userId) return named;
+  const tournament = tournaments.find((row) => row.id === tournamentId);
+  const seat = tournament?.participants.find(
+    (player) => player.id === userId || guestSeatKey(player.id) === userId,
+  );
+  return seat?.nickname || named;
+}
 
 function formatRub(value: number): string {
   return `${value.toLocaleString('ru-RU')} ₽`;
@@ -71,7 +87,12 @@ export function CashierTab() {
   );
 
   const paid = useMemo(
-    () => filtered.filter((tx) => tx.status === 'paid'),
+    () => filtered.filter((tx) => tx.status === 'paid' && tx.amount > 0 && !isComplimentaryCharge(tx)),
+    [filtered],
+  );
+
+  const tickets = useMemo(
+    () => filtered.filter((tx) => isComplimentaryCharge(tx)),
     [filtered],
   );
 
@@ -99,22 +120,27 @@ export function CashierTab() {
     }));
   }, [paid, period]);
 
-  const sheetItems = sheet === 'voided' ? voided : sheet === 'revenue' ? paid : allUnpaid;
+  const sheetItems =
+    sheet === 'voided' ? voided : sheet === 'revenue' ? paid : sheet === 'tickets' ? tickets : allUnpaid;
   const emptyCopy =
     sheet === 'revenue'
       ? 'Нет оплаченных транзакций за период'
       : sheet === 'expected'
         ? 'Долгов нет'
-        : 'Нет отмен за период';
+        : sheet === 'tickets'
+          ? 'Нет выданных билетов за период'
+          : 'Нет отмен за период';
+
+  const nameOf = (tx: Transaction) => cashierPlayerName(tx.userId, tx.tournamentId, tournaments);
 
   const handleVoid = (tx: Transaction) => {
-    if (!window.confirm(voidTransactionConfirm(tx, playerNickname(tx.userId)))) return;
+    if (!window.confirm(voidTransactionConfirm(tx, nameOf(tx)))) return;
     const reason = window.prompt(transactionVoidPrompt(tx), '');
     if (reason !== null) void voidTransaction(tx.id, reason);
   };
 
   const handleSettle = (tx: Transaction) => {
-    if (!window.confirm(settleDebtConfirm(tx, playerNickname(tx.userId)))) return;
+    if (!window.confirm(settleDebtConfirm(tx, nameOf(tx)))) return;
     void markPaid([tx.id]);
   };
 
@@ -148,6 +174,9 @@ export function CashierTab() {
         </button>
         <button type="button" onClick={() => setSheet('expected')} className="text-left">
           <MetricCard label="Ожидается" value={formatRub(expected)} accent="#f87171" />
+        </button>
+        <button type="button" onClick={() => setSheet('tickets')} className="text-left">
+          <MetricCard label="Билеты" value={String(tickets.length)} accent="#D99962" />
         </button>
         <button type="button" onClick={() => setSheet('voided')} className="text-left">
           <MetricCard label="История отмен" value={String(voided.length)} accent="#A39B98" />
@@ -216,7 +245,10 @@ export function CashierTab() {
           onClick={() =>
             exportToCSV(filtered, {
               tournamentTitle,
-              playerName: playerNickname,
+              playerName: (userId) => {
+                const tx = filtered.find((row) => row.userId === userId);
+                return tx ? nameOf(tx) : playerNickname(userId);
+              },
             })
           }
           className="my-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[14px] font-700 text-[#0A0908] active:scale-[0.98] transition-transform"
@@ -238,6 +270,7 @@ export function CashierTab() {
               <TransactionCard
                 key={tx.id}
                 tx={tx}
+                playerName={nameOf(tx)}
                 tournamentTitle={tournamentTitle(tx.tournamentId)}
               />
             ))}
@@ -273,7 +306,10 @@ export function CashierTab() {
                 </button>
               </div>
               {sheet === 'voided' && sheetItems.length > 0 ? (
-                <button type="button" onClick={() => exportToCSV(sheetItems, { tournamentTitle, playerName: playerNickname },
+                <button type="button" onClick={() => exportToCSV(sheetItems, { tournamentTitle, playerName: (userId) => {
+                  const tx = sheetItems.find((row) => row.userId === userId);
+                  return tx ? nameOf(tx) : playerNickname(userId);
+                } },
                   'showdown-cancellations.csv')} className="mb-4 text-[12px] text-[#D99962] underline">
                   Экспорт истории отмен
                 </button>
@@ -288,6 +324,7 @@ export function CashierTab() {
                     <TransactionCard
                       key={tx.id}
                       tx={tx}
+                      playerName={nameOf(tx)}
                       tournamentTitle={tournamentTitle(tx.tournamentId)}
                       onSettle={sheet === 'expected' ? () => handleSettle(tx) : undefined}
                       onVoid={
@@ -337,12 +374,14 @@ function MetricCard({
 
 function TransactionCard({
   tx,
+  playerName,
   tournamentTitle,
   onSettle,
   onVoid,
   voiding = false,
 }: {
   tx: Transaction;
+  playerName: string;
   tournamentTitle: string;
   onSettle?: () => void;
   onVoid?: () => void;
@@ -355,7 +394,7 @@ function TransactionCard({
     <div className="rounded-xl px-3 py-3 space-y-1.5" style={{ background: '#2A211D' }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[13px] font-700 text-white truncate">{playerNickname(tx.userId)}</p>
+          <p className="text-[13px] font-700 text-white truncate">{playerName}</p>
           <p className="text-[12px] mt-0.5 truncate" style={{ color: '#D99962' }}>
             {tournamentTitle}
           </p>

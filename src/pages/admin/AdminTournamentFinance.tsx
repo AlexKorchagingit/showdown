@@ -429,6 +429,8 @@ export function AdminTournamentFinance() {
         guestSeatId,
         user.id,
       ),
+    }).then((saved) => {
+      if (saved) return refreshFinance();
     });
     setLinkingId(null);
   };
@@ -684,7 +686,7 @@ export function AdminTournamentFinance() {
                         <p className="text-[10px] text-[#8c8c88] truncate">{email}</p>
                       ) : unboundGuest ? (
                         <p className="text-[10px] truncate" style={{ color: '#D99962' }}>
-                          Ник без аккаунта
+                          Ник без аккаунта · не в рейтинге
                         </p>
                       ) : null}
                       {eliminated && (
@@ -796,27 +798,6 @@ export function AdminTournamentFinance() {
                     </div>
                   )}
 
-                  {unboundGuest ? (
-                    <div className="space-y-2">
-                      <p className="text-[11px] font-600 leading-snug" style={{ color: '#A39B98' }}>
-                        Счёт и дилер-часы появятся после привязки к пользователю системы.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLinkingId(player.id);
-                        }}
-                        className="w-full py-2.5 rounded-xl text-[12px] font-800 appearance-none active:scale-[0.98] transition-transform"
-                        style={{
-                          background: 'rgba(217,153,98,0.12)',
-                          border: '1px solid rgba(217,153,98,0.35)',
-                          color: '#F2D8A7',
-                        }}
-                      >
-                        Привязать к пользователю
-                      </button>
-                    </div>
-                  ) : (
                   <div className={`grid gap-1.5 ${allowsAddon ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     {chargeActions.map(({ type, label }) => (
                       <FlatHit
@@ -829,7 +810,6 @@ export function AdminTournamentFinance() {
                       </FlatHit>
                     ))}
                   </div>
-                  )}
 
                   {!eliminated && (
                     <button
