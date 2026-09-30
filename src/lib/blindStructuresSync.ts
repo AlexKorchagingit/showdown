@@ -21,9 +21,38 @@ export type BlindStructuresSnapshot = {
   migrations?: string[];
 };
 
+/** Revision fields only. The safety poll uses these so it does not download the catalog. */
+export type BlindStructuresRevision = {
+  writeId: string;
+  revision: number;
+  updatedAt: number;
+};
+
 function parseMigrations(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+export function parseBlindStructuresRevision(raw: unknown): BlindStructuresRevision | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const writeId = typeof row.writeId === 'string' ? row.writeId.trim() : '';
+  const revision = Number(row.revision);
+  const updatedAt = Number(row.updatedAt);
+  if (!writeId || !Number.isFinite(revision)) return null;
+  return {
+    writeId,
+    revision: Math.max(0, Math.trunc(revision)),
+    updatedAt: Number.isFinite(updatedAt) ? Math.max(0, updatedAt) : 0,
+  };
+}
+
+/** True when the catalog body is already the one this browser has. */
+export function blindStructuresRevisionMatches(
+  local: { revision: number; writeId: string },
+  remote: BlindStructuresRevision,
+): boolean {
+  return remote.revision === local.revision && remote.writeId === local.writeId;
 }
 
 export function newBlindStructuresWriteId(): string {
@@ -187,7 +216,7 @@ export type BlindStructuresRemoteApplyPlan =
  * Poll/realtime/channel must never upload: a stale 25 KB catalog reply used to
  * make two admin tabs rewrite `blind-structures` until the timer tab froze.
  * Matching fingerprints only adopt revision metadata so React does not rebuild
- * the ladder on every 2.5s tick.
+ * the ladder when a safety poll repeats the same catalog.
  */
 export function planBlindStructuresRemoteApply(
   local: BlindStructuresLocalMeta & {

@@ -28,12 +28,14 @@ import {
 import {
   beginBlindStructuresSave,
   blindStructuresSaveInFlight,
+  loadBlindStructuresRevision,
   loadBlindStructuresSnapshot,
   queueBlindStructuresSave,
 } from '../lib/blindStructuresApi';
 import {
   BLIND_STRUCTURES_CHANNEL,
   BLIND_STRUCTURES_ROW_ID,
+  blindStructuresRevisionMatches,
   makeBlindStructuresSnapshot,
   parseBlindStructuresSnapshot,
   parseBlindStructuresStorageSnapshot,
@@ -45,7 +47,7 @@ import {
   playLevelUp,
   unlockBlindsAudio,
 } from '../lib/blindsAudio';
-import { TIMER_ROUTE } from '../lib/timerTournament';
+import { BLINDS_SETTINGS_ROUTE, TIMER_ROUTE, TIMER_SYNC_POLL_MS } from '../lib/timerTournament';
 import { supabase } from '../lib/supabase';
 import { useUser } from './UserContext';
 import {
@@ -203,6 +205,11 @@ function openBroadcastChannel(name: string): BroadcastChannel | null {
 export function BlindsProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const onTimerScreen = location.pathname === TIMER_ROUTE;
+  const onStructuresScreen = location.pathname === BLINDS_SETTINGS_ROUTE;
+  const syncScreenRef = useRef({ timer: onTimerScreen, structures: onStructuresScreen });
+  syncScreenRef.current = { timer: onTimerScreen, structures: onStructuresScreen };
+  const refreshTimerRef = useRef<() => void>(() => {});
+  const refreshStructuresRef = useRef<(forceFull: boolean) => void>(() => {});
   const { isAdmin } = useUser();
   const [state, dispatch] = useReducer(reducer, undefined, bootState);
   const [timerReady, setTimerReady] = useState(false);
@@ -312,8 +319,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       }
     })();
 
-    const poll = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') return;
+    const pullTimer = () => {
       void refreshRemote()
         .then((remote) => {
           if (remote) applyRemote(remote, true);
@@ -321,7 +327,13 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         .catch((error) => {
           console.error(error);
         });
-    }, 2500);
+    };
+    refreshTimerRef.current = pullTimer;
+
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      pullTimer();
+    }, TIMER_SYNC_POLL_MS);
 
     let realtime: ReturnType<typeof supabase.channel> | null = null;
     realtime = supabase
@@ -337,6 +349,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      refreshTimerRef.current = () => {};
       window.removeEventListener('storage', onStorage);
       window.clearInterval(poll);
       if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
@@ -462,9 +475,17 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     if (!isAdmin) return;
     let cancelled = false;
     let remoteRequest: Promise<BlindStructuresSnapshot | null> | null = null;
-    const refreshRemote = async () => {
+    const refreshRemote = async (forceFull: boolean) => {
       if (remoteRequest) return await remoteRequest;
-      const request = loadBlindStructuresSnapshot();
+      const request = (async () => {
+        if (!forceFull) {
+          const probe = await loadBlindStructuresRevision();
+          if (probe && blindStructuresRevisionMatches(structuresMetaRef.current, probe)) {
+            return null;
+          }
+        }
+        return loadBlindStructuresSnapshot();
+      })();
       remoteRequest = request;
       try {
         return await request;
@@ -472,6 +493,16 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         if (remoteRequest === request) remoteRequest = null;
       }
     };
+    const pullStructures = (forceFull: boolean) => {
+      void refreshRemote(forceFull)
+        .then((remote) => {
+          if (remote) applyRemoteStructures(remote);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    };
+    refreshStructuresRef.current = pullStructures;
     const channel = openBroadcastChannel(BLIND_STRUCTURES_CHANNEL);
     structuresChannelRef.current = channel;
     if (channel) {
@@ -488,7 +519,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('storage', onStorage);
 
-    void refreshRemote()
+    void refreshRemote(true)
       .then((remote) => {
         if (cancelled) return;
         if (!remote) {
@@ -503,14 +534,8 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
 
     const poll = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      void refreshRemote()
-        .then((remote) => {
-          if (remote) applyRemoteStructures(remote);
-        })
-        .catch((error) => {
-          console.error(error);
-        });
-    }, 2500);
+      pullStructures(syncScreenRef.current.structures);
+    }, TIMER_SYNC_POLL_MS);
 
     const realtime = supabase
       .channel('blinds-structures-sync')
@@ -532,6 +557,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      refreshStructuresRef.current = () => {};
       window.removeEventListener('storage', onStorage);
       window.clearInterval(poll);
       if (persistStructuresTimerRef.current) {
@@ -549,6 +575,16 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       void supabase.removeChannel(realtime);
     };
   }, [applyRemoteStructures, isAdmin, publishStructures]);
+
+  useEffect(() => {
+    if (!isAdmin || !onTimerScreen) return;
+    refreshTimerRef.current();
+  }, [isAdmin, onTimerScreen]);
+
+  useEffect(() => {
+    if (!isAdmin || !onStructuresScreen) return;
+    refreshStructuresRef.current(true);
+  }, [isAdmin, onStructuresScreen]);
 
   const addStructure = useCallback(
     (structure: BlindStructure) => {
