@@ -147,7 +147,6 @@ function StructureEditorScreen({
   onBack,
   onTimer,
   onSave,
-  onNoAnte,
 }: {
   structure: BlindStructure;
   structures: BlindStructure[];
@@ -155,7 +154,6 @@ function StructureEditorScreen({
   onBack: () => void;
   onTimer: () => void;
   onSave: (levels: BlindLevel[], noAnte: boolean) => void;
-  onNoAnte: (noAnte: boolean) => void;
 }) {
   const [draft, setDraft] = useState(structure.levels);
   const [noAnte, setNoAnte] = useState(structure.noAnte === true);
@@ -163,12 +161,9 @@ function StructureEditorScreen({
 
   useEffect(() => {
     setDraft(structure.levels);
+    setNoAnte(structure.noAnte === true);
     setImportOpen(false);
   }, [structure.id]);
-
-  useEffect(() => {
-    setNoAnte(structure.noAnte === true);
-  }, [structure.noAnte]);
 
   const dirty =
     noAnte !== (structure.noAnte === true) ||
@@ -268,11 +263,7 @@ function StructureEditorScreen({
           <input
             type="checkbox"
             checked={noAnte}
-            onChange={(event) => {
-              const next = event.target.checked;
-              setNoAnte(next);
-              onNoAnte(next);
-            }}
+            onChange={(event) => setNoAnte(event.target.checked)}
             className="h-4 w-4 shrink-0 rounded border-[#D99962]/60 bg-[#231A16] accent-[#D99962] cursor-pointer"
           />
           <span className="text-[13px] font-700 text-white">Без анте</span>
@@ -736,7 +727,6 @@ export function AdminBlindsSettings() {
         timerRunning={isRunning && activeStructureId === editing.id}
         onBack={backFromEditor}
         onTimer={() => openTimerForStructure(editing.id)}
-        onNoAnte={(noAnte) => updateStructure(withNoAnteFlag(editing, noAnte))}
         onSave={(levels, noAnte) => {
           updateStructure(
             withNoAnteFlag({ ...editing, levels }, noAnte),

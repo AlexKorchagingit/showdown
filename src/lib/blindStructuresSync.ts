@@ -105,6 +105,22 @@ export function makeBlindStructuresSnapshot(
   };
 }
 
+/**
+ * The server keeps a newer row and ignores a lower revision. Retry the same
+ * ladders on top of that row so a save is not silently dropped.
+ */
+export function retryBlindStructuresSnapshot(
+  attempted: BlindStructuresSnapshot,
+  confirmed: BlindStructuresSnapshot,
+): BlindStructuresSnapshot {
+  return {
+    ...attempted,
+    writeId: newBlindStructuresWriteId(),
+    revision: confirmed.revision + 1,
+    updatedAt: Date.now(),
+  };
+}
+
 export type StructuresSyncDecision = 'apply' | 'keep' | 'upload';
 
 /**

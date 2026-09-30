@@ -3,8 +3,21 @@ import { withRequestDeadline } from './network';
 import { createLatestWriteQueue } from './latestWriteQueue';
 import {
   parseBlindStructuresSnapshot,
+  retryBlindStructuresSnapshot,
   type BlindStructuresSnapshot,
 } from './blindStructuresSync';
+
+let savesInFlight = 0;
+
+/** True while a catalog save is still talking to the server. */
+export function blindStructuresSaveInFlight(): boolean {
+  return savesInFlight > 0;
+}
+
+/** Hold remote catalog replacements until the matching save finishes. */
+export function beginBlindStructuresSave(): void {
+  savesInFlight += 1;
+}
 
 export async function loadBlindStructuresSnapshot(): Promise<BlindStructuresSnapshot | null> {
   const { data, error } = await withRequestDeadline(
@@ -18,7 +31,7 @@ export async function loadBlindStructuresSnapshot(): Promise<BlindStructuresSnap
   return parseBlindStructuresSnapshot(data);
 }
 
-async function saveBlindStructures(snapshot: BlindStructuresSnapshot): Promise<void> {
+async function postBlindStructures(snapshot: BlindStructuresSnapshot): Promise<BlindStructuresSnapshot> {
   const { data, error } = await supabase.rpc('club_save_blind_structures', {
     p_snapshot: snapshot,
   });
@@ -27,8 +40,23 @@ async function saveBlindStructures(snapshot: BlindStructuresSnapshot): Promise<v
     throw new Error('Не удалось сохранить структуру блайндов');
   }
   const confirmed = parseBlindStructuresSnapshot(data);
-  if (!confirmed || confirmed.writeId !== snapshot.writeId) {
-    throw new Error('Структура блайндов изменена другим администратором');
+  if (!confirmed) throw new Error('Сервер не подтвердил структуру блайндов');
+  return confirmed;
+}
+
+async function saveBlindStructures(snapshot: BlindStructuresSnapshot): Promise<void> {
+  try {
+    let attempt = snapshot;
+    let confirmed = await postBlindStructures(attempt);
+    if (confirmed.writeId !== attempt.writeId) {
+      attempt = retryBlindStructuresSnapshot(attempt, confirmed);
+      confirmed = await postBlindStructures(attempt);
+    }
+    if (confirmed.writeId !== attempt.writeId) {
+      throw new Error('Структура блайндов изменена другим администратором');
+    }
+  } finally {
+    savesInFlight -= 1;
   }
 }
 

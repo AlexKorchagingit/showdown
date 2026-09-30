@@ -9,6 +9,7 @@ import {
   parseBlindStructuresSnapshot,
   parseBlindStructuresStorageSnapshot,
   planBlindStructuresRemoteApply,
+  retryBlindStructuresSnapshot,
 } from './blindStructuresSync';
 
 function customStructure(): BlindStructure {
@@ -206,5 +207,29 @@ describe('blind structures snapshot', () => {
       expect(plan.structures[0]?.id).toBe('bs-custom');
       expect(plan.republish).toBe(false);
     }
+  });
+});
+
+describe('retryBlindStructuresSnapshot', () => {
+  it('keeps the ladders, including no ante, and steps past the server revision', () => {
+    const attempted = {
+      v: 1 as const,
+      writeId: 'phone',
+      revision: 2,
+      updatedAt: 10,
+      structures: [{ ...BLIND_STRUCTURES[0], noAnte: true }],
+      migrations: [],
+    };
+    const confirmed = {
+      ...attempted,
+      writeId: 'server',
+      revision: 1549776,
+      structures: [BLIND_STRUCTURES[0]],
+    };
+    const retry = retryBlindStructuresSnapshot(attempted, confirmed);
+    expect(retry.revision).toBe(1549777);
+    expect(retry.writeId).not.toBe('phone');
+    expect(retry.structures[0]?.noAnte).toBe(true);
+    expect(retry.structures[0]?.id).toBe(BLIND_STRUCTURES[0].id);
   });
 });

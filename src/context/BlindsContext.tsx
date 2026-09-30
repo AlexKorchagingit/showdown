@@ -24,7 +24,12 @@ import {
   type BlindStructure,
   type LevelListChange,
 } from '../data/blindStructures';
-import { loadBlindStructuresSnapshot, queueBlindStructuresSave } from '../lib/blindStructuresApi';
+import {
+  beginBlindStructuresSave,
+  blindStructuresSaveInFlight,
+  loadBlindStructuresSnapshot,
+  queueBlindStructuresSave,
+} from '../lib/blindStructuresApi';
 import {
   BLIND_STRUCTURES_CHANNEL,
   BLIND_STRUCTURES_ROW_ID,
@@ -391,11 +396,13 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       if (persist === 'debounce') {
         persistStructuresTimerRef.current = window.setTimeout(() => {
           persistStructuresTimerRef.current = null;
+          beginBlindStructuresSave();
           pendingStructuresRef.current = null;
           queueBlindStructuresSave(snapshot);
         }, 400);
         return;
       }
+      beginBlindStructuresSave();
       pendingStructuresRef.current = null;
       queueBlindStructuresSave(snapshot);
     },
@@ -416,6 +423,12 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         options,
       );
       if (plan.kind === 'keep') return;
+      if (
+        plan.kind === 'replace' &&
+        (blindStructuresSaveInFlight() || pendingStructuresRef.current)
+      ) {
+        return;
+      }
       if (plan.kind === 'upload') {
         publishStructures(current, 'now');
         return;
@@ -523,6 +536,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       const pending = pendingStructuresRef.current;
       if (pending) {
         pendingStructuresRef.current = null;
+        beginBlindStructuresSave();
         queueBlindStructuresSave(pending);
       }
       channel?.close();
