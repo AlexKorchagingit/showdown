@@ -14,6 +14,7 @@ import {
   createCharge,
   adjustDealerHoursOnServer,
   markTransactionsPaid,
+  compTransactions,
 } from '../lib/financeApi';
 import {
   type Transaction,
@@ -47,6 +48,7 @@ interface FinanceContextValue {
   ) => void;
   addTicket: (tournamentId: string, userId: string, comment: string) => void;
   markPaid: (transactionIds: string[]) => Promise<boolean>;
+  compCharges: (transactionIds: string[]) => Promise<boolean>;
   voidTransaction: (transactionId: string, reason: string) => Promise<boolean>;
   markAllUnpaidForPlayer: (userId: string) => void;
   unpaidForPlayer: (tournamentId: string, userId: string) => Transaction[];
@@ -192,6 +194,19 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const compCharges = useCallback(async (transactionIds: string[]): Promise<boolean> => {
+    if (transactionIds.length === 0) return false;
+    try {
+      const saved = await compTransactions(transactionIds);
+      mutationVersion.current++;
+      setTransactions((prev) => mergeTransactionUpdates(prev, saved));
+      return true;
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось зафиксировать билет');
+      return false;
+    }
+  }, []);
+
   const isTransactionVoiding = useCallback((transactionId: string) => pendingVoids.has(transactionId), [pendingVoids]);
   const voidTransaction = useCallback(async (transactionId: string, reason: string): Promise<boolean> => {
     if (isLoading || loadError || busyVoids.current.has(transactionId)) return false;
@@ -255,6 +270,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addCharge,
       addTicket,
       markPaid,
+      compCharges,
       voidTransaction,
       markAllUnpaidForPlayer,
       unpaidForPlayer,
@@ -274,6 +290,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addCharge,
       addTicket,
       markPaid,
+      compCharges,
       voidTransaction,
       markAllUnpaidForPlayer,
       unpaidForPlayer,

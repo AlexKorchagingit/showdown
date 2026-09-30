@@ -1,3 +1,4 @@
+import { isComplimentaryCharge } from './entryFee';
 import { clubUserIdSet, isRegisteredClubSeat } from './clubRating';
 import { tournamentOffersAddon } from './playerAnalytics';
 import { buildAttendanceChart, type AttendanceSeed, type StatsPeriod } from './statsPeriod';
@@ -190,7 +191,7 @@ export function computeClubStatistics(
     }
   }
 
-  const paidCharges = ledger.filter((tx) => tx.status === 'paid' && tx.type !== 'ticket');
+  const paidCharges = ledger.filter((tx) => tx.status === 'paid' && tx.amount > 0 && !isComplimentaryCharge(tx));
   const revenue = paidCharges.reduce((sum, tx) => sum + tx.amount, 0);
   const averageCheck = paidCharges.length > 0 ? revenue / paidCharges.length : 0;
 

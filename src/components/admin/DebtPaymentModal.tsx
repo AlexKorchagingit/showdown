@@ -12,6 +12,7 @@ interface Props {
   busy: boolean;
   onClose: () => void;
   onPay: (transactionIds: string[]) => void;
+  onComp: (transactionIds: string[]) => void;
 }
 
 function formatRub(value: number): string {
@@ -35,6 +36,7 @@ export function DebtPaymentModal({
   busy,
   onClose,
   onPay,
+  onComp,
 }: Props) {
   // Everything is selected by default, so only the unticked ids are tracked:
   // a background finance refresh then cannot wipe the admin's choice.
@@ -58,6 +60,9 @@ export function DebtPaymentModal({
   const payLabel = allChosen
     ? `Оплатить все · ${formatRub(total)}`
     : `Оплатить ${positionsLabel(chosen.length)} · ${formatRub(total)}`;
+  const ticketLabel = allChosen
+    ? 'Билетом все'
+    : `Билетом ${positionsLabel(chosen.length)}`;
 
   return (
     <AnimatePresence>
@@ -171,27 +176,42 @@ export function DebtPaymentModal({
               </>
             )}
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               {transactions.length > 0 && (
-                <button
-                  type="button"
-                  disabled={busy || chosen.length === 0}
-                  onClick={() => onPay(chosen.map((tx) => tx.id))}
-                  className="w-full h-12 rounded-xl text-[14px] font-800 text-white bg-green-600 active:scale-[0.98] disabled:opacity-45 transition-transform"
-                >
-                  {busy ? 'Оплата…' : chosen.length === 0 ? 'Выберите позиции' : payLabel}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    disabled={busy || chosen.length === 0}
+                    onClick={() => onPay(chosen.map((tx) => tx.id))}
+                    className="h-12 rounded-xl text-[13px] font-800 text-white bg-green-600 active:scale-[0.98] disabled:opacity-45 transition-transform"
+                  >
+                    {busy ? '…' : chosen.length === 0 ? 'Выберите' : payLabel}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || chosen.length === 0}
+                    onClick={() => onComp(chosen.map((tx) => tx.id))}
+                    className="h-12 rounded-xl text-[13px] font-800 active:scale-[0.98] disabled:opacity-45 transition-transform"
+                    style={{
+                      background: 'rgba(34,197,94,0.16)',
+                      border: '1px solid rgba(34,197,94,0.45)',
+                      color: '#86efac',
+                    }}
+                  >
+                    {chosen.length === 0 ? 'Выберите' : ticketLabel}
+                  </button>
+                </>
               )}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={onClose}
-                className="w-full h-11 rounded-xl text-[13px] font-700 disabled:opacity-45"
-                style={{ color: '#8c8c88' }}
-              >
-                {transactions.length === 0 ? 'Закрыть' : 'Отмена'}
-              </button>
             </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onClose}
+              className="mt-2 w-full h-11 rounded-xl text-[13px] font-700 disabled:opacity-45"
+              style={{ color: '#8c8c88' }}
+            >
+              {transactions.length === 0 ? 'Закрыть' : 'Отмена'}
+            </button>
           </motion.div>
         </motion.div>
       )}

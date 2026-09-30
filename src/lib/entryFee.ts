@@ -27,3 +27,17 @@ export function chargeAmountFor(
   if (type === 'ticket') return 0;
   return isFreezeoutEvent(tournament) ? FREEZEOUT_ENTRY_FEE : DEFAULT_ENTRY_FEE;
 }
+
+/** A cashier plate that counts as chips but not as money: legacy ticket, or a comped entry/rebuy/addon. */
+export function isComplimentaryCharge(tx: {
+  type: string;
+  amount: number;
+  status: string;
+  voidedAt?: string | null;
+}): boolean {
+  if (tx.voidedAt) return false;
+  if (tx.type === 'ticket') return true;
+  return tx.status === 'paid'
+    && tx.amount === 0
+    && (tx.type === 'buy-in' || tx.type === 'rebuy' || tx.type === 'addon');
+}

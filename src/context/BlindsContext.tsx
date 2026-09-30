@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import {
   createContext,
   useCallback,
@@ -44,6 +45,7 @@ import {
   playLevelUp,
   unlockBlindsAudio,
 } from '../lib/blindsAudio';
+import { TIMER_ROUTE } from '../lib/timerTournament';
 import { supabase } from '../lib/supabase';
 import { useUser } from './UserContext';
 import {
@@ -199,6 +201,8 @@ function openBroadcastChannel(name: string): BroadcastChannel | null {
 }
 
 export function BlindsProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const onTimerScreen = location.pathname === TIMER_ROUTE;
   const { isAdmin } = useUser();
   const [state, dispatch] = useReducer(reducer, undefined, bootState);
   const [timerReady, setTimerReady] = useState(false);
@@ -352,8 +356,9 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (state.levelUpNonce === 0 || state.levelUpNonce === prevNonceRef.current) return;
     prevNonceRef.current = state.levelUpNonce;
+    if (!onTimerScreen) return;
     playLevelUp();
-  }, [state.levelUpNonce]);
+  }, [state.levelUpNonce, onTimerScreen]);
 
   const syncTimerToStructure = useCallback(
     (structure: BlindStructure, change?: LevelListChange) => {

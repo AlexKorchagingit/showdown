@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_ENTRY_FEE, FREEZEOUT_ENTRY_FEE } from '../types/finance';
-import { chargeAmountFor, isFreezeoutEvent } from './entryFee';
+import { chargeAmountFor, isComplimentaryCharge, isFreezeoutEvent } from './entryFee';
 
 function event(
   title: string,
@@ -39,5 +39,14 @@ describe('chargeAmountFor', () => {
     expect(chargeAmountFor('buy-in', event('Freezeout'))).toBe(FREEZEOUT_ENTRY_FEE);
     expect(chargeAmountFor('rebuy', event('FREEROLL Freezeout'))).toBe(FREEZEOUT_ENTRY_FEE);
     expect(chargeAmountFor('addon', event('Night', 'Freezeout'))).toBe(FREEZEOUT_ENTRY_FEE);
+  });
+
+  it('treats a zero paid entry as a ticket and a priced one as cash', () => {
+    expect(isComplimentaryCharge({ type: 'buy-in', amount: 0, status: 'paid' })).toBe(true);
+    expect(isComplimentaryCharge({ type: 'rebuy', amount: 0, status: 'paid' })).toBe(true);
+    expect(isComplimentaryCharge({ type: 'ticket', amount: 0, status: 'paid' })).toBe(true);
+    expect(isComplimentaryCharge({ type: 'buy-in', amount: 1000, status: 'paid' })).toBe(false);
+    expect(isComplimentaryCharge({ type: 'buy-in', amount: 0, status: 'unpaid' })).toBe(false);
+    expect(isComplimentaryCharge({ type: 'buy-in', amount: 0, status: 'paid', voidedAt: '2026-09-30' })).toBe(false);
   });
 });

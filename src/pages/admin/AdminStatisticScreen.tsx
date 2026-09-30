@@ -195,7 +195,7 @@ export function AdminStatisticScreen() {
           <StatCard
             label="Средний чек"
             value={formatRub(stats.averageCheck)}
-            hint="paid без билетов"
+            hint="оплаченные деньги, без билетов"
           />
           <StatCard
             label="% должников"

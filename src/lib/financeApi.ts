@@ -74,6 +74,19 @@ export async function markTransactionsPaid(ids: string[]): Promise<Transaction[]
   return rows.map((row) => transactionFromRow(row!));
 }
 
+export async function compTransactions(ids: string[]): Promise<Transaction[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.rpc('club_comp_charges', { p_transaction_ids: ids });
+  if (error || !Array.isArray(data)) throw new Error('Не удалось зафиксировать билет');
+  const rows = data.map(asTransactionRow);
+  if (rows.some((row) => row === null)) throw new Error('Сервер не подтвердил билет');
+  const expected = new Set(ids);
+  if (rows.length !== expected.size || rows.some((row) => !expected.delete(row!.id) || row!.status !== 'paid' || row!.amount !== 0 || row!.voided_at)) {
+    throw new Error('Сервер не подтвердил билет по всем позициям');
+  }
+  return rows.map((row) => transactionFromRow(row!));
+}
+
 export async function voidTransactionOnServer(transactionId: string, reason: string): Promise<Transaction> {
   const normalized = reason.trim();
   if (!transactionId.trim() || !normalized || normalized.length > 1000) throw new Error('Укажите причину отмены: от 1 до 1000 символов');

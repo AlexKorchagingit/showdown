@@ -106,7 +106,7 @@ export function TimerSessionFields() {
             ? ''
             : ` Начальный стек не заявлен в особенностях турнира — берём ${chips(totals.startingStack)} из карточки.`}
           {totals.entriesFromSeats
-            ? ' Плашек «Вход/Билет» в кассе нет — считаем по отмеченным игрокам.'
+            ? ' Плашек входа в кассе нет — считаем по отмеченным игрокам.'
             : ''}
           {totals.rebuyStackMultiplier
             ? ` Ребай по правилам турнира — ${totals.rebuyStackMultiplier} стартовых стека.`

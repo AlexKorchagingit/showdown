@@ -21,6 +21,7 @@ import {
 } from '../../../lib/transactionVoid';
 import { exportToCSV } from '../../../lib/exportToCSV';
 import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
+import { isComplimentaryCharge } from '../../../lib/entryFee';
 import { playerNickname } from '../../../lib/playerName';
 import { formatTxDate, formatTxTime, ledgerTimestamp } from '../../../lib/transactionDisplay';
 import {
@@ -36,12 +37,11 @@ const PERIODS: { id: FinancePeriod; label: string }[] = [
   { id: 'all', label: 'Все время' },
 ];
 
-type SheetKind = 'revenue' | 'expected' | 'tickets' | 'voided';
+type SheetKind = 'revenue' | 'expected' | 'voided';
 
 const SHEET_TITLE: Record<SheetKind, string> = {
   revenue: 'Оплаченные транзакции',
   expected: 'Долги',
-  tickets: 'Выданные билеты',
   voided: 'История отмен',
 };
 
@@ -80,13 +80,11 @@ export function CashierTab() {
     [transactions],
   );
 
-  const tickets = useMemo(
-    () => filtered.filter((tx) => tx.type === 'ticket'),
-    [filtered],
+  const voided = useMemo(
+    () => voidedTransactions.filter((tx) => isInPeriod(tx.voidedAt!, period))
+      .slice().sort((a, b) => Date.parse(b.voidedAt!) - Date.parse(a.voidedAt!)),
+    [voidedTransactions, period],
   );
-
-  const voided = useMemo(() => voidedTransactions.filter((tx) => isInPeriod(tx.voidedAt!, period))
-    .slice().sort((a,b) => Date.parse(b.voidedAt!) - Date.parse(a.voidedAt!)), [voidedTransactions, period]);
 
   const revenue = paid.reduce((sum, tx) => sum + tx.amount, 0);
   const expected = allUnpaid.reduce((sum, tx) => sum + tx.amount, 0);
@@ -101,13 +99,13 @@ export function CashierTab() {
     }));
   }, [paid, period]);
 
-  const sheetItems = sheet === 'voided' ? voided : sheet === 'revenue' ? paid : sheet === 'expected' ? allUnpaid : tickets;
+  const sheetItems = sheet === 'voided' ? voided : sheet === 'revenue' ? paid : allUnpaid;
   const emptyCopy =
     sheet === 'revenue'
       ? 'Нет оплаченных транзакций за период'
       : sheet === 'expected'
         ? 'Долгов нет'
-        : sheet === 'voided' ? 'Нет отмен за период' : 'Нет выданных билетов за период';
+        : 'Нет отмен за период';
 
   const handleVoid = (tx: Transaction) => {
     if (!window.confirm(voidTransactionConfirm(tx, playerNickname(tx.userId)))) return;
@@ -150,9 +148,6 @@ export function CashierTab() {
         </button>
         <button type="button" onClick={() => setSheet('expected')} className="text-left">
           <MetricCard label="Ожидается" value={formatRub(expected)} accent="#f87171" />
-        </button>
-        <button type="button" onClick={() => setSheet('tickets')} className="text-left">
-          <MetricCard label="Билеты" value={String(tickets.length)} accent="#D99962" />
         </button>
         <button type="button" onClick={() => setSheet('voided')} className="text-left">
           <MetricCard label="История отмен" value={String(voided.length)} accent="#A39B98" />
@@ -411,7 +406,7 @@ function TransactionCard({
           }}
         >
           <Ban size={15} strokeWidth={2.4} />
-          {voiding ? 'Отмена…' : tx.type === 'ticket' ? 'Отменить билет' : 'Отменить счёт'}
+          {voiding ? 'Отмена…' : isComplimentaryCharge(tx) ? 'Отменить билет' : 'Отменить счёт'}
         </button>
       ) : null}
     </div>

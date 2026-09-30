@@ -291,6 +291,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         hidden: false,
         rubiesDistributed: false,
         resultsEntered: false,
+        adminSecretComment: '',
         dealers: undefined,
         staff: undefined,
         results: undefined,

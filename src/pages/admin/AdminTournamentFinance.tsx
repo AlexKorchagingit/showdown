@@ -36,6 +36,7 @@ import { playerEmail } from '../../lib/systemPlayers';
 import { isBountyEvent } from '../../lib/calculateRubies';
 import { isUnboundGuestSeat } from '../../lib/guestPlayer';
 import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnalytics';
+import { isComplimentaryCharge } from '../../lib/entryFee';
 import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
 import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival';
@@ -132,13 +133,13 @@ export function AdminTournamentFinance() {
     refreshFinance,
     isDealerHoursPending,
     addCharge,
-    addTicket,
     getDealerHours,
     getDealerLoggedAt,
     adjustDealerHours,
     unpaidForPlayer,
     unpaidTotalForPlayer,
     markPaid,
+    compCharges,
     voidTransaction,
     isTransactionVoiding,
   } = useFinance();
@@ -267,12 +268,6 @@ export function AdminTournamentFinance() {
     persistComment(tournamentComment);
   };
 
-  const handleTicket = (userId: string, nickname: string) => {
-    const reason = window.prompt(`Причина выдачи билета для ${nickname}?`, '');
-    if (reason === null) return;
-    addTicket(tournament.id, userId, reason.trim() || 'Билет');
-  };
-
   const handleCharge = (
     userId: string,
     type: Exclude<TransactionType, 'ticket'>,
@@ -285,6 +280,14 @@ export function AdminTournamentFinance() {
     if (paying || transactionIds.length === 0) return;
     setPaying(true);
     const done = await markPaid(transactionIds);
+    setPaying(false);
+    if (done) setPayingId(null);
+  };
+
+  const compSelectedDebt = async (transactionIds: string[]) => {
+    if (paying || transactionIds.length === 0) return;
+    setPaying(true);
+    const done = await compCharges(transactionIds);
     setPaying(false);
     if (done) setPayingId(null);
   };
@@ -635,8 +638,9 @@ export function AdminTournamentFinance() {
               const playerLedger = transactions.filter(
                 (tx) => tx.tournamentId === tournament.id && tx.userId === player.id,
               );
-              const charges = playerLedger.filter((tx) => tx.type !== 'ticket').sort(chargeOrder);
-              const tickets = playerLedger.filter((tx) => tx.type === 'ticket').sort(chargeOrder);
+              const plates = playerLedger
+                .filter((tx) => tx.type === 'buy-in' || tx.type === 'rebuy' || tx.type === 'addon' || tx.type === 'ticket')
+                .sort(chargeOrder);
               const hours = getDealerHours(tournament.id, player.id);
               const dealerLoggedAt = getDealerLoggedAt(tournament.id, player.id);
               const hasLocalDebt = unpaid.length > 0;
@@ -768,39 +772,34 @@ export function AdminTournamentFinance() {
                     )}
                   </div>
 
-                  {(charges.length > 0 || tickets.length > 0) && (
+                  {plates.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {charges.map((tx) => (
-                        <TransactionChip
-                          key={tx.id}
-                          label={TRANSACTION_TYPE_LABEL[tx.type]}
-                          paid={tx.status === 'paid'}
-                          title={`${TRANSACTION_TYPE_LABEL[tx.type]} · ${tx.amount.toLocaleString('ru-RU')} ₽ · ${
-                            TRANSACTION_STATUS_LABEL[tx.status]
-                          }`}
-                          voiding={isTransactionVoiding(tx.id)}
-                          voidLabel={`Отменить ${TRANSACTION_TYPE_LABEL[tx.type]}`}
-                          onVoid={() => handleVoid(tx)}
-                        />
-                      ))}
-                      {tickets.map((tx) => (
-                        <TransactionChip
-                          key={tx.id}
-                          label="Билет"
-                          paid
-                          title={tx.comment || 'Билет'}
-                          voiding={isTransactionVoiding(tx.id)}
-                          voidLabel="Аннулировать билет"
-                          onVoid={() => handleVoid(tx)}
-                        />
-                      ))}
+                      {plates.map((tx) => {
+                        const complimentary = isComplimentaryCharge(tx);
+                        const label = tx.type === 'ticket' ? 'Вход' : TRANSACTION_TYPE_LABEL[tx.type];
+                        return (
+                          <TransactionChip
+                            key={tx.id}
+                            label={label}
+                            paid={tx.status === 'paid' || tx.type === 'ticket'}
+                            title={
+                              complimentary
+                                ? `${label} · билет · 0 ₽`
+                                : `${label} · ${tx.amount.toLocaleString('ru-RU')} ₽ · ${TRANSACTION_STATUS_LABEL[tx.status]}`
+                            }
+                            voiding={isTransactionVoiding(tx.id)}
+                            voidLabel={complimentary ? `Отменить билет (${label})` : `Отменить ${label}`}
+                            onVoid={() => handleVoid(tx)}
+                          />
+                        );
+                      })}
                     </div>
                   )}
 
                   {unboundGuest ? (
                     <div className="space-y-2">
                       <p className="text-[11px] font-600 leading-snug" style={{ color: '#A39B98' }}>
-                        Счёт, билет и дилер-часы появятся после привязки к пользователю системы.
+                        Счёт и дилер-часы появятся после привязки к пользователю системы.
                       </p>
                       <button
                         type="button"
@@ -818,7 +817,7 @@ export function AdminTournamentFinance() {
                       </button>
                     </div>
                   ) : (
-                  <div className={`grid gap-1.5 ${allowsAddon ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                  <div className={`grid gap-1.5 ${allowsAddon ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     {chargeActions.map(({ type, label }) => (
                       <FlatHit
                         key={type}
@@ -829,13 +828,6 @@ export function AdminTournamentFinance() {
                         {label}
                       </FlatHit>
                     ))}
-                    <FlatHit
-                      onClick={() => handleTicket(player.id, player.nickname)}
-                      className="py-2 rounded-lg overflow-hidden text-[11px] font-700 flex items-center justify-center active:scale-95 transition-transform"
-                      style={TICKET_HIT_STYLE}
-                    >
-                      Билет
-                    </FlatHit>
                   </div>
                   )}
 
@@ -1113,6 +1105,7 @@ export function AdminTournamentFinance() {
         busy={paying}
         onClose={() => setPayingId(null)}
         onPay={(ids) => void paySelectedDebt(ids)}
+        onComp={(ids) => void compSelectedDebt(ids)}
       />
     </div>
   );

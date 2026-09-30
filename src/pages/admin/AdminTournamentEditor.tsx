@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
+import { useFinance } from '../../context/FinanceContext';
 import { useUser } from '../../context/UserContext';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
@@ -436,7 +437,9 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
   const { tournaments, updateTournament, duplicateTournament, deleteTournament } = useTournaments();
   const { clubUsers } = useUser();
+  const { transactions, addCharge, voidTransaction } = useFinance();
   const { openTimerForTournament } = useBindPokerTimer();
+  const entryGuard = useRef(new Set<string>());
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -483,6 +486,37 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
   const patch = (p: Partial<Tournament>) => updateTournament(tournament.id, p);
 
+  const ensureArrivalEntry = (userId: string | null | undefined) => {
+    const uid = sanitizeParticipantUserId(userId ?? '');
+    if (!uid) return;
+    const key = `${tournament.id}:${uid}`;
+    if (entryGuard.current.has(key)) return;
+    const hasEntry = transactions.some(
+      (tx) =>
+        tx.tournamentId === tournament.id &&
+        tx.userId === uid &&
+        !tx.voidedAt &&
+        (tx.type === 'buy-in' || tx.type === 'ticket'),
+    );
+    if (hasEntry) return;
+    entryGuard.current.add(key);
+    addCharge(tournament.id, uid, 'buy-in');
+    window.setTimeout(() => entryGuard.current.delete(key), 5000);
+  };
+
+  const dropLoneArrivalEntry = (userId: string | null | undefined) => {
+    const uid = sanitizeParticipantUserId(userId ?? '');
+    if (!uid) return;
+    const rows = transactions.filter(
+      (tx) => tx.tournamentId === tournament.id && tx.userId === uid && !tx.voidedAt,
+    );
+    const unpaidEntries = rows.filter((tx) => tx.type === 'buy-in' && tx.status === 'unpaid');
+    const kept = rows.some((tx) => tx.type !== 'buy-in' || tx.status !== 'unpaid');
+    if (unpaidEntries.length === 1 && !kept) {
+      void voidTransaction(unpaidEntries[0]!.id, 'Снята отметка «пришёл»');
+    }
+  };
+
   const handleFileChange = (file: File | undefined) => {
     if (!file || photoBusy) return;
     const preview = URL.createObjectURL(file);
@@ -520,6 +554,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
       void patch({
         participants: rebindTeamPartnerIdentity(rebound, linkingId, user.id),
       });
+      if (isArrivedPlayer(guestSeat)) ensureArrivalEntry(user.id);
       setLinkingId(null);
       setAddOpen(false);
       return;
@@ -600,6 +635,8 @@ function Editor({ tournament }: { tournament: Tournament }) {
     void patch({
       participants: alignBustOutPlaces(next, tournament),
     });
+    if (arrived) dropLoneArrivalEntry(player.userId ?? player.id);
+    else ensureArrivalEntry(player.userId ?? player.id);
   };
 
   const removeParticipant = (id: string) => {

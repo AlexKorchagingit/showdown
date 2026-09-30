@@ -31,7 +31,9 @@ export function reconcileTransactionSnapshot(previous: Transaction[], incoming: 
 }
 
 function voidLabel(tx: Transaction): string {
-  return tx.type === 'ticket' ? 'билет' : `счёт на ${rub(tx.amount)}`;
+  return tx.type === 'ticket' || (tx.amount === 0 && tx.status === 'paid')
+    ? 'билет'
+    : `счёт на ${rub(tx.amount)}`;
 }
 
 /**
