@@ -4,6 +4,7 @@ import {
   guestSeatKey,
   isGuestParticipantId,
   isUnboundGuestSeat,
+  ledgerChargeId,
   normalizeGuestNickname,
   slugGuestNickname,
 } from './guestPlayer';
@@ -19,6 +20,13 @@ describe('guest player ids', () => {
     expect(guestParticipantId('Иван', [])).toBe('guest-иван');
     expect(guestParticipantId('Иван', ['guest-иван'])).toBe('guest-иван-2');
     expect(guestParticipantId('Иван', ['opening:guest-иван'])).toBe('guest-иван-2');
+  });
+
+  it('uses a guest seat key as the cashier id', () => {
+    expect(ledgerChargeId('guest-иван')).toBe('guest-иван');
+    expect(ledgerChargeId('opening:guest-ivan')).toBe('guest-ivan');
+    expect(ledgerChargeId('user-1')).toBe('user-1');
+    expect(ledgerChargeId('mock-1')).toBeNull();
   });
 
   it('detects guest seats even when the PK still has a tournament prefix', () => {

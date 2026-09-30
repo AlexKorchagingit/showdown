@@ -74,7 +74,17 @@ export function mappedGuestUser(id: string, nickname: string): MappedUser {
   };
 }
 
-/** Nick-only seats, keyed by stable `guest-…` id so they share rating across events. */
+/**
+ * Cashier identity for a seat: a real `users.id`, or a nick-only `guest-…` key.
+ * Prefixed participant PKs (`event:guest-ivan`) collapse to the guest key.
+ */
+export function ledgerChargeId(value?: string | null): string | null {
+  const key = guestSeatKey(value ?? '');
+  if (isGuestParticipantId(key)) return key;
+  return sanitizeParticipantUserId(value);
+}
+
+/** Nick-only seats, keyed by stable `guest-…` id. They stay out of rating until bound. */
 export function guestUsersFromTournaments(tournaments: Tournament[]): MappedUser[] {
   const byId = new Map<string, MappedUser>();
   for (const tournament of tournaments) {

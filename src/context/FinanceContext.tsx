@@ -20,6 +20,7 @@ import {
   type Transaction,
   type TransactionType,
 } from '../types/finance';
+import { ledgerChargeId } from '../lib/guestPlayer';
 import { sanitizeParticipantUserId } from '../lib/supabaseMap';
 import { createChargeRequests } from '../lib/chargeRequests';
 import { useUser } from './UserContext';
@@ -27,7 +28,7 @@ import { isActiveTransaction, mergeTransactionUpdates, reconcileTransactionSnaps
 import { createDealerHoursRequests, dealerKey, mergeDealerHours, type DealerHours } from '../lib/dealerHours';
 
 function resolveLedgerUserId(userId: string): string | null {
-  return sanitizeParticipantUserId(userId);
+  return ledgerChargeId(userId);
 }
 
 interface FinanceContextValue {
@@ -125,7 +126,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     [pendingHours],
   );
   const adjustDealerHours = useCallback(async (tournamentId: string, userId: string, delta: number) => {
-    const ledgerUserId = resolveLedgerUserId(userId);
+    const ledgerUserId = sanitizeParticipantUserId(userId);
     if (!ledgerUserId || isLoading || loadError) return false;
     const key = dealerKey(tournamentId, ledgerUserId);
     if (busyHours.current.has(key)) return false;

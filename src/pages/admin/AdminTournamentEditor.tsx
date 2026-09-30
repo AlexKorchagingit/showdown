@@ -29,7 +29,9 @@ import {
 import {
   GUEST_NICKNAME_MAX,
   guestParticipantId,
+  guestSeatKey,
   isUnboundGuestSeat,
+  ledgerChargeId,
   normalizeGuestNickname,
 } from '../../lib/guestPlayer';
 import { sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
@@ -316,7 +318,7 @@ function ParticipantsEditor({
                     <p className="text-[11px] text-white/80 truncate">{email}</p>
                   ) : unboundGuest ? (
                     <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
-                      Ник без аккаунта
+                      Ник без аккаунта · не в рейтинге
                     </p>
                   ) : null}
                   {partner ? (
@@ -437,7 +439,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
   const { tournaments, updateTournament, duplicateTournament, deleteTournament } = useTournaments();
   const { clubUsers } = useUser();
-  const { transactions, addCharge, voidTransaction } = useFinance();
+  const { transactions, addCharge, voidTransaction, refreshFinance } = useFinance();
   const { openTimerForTournament } = useBindPokerTimer();
   const entryGuard = useRef(new Set<string>());
 
@@ -487,7 +489,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const patch = (p: Partial<Tournament>) => updateTournament(tournament.id, p);
 
   const ensureArrivalEntry = (userId: string | null | undefined) => {
-    const uid = sanitizeParticipantUserId(userId ?? '');
+    const uid = ledgerChargeId(userId ?? '');
     if (!uid) return;
     const key = `${tournament.id}:${uid}`;
     if (entryGuard.current.has(key)) return;
@@ -505,7 +507,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
   };
 
   const dropLoneArrivalEntry = (userId: string | null | undefined) => {
-    const uid = sanitizeParticipantUserId(userId ?? '');
+    const uid = ledgerChargeId(userId ?? '');
     if (!uid) return;
     const rows = transactions.filter(
       (tx) => tx.tournamentId === tournament.id && tx.userId === uid && !tx.voidedAt,
@@ -551,10 +553,21 @@ function Editor({ tournament }: { tournament: Tournament }) {
             }
           : p,
       );
+      const guestKey = guestSeatKey(guestSeat.id);
+      const hadEntry = transactions.some(
+        (tx) =>
+          tx.tournamentId === tournament.id &&
+          tx.userId === guestKey &&
+          !tx.voidedAt &&
+          (tx.type === 'buy-in' || tx.type === 'ticket'),
+      );
       void patch({
         participants: rebindTeamPartnerIdentity(rebound, linkingId, user.id),
+      }).then((saved) => {
+        if (!saved) return;
+        if (isArrivedPlayer(guestSeat) && !hadEntry) ensureArrivalEntry(user.id);
+        return refreshFinance();
       });
-      if (isArrivedPlayer(guestSeat)) ensureArrivalEntry(user.id);
       setLinkingId(null);
       setAddOpen(false);
       return;
