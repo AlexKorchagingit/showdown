@@ -11,7 +11,7 @@ describe('OTP API client', () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ accepted: true }), { status: 202 }));
     const client = createOtpClient({ ...config, fetchImpl });
 
-    await expect(client.requestCode(' User@Example.com ')).resolves.toBeUndefined();
+    await expect(client.requestCode(' User@Example.com ')).resolves.toBe('sent');
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.example.test/functions/v1/login-otp/request',
       expect.objectContaining({
@@ -19,6 +19,20 @@ describe('OTP API client', () => {
         body: JSON.stringify({ email: 'user@example.com' }),
       }),
     );
+  });
+
+  it('stores a passwordless session and does not ask for a code', async () => {
+    const session = { access_token: 'synthetic-access-token', refresh_token: 'synthetic-refresh-token' };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      accepted: true,
+      passwordless: true,
+      session,
+    }), { status: 200 }));
+    const storeSession = vi.fn(async () => undefined);
+    const client = createOtpClient({ ...config, fetchImpl, storeSession });
+
+    await expect(client.requestCode('user@example.com')).resolves.toBe('passwordless');
+    expect(storeSession).toHaveBeenCalledWith(session);
   });
 
   it('reports server rate limiting without exposing response details', async () => {

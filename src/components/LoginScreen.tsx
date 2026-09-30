@@ -153,7 +153,23 @@ export function LoginScreen({ onLogin }: Props) {
     };
 
     try {
-      await requestLoginCode(normalizedEmail);
+      const issued = await requestLoginCode(normalizedEmail);
+      if (issued === 'passwordless') {
+        verifiedEmailRef.current = normalizedEmail;
+        try {
+          await completeLogin(
+            normalizedEmail,
+            readAgreementsAt(),
+            onLoginRef.current,
+          );
+          setIsSuccess(true);
+        } catch (error) {
+          if (!(error instanceof ConsentRequiredError)) throw error;
+          savePendingEmail(normalizedEmail, 'consent');
+          setStep('consent');
+        }
+        return;
+      }
       openCodeStep(nextTimer, notice);
     } catch (err) {
       console.error(err);

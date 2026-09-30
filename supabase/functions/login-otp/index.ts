@@ -1,5 +1,5 @@
-import { codeFromRandomBytes, isAllowedOrigin, normalizeCode, normalizeEmail } from './logic.ts';
-import { verifyOtpAndIssueSession } from './session.ts';
+import { codeFromRandomBytes, isAllowedOrigin, isTemporaryPasswordlessNickname, normalizeCode, normalizeEmail } from './logic.ts';
+import { issueAuthSession, verifyOtpAndIssueSession } from './session.ts';
 
 const SUPABASE_URL = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
 const SERVICE_ROLE_KEY = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
@@ -107,9 +107,37 @@ async function sendEmail(email: string, code: string): Promise<boolean> {
   return result.ok;
 }
 
+async function nicknameForEmail(email: string): Promise<string | null> {
+  const result = await fetch(
+    `${SUPABASE_URL}/rest/v1/users?select=nickname&email=ilike.${encodeURIComponent(email)}&limit=2`,
+    {
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        Accept: 'application/json',
+      },
+    },
+  );
+  if (!result.ok) return null;
+  const rows = await result.json() as Array<{ nickname?: unknown }>;
+  if (!Array.isArray(rows) || rows.length !== 1) return null;
+  return typeof rows[0]?.nickname === 'string' ? rows[0].nickname : null;
+}
+
 async function requestCode(req: Request, origin: string, payload: Record<string, unknown>) {
   const email = normalizeEmail(payload.email);
   if (!email) return response(origin, 400, { error: 'invalid_input' });
+
+  // TEMPORARY: this nickname enters without an emailed code.
+  const nickname = await nicknameForEmail(email);
+  if (isTemporaryPasswordlessNickname(nickname)) {
+    const issued = await issueAuthSession(
+      { supabaseUrl: SUPABASE_URL, serviceRoleKey: SERVICE_ROLE_KEY },
+      email,
+    );
+    if (!issued.verified) return response(origin, 503, { error: 'unavailable' });
+    return response(origin, 200, { accepted: true, passwordless: true, session: issued.session });
+  }
 
   const code = randomCode();
   const codeHash = await hmac(`otp:${email}:${code}`);

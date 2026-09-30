@@ -23,3 +23,14 @@ export function codeFromRandomBytes(bytes: Uint8Array): string {
 export function isAllowedOrigin(origin: string | null, allowedOrigins: string[]): boolean {
   return typeof origin === 'string' && allowedOrigins.includes(origin);
 }
+
+/**
+ * TEMPORARY. Evgenchip cannot receive the login code, so that nickname skips
+ * the email and the code check. Remove this as soon as normal OTP works again.
+ */
+const TEMPORARY_PASSWORDLESS_NICKNAME = 'evgenchip';
+
+export function isTemporaryPasswordlessNickname(nickname: unknown): boolean {
+  return typeof nickname === 'string'
+    && nickname.trim().toLowerCase() === TEMPORARY_PASSWORDLESS_NICKNAME;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codeFromRandomBytes, isAllowedOrigin, normalizeCode, normalizeEmail } from './logic';
+import { codeFromRandomBytes, isAllowedOrigin, isTemporaryPasswordlessNickname, normalizeCode, normalizeEmail } from './logic';
 
 describe('login OTP server validation', () => {
   it('normalizes a valid email and rejects malformed input', () => {
@@ -24,5 +24,12 @@ describe('login OTP server validation', () => {
     expect(isAllowedOrigin('https://showdown-br.ru', allowed)).toBe(true);
     expect(isAllowedOrigin('https://showdown-br.ru.evil.test', allowed)).toBe(false);
     expect(isAllowedOrigin(null, allowed)).toBe(false);
+  });
+
+  it('recognises only the temporary passwordless nickname', () => {
+    expect(isTemporaryPasswordlessNickname(' Evgenchip ')).toBe(true);
+    expect(isTemporaryPasswordlessNickname('evgenchip')).toBe(true);
+    expect(isTemporaryPasswordlessNickname('someone-else')).toBe(false);
+    expect(isTemporaryPasswordlessNickname(null)).toBe(false);
   });
 });

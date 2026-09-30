@@ -105,11 +105,28 @@ export function createOtpClient({
   );
 
   return {
-    async requestCode(value: string): Promise<void> {
+    async requestCode(value: string): Promise<'sent' | 'passwordless'> {
       const email = normalizedEmail(value);
       pendingSession = null;
       const response = await post('request', { email });
-      if (response.ok) return;
+      if (response.ok) {
+        const payload = await response.json() as {
+          passwordless?: unknown;
+          session?: { access_token?: unknown; refresh_token?: unknown };
+        };
+        if (payload.passwordless === true) {
+          if (typeof payload.session?.access_token !== 'string' || !payload.session.access_token ||
+              typeof payload.session.refresh_token !== 'string' || !payload.session.refresh_token) {
+            throw new OtpApiError('unavailable', 'Сервер не создал сессию. Попробуйте ещё раз.');
+          }
+          await persistSession({
+            access_token: payload.session.access_token,
+            refresh_token: payload.session.refresh_token,
+          });
+          return 'passwordless';
+        }
+        return 'sent';
+      }
 
       const code = await readErrorCode(response);
       if (response.status === 429 || code === 'rate_limited') {
