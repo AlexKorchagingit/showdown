@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import {
   createContext,
   useCallback,
@@ -26,6 +27,7 @@ import { createChargeRequests } from '../lib/chargeRequests';
 import { useUser } from './UserContext';
 import { isActiveTransaction, mergeTransactionUpdates, reconcileTransactionSnapshot } from '../lib/transactionVoid';
 import { createDealerHoursRequests, dealerKey, mergeDealerHours, type DealerHours } from '../lib/dealerHours';
+import { FINANCE_POLL_MS, financeWatchMode } from '../lib/financeWatch';
 
 function resolveLedgerUserId(userId: string): string | null {
   return ledgerChargeId(userId);
@@ -59,6 +61,7 @@ interface FinanceContextValue {
 const FinanceContext = createContext<FinanceContextValue | null>(null);
 
 export function FinanceProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dealerHoursMap, setDealerHoursMap] = useState<Record<string, DealerHours>>({});
   const [pendingHours, setPendingHours] = useState<Set<string>>(new Set());
@@ -107,11 +110,28 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setDealerHoursMap({});
     setIsLoading(true);
     void refreshFinance();
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void refreshFinance();
-    }, 15000);
-    return () => { window.clearInterval(interval); fetchSequence.current++; };
+    return () => { fetchSequence.current++; };
   }, [actorId, actorRole, refreshFinance]);
+
+  const financeWatch = financeWatchMode(location.pathname);
+  useEffect(() => {
+    if (!actorId || financeWatch === 'off') return;
+    const pull = () => {
+      if (document.visibilityState !== 'visible') return;
+      void refreshFinance();
+    };
+    pull();
+    if (financeWatch !== 'poll') return;
+    const interval = window.setInterval(pull, FINANCE_POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') pull();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [actorId, financeWatch, location.pathname, refreshFinance]);
 
   const getDealerHours = useCallback(
     (tournamentId: string, userId: string) => dealerHoursMap[dealerKey(tournamentId, userId)]?.hours ?? 0,
