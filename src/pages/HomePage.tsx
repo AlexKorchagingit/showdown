@@ -392,7 +392,7 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
 // ─── Info grid ────────────────────────────────────────────────────────────────
 const CLUB_ADDRESS_SHORT = 'Проспект Ленина, 2';
 const CLUB_MAP_URL =
-  'https://yandex.ru/maps/191/bryansk/house/prospekt_lenina_2/Z00YdQJlSkIBQFtpfX5ydH1kYg==/?ll=34.355364%2C53.235208&source=serp_navig&z=19.2';
+  'https://yandex.ru/maps/191/bryansk/?ll=34.355364%2C53.235208&mode=poi&poi%5Bpoint%5D=34.355289%2C53.235202&poi%5Buri%5D=ymapsbm1%3A%2F%2Forg%3Foid%3D105044684204&source=serp_navig&z=19';
 
 const TILE_CLASS = 'text-left rounded-2xl p-4 active:brightness-110 transition-all';
 const TILE_STYLE = {
@@ -549,10 +549,10 @@ export function HomePage() {
       >
         <div className="space-y-2.5">
           <SocialLinkRow
-            href="https://vk.ru/im/channels/-240795522"
+            href="https://vk.ru/showdown_br"
             icon={<span className="text-[11px] font-800 text-[#D99962]">VK</span>}
             label="ВКонтакте"
-            subtitle="vk.ru/im/channels/-240795522"
+            subtitle="vk.ru/showdown_br"
           />
           <SocialLinkRow
             href={INSTAGRAM_URL}

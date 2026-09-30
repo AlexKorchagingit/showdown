@@ -12,7 +12,7 @@ import {
   resolveImage,
 } from '../data/shopItems';
 import {
-  characterImageForPlayer,
+  equippedCharForPlayer,
 } from '../lib/playerCharacter';
 import { formatBirthDate, resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 import { clubRatingPlayers } from '../lib/clubRating';
@@ -36,7 +36,7 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const { playerId } = useParams<{ playerId?: string }>();
   const location = useLocation();
-  const { nickname, slogan, characterImage, backgroundImage, equippedChar } = useProfile();
+  const { nickname, slogan, backgroundImage, equippedChar } = useProfile();
   const { isAdmin, userId, clubUsers } = useUser();
   const { tournaments } = useTournaments();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
@@ -49,9 +49,6 @@ export function ProfilePage() {
   const publicProfile = readOnly && playerId ? resolvePublicProfile(playerId, state) : null;
 
   const displayNickname = publicProfile?.nickname ?? nickname;
-  const displayCharacter = readOnly && playerId
-    ? characterImageForPlayer(playerId, displayNickname, equippedChar)
-    : characterImage;
   const displayBackground = readOnly ? resolveImage(DEFAULT_BG_ID, 'bg') : backgroundImage;
 
   const viewedUser = useMemo(() => {
@@ -65,6 +62,12 @@ export function ProfilePage() {
         user.nickname.trim().toLowerCase() === lower,
     );
   }, [readOnly, playerId, userId, clubUsers]);
+
+  const displayCharId = readOnly && playerId
+    ? (viewedUser?.equippedChar?.trim()
+      || equippedCharForPlayer(playerId, displayNickname, equippedChar))
+    : equippedChar;
+  const displayCharacter = resolveImage(displayCharId, 'character');
 
   const trimmedSlogan = (readOnly ? viewedUser?.slogan ?? '' : slogan).trim();
   const viewedEmail = isAdmin ? (viewedUser?.email ?? '').trim() : '';
@@ -146,7 +149,7 @@ export function ProfilePage() {
         src={displayCharacter}
         alt=""
         className={PROFILE_CAT_CLASS}
-        style={{ left: characterProfileLeft(equippedChar) }}
+        style={{ left: characterProfileLeft(displayCharId) }}
       />
 
       {/* Header card */}
