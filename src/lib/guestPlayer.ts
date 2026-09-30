@@ -84,7 +84,7 @@ export function ledgerChargeId(value?: string | null): string | null {
   return sanitizeParticipantUserId(value);
 }
 
-/** Nick-only seats, keyed by stable `guest-…` id. They stay out of rating until bound. */
+/** Nick-only seats, keyed by stable `guest-…` id so the same nick shares rating across events. */
 export function guestUsersFromTournaments(tournaments: Tournament[]): MappedUser[] {
   const byId = new Map<string, MappedUser>();
   for (const tournament of tournaments) {

@@ -686,7 +686,7 @@ export function AdminTournamentFinance() {
                         <p className="text-[10px] text-[#8c8c88] truncate">{email}</p>
                       ) : unboundGuest ? (
                         <p className="text-[10px] truncate" style={{ color: '#D99962' }}>
-                          Ник без аккаунта · не в рейтинге
+                          Ник без аккаунта
                         </p>
                       ) : null}
                       {eliminated && (

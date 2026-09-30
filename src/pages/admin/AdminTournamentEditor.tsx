@@ -318,7 +318,7 @@ function ParticipantsEditor({
                     <p className="text-[11px] text-white/80 truncate">{email}</p>
                   ) : unboundGuest ? (
                     <p className="text-[11px] truncate" style={{ color: '#D99962' }}>
-                      Ник без аккаунта · не в рейтинге
+                      Ник без аккаунта
                     </p>
                   ) : null}
                   {partner ? (

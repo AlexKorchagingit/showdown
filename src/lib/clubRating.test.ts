@@ -59,10 +59,11 @@ describe('guest seats in rating and lobby', () => {
     expect(rows[0]?.ratingAwarded).toBeGreaterThan(0);
   });
 
-  it('keeps nick-only players out of the club rating until they are bound', () => {
+  it('lists nick-only players in the club rating', () => {
     const ranked = clubRatingPlayers([club], [tournament]);
-    expect(ranked.map((row) => row.id)).toEqual(['user-1']);
-    expect(ranked.some((row) => row.nickname === 'Иван')).toBe(false);
+    expect(ranked.map((row) => row.id)).toEqual(['user-1', 'guest-ivan']);
+    expect(ranked[1]?.nickname).toBe('Иван');
+    expect(ranked[1]?.played).toBe(1);
   });
 
   it('shows guest seats in the closed lobby list', () => {
