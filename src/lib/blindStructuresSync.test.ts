@@ -6,6 +6,8 @@ import {
 } from '../data/blindStructures';
 import {
   decideBlindStructuresSync,
+  blindStructuresRevisionMatches,
+  parseBlindStructuresRevision,
   parseBlindStructuresSnapshot,
   parseBlindStructuresStorageSnapshot,
   planBlindStructuresRemoteApply,
@@ -207,6 +209,28 @@ describe('blind structures snapshot', () => {
       expect(plan.structures[0]?.id).toBe('bs-custom');
       expect(plan.republish).toBe(false);
     }
+  });
+});
+
+describe('blind structures revision probe', () => {
+  it('reads the version fields postgrest returns as text', () => {
+    expect(parseBlindStructuresRevision({
+      revision: '1549777',
+      writeId: 'abc',
+      updatedAt: '1700000000000',
+    })).toEqual({
+      revision: 1549777,
+      writeId: 'abc',
+      updatedAt: 1_700_000_000_000,
+    });
+    expect(parseBlindStructuresRevision({ revision: null, writeId: null })).toBeNull();
+  });
+
+  it('matches only when both revision and write id are the same', () => {
+    const local = { revision: 4, writeId: 'abc' };
+    expect(blindStructuresRevisionMatches(local, { revision: 4, writeId: 'abc', updatedAt: 1 })).toBe(true);
+    expect(blindStructuresRevisionMatches(local, { revision: 5, writeId: 'abc', updatedAt: 1 })).toBe(false);
+    expect(blindStructuresRevisionMatches(local, { revision: 4, writeId: 'other', updatedAt: 1 })).toBe(false);
   });
 });
 

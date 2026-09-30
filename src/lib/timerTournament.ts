@@ -3,6 +3,9 @@ import type { Tournament } from '../types/tournament';
 import { compareByStart } from './tournamentStatus';
 
 export const TIMER_ROUTE = '/admin/blinds/timer';
+export const BLINDS_SETTINGS_ROUTE = '/admin/blinds/settings';
+/** Backup read when the live listener misses a pause or a saved ladder. */
+export const TIMER_SYNC_POLL_MS = 20_000;
 
 export function timerPathForTournament(tournamentId: string): string {
   return `${TIMER_ROUTE}?tournament=${encodeURIComponent(tournamentId)}`;
