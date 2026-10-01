@@ -104,6 +104,7 @@ export function LoginScreen({ onLogin }: Props) {
   const [otpError, setOtpError]           = useState(false);
   const [isSuccess, setIsSuccess]         = useState(false);
   const [loginError, setLoginError]       = useState('');
+  const [deliveryUnconfirmed, setDeliveryUnconfirmed] = useState(false);
   const [agreementsAcceptedAt, setAgreementsAcceptedAt] = useState(restoredAgreements);
   const [activeDocument, setActiveDocument] = useState<ClubLegalDocument | null>(null);
 
@@ -114,7 +115,7 @@ export function LoginScreen({ onLogin }: Props) {
   onLoginRef.current = onLogin;
 
   const isEmailValid = EMAIL_REGEX.test(email.trim());
-  const canContinueEmail = isEmailValid && !isLoading;
+  const canContinueEmail = isEmailValid && !isLoading && timer <= 0;
 
   useEffect(() => {
     if (readTempAuthValue('temp_auth_step') !== 'code') return;
@@ -140,10 +141,11 @@ export function LoginScreen({ onLogin }: Props) {
     setIsLoading(true);
     setLoginError('');
 
-    const openCodeStep = (timerSeconds: number, warning = '') => {
+    const openCodeStep = (timerSeconds: number, warning = '', unconfirmed = false) => {
       saveTempAuth(normalizedEmail, timerSeconds);
       setStep('code');
       setTimer(timerSeconds);
+      setDeliveryUnconfirmed(unconfirmed);
       setOtp(['', '', '', '']);
       setOtpError(false);
       setIsSuccess(false);
@@ -174,15 +176,27 @@ export function LoginScreen({ onLogin }: Props) {
     } catch (err) {
       console.error(err);
 
-      if (err instanceof OtpApiError && err.code === 'rate_limited') {
+      if (err instanceof OtpApiError && (err.code === 'rate_limited' || err.code === 'email_rate_limited')) {
         openCodeStep(err.retryAfter ?? nextTimer, err.message);
+        return;
+      }
+
+      if (err instanceof OtpApiError && (err.code === 'global_rate_limited' || err.code === 'ip_rate_limited')) {
+        setTimer(err.retryAfter ?? 60);
+        setLoginError(err.message);
+        return;
+      }
+
+      if (err instanceof OtpApiError && err.code === 'delivery_uncertain') {
+        openCodeStep(err.retryAfter ?? 60, err.message, true);
         return;
       }
 
       if (isUncertainNetworkError(err)) {
         openCodeStep(
-          15,
-          'Не удалось подтвердить ответ сервера. Если код пришёл, введите его. Если нет — отправьте ещё раз через 15 секунд.',
+          60,
+          'Не удалось подтвердить ответ сервера. Если код пришёл, введите его. Если нет — отправьте ещё раз через минуту.',
+          true,
         );
         return;
       }
@@ -254,6 +268,7 @@ export function LoginScreen({ onLogin }: Props) {
     setStep('email');
     setOtp(['', '', '', '']);
     setTimer(0);
+    setDeliveryUnconfirmed(false);
     setIsSuccess(false);
     setLoginError('');
     verifiedRef.current = false;
@@ -271,7 +286,7 @@ export function LoginScreen({ onLogin }: Props) {
 
   const handleResend = () => {
     if (timer > 0 || isLoading || isSuccess) return;
-    sendCode(email, 15);
+    sendCode(email, 60);
   };
 
   useEffect(() => {
@@ -385,7 +400,7 @@ export function LoginScreen({ onLogin }: Props) {
   };
 
   const timerLabel = timer > 0
-    ? `00:${String(timer).padStart(2, '0')}`
+    ? `${String(Math.floor(timer / 60)).padStart(2, '0')}:${String(timer % 60).padStart(2, '0')}`
     : null;
 
   return (
@@ -440,7 +455,7 @@ export function LoginScreen({ onLogin }: Props) {
                     : undefined
                 }
               >
-                {isLoading ? 'Подождите…' : 'Продолжить'}
+                {isLoading ? 'Подождите…' : timerLabel ? `Повторить через ${timerLabel}` : 'Продолжить'}
               </button>
               {loginError ? (
                 <p className="text-[13px] font-600 text-red-700 text-center mt-3">{loginError}</p>
@@ -495,7 +510,7 @@ export function LoginScreen({ onLogin }: Props) {
               transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
             >
               <p className="text-[13px] font-500 text-[#463129] mb-6 text-center">
-                Код отправлен на<br />
+                {deliveryUnconfirmed ? 'Код мог быть отправлен на' : 'Код отправлен на'}<br />
                 <span className="font-700 text-[#110b09]">{email}</span>
               </p>
 

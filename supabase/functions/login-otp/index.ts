@@ -1,5 +1,6 @@
 import { codeFromRandomBytes, isAllowedOrigin, isTemporaryPasswordlessNickname, normalizeCode, normalizeEmail } from './logic.ts';
 import { issueAuthSession, verifyOtpAndIssueSession } from './session.ts';
+import { deliverOtpEmail, type EmailDeliveryStatus } from './emailDelivery.ts';
 
 const SUPABASE_URL = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
 const SERVICE_ROLE_KEY = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
@@ -79,6 +80,7 @@ async function rpc(name: string, params: Record<string, unknown>): Promise<strin
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
     },
     body: JSON.stringify(params),
+    signal: AbortSignal.timeout(5000),
   });
   if (!result.ok) {
     console.error(`OTP RPC ${name} failed with status ${result.status}`);
@@ -87,8 +89,8 @@ async function rpc(name: string, params: Record<string, unknown>): Promise<strin
   return await result.json() as string;
 }
 
-async function sendEmail(email: string, code: string): Promise<boolean> {
-  const result = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+async function sendEmail(email: string, code: string): Promise<EmailDeliveryStatus> {
+  return await deliverOtpEmail(fetch, 'https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -101,10 +103,6 @@ async function sendEmail(email: string, code: string): Promise<boolean> {
       template_params: { to_email: email, code },
     }),
   });
-  if (!result.ok) {
-    console.error(`Email provider rejected OTP with status ${result.status}`);
-  }
-  return result.ok;
 }
 
 async function nicknameForEmail(email: string): Promise<string | null> {
@@ -116,6 +114,7 @@ async function nicknameForEmail(email: string): Promise<string | null> {
         Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
         Accept: 'application/json',
       },
+      signal: AbortSignal.timeout(5000),
     },
   );
   if (!result.ok) return null;
@@ -149,19 +148,28 @@ async function requestCode(req: Request, origin: string, payload: Record<string,
   });
 
   if (issueStatus !== 'issued') {
-    const retryAfter = issueStatus === 'global_rate_limited' ? '2' : '60';
-    return response(origin, 429, { error: 'rate_limited' }, { 'Retry-After': retryAfter });
+    const error = ['email_rate_limited', 'ip_rate_limited', 'global_rate_limited'].includes(issueStatus)
+      ? issueStatus
+      : 'unavailable';
+    if (error === 'unavailable') return response(origin, 503, { error });
+    const retryAfter = error === 'global_rate_limited' ? '2' : error === 'ip_rate_limited' ? '900' : '60';
+    return response(origin, 429, { error }, { 'Retry-After': retryAfter });
   }
 
   try {
-    if (!await sendEmail(email, code)) {
+    const delivery = await sendEmail(email, code);
+    if (delivery === 'rejected') {
+      console.error('OTP email provider definitively rejected request');
       await rpc('cancel_login_otp', { p_email: email, p_code_hash: codeHash });
       return response(origin, 502, { error: 'delivery_failed' });
     }
+    if (delivery === 'uncertain') {
+      console.error('OTP email provider response unavailable');
+      return response(origin, 503, { error: 'delivery_uncertain' }, { 'Retry-After': '60' });
+    }
   } catch (error) {
     console.error('OTP email request failed', error instanceof Error ? error.name : 'unknown');
-    await rpc('cancel_login_otp', { p_email: email, p_code_hash: codeHash }).catch(() => undefined);
-    return response(origin, 502, { error: 'delivery_failed' });
+    return response(origin, 503, { error: 'delivery_uncertain' }, { 'Retry-After': '60' });
   }
 
   return response(origin, 202, { accepted: true });

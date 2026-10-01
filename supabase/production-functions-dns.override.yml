@@ -1,0 +1,9 @@
+# Deploy next to the production docker-compose.yml as docker-compose.override.yml.
+# Production .env sets COMPOSE_FILE, so include both files there. Merely placing
+# the override next to the base file does not activate it in that environment.
+# Scope this to the Edge Functions container; leave database and gateway untouched.
+services:
+  functions:
+    dns:
+      - 9.9.9.9
+      - 208.67.222.222

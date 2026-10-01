@@ -48,6 +48,57 @@ describe('OTP API client', () => {
     });
   });
 
+  it('does not tell a different player that a code was sent on the global limit', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: 'global_rate_limited' }), {
+        status: 429,
+        headers: { 'Retry-After': '2' },
+      }));
+      const client = createOtpClient({ ...config, fetchImpl });
+      const result = expect(client.requestCode('user@example.com')).rejects.toMatchObject({
+        code: 'global_rate_limited',
+        retryAfter: 2,
+      });
+      await vi.runAllTimersAsync();
+      await result;
+      expect(fetchImpl).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('retries a short global limit so simultaneous guests can get codes', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'global_rate_limited' }), {
+          status: 429,
+          headers: { 'Retry-After': '2' },
+        }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ accepted: true }), { status: 202 }));
+      const client = createOtpClient({ ...config, fetchImpl });
+      const result = client.requestCode('user@example.com');
+      await vi.runAllTimersAsync();
+      await expect(result).resolves.toBe('sent');
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('lets a player enter a code when the provider response is uncertain', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: 'delivery_uncertain' }), {
+      status: 503,
+      headers: { 'Retry-After': '60' },
+    }));
+    const client = createOtpClient({ ...config, fetchImpl });
+    await expect(client.requestCode('user@example.com')).rejects.toMatchObject({
+      code: 'delivery_uncertain',
+      retryAfter: 60,
+    });
+  });
+
   it('verifies the code on the server', async () => {
     const session = { access_token: 'synthetic-access-token', refresh_token: 'synthetic-refresh-token' };
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ verified: true, session }), { status: 200 }));

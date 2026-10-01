@@ -3,7 +3,14 @@ import { createTimeoutFetch, type FetchLike } from './network';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_REGEX = /^\d{4}$/;
 
-type OtpErrorCode = 'invalid_input' | 'rate_limited' | 'unavailable';
+type OtpErrorCode =
+  | 'invalid_input'
+  | 'rate_limited'
+  | 'email_rate_limited'
+  | 'ip_rate_limited'
+  | 'global_rate_limited'
+  | 'delivery_uncertain'
+  | 'unavailable';
 
 export class OtpApiError extends Error {
   readonly code: OtpErrorCode;
@@ -108,7 +115,18 @@ export function createOtpClient({
     async requestCode(value: string): Promise<'sent' | 'passwordless'> {
       const email = normalizedEmail(value);
       pendingSession = null;
-      const response = await post('request', { email });
+      let response = await post('request', { email });
+      // EmailJS allows only one request per second. A global 429 means no OTP
+      // was issued, so retry briefly with jitter when several guests arrive.
+      for (let attempt = 0; attempt < 2 && response.status === 429; attempt += 1) {
+        if (await readErrorCode(response.clone()) !== 'global_rate_limited') break;
+        const requestedSeconds = Number(response.headers.get('Retry-After') || 2);
+        const seconds = Number.isFinite(requestedSeconds)
+          ? Math.min(5, Math.max(1, requestedSeconds))
+          : 2;
+        await new Promise((resolve) => setTimeout(resolve, seconds * 1000 + Math.random() * 500));
+        response = await post('request', { email });
+      }
       if (response.ok) {
         const payload = await response.json() as {
           passwordless?: unknown;
@@ -129,12 +147,26 @@ export function createOtpClient({
       }
 
       const code = await readErrorCode(response);
+      if (code === 'delivery_uncertain') {
+        throw new OtpApiError(
+          'delivery_uncertain',
+          'Не удалось подтвердить отправку письма. Если код пришёл, введите его. Если нет — запросите новый через минуту.',
+          60,
+        );
+      }
       if (response.status === 429 || code === 'rate_limited') {
         const parsed = Number(response.headers.get('Retry-After') || 60);
+        const retryAfter = Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
+        if (code === 'global_rate_limited') {
+          throw new OtpApiError('global_rate_limited', 'Сейчас много запросов. Код ещё не отправлен — повторите попытку через несколько секунд.', retryAfter);
+        }
+        if (code === 'ip_rate_limited') {
+          throw new OtpApiError('ip_rate_limited', 'Слишком много запросов с этой сети. Код ещё не отправлен — повторите попытку позже.', retryAfter);
+        }
         throw new OtpApiError(
-          'rate_limited',
+          code === 'email_rate_limited' ? 'email_rate_limited' : 'rate_limited',
           'Код уже отправлен. Подождите минуту перед повторной отправкой.',
-          Number.isFinite(parsed) ? parsed : 60,
+          retryAfter,
         );
       }
       throw new OtpApiError('unavailable', 'Не удалось отправить код. Попробуйте ещё раз.');
