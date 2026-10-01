@@ -27,7 +27,14 @@ import { createChargeRequests } from '../lib/chargeRequests';
 import { useUser } from './UserContext';
 import { isActiveTransaction, mergeTransactionUpdates, reconcileTransactionSnapshot } from '../lib/transactionVoid';
 import { createDealerHoursRequests, dealerKey, mergeDealerHours, type DealerHours } from '../lib/dealerHours';
-import { effectiveFinanceScope, FINANCE_POLL_MS, financeWatchMode } from '../lib/financeWatch';
+import {
+  effectiveFinanceScope,
+  FINANCE_LIVE_POLL_MS,
+  FINANCE_POLL_MS,
+  financeWatchMode,
+  financeWatchRepeats,
+  financeWatchScope,
+} from '../lib/financeWatch';
 
 function resolveLedgerUserId(userId: string): string | null {
   return ledgerChargeId(userId);
@@ -104,8 +111,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     } catch {
       if (sequence !== fetchSequence.current || version !== mutationVersion.current) return;
       setLoadError('Не удалось загрузить финансы. Повторите загрузку перед изменениями.');
-      setTransactions([]);
-      setDealerHoursMap({});
     } finally {
       refreshing.current.delete(refreshScope);
       if (sequence === fetchSequence.current) setIsLoading(false);
@@ -125,16 +130,18 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [actorId, actorRole]);
 
   const financeWatch = financeWatchMode(location.pathname);
-  const onCashierRoute = location.pathname === '/admin/finance' || location.pathname.startsWith('/admin/finance/');
   useEffect(() => {
     if (!actorId || financeWatch === 'off') return;
     const pull = () => {
       if (document.visibilityState !== 'visible') return;
-      void refreshFinance(financeWatch === 'all' ? 'all' : 'month');
+      void refreshFinance(financeWatchScope(financeWatch));
     };
     pull();
-    if (!onCashierRoute) return;
-    const interval = window.setInterval(pull, FINANCE_POLL_MS);
+    if (!financeWatchRepeats(financeWatch)) return;
+    const interval = window.setInterval(
+      pull,
+      financeWatch === 'live' ? FINANCE_LIVE_POLL_MS : FINANCE_POLL_MS,
+    );
     const onVisible = () => {
       if (document.visibilityState === 'visible') pull();
     };

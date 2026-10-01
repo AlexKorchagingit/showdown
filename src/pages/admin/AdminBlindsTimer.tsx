@@ -110,7 +110,7 @@ export function AdminBlindsTimer() {
     chipleaderStack,
     liveLevels,
   } = useBlinds();
-  const { transactions } = useFinance();
+  const { transactions, isLoading: financeLoading } = useFinance();
 
   const { bindTournament } = useBindPokerTimer();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -422,7 +422,7 @@ export function AdminBlindsTimer() {
               СРЕДНИЙ СТЕК
             </p>
             <FitText className="mt-2 text-[#F2D8A7]">
-              {avgStack.toLocaleString('ru-RU')}
+              {financeLoading && transactions.length === 0 ? '…' : avgStack.toLocaleString('ru-RU')}
             </FitText>
           </section>
 

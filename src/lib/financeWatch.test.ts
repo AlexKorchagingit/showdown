@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { effectiveFinanceScope, financeWatchMode } from './financeWatch';
 
 describe('financeWatchMode', () => {
-  it('keeps the cashier on the current month until all-time is asked', () => {
+  it('keeps the finance overview on the current month until all-time is asked', () => {
     expect(financeWatchMode('/admin/finance')).toBe('month');
-    expect(financeWatchMode('/admin/finance/tournaments/t-1')).toBe('month');
   });
 
-  it('loads the live field when the timer or lobby editor opens', () => {
-    expect(financeWatchMode('/admin/blinds/timer')).toBe('month');
-    expect(financeWatchMode('/admin/tournaments/t-1')).toBe('month');
+  it('repeats the full book on the timer and in a tournament cashier', () => {
+    expect(financeWatchMode('/admin/blinds/timer')).toBe('live');
+    expect(financeWatchMode('/admin/finance/tournaments/t-1')).toBe('live');
+  });
+
+  it('loads the live field when the lobby editor opens', () => {
+    expect(financeWatchMode('/admin/tournaments/t-1')).toBe('all');
   });
 
   it('loads the whole book only for history screens', () => {
