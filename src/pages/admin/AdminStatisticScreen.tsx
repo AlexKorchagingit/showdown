@@ -12,7 +12,7 @@ import {
 import { CompactHeader } from '../../components/CompactHeader';
 import { MetricsLegend } from '../../components/admin/MetricsLegend';
 import { useFinance } from '../../context/FinanceContext';
-import { useTournaments } from '../../context/TournamentContext';
+import { useFullTournamentRosters, useTournaments } from '../../context/TournamentContext';
 import { useUser } from '../../context/UserContext';
 import { CLUB_STATISTIC_METRICS } from '../../lib/metricsCopy';
 import {
@@ -118,6 +118,7 @@ function LeaderList({
 
 export function AdminStatisticScreen() {
   const { tournaments } = useTournaments();
+  useFullTournamentRosters();
   const { transactions } = useFinance();
   const { clubUsers } = useUser();
   const [period, setPeriod] = useState<StatsPeriod>('all');

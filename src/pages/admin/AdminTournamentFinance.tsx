@@ -122,8 +122,12 @@ function FadingHoursDelta({ flash }: { flash?: { delta: number; token: number } 
 export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tournaments, updateTournament, isLoading, loadError, fetchTournaments,
+  const { tournaments, updateTournament, isLoading, loadError, fetchTournaments, refreshParticipants,
     personnelRosters, personnelCommand, isPersonnelPending } = useTournaments();
+
+  useEffect(() => {
+    if (id) void refreshParticipants(id);
+  }, [id, refreshParticipants]);
   const { account, clubUsers } = useUser();
   const { isRunning, linkedTournamentId } = useBlinds();
   const {

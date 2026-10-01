@@ -5,7 +5,7 @@ import { PlayerNameLink } from '../components/PlayerNameLink';
 import { PlayerAvatar } from '../components/PlayerAvatar';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
-import { useTournaments } from '../context/TournamentContext';
+import { useFullTournamentRosters, useTournaments } from '../context/TournamentContext';
 import type { RatingPlayer } from '../types/player';
 import { clubRatingPlayers } from '../lib/clubRating';
 import {
@@ -195,6 +195,7 @@ export function RatingPage() {
   const { userId, clubUsers } = useUser();
   const { nickname } = useProfile();
   const { tournaments } = useTournaments();
+  useFullTournamentRosters();
   const savedView = useRef(readRatingView()).current;
   const [activeTab, setActiveTab] = useState<RatingTab>(savedView.tab);
   const [selectedMonth, setSelectedMonth] = useState<number>(savedView.month);

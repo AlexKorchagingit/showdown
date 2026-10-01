@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronRight, Download, Ban, X } from 'lucide-react';
 import {
@@ -73,6 +73,10 @@ export function CashierTab() {
   const { transactions, voidedTransactions, markPaid, voidTransaction, isTransactionVoiding, isLoading, loadError, refreshFinance } = useFinance();
   const { tournaments } = useTournaments();
   const [period, setPeriod] = useState<FinancePeriod>('today');
+
+  useEffect(() => {
+    if (period === 'all') void refreshFinance('all');
+  }, [period, refreshFinance]);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
 
   const tournamentTitle = (id: string) => tournaments.find((t) => t.id === id)?.title ?? id;

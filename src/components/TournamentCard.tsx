@@ -23,7 +23,9 @@ export function TournamentCard({ tournament, onClick, timerRunning = false }: Pr
   const { title, startDate, startTime, totalSeats, participants } = tournament;
   const { clubUsers } = useUser();
 
-  const occupiedSeats = countOccupiedLobbySeats(participants, clubUserIdSet(clubUsers));
+  const occupiedSeats = tournament.rosterLoaded
+    ? countOccupiedLobbySeats(participants, clubUserIdSet(clubUsers))
+    : tournament.occupiedCount ?? 0;
   const isPast = isFinished(tournament);
 
   const dateObj = new Date(startDate);

@@ -28,6 +28,7 @@ import {
   withClubSeasonRating,
 } from '../lib/clubRating';
 import { cashierFieldSize, finishedLobbyPlayers } from '../lib/tournamentArrival';
+import { publicStackFeatureLines } from '../lib/chipStacks';
 import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
 import { TournamentArtImage } from '../components/TournamentArtImage';
 import { formatTxDateTime } from '../lib/transactionDisplay';
@@ -301,7 +302,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   Особенности
                 </h3>
                 <ul className="space-y-2">
-                  {live.features.map((f) => (
+                  {publicStackFeatureLines(live).map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-[13px] font-400 text-white/80">
                       <span className="shrink-0 text-[#D99962] font-semibold leading-none mt-0.5">—</span>
                       <span>

@@ -1,4 +1,11 @@
-import { breakComment, isBreakLevel, type BlindStructure } from '../data/blindStructures';
+import type { BlindStructure } from '../data/blindStructures';
+import {
+  featuresWithStackDraft,
+  formatStackFeature,
+  isLegacyStartingStackLine,
+  parseStackFeatureLine,
+  stackDraftFromFeatures,
+} from './stackFeatures';
 import type { Transaction } from '../types/finance';
 import type { Participant, Tournament } from '../types/tournament';
 import { isActiveTransaction } from './transactionVoid';
@@ -96,19 +103,9 @@ export function rebuyLimitFrom(text: string): number | null {
  * tournament blurb. The late-registration break is checked first: that is where
  * the club writes the addon stack.
  */
-function chipSources(
-  structure: BlindStructure | undefined,
-  tournament: Tournament | undefined,
-): string[] {
-  const breaks = (structure?.levels ?? []).filter(isBreakLevel);
-  const lateReg = breaks.filter((level) => level.isLateRegEnd === true);
-  const others = breaks.filter((level) => level.isLateRegEnd !== true);
-  return [
-    ...lateReg.map(breakComment),
-    ...others.map(breakComment),
-    ...(tournament?.features ?? []),
-    tournament?.about ?? '',
-  ].filter((text) => text.trim().length > 0);
+/** Stack sizes come from the feature numbers, not from a break comment. */
+function chipSources(tournament: Tournament | undefined): string[] {
+  return [...(tournament?.features ?? []), tournament?.about ?? ''].filter((text) => text.trim().length > 0);
 }
 
 /**
@@ -255,7 +252,7 @@ const EMPTY_TOTALS: TimerChipTotals = {
  */
 export function timerChipTotals(
   tournament: Tournament | undefined,
-  structure: BlindStructure | undefined,
+  _structure: BlindStructure | undefined,
   transactions: Transaction[],
 ): TimerChipTotals {
   if (!tournament) return EMPTY_TOTALS;
@@ -284,13 +281,15 @@ export function timerChipTotals(
   const limit = rebuyLimit(tournament);
   const rebuys = countWithinLimit(rebuyBadges, limit);
 
-  const declaredStarting = declaredStartingStack(tournament);
+  const draft = stackDraftFromFeatures(tournament.features ?? []);
+  const legacyStarting = declaredStartingStack(tournament);
+  const declaredStarting = draft.starting ?? legacyStarting;
   const startingStack = Math.max(0, declaredStarting ?? tournament.stackSize);
-  const sources = chipSources(structure, tournament);
-  const declaredRebuy = declaredStack(sources, REBUY_WORD, startingStack);
+  const sources = chipSources(tournament);
+  const declaredRebuy = draft.rebuy ?? declaredStack(sources, REBUY_WORD, startingStack);
   const rebuyMultiplier = declaredRebuy === null ? stackMultiplier(sources, REBUY_WORD) : null;
   const rebuyStack = declaredRebuy ?? startingStack * (rebuyMultiplier ?? 1);
-  const addonStack = declaredStack(sources, ADDON_WORD, startingStack) ?? startingStack;
+  const addonStack = draft.addon ?? declaredStack(sources, ADDON_WORD, startingStack) ?? startingStack;
 
   const totalChips = startingStack * entries + rebuyStack * rebuys + addonStack * addons;
 
@@ -313,3 +312,19 @@ export function timerChipTotals(
     avgStack: stackPlayers > 0 ? Math.round(totalChips / stackPlayers) : 0,
   };
 }
+
+/** Bullets under «Особенности». A rebuy equal to the entry, and a missing addon, are omitted. */
+export function publicStackFeatureLines(tournament: Tournament | undefined): string[] {
+  const features = tournament?.features ?? [];
+  const planStarting = stackDraftFromFeatures(features).starting ?? declaredStartingStack(tournament);
+  const starting = planStarting ?? Math.max(0, tournament?.stackSize ?? 0);
+  const draft = stackDraftFromFeatures(features);
+  const rest = features.filter((line) => !parseStackFeatureLine(line) && !isLegacyStartingStackLine(line));
+  const lines: string[] = [];
+  if (starting >= 1000) lines.push(formatStackFeature('start', starting));
+  if (draft.rebuy !== null && draft.rebuy !== starting) lines.push(formatStackFeature('rebuy', draft.rebuy));
+  if (draft.addon !== null) lines.push(formatStackFeature('addon', draft.addon));
+  return [...lines, ...rest];
+}
+
+export { featuresWithStackDraft, stackDraftFromFeatures };

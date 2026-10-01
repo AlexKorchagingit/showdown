@@ -38,7 +38,7 @@ describe('server-owned registered dealer hours', () => {
   it('reads finances through a no-identity RPC and refuses incomplete snapshots', async () => {
     mocks.rpc.mockResolvedValue({data:{transactions:[],dealer_hours:[row]},error:null});
     expect(await fetchFinanceSnapshot()).toEqual({transactions:[],dealerHours:[saved]});
-    expect(mocks.rpc).toHaveBeenCalledWith('club_finance_snapshot');
+    expect(mocks.rpc).toHaveBeenCalledWith('club_finance_snapshot', { p_scope: 'month' });
     expect(mocks.from).not.toHaveBeenCalled();
     for (const data of [null,{transactions:[]},{transactions:[null],dealer_hours:[]}]) {
       mocks.rpc.mockResolvedValue({data,error:null});

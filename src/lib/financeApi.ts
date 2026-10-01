@@ -31,9 +31,11 @@ function dealerHoursFromRow(data: unknown): DealerHours {
     revision: row.revision as number, loggedAt: row.logged_at as string | null ?? undefined };
 }
 
-export async function fetchFinanceSnapshot(): Promise<{ transactions: Transaction[]; dealerHours: DealerHours[] }> {
+export async function fetchFinanceSnapshot(
+  scope: 'month' | 'all' = 'month',
+): Promise<{ transactions: Transaction[]; dealerHours: DealerHours[] }> {
   const { data, error } = await withRequestDeadline(
-    supabase.rpc('club_finance_snapshot'),
+    supabase.rpc('club_finance_snapshot', { p_scope: scope }),
     15_000,
   );
   if (error || !data || !Array.isArray(data.transactions) || !Array.isArray(data.dealer_hours)) {

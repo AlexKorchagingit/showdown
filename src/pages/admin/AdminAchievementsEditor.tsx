@@ -3,7 +3,7 @@ import { Navigate, useParams } from 'react-router-dom';
 import { SectionScreen } from '../../components/SectionScreen';
 import { ACHIEVEMENTS, AUTO_ACHIEVEMENT_ID_SET, type AchievementProgress } from '../../data/achievements';
 import { useUser } from '../../context/UserContext';
-import { useTournaments } from '../../context/TournamentContext';
+import { useFullTournamentRosters, useTournaments } from '../../context/TournamentContext';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { readLegacyAchievementProgress } from '../../lib/achievementStorage';
@@ -29,6 +29,7 @@ export function AdminAchievementsEditor() {
   const { userId } = useParams<{ userId: string }>();
   const { clubUsers, isLoading } = useUser();
   const { tournaments } = useTournaments();
+  useFullTournamentRosters();
   const user = useMemo(
     () => clubUsers.find((u) => u.id === userId),
     [clubUsers, userId],

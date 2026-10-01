@@ -4,7 +4,7 @@ import { SectionScreen } from '../components/SectionScreen';
 import { ScreenLoading } from '../components/ScreenLoading';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { useUser } from '../context/UserContext';
-import { useTournaments } from '../context/TournamentContext';
+import { useFullTournamentRosters, useTournaments } from '../context/TournamentContext';
 import { isAchievementDone, type Achievement } from '../data/achievements';
 import {
   mergeAchievementProgress,
@@ -107,6 +107,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 export function AchievementsScreen() {
   const { userId, clubUsers } = useUser();
   const { tournaments } = useTournaments();
+  useFullTournamentRosters();
   const { playerId } = useParams<{ playerId?: string }>();
   const targetId = playerId || userId;
 

@@ -272,12 +272,12 @@ describe('timer totals from the tournament cashier', () => {
     expect(totals.avgStack).toBe(90000);
   });
 
-  it('CHILL OUT: the late-registration break note sets the addon stack', () => {
+  it('CHILL OUT: the addon number in features wins over the break note', () => {
     const totals = timerChipTotals(
       tournament(field(16, 7), {
-        features: ['Начальный стек 30000 (300 бб)', 'Есть возможность взять аддон'],
+        features: ['Стартовый стек: 30 000', 'Стек аддона: 20 000'],
       }),
-      structure([level(), lateRegBreak('Аддон 20 000, вывод номинала 100')]),
+      structure([level(), lateRegBreak('Аддон 99 000, вывод номинала 100')]),
       [...badges('buy-in', 16), ...badges('addon', 5)],
     );
 

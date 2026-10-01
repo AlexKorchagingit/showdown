@@ -5,6 +5,7 @@ import {
   shopItemsOfType,
 } from '../data/shopItems';
 import { findClubUserByIdOrNick } from './clubDirectory';
+import { isGuestParticipantId } from './guestPlayer';
 
 const CHARACTERS = shopItemsOfType('character').filter((item) => item.buyable !== false);
 
@@ -15,6 +16,7 @@ export function equippedCharForPlayer(
   selfChar: string,
 ): string {
   if (playerId === 'me') return selfChar || DEFAULT_CHARACTER_ID;
+  if (isGuestParticipantId(playerId)) return DEFAULT_CHARACTER_ID;
 
   const user = findClubUserByIdOrNick(playerId, nickname);
   if (user?.equippedChar) return user.equippedChar;
@@ -37,6 +39,7 @@ export function avatarUrlForPlayer(
   nickname: string,
   selfChar: string,
 ): string {
+  if (isGuestParticipantId(playerId)) return avatarUrlForChar(DEFAULT_CHARACTER_ID);
   const user = findClubUserByIdOrNick(playerId, nickname);
   if (user?.equippedAvatar) return user.equippedAvatar;
   return avatarUrlForChar(equippedCharForPlayer(playerId, nickname, selfChar));

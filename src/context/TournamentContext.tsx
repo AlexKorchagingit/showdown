@@ -10,6 +10,7 @@ import type { Participant, Tournament } from '../types/tournament';
 import { useUser } from './UserContext';
 import {
   fetchParticipants,
+  fetchParticipantsByTournament,
   fetchTournaments as loadTournaments,
   insertTournament,
   participantListsEqual,
@@ -32,6 +33,7 @@ interface TournamentContextValue {
   isLoading: boolean;
   loadError: string | null;
   fetchTournaments: () => Promise<void>;
+  loadAllRosters: () => Promise<void>;
   refreshParticipants: (tournamentId: string) => Promise<void>;
   toggleRegistration: (tournamentId: string) => Promise<void>;
   isRegistered: (tournamentId: string) => boolean;
@@ -84,7 +86,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     setLoadError(null);
     try {
       const rows = await loadTournaments();
-      setTournaments(rows);
+      setTournaments((prev) => rows.map((row) => {
+        const current = prev.find((tournament) => tournament.id === row.id);
+        if (!current?.rosterLoaded) return row;
+        return { ...row, participants: current.participants, rosterLoaded: true };
+      }));
     } catch (error) {
       console.error(error);
       setTournaments([]);
@@ -110,11 +116,26 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       const participants = await fetchParticipants(tournamentId);
       setTournaments((prev) => {
         const current = prev.find((tournament) => tournament.id === tournamentId);
-        if (current && participantListsEqual(current.participants, participants)) return prev;
+        if (current?.rosterLoaded && participantListsEqual(current.participants, participants)) return prev;
         return prev.map((tournament) =>
-          tournament.id === tournamentId ? { ...tournament, participants } : tournament,
+          tournament.id === tournamentId
+            ? { ...tournament, participants, rosterLoaded: true }
+            : tournament,
         );
       });
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  const loadAllRosters = useCallback(async () => {
+    try {
+      const grouped = await fetchParticipantsByTournament();
+      setTournaments((prev) => prev.map((tournament) => ({
+        ...tournament,
+        participants: grouped.get(tournament.id) ?? [],
+        rosterLoaded: true,
+      })));
     } catch (error) {
       console.error(error);
     }
@@ -331,6 +352,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       isLoading: isLoading || personnel.isLoading,
       loadError: loadError ?? personnel.error,
       fetchTournaments: refreshAll,
+      loadAllRosters,
       personnelRosters: personnel.rosters,
       personnelCommand: personnel.command,
       isPersonnelPending: personnel.isPending,
@@ -350,6 +372,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       isLoading,
       loadError,
       isRegistered,
+      loadAllRosters,
       refreshParticipants,
       toggleRegistration,
       tournaments,
@@ -361,6 +384,13 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   );
 
   return <TournamentContext.Provider value={value}>{children}</TournamentContext.Provider>;
+}
+
+export function useFullTournamentRosters() {
+  const { loadAllRosters } = useTournaments();
+  useEffect(() => {
+    void loadAllRosters();
+  }, [loadAllRosters]);
 }
 
 export function useTournaments() {

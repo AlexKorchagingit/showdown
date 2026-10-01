@@ -5,7 +5,7 @@ import {
   ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle,
   ExternalLink, Mail, X, Send,
 } from 'lucide-react';
-import { useTournaments } from '../context/TournamentContext';
+import { useFullTournamentRosters, useTournaments } from '../context/TournamentContext';
 import { compareByStart, isFinished, isHidden } from '../lib/tournamentStatus';
 import { FetchErrorCard } from '../components/FetchErrorCard';
 import { CLUB_ADDRESS_CITY, CLUB_ADDRESS_STREET } from '../lib/clubAddress';
@@ -343,6 +343,7 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
   const { nickname, equippedAvatar } = useProfile();
   const { userId, clubUsers } = useUser();
   const { tournaments } = useTournaments();
+  useFullTournamentRosters();
   const players = clubRatingPlayers(clubUsers, tournaments);
   const podium = podiumLayout(players);
   const meIndex = players.findIndex((player) => player.id === userId);

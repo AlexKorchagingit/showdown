@@ -39,7 +39,7 @@ interface FinanceContextValue {
   isTransactionVoiding: (transactionId: string) => boolean;
   isLoading: boolean;
   loadError: string | null;
-  refreshFinance: () => Promise<void>;
+  refreshFinance: (scope?: 'month' | 'all') => Promise<void>;
   isDealerHoursPending: (tournamentId: string, userId: string) => boolean;
   getDealerHours: (tournamentId: string, userId: string) => number;
   getDealerLoggedAt: (tournamentId: string, userId: string) => string | undefined;
@@ -72,7 +72,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const fetchSequence = useRef(0);
   const refreshing = useRef(new Set<string>());
   const mutationVersion = useRef(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const financeScopeRef = useRef<'month' | 'all'>('month');
   const { account } = useUser();
   const actorId = account?.id ?? '';
   const chargeRequests = useMemo(() => createChargeRequests(createCharge, undefined,
@@ -83,13 +84,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const actorRole = account?.role;
   const refreshScope = `${actorId}:${actorRole ?? ''}`;
 
-  const refreshFinance = useCallback(async () => {
+  const refreshFinance = useCallback(async (scope?: 'month' | 'all') => {
+    if (scope === 'all') financeScopeRef.current = 'all';
+    const effective = financeScopeRef.current === 'all' ? 'all' : (scope ?? 'month');
     if (refreshing.current.has(refreshScope)) return;
     refreshing.current.add(refreshScope);
     const sequence = ++fetchSequence.current;
     const version = mutationVersion.current;
     try {
-      const snapshot = await fetchFinanceSnapshot();
+      const snapshot = await fetchFinanceSnapshot(effective);
       if (sequence !== fetchSequence.current || version !== mutationVersion.current) return;
       setTransactions((prev) => reconcileTransactionSnapshot(prev, snapshot.transactions));
       setDealerHoursMap((prev) => mergeDealerHours(prev, snapshot.dealerHours));
@@ -106,22 +109,23 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [refreshScope]);
 
   useEffect(() => {
+    financeScopeRef.current = 'month';
     setTransactions([]);
     setDealerHoursMap({});
-    setIsLoading(true);
-    void refreshFinance();
+    setIsLoading(false);
     return () => { fetchSequence.current++; };
-  }, [actorId, actorRole, refreshFinance]);
+  }, [actorId, actorRole]);
 
   const financeWatch = financeWatchMode(location.pathname);
+  const onCashierRoute = location.pathname === '/admin/finance' || location.pathname.startsWith('/admin/finance/');
   useEffect(() => {
     if (!actorId || financeWatch === 'off') return;
     const pull = () => {
       if (document.visibilityState !== 'visible') return;
-      void refreshFinance();
+      void refreshFinance(financeWatch === 'all' ? 'all' : 'month');
     };
     pull();
-    if (financeWatch !== 'poll') return;
+    if (!onCashierRoute) return;
     const interval = window.setInterval(pull, FINANCE_POLL_MS);
     const onVisible = () => {
       if (document.visibilityState === 'visible') pull();

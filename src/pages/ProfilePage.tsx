@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, BarChart3, ChevronDown, ChevronRight, Settings, ShoppingCart } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useUser } from '../context/UserContext';
-import { CURRENT_USER_ID, useTournaments } from '../context/TournamentContext';
+import { CURRENT_USER_ID, useFullTournamentRosters, useTournaments } from '../context/TournamentContext';
 import { useFinance } from '../context/FinanceContext';
 import {
   characterProfileLeft,
@@ -39,6 +39,7 @@ export function ProfilePage() {
   const { nickname, slogan, backgroundImage, equippedChar } = useProfile();
   const { isAdmin, userId, clubUsers } = useUser();
   const { tournaments } = useTournaments();
+  useFullTournamentRosters();
   const { transactions, getDealerHours, markAllUnpaidForPlayer } = useFinance();
   const [isExpanded, setIsExpanded] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);

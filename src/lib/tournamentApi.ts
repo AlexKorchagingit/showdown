@@ -69,12 +69,13 @@ function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participan
   return grouped;
 }
 
+export async function fetchParticipantsByTournament(): Promise<Map<string, Participant[]>> {
+  return groupParticipants(await selectParticipantsSafe());
+}
+
 export async function fetchTournaments(): Promise<Tournament[]> {
-  const [{ data, error }, participantRows] = await withRequestDeadline(
-    Promise.all([
-      supabase.rpc('club_tournament_snapshot'),
-      selectParticipantsSafe(),
-    ]),
+  const { data, error } = await withRequestDeadline(
+    supabase.rpc('club_tournament_snapshot'),
     15_000,
   );
 
@@ -83,11 +84,10 @@ export async function fetchTournaments(): Promise<Tournament[]> {
     throw new Error(error?.message || 'Не удалось загрузить турниры');
   }
 
-  const grouped = groupParticipants(participantRows);
   return data.flatMap((item) => {
     const row = asTournamentRow(item);
     if (!row) return [];
-    return [tournamentFromRow(row, grouped.get(row.id) ?? [])];
+    return [tournamentFromRow(row, [])];
   });
 }
 
@@ -217,7 +217,8 @@ function sameSeat(left: Participant, right: Participant): boolean {
     left.rubiesAwarded === right.rubiesAwarded &&
     left.comment === right.comment &&
     (left.arrived === true) === (right.arrived === true) &&
-    (left.teamPartnerId ?? '') === (right.teamPartnerId ?? '')
+    (left.teamPartnerId ?? '') === (right.teamPartnerId ?? '') &&
+    (left.rosterRevision ?? 0) === (right.rosterRevision ?? 0)
   );
 }
 
@@ -269,9 +270,18 @@ export async function syncParticipantRows(
       comment: row.comment,
       arrived: row.arrived === true,
       team_partner_id: row.team_partner_id ?? player.teamPartnerId?.trim() ?? null,
+      seen_revision: (() => {
+        const editedFrom = findRosterSeat(previous, player, tournamentId);
+        return typeof editedFrom?.rosterRevision === 'number' && editedFrom.rosterRevision > 0
+          ? editedFrom.rosterRevision
+          : null;
+      })(),
     };
   });
-  await replaceParticipants(actorId, tournamentId, rows);
+  const saved = await replaceParticipants(actorId, tournamentId, rows);
+  if ((saved.stale_seats ?? 0) > 0) {
+    window.alert('Некоторые игроки уже изменены на другом экране. Их отметки и места оставлены как на сервере.');
+  }
 
   return fetchParticipants(tournamentId);
 }

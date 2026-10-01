@@ -24,6 +24,8 @@ export interface Participant {
    * Mutual A↔B pairs only; omitted / empty means the player is solo.
    */
   teamPartnerId?: string;
+  /** Server seat version. A stale edit does not overwrite a newer one. */
+  rosterRevision?: number;
 }
 
 export interface TournamentStaffMember {
@@ -68,8 +70,13 @@ export interface Tournament {
   guarantee: number;
   about: string;
   features: string[];
-  /** Occupied seats are always derived from this list — never stored separately. */
+  /** Occupied seats. Empty until this event's roster is opened, unless a screen asked for every roster. */
   participants: Participant[];
+  /** True after this event's seats were loaded, including an empty field. */
+  rosterLoaded?: boolean;
+  /** Seat count from the list snapshot, used before the roster is loaded. */
+  occupiedCount?: number;
+  arrivedCount?: number;
   /** Optional finishing table; statistic finalists also read displayed team place. */
   results?: Participant[];
   lateRegUntil: string;

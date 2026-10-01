@@ -12,6 +12,7 @@ import { FetchErrorCard } from '../../components/FetchErrorCard';
 import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentStatus';
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
+import { StackFeatureFields } from '../../components/admin/StackFeatureFields';
 import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
@@ -36,6 +37,13 @@ import {
 } from '../../lib/guestPlayer';
 import { sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
 import { isArrivedPlayer } from '../../lib/tournamentArrival';
+import {
+  featuresWithStackDraft,
+  isLegacyStartingStackLine,
+  parseStackFeatureLine,
+  stackDraftFromFeatures,
+} from '../../lib/stackFeatures';
+import { tournamentOffersAddon } from '../../lib/playerAnalytics';
 import { lobbyArrivedHitStyle, lobbyArrivedRowStyle, TMA_FILL } from '../../lib/tmaFill';
 import { FlatHit } from '../../components/FlatHit';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
@@ -892,9 +900,30 @@ function Editor({ tournament }: { tournament: Tournament }) {
               <h3 className={`${SECTION_TITLE} mb-3`} style={{ color: '#F2D8A7' }}>
                 Особенности (пунктами)
               </h3>
-              <FeatureListEditor
+              <StackFeatureFields
                 features={tournament.features}
-                onChange={(features) => patch({ features })}
+                fallbackStart={tournament.stackSize}
+                addonAvailable={tournamentOffersAddon(tournament)}
+                onChange={(features) => {
+                  const starting = stackDraftFromFeatures(features).starting;
+                  patch({
+                    features,
+                    ...(starting ? { stackSize: starting } : {}),
+                  });
+                }}
+              />
+              <FeatureListEditor
+                features={tournament.features.filter(
+                  (line) => !parseStackFeatureLine(line) && !isLegacyStartingStackLine(line),
+                )}
+                onChange={(features) =>
+                  patch({
+                    features: featuresWithStackDraft(
+                      features,
+                      stackDraftFromFeatures(tournament.features, tournament.stackSize),
+                    ),
+                  })
+                }
               />
             </section>
 
@@ -1014,7 +1043,11 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
 export function AdminTournamentEditor() {
   const { id } = useParams<{ id: string }>();
-  const { tournaments, isLoading, loadError, fetchTournaments } = useTournaments();
+  const { tournaments, isLoading, loadError, fetchTournaments, refreshParticipants } = useTournaments();
+
+  useEffect(() => {
+    if (id) void refreshParticipants(id);
+  }, [id, refreshParticipants]);
 
   const tournament = tournaments.find((t) => t.id === id);
   if (!tournament && isLoading) {

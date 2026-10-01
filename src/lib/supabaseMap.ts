@@ -65,6 +65,7 @@ export type ParticipantRow = {
   comment: string | null;
   arrived?: boolean;
   team_partner_id?: string | null;
+  roster_revision?: number | null;
 };
 
 /** Postgres `transactions` row. */
@@ -279,6 +280,9 @@ export function tournamentFromRow(row: TournamentRow, participants: Participant[
     about: asString(row.about),
     features: asStringArray(row.features),
     participants,
+    rosterLoaded: participants.length > 0,
+    occupiedCount: asNumber((row as TournamentRow & { occupied_count?: number }).occupied_count, participants.length),
+    arrivedCount: asNumber((row as TournamentRow & { arrived_count?: number }).arrived_count, 0),
     lateRegUntil: asString(row.late_reg_until),
     blindStructure: asString(row.blind_structure),
     blindStructureId: row.blind_structure_id || undefined,
@@ -365,6 +369,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
     comment: row.comment || undefined,
     arrived: row.arrived === true,
     teamPartnerId: row.team_partner_id?.trim() || undefined,
+    rosterRevision: typeof row.roster_revision === 'number' ? row.roster_revision : undefined,
   };
 }
 

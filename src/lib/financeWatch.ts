@@ -3,22 +3,21 @@ import { TIMER_ROUTE } from './timerTournament';
 /** Repeating cashier read. Slower than the old 15s poll on every tab. */
 export const FINANCE_POLL_MS = 60_000;
 
-export type FinanceWatch = 'poll' | 'once' | 'off';
+export type FinanceWatch = 'off' | 'month' | 'all';
 
 /**
- * The full ledger is heavy. Repeat it only while a cashier screen is open.
- * Screens that show those plates take one fresh copy when opened.
+ * Nothing downloads the ledger until a screen that shows it is open.
+ * Cashier repeats the current month plus debts. History screens take the full book once.
  */
 export function financeWatchMode(pathname: string): FinanceWatch {
-  if (pathname === '/admin/finance' || pathname.startsWith('/admin/finance/')) return 'poll';
+  if (pathname === '/admin/finance' || pathname.startsWith('/admin/finance/')) return 'month';
+  if (pathname === TIMER_ROUTE || pathname.startsWith('/admin/tournaments/')) return 'month';
   if (
-    pathname === TIMER_ROUTE
-    || pathname === '/admin/statistic'
-    || pathname.startsWith('/admin/tournaments/')
+    pathname === '/admin/statistic'
     || pathname === '/profile'
     || pathname.startsWith('/profile/')
   ) {
-    return 'once';
+    return 'all';
   }
   return 'off';
 }
