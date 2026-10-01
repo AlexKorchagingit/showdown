@@ -82,6 +82,18 @@ describe('playing levels with a cleared small-blind', () => {
     expect(isBreakLevel({ ...cleared, isBreak: true, smallBlind: 200 })).toBe(true);
   });
 
+  it('keeps a cleared duration of 0', () => {
+    const parsed = parseBlindLevel({
+      level: 1,
+      smallBlind: 100,
+      bigBlind: 200,
+      ante: 200,
+      durationMinutes: 0,
+      isBreak: false,
+    });
+    expect(parsed?.durationMinutes).toBe(0);
+  });
+
   it('keeps isBreak: false through parse so a saved 0/0 level stays a level', () => {
     const parsed = parseBlindLevel({
       level: 1,

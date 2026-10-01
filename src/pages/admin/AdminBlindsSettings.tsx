@@ -532,11 +532,9 @@ function LevelEditor({
                 <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
                   Мин
                 </span>
-                <input
-                  type="number"
+                <BlindAmountField
                   value={level.durationMinutes}
-                  onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
-                  className={FIELD_CLASS}
+                  onCommit={(value) => patchNumber(index, 'durationMinutes', String(value))}
                 />
               </label>
               <label className="block">
@@ -590,11 +588,9 @@ function LevelEditor({
                 <span className="block text-[9px] font-700 uppercase tracking-wide mb-1 text-white/40">
                   Мин
                 </span>
-                <input
-                  type="number"
+                <BlindAmountField
                   value={level.durationMinutes}
-                  onChange={(e) => patchNumber(index, 'durationMinutes', e.target.value)}
-                  className={FIELD_CLASS}
+                  onCommit={(value) => patchNumber(index, 'durationMinutes', String(value))}
                 />
               </label>
             </div>

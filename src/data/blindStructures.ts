@@ -516,7 +516,7 @@ export function parseBlindLevel(raw: unknown): BlindLevel | null {
     smallBlind,
     bigBlind,
     ante: bigBlind,
-    durationMinutes: Math.max(1, asFiniteNumber(row.durationMinutes, 20)),
+    durationMinutes: Math.max(0, Math.trunc(asFiniteNumber(row.durationMinutes, 20))),
   };
   level.isBreak = isBreak;
   if (row.isLateRegEnd === true) level.isLateRegEnd = true;
