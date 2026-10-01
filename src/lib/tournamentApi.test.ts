@@ -28,6 +28,7 @@ describe('roster equality guard', () => {
       [roster[0], { ...roster[1], comment: 'должен 1000' }],
       [roster[0], { ...roster[1], teamPartnerId: 'a' }],
       [roster[0], { ...roster[1], equippedAvatar: 'cat.png' }],
+      [roster[0], { ...roster[1], rosterRevision: 2 }],
       [roster[1], roster[0]],
     ];
     for (const next of changes) expect(participantListsEqual(roster, next)).toBe(false);

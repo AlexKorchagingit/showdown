@@ -27,7 +27,7 @@ import { createChargeRequests } from '../lib/chargeRequests';
 import { useUser } from './UserContext';
 import { isActiveTransaction, mergeTransactionUpdates, reconcileTransactionSnapshot } from '../lib/transactionVoid';
 import { createDealerHoursRequests, dealerKey, mergeDealerHours, type DealerHours } from '../lib/dealerHours';
-import { FINANCE_POLL_MS, financeWatchMode } from '../lib/financeWatch';
+import { effectiveFinanceScope, FINANCE_POLL_MS, financeWatchMode } from '../lib/financeWatch';
 
 function resolveLedgerUserId(userId: string): string | null {
   return ledgerChargeId(userId);
@@ -74,6 +74,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const mutationVersion = useRef(0);
   const [isLoading, setIsLoading] = useState(false);
   const financeScopeRef = useRef<'month' | 'all'>('month');
+  const pendingFullLedgerRef = useRef(false);
   const { account } = useUser();
   const actorId = account?.id ?? '';
   const chargeRequests = useMemo(() => createChargeRequests(createCharge, undefined,
@@ -85,9 +86,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const refreshScope = `${actorId}:${actorRole ?? ''}`;
 
   const refreshFinance = useCallback(async (scope?: 'month' | 'all') => {
-    if (scope === 'all') financeScopeRef.current = 'all';
-    const effective = financeScopeRef.current === 'all' ? 'all' : (scope ?? 'month');
-    if (refreshing.current.has(refreshScope)) return;
+    const effective = effectiveFinanceScope(financeScopeRef.current, scope);
+    if (effective === 'all') financeScopeRef.current = 'all';
+    if (refreshing.current.has(refreshScope)) {
+      if (effective === 'all') pendingFullLedgerRef.current = true;
+      return;
+    }
     refreshing.current.add(refreshScope);
     const sequence = ++fetchSequence.current;
     const version = mutationVersion.current;
@@ -105,6 +109,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     } finally {
       refreshing.current.delete(refreshScope);
       if (sequence === fetchSequence.current) setIsLoading(false);
+      if (pendingFullLedgerRef.current) {
+        pendingFullLedgerRef.current = false;
+        void refreshFinance('all');
+      }
     }
   }, [refreshScope]);
 

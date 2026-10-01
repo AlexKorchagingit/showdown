@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { financeWatchMode } from './financeWatch';
+import { effectiveFinanceScope, financeWatchMode } from './financeWatch';
 
 describe('financeWatchMode', () => {
   it('keeps the cashier on the current month until all-time is asked', () => {
@@ -18,9 +18,17 @@ describe('financeWatchMode', () => {
     expect(financeWatchMode('/profile/user-1')).toBe('all');
   });
 
+  it('keeps a full ledger once it has been requested', () => {
+    expect(effectiveFinanceScope('month', 'month')).toBe('month');
+    expect(effectiveFinanceScope('month', 'all')).toBe('all');
+    expect(effectiveFinanceScope('all', 'month')).toBe('all');
+    expect(effectiveFinanceScope('all')).toBe('all');
+  });
+
   it('does not download on the rest of the app', () => {
     expect(financeWatchMode('/')).toBe('off');
     expect(financeWatchMode('/admin/tournaments')).toBe('off');
+    expect(financeWatchMode('/admin/financeX')).toBe('off');
     expect(financeWatchMode('/tournaments/t-1')).toBe('off');
   });
 });

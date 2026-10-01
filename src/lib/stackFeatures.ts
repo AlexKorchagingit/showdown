@@ -10,6 +10,11 @@ function digits(value: string): number | null {
   return n;
 }
 
+/** A typed stack. Incomplete numbers (while the admin is still typing) are null. */
+export function parseStackAmount(raw: string): number | null {
+  return digits(raw.replace(/[^\d\s\u00a0]/g, ''));
+}
+
 export function parseStackFeatureLine(line: string): { kind: 'start' | 'rebuy' | 'addon'; amount: number } | null {
   const start = START_LINE.exec(line.trim());
   if (start) {

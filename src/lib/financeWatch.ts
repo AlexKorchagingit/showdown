@@ -3,6 +3,15 @@ import { TIMER_ROUTE } from './timerTournament';
 /** Repeating cashier read. Slower than the old 15s poll on every tab. */
 export const FINANCE_POLL_MS = 60_000;
 
+/** Once the full book is loaded, a narrower month read must not replace it. */
+export function effectiveFinanceScope(
+  current: 'month' | 'all',
+  requested?: 'month' | 'all',
+): 'month' | 'all' {
+  if (current === 'all' || requested === 'all') return 'all';
+  return 'month';
+}
+
 export type FinanceWatch = 'off' | 'month' | 'all';
 
 /**
