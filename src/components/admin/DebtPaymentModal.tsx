@@ -182,23 +182,22 @@ export function DebtPaymentModal({
                   <button
                     type="button"
                     disabled={busy || chosen.length === 0}
-                    onClick={() => onPay(chosen.map((tx) => tx.id))}
-                    className="h-12 rounded-xl text-[13px] font-800 text-white bg-green-600 active:scale-[0.98] disabled:opacity-45 transition-transform"
+                    onClick={() => onComp(chosen.map((tx) => tx.id))}
+                    className="h-12 rounded-xl text-[13px] font-800 active:scale-[0.98] disabled:opacity-45 transition-transform"
+                    style={{
+                      background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                      color: '#0A0908',
+                    }}
                   >
-                    {busy ? '…' : chosen.length === 0 ? 'Выберите' : payLabel}
+                    {chosen.length === 0 ? 'Выберите' : ticketLabel}
                   </button>
                   <button
                     type="button"
                     disabled={busy || chosen.length === 0}
-                    onClick={() => onComp(chosen.map((tx) => tx.id))}
-                    className="h-12 rounded-xl text-[13px] font-800 active:scale-[0.98] disabled:opacity-45 transition-transform"
-                    style={{
-                      background: 'rgba(34,197,94,0.16)',
-                      border: '1px solid rgba(34,197,94,0.45)',
-                      color: '#86efac',
-                    }}
+                    onClick={() => onPay(chosen.map((tx) => tx.id))}
+                    className="h-12 rounded-xl text-[13px] font-800 text-white bg-green-600 active:scale-[0.98] disabled:opacity-45 transition-transform"
                   >
-                    {chosen.length === 0 ? 'Выберите' : ticketLabel}
+                    {busy ? '…' : chosen.length === 0 ? 'Выберите' : payLabel}
                   </button>
                 </>
               )}
