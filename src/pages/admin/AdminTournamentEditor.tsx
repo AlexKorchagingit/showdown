@@ -43,7 +43,6 @@ import {
   parseStackFeatureLine,
   stackDraftFromFeatures,
 } from '../../lib/stackFeatures';
-import { tournamentOffersAddon } from '../../lib/playerAnalytics';
 import { lobbyArrivedHitStyle, lobbyArrivedRowStyle, TMA_FILL } from '../../lib/tmaFill';
 import { FlatHit } from '../../components/FlatHit';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
@@ -903,7 +902,6 @@ function Editor({ tournament }: { tournament: Tournament }) {
               <StackFeatureFields
                 features={tournament.features}
                 fallbackStart={tournament.stackSize}
-                addonAvailable={tournamentOffersAddon(tournament)}
                 onChange={(features) => {
                   const starting = stackDraftFromFeatures(features).starting;
                   patch({

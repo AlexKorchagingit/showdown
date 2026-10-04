@@ -9,7 +9,6 @@ import {
 interface Props {
   features: string[];
   fallbackStart: number;
-  addonAvailable: boolean;
   onChange: (features: string[]) => void;
 }
 
@@ -81,9 +80,8 @@ function StackNumberInput({
   );
 }
 
-export function StackFeatureFields({ features, fallbackStart, addonAvailable, onChange }: Props) {
+export function StackFeatureFields({ features, fallbackStart, onChange }: Props) {
   const draft = stackDraftFromFeatures(features, fallbackStart);
-  const addonOn = addonAvailable || draft.addon !== null;
 
   const write = (patch: Partial<StackDraft>) => {
     onChange(featuresWithStackDraft(features, { ...draft, ...patch }));
@@ -111,18 +109,16 @@ export function StackFeatureFields({ features, fallbackStart, addonAvailable, on
           write({ rebuy });
         }}
       />
-      {addonOn ? (
-        <StackNumberInput
-          label="Стек аддона"
-          committed={draft.addon}
-          placeholder="Число фишек"
-          allowEmpty
-          onCommit={(addon) => {
-            if (addon === draft.addon) return;
-            write({ addon });
-          }}
-        />
-      ) : null}
+      <StackNumberInput
+        label="Стек аддона"
+        committed={draft.addon}
+        placeholder="Пусто — без аддона"
+        allowEmpty
+        onCommit={(addon) => {
+          if (addon === draft.addon) return;
+          write({ addon });
+        }}
+      />
     </div>
   );
 }
