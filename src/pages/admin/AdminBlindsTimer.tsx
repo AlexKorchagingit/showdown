@@ -431,7 +431,7 @@ export function AdminBlindsTimer() {
               <img
                 src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
                 alt=""
-                className="pointer-events-none absolute bottom-[calc(100%-12px)] left-1/2 z-20 h-[320px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom"
+                className="pointer-events-none absolute bottom-[calc(100%-12px)] left-1/2 z-20 h-[260px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom"
               />
               <section className="relative z-10 w-full min-w-0 overflow-hidden rounded-2xl border border-white/[0.05] bg-white/[0.03] px-4 pb-3 pt-2 text-center backdrop-blur-sm">
                 <p className="text-[11px] font-800 uppercase tracking-[0.28em] text-[#D99962] md:text-xs">
