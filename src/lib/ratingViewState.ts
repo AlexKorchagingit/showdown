@@ -8,14 +8,14 @@ export type RatingViewState = {
   scrollTop: number;
 };
 
-const STORAGE_KEY = 'showdown.rating-view';
+const STORAGE_KEY = 'showdown.rating-view.v2';
 
 const TABS = new Set<RatingTab>(['general', 'seasonal']);
 const COLUMNS = new Set<RatingMetricColumn>(['tournaments', 'wins', 'knockouts']);
 
 function defaultState(): RatingViewState {
   return {
-    tab: 'general',
+    tab: 'seasonal',
     month: new Date().getMonth(),
     column: 'tournaments',
     scrollTop: 0,

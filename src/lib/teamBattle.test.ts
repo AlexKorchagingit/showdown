@@ -72,6 +72,22 @@ describe('TEAM BATTLE pairing', () => {
     }
   });
 
+  it('leaves seats that already have a teammate out of a new draw', () => {
+    const start = setTeamPartner(
+      [player('a'), player('b'), player('c'), player('d'), player('e')],
+      'a',
+      'b',
+    );
+    const next = assignRandomTeamPairs(start, 't-team', () => 0);
+    expect(next.find((row) => row.id === 'a')?.teamPartnerId).toBe('b');
+    expect(next.find((row) => row.id === 'b')?.teamPartnerId).toBe('a');
+    const fresh = next.filter((row) => row.id !== 'a' && row.id !== 'b' && row.teamPartnerId);
+    expect(fresh).toHaveLength(2);
+    for (const row of fresh) {
+      expect(findTeamPartner(next, row, 't-team')?.teamPartnerId).toBe(row.id);
+    }
+  });
+
   it('reassigns a pair by tap and frees the previous partners', () => {
     const start = setTeamPartner(
       setTeamPartner([player('a'), player('b'), player('c'), player('d')], 'a', 'b'),

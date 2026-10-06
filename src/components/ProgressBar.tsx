@@ -43,7 +43,9 @@ export function ProgressBar({ value, max, className = '' }: Props) {
       </div>
 
       <p className="text-sm text-gray-400 text-right">
-        Свободно: {free} {seatsWord(free)}
+        {value > max
+          ? `В очереди: ${value - max}`
+          : `Свободно: ${free} ${seatsWord(free)}`}
       </p>
     </div>
   );

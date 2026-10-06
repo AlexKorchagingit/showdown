@@ -26,6 +26,8 @@ export interface Participant {
   teamPartnerId?: string;
   /** Server seat version. A stale edit does not overwrite a newer one. */
   rosterRevision?: number;
+  /** When this seat was created. Signup order for the lobby waitlist. */
+  joinedAt?: string;
 }
 
 export interface TournamentStaffMember {

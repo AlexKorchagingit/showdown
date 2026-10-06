@@ -34,13 +34,16 @@ function asTournamentRow(data: unknown): TournamentRow | null {
 }
 
 async function selectParticipants(tournamentId?: string): Promise<JoinedParticipantRow[]> {
-  let query = supabase.from('participants').select(PARTICIPANT_SELECT_WITH_USER);
+  let query = supabase
+    .from('participants')
+    .select(PARTICIPANT_SELECT_WITH_USER)
+    .order('created_at', { ascending: true });
   if (tournamentId) query = query.eq('tournament_id', tournamentId);
   const { data, error } = await query;
   if (!error && data) return data as unknown as JoinedParticipantRow[];
   logSupabaseError(error, 'participants embed users');
 
-  let fallback = supabase.from('participants').select('*');
+  let fallback = supabase.from('participants').select('*').order('created_at', { ascending: true });
   if (tournamentId) fallback = fallback.eq('tournament_id', tournamentId);
   const retry = await fallback;
   if (retry.error || !retry.data) {

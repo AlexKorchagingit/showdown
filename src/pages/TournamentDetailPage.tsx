@@ -28,6 +28,7 @@ import {
   withClubSeasonRating,
 } from '../lib/clubRating';
 import { cashierFieldSize, finishedLobbyPlayers } from '../lib/tournamentArrival';
+import { splitLobbyQueue } from '../lib/lobbyQueue';
 import { publicStackFeatureLines } from '../lib/chipStacks';
 import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
 import { TournamentArtImage } from '../components/TournamentArtImage';
@@ -192,7 +193,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   );
   const visible = tournamentFinished ? finishedLobbyPlayers(seated) : seated;
   const teamBattle = isTeamBattleEvent(live);
-  const participants = tournamentFinished
+  const finishedOrder = tournamentFinished
     ? [...visible].sort((a, b) => {
         const teamA = displayedTeamPlace(a, live) ?? a.place ?? Number.POSITIVE_INFINITY;
         const teamB = displayedTeamPlace(b, live) ?? b.place ?? Number.POSITIVE_INFINITY;
@@ -202,7 +203,12 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
         if (placeA !== placeB) return placeA - placeB;
         return a.nickname.localeCompare(b.nickname, 'ru');
       })
-    : sortByRating(visible);
+    : [];
+  const queueSplit = tournamentFinished
+    ? { field: finishedOrder, queue: [] as typeof visible }
+    : splitLobbyQueue(visible, live.totalSeats);
+  const participants = tournamentFinished ? finishedOrder : sortByRating(queueSplit.field);
+  const queue = queueSplit.queue;
   const occupiedSeats = tournamentFinished ? participants.length : seated.length;
   const fieldSize = Math.max(cashierFieldSize(live), participants.length);
   const tableSize = finalTableSize(fieldSize);
@@ -335,7 +341,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <h3 className="text-sm font-bold text-white uppercase">
-                  Участники ({participants.length}/{live.totalSeats})
+                  Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
                 <span className="text-sm text-gray-400 text-right mt-1">
                   {tournamentFinished ? 'Очки' : 'Рейтинг сезона'}
@@ -347,7 +353,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
                   Загрузка участников…
                 </p>
-              ) : participants.length === 0 ? (
+              ) : participants.length === 0 && queue.length === 0 ? (
                 <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
                   {tournamentFinished
                     ? 'В кассе никого не выбыло'
@@ -355,14 +361,17 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </p>
               ) : (
                 <div>
-                  {participants.map((p, idx) => {
+                  {[
+                    ...participants.map((player, index) => ({ player, queued: false, seatIndex: index })),
+                    ...queue.map((player, index) => ({ player, queued: true, seatIndex: index })),
+                  ].map(({ player: p, queued, seatIndex }, idx) => {
                     const isClosedRow  = tournamentFinished;
                     const partner = teamBattle
                       ? findTeamPartner(live.participants, p, live.id)
                       : undefined;
                     const teamPlace = displayedTeamPlace(p, live);
                     // Open lobby: position in this field, not leftover finishing place.
-                    const placeNum = isClosedRow ? (teamPlace ?? p.place ?? null) : idx + 1;
+                    const placeNum = isClosedRow ? (teamPlace ?? p.place ?? null) : queued ? null : seatIndex + 1;
                     const isPodium     = isClosedRow && teamPlace != null && teamPlace <= 3;
                     const isFinalTable = isClosedRow && teamPlace != null && teamPlace <= tableSize;
                     const wreathColor  = teamPlace != null
@@ -378,6 +387,14 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
                     return (
                       <div key={p.id}>
+                        {queued && seatIndex === 0 ? (
+                          <div
+                            className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
+                            style={{ color: '#D99962' }}
+                          >
+                            Очередь
+                          </div>
+                        ) : null}
                         {isClosedRow && idx === 0 && participants.some((row) => (displayedTeamPlace(row, live) ?? 99) <= tableSize) && (
                           <>
                             <div className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
@@ -424,6 +441,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                                   : { color: '#ffffff' }
                               }
                             />
+                            {queued ? (
+                              <p className="text-[11px] mt-0.5 truncate" style={{ color: '#F2D8A7' }}>
+                                В очереди
+                              </p>
+                            ) : null}
                             {partner ? (
                               <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
                                 {partner.nickname}

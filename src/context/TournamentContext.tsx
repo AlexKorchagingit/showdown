@@ -226,8 +226,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         }
         setTournaments((prev) => prev.map((row) => row.id === tournamentId ? {
           ...row,...metadataPatch,
-          ...(confirmedParticipants?{participants:confirmedParticipants,
-            totalSeats:Math.max(metadataPatch.totalSeats??row.totalSeats,confirmedParticipants.length)}:{}),
+          ...(confirmedParticipants?{participants:confirmedParticipants}:{}),
         }:row));
       } catch (error) {
         console.error(error);

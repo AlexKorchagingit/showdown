@@ -6,9 +6,9 @@ describe('ratingViewState', () => {
     resetRatingView();
   });
 
-  it('starts on the general tab at the top of the list', () => {
+  it('starts on the seasonal tab at the top of the list', () => {
     const view = readRatingView();
-    expect(view.tab).toBe('general');
+    expect(view.tab).toBe('seasonal');
     expect(view.column).toBe('tournaments');
     expect(view.scrollTop).toBe(0);
   });

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Gem, Users } from 'lucide-react';
+import { Gem, Search, Users } from 'lucide-react';
+import { matchesPlayerSearch } from '../../lib/playerSearch';
 import { CompactHeader } from '../../components/CompactHeader';
 import { CoinBalance } from '../../components/CoinBalance';
 import { useProfile } from '../../context/ProfileContext';
@@ -20,6 +21,7 @@ export function AdminRubyScreen() {
   const { email, clubUsers, isLoading, refreshClubUsers, refreshAccount } = useUser();
   const { coins, addCoins } = useProfile();
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState('');
   const [target, setTarget] = useState<GrantTarget | null>(null);
   const [amount, setAmount] = useState('100');
   const [comment, setComment] = useState('');
@@ -49,6 +51,10 @@ export function AdminRubyScreen() {
           },
     );
   }, [clubUsers, email, coins]);
+  const visibleAccounts = useMemo(
+    () => accounts.filter((account) => matchesPlayerSearch(account, query)),
+    [accounts, query],
+  );
 
   const parsedAmount = Math.floor(Number(amount));
   const canSave = Number.isFinite(parsedAmount) && parsedAmount > 0;
@@ -117,11 +123,34 @@ export function AdminRubyScreen() {
           Начисление рубинов. Онлайн-игрок получает баланс сразу, остальные — попап при входе.
         </p>
 
+        <label className="relative mb-3 block">
+          <Search
+            size={14}
+            strokeWidth={2.4}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: '#A39B98' }}
+          />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Поиск по нику"
+            className="w-full h-10 rounded-lg pl-9 pr-3 text-[13px] text-white outline-none"
+            style={{
+              background: '#231A16',
+              border: '1px solid rgba(217,153,98,0.35)',
+            }}
+          />
+        </label>
+
         {isLoading && accounts.length === 0 ? (
           <ScreenLoading label="Загрузка пользователей…" />
+        ) : visibleAccounts.length === 0 ? (
+          <p className="text-center text-[13px] font-500 py-8" style={{ color: '#6B6360' }}>
+            Никого не нашли
+          </p>
         ) : (
         <div className="space-y-3">
-          {accounts.map((account) => (
+          {visibleAccounts.map((account) => (
             <div
               key={account.id}
               className="flex items-start gap-3 rounded-2xl px-4 py-3.5"

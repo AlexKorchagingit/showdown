@@ -344,7 +344,7 @@ function RatingSection({ onNavigate }: { onNavigate: () => void }) {
   const { userId, clubUsers } = useUser();
   const { tournaments } = useTournaments();
   useFullTournamentRosters();
-  const players = clubRatingPlayers(clubUsers, tournaments);
+  const players = clubRatingPlayers(clubUsers, tournaments, new Date().getMonth());
   const podium = podiumLayout(players);
   const meIndex = players.findIndex((player) => player.id === userId);
   const me = meIndex >= 0 ? players[meIndex] : null;

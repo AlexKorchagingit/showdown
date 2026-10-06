@@ -21,6 +21,7 @@ import { TournamentArtImage } from '../../components/TournamentArtImage';
 import { fileToTournamentImageUrl } from '../../lib/tournamentPhoto';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countOccupiedLobbySeats } from '../../lib/clubRating';
+import { splitLobbyQueue } from '../../lib/lobbyQueue';
 import { CopyTournamentModal } from '../../components/admin/CopyTournamentModal';
 import { DeleteTournamentModal } from '../../components/admin/DeleteTournamentModal';
 import {
@@ -49,7 +50,6 @@ import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
 import {
   assignRandomTeamPairs,
   findTeamPartner,
-  hasAnyTeamPair,
   isTeamBattleEvent,
   rebindTeamPartnerIdentity,
   removeSeatKeepingTeams,
@@ -196,6 +196,7 @@ function ParticipantsEditor({
   onBindGuest,
   onRemove,
   onDistributeTeams,
+  distributeNote,
   onStartPairing,
   onPickPartner,
   onClearPartner,
@@ -217,13 +218,27 @@ function ParticipantsEditor({
   onBindGuest: (id: string) => void;
   onRemove: (id: string) => void;
   onDistributeTeams: () => void;
+  distributeNote: string | null;
   onStartPairing: (id: string) => void;
   onPickPartner: (playerId: string, partnerId: string) => void;
   onClearPartner: (playerId: string) => void;
 }) {
   const { tournaments } = useTournaments();
   const seasonById = seasonPointsByUserId(clubUsers, tournaments);
-  const ranked = sortByRating(participants.map((p) => withClubSeasonRating(p, seasonById)));
+  const withSeason = (player: Participant) => withClubSeasonRating(player, seasonById);
+  const queueSplit = splitLobbyQueue(participants, pairingEnabled ? totalSeats : participants.length);
+  const displayRows = [
+    ...sortByRating(queueSplit.field.map(withSeason)).map((player, index) => ({
+      player,
+      queued: false,
+      seatIndex: index,
+    })),
+    ...queueSplit.queue.map((player, index) => ({
+      player: withSeason(player),
+      queued: true,
+      seatIndex: index,
+    })),
+  ];
   const emailById = new Map(clubUsers.map((user) => [user.id, user.email]));
   const pairingPlayer = pairingPlayerId
     ? participants.find((player) => player.id === pairingPlayerId)
@@ -258,7 +273,14 @@ function ParticipantsEditor({
             }}
           >
             <Users size={16} strokeWidth={2.4} />
-            Распределить команды
+            <span className="flex flex-col items-center leading-tight">
+              <span>Распределить команды</span>
+              {distributeNote ? (
+                <span className="text-[11px] font-700" style={{ color: '#86efac' }}>
+                  {distributeNote}
+                </span>
+              ) : null}
+            </span>
           </button>
         ) : null}
       </div>
@@ -275,14 +297,15 @@ function ParticipantsEditor({
         </span>
       </div>
 
-      {ranked.length === 0 ? (
+      {displayRows.length === 0 ? (
         <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
           Участники не добавлены
         </p>
       ) : (
         <div>
-          {ranked.map((p, idx) => {
-            const isFinalTable = idx < 9;
+          {displayRows.map(({ player: p, queued, seatIndex }) => {
+            const idx = queued ? seatIndex : seatIndex;
+            const isFinalTable = !queued && seatIndex < 9;
             const arrived = isArrivedPlayer(p);
             const unboundGuest = isUnboundGuestSeat(p);
             const uid = sanitizeParticipantUserId(p.userId ?? p.id);
@@ -292,6 +315,14 @@ function ParticipantsEditor({
 
             return (
               <div key={p.id}>
+              {queued && seatIndex === 0 ? (
+                <div
+                  className="px-5 pt-3 pb-1 text-[10px] font-700 uppercase tracking-[0.15em]"
+                  style={{ color: '#D99962', borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  Очередь
+                </div>
+              ) : null}
               <div
                 className="tma-opaque flex items-center gap-3 px-5 py-3 overflow-hidden"
                 style={lobbyArrivedRowStyle({ idx, arrived, pairingThis })}
@@ -314,13 +345,18 @@ function ParticipantsEditor({
                   className="text-[11px] font-700 w-5 text-right shrink-0"
                   style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                 >
-                  {idx + 1}
+                  {queued ? '—' : idx + 1}
                 </span>
 
                 <PlayerAvatar playerId={p.id} nickname={p.nickname} size="sm" />
 
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-600 truncate text-white">{p.nickname}</p>
+                  {queued ? (
+                    <p className="text-[11px] truncate" style={{ color: '#F2D8A7' }}>
+                      В очереди
+                    </p>
+                  ) : null}
                   {email ? (
                     <p className="text-[11px] text-white/80 truncate">{email}</p>
                   ) : unboundGuest ? (
@@ -459,6 +495,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const [addOpen, setAddOpen] = useState(false);
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [pairingPlayerId, setPairingPlayerId] = useState<string | null>(null);
+  const [distributeNote, setDistributeNote] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFinished = hasFinished(tournament);
@@ -605,12 +642,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
       ],
       tournament,
     );
-    void patch({
-      participants: nextParticipants,
-      ...(nextParticipants.length > tournament.totalSeats
-        ? { totalSeats: nextParticipants.length }
-        : {}),
-    });
+    void patch({ participants: nextParticipants });
     setAddOpen(false);
   };
 
@@ -675,16 +707,18 @@ function Editor({ tournament }: { tournament: Tournament }) {
       window.alert('Отметьте в кассе хотя бы двух игроков');
       return;
     }
-    if (hasAnyTeamPair(tournament.participants)) {
-      window.alert('Команды уже распределены. Нажмите кнопку пары у игрока, чтобы сменить сокомандника.');
+    const free = arrived.filter((player) => !player.teamPartnerId?.trim());
+    if (free.length < 2) {
+      setDistributeNote('Готово, уже распределено');
       return;
     }
-    if (!window.confirm('Случайно распределить пары среди игроков, которые пришли на турнир?')) {
+    if (!window.confirm('Случайно распределить пары среди игроков без команды? У кого сокомандник уже стоит, тех не трогаем.')) {
       return;
     }
     void patch({
       participants: assignRandomTeamPairs(tournament.participants, tournament.id),
     });
+    setDistributeNote('Готово, уже распределено');
   };
 
   const pickPartner = (playerId: string, partnerId: string) => {
@@ -971,6 +1005,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
             }}
             onRemove={removeParticipant}
             onDistributeTeams={distributeTeams}
+            distributeNote={distributeNote}
             onStartPairing={(id) => setPairingPlayerId((current) => (current === id ? null : id))}
             onPickPartner={pickPartner}
             onClearPartner={clearPartner}

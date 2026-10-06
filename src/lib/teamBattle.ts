@@ -121,20 +121,35 @@ export function rebindTeamPartnerIdentity(
   });
 }
 
-/** Unique mutual pairs among cashier seats. The leftover odd player stays solo. */
+/** Arrived seats that already have a teammate stay out of a new draw. */
+function lockedTeamSeatIds(players: readonly Participant[], tournamentId: string): Set<string> {
+  const locked = new Set<string>();
+  for (const player of players) {
+    if (!isArrivedPlayer(player) || !player.teamPartnerId?.trim()) continue;
+    locked.add(player.id);
+    const partner = findTeamPartner(players, player, tournamentId);
+    if (partner) locked.add(partner.id);
+  }
+  return locked;
+}
+
+/** Unique mutual pairs among cashier seats that do not already have a teammate. */
 export function assignRandomTeamPairs(
   players: Participant[],
   tournamentId = '',
   random: () => number = Math.random,
 ): Participant[] {
-  const ids = players.filter(isArrivedPlayer).map((player) => player.id);
+  const locked = lockedTeamSeatIds(players, tournamentId);
+  const ids = players
+    .filter((player) => isArrivedPlayer(player) && !locked.has(player.id))
+    .map((player) => player.id);
   for (let index = ids.length - 1; index > 0; index -= 1) {
     const swapWith = Math.floor(random() * (index + 1));
     const current = ids[index]!;
     ids[index] = ids[swapWith]!;
     ids[swapWith] = current;
   }
-  let next = players.map((player) => withPartner(player, undefined));
+  let next = players;
   for (let index = 0; index + 1 < ids.length; index += 2) {
     next = setTeamPartner(next, ids[index]!, ids[index + 1]!, tournamentId);
   }

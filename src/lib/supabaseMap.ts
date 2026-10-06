@@ -66,6 +66,7 @@ export type ParticipantRow = {
   arrived?: boolean;
   team_partner_id?: string | null;
   roster_revision?: number | null;
+  created_at?: string | null;
 };
 
 /** Postgres `transactions` row. */
@@ -370,6 +371,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
     arrived: row.arrived === true,
     teamPartnerId: row.team_partner_id?.trim() || undefined,
     rosterRevision: typeof row.roster_revision === 'number' ? row.roster_revision : undefined,
+    joinedAt: row.created_at?.trim() || undefined,
   };
 }
 
