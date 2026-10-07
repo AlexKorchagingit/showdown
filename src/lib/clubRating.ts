@@ -1,6 +1,6 @@
 import type { Participant, Tournament } from '../types/tournament';
 import type { RatingPlayer } from '../types/player';
-import { guestUsersFromTournaments, isUnboundGuestSeat } from './guestPlayer';
+import { guestSeatKey, guestUsersFromTournaments, isUnboundGuestSeat } from './guestPlayer';
 import type { MappedUser } from './supabaseMap';
 import { sanitizeParticipantUserId } from './supabaseMap';
 import { collectPlayerGameHistory, summarizePlayerGameHistory } from './playerAnalytics';
@@ -94,22 +94,24 @@ export function clubRatingPlayers(
     );
 }
 
-/** Season totals from closed events, keyed by `users.id`. */
+/** Current-month totals from closed events, keyed by `users.id` or `guest-…`. */
 export function seasonPointsByUserId(
   users: MappedUser[],
   tournaments: Tournament[],
+  month: number = new Date().getMonth(),
 ): Map<string, number> {
-  return new Map(clubRatingPlayers(users, tournaments).map((row) => [row.id, row.points]));
+  return new Map(clubRatingPlayers(users, tournaments, month).map((row) => [row.id, row.points]));
 }
 
-/** Replace a seat's stored snapshot with live club season points when the player is a club user. */
+/** Replace a seat's stored snapshot with live season points for this club account or guest nick. */
 export function withClubSeasonRating(
   player: Participant,
   pointsById: Map<string, number>,
 ): Participant {
   const uid = sanitizeParticipantUserId(player.userId ?? player.id);
-  if (!uid) return player;
-  const points = pointsById.get(uid);
+  const key = uid || (isUnboundGuestSeat(player) ? guestSeatKey(player.id) : '');
+  if (!key) return player;
+  const points = pointsById.get(key);
   if (points == null || points === player.rating) return player;
   return { ...player, rating: points };
 }

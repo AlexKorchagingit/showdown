@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clubRatingPlayers, lobbySeatedPlayers } from './clubRating';
+import { clubRatingPlayers, lobbySeatedPlayers, seasonPointsByUserId, withClubSeasonRating } from './clubRating';
 import { collectPlayerGameHistory } from './playerAnalytics';
 import type { MappedUser } from './supabaseMap';
 import type { Participant, Tournament } from '../types/tournament';
@@ -69,5 +69,17 @@ describe('guest seats in rating and lobby', () => {
   it('shows guest seats in the closed lobby list', () => {
     const seated = lobbySeatedPlayers(tournament.participants, new Set(['user-1']));
     expect(seated.map((row) => row.nickname)).toEqual(['Club', 'Иван']);
+  });
+
+  it('lobby season points are the current month, not the all-time total', () => {
+    const august = seasonPointsByUserId([club], [tournament], 7);
+    const october = seasonPointsByUserId([club], [tournament], 9);
+    expect(august.get('user-1')).toBeGreaterThan(0);
+    expect(october.get('user-1')).toBe(0);
+    const shown = withClubSeasonRating(
+      { id: 'user-1', userId: 'user-1', nickname: 'Club', rating: 99_999 },
+      october,
+    );
+    expect(shown.rating).toBe(0);
   });
 });

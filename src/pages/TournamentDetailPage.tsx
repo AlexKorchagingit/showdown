@@ -184,9 +184,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
   const tournamentFinished = hasFinished(live);
   const knownIds = clubUserIdSet(clubUsers);
+  const seasonMonth = new Date().getMonth();
   const seasonById = useMemo(
-    () => seasonPointsByUserId(clubUsers, tournaments),
-    [clubUsers, tournaments],
+    () => seasonPointsByUserId(clubUsers, tournaments, seasonMonth),
+    [clubUsers, tournaments, seasonMonth],
   );
   const seated = lobbySeatedPlayers(live.participants, knownIds).map((player) =>
     withClubSeasonRating(player, seasonById),
