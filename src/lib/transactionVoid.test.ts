@@ -56,7 +56,7 @@ describe('non-destructive financial cancellation',()=>{
     const tournament: Tournament = {id:'event',title:'Test',startDate:'2026-09-03',startTime:'19:00',isClosed:false,
       imageUrl:'',address:'Test',totalSeats:27,about:'',lateRegUntil:'21:00',blindStructure:'Test',
       stackSize:30000,levelDuration:'15',guarantee:0,features:[],
-      participants:[{id:'user',userId:'user',nickname:'Test',rating:0}]};
+      participants:[{id:'user',userId:'user',nickname:'Test',rating:0,arrived:true}]};
     const ledger = [paid,{...tx,id:'unpaid'}, {...cancelled,id:'cancelled-paid',type:'rebuy' as const},
       {...cancelled,id:'cancelled-unpaid',status:'unpaid' as const,amount:7000,type:'addon' as const}];
     expect(hasGlobalUnpaidDebt([ledger[3]],'user')).toBe(false);

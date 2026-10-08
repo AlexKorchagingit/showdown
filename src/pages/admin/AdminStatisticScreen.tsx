@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -20,11 +21,21 @@ import {
   formatAvgRebuys,
 } from '../../lib/playerAnalytics';
 import {
+  computeClubLeaders,
   computeClubStatistics,
   filterStatisticTournaments,
   tournamentTitles,
+  type ClubLeader,
   type StatsPeriod,
 } from '../../lib/clubStatistics';
+import { clubRatingPlayers } from '../../lib/clubRating';
+
+type LeaderScope = 'season' | 'all';
+
+const SCOPES: { id: LeaderScope; label: string }[] = [
+  { id: 'season', label: 'Сезон' },
+  { id: 'all', label: 'Общий' },
+];
 
 const PERIODS: { id: StatsPeriod; label: string }[] = [
   { id: 'week', label: 'Неделя' },
@@ -70,20 +81,46 @@ function LeaderList({
   rows,
   suffix,
   empty,
+  scope,
+  onScope,
 }: {
   title: string;
-  rows: { nickname: string; value: number }[];
+  rows: ClubLeader[];
   suffix: string;
   empty: string;
+  scope: LeaderScope;
+  onScope: (scope: LeaderScope) => void;
 }) {
   return (
     <section
       className="rounded-2xl p-4"
       style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <h3 className="text-[11px] font-800 uppercase tracking-[0.16em] mb-3" style={{ color: '#F2D8A7' }}>
-        {title}
-      </h3>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h3 className="text-[11px] font-800 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
+          {title}
+        </h3>
+        <div className="flex shrink-0 rounded-lg p-0.5" style={{ background: '#1E1612' }}>
+          {SCOPES.map(({ id, label }) => {
+            const active = scope === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onScope(id)}
+                aria-pressed={active}
+                className="px-2.5 py-1 rounded-md text-[10px] font-800 uppercase tracking-wide transition-colors"
+                style={{
+                  background: active ? 'linear-gradient(to right, #8C4C27, #D99962)' : 'transparent',
+                  color: active ? '#0A0908' : '#6B6360',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       {rows.length === 0 ? (
         <p className="text-[13px]" style={{ color: '#6B6360' }}>
           {empty}
@@ -92,7 +129,7 @@ function LeaderList({
         <div className="space-y-2">
           {rows.map((row, index) => (
             <div
-              key={`${title}-${row.nickname}`}
+              key={`${title}-${row.id}`}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5"
               style={{ background: 'rgba(17,11,9,0.55)' }}
             >
@@ -116,14 +153,51 @@ function LeaderList({
   );
 }
 
+function Notice({
+  tone,
+  children,
+  action,
+}: {
+  tone: 'info' | 'error';
+  children: string;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div
+      className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 mb-3 text-[12px] font-600"
+      style={{
+        background: tone === 'error' ? 'rgba(239,68,68,0.12)' : 'rgba(217,153,98,0.12)',
+        border: `1px solid ${tone === 'error' ? 'rgba(239,68,68,0.35)' : 'rgba(217,153,98,0.3)'}`,
+        color: tone === 'error' ? '#f87171' : '#F2D8A7',
+      }}
+    >
+      <span>{children}</span>
+      {action ? (
+        <button
+          type="button"
+          onClick={action.onClick}
+          className="shrink-0 underline font-800"
+        >
+          {action.label}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function AdminStatisticScreen() {
-  const { tournaments } = useTournaments();
+  const navigate = useNavigate();
+  const { tournaments, isLoading: tournamentsLoading } = useTournaments();
   useFullTournamentRosters();
-  const { transactions } = useFinance();
+  const { transactions, isLoading: financeLoading, loadError: financeError, refreshFinance } = useFinance();
   const { clubUsers } = useUser();
   const [period, setPeriod] = useState<StatsPeriod>('all');
   const [format, setFormat] = useState('all');
+  const [attendanceScope, setAttendanceScope] = useState<LeaderScope>('season');
+  const [finalistScope, setFinalistScope] = useState<LeaderScope>('season');
+  const [bountyScope, setBountyScope] = useState<LeaderScope>('season');
 
+  const rostersReady = tournaments.length > 0 && tournaments.every((row) => row.rosterLoaded);
   const formats = useMemo(() => tournamentTitles(tournaments), [tournaments]);
   const filtered = useMemo(
     () => filterStatisticTournaments(tournaments, period, format),
@@ -134,6 +208,25 @@ export function AdminStatisticScreen() {
     [filtered, transactions, clubUsers, period],
   );
 
+  const seasonMonth = new Date().getMonth();
+  const seasonName = new Date().toLocaleDateString('ru-RU', { month: 'long' });
+  const leaders = useMemo(() => {
+    const ratings = (month?: number) =>
+      new Map(clubRatingPlayers(clubUsers, tournaments, month).map((row) => [row.id, row.points]));
+    return {
+      season: computeClubLeaders(
+        filterStatisticTournaments(tournaments, 'month', format),
+        clubUsers,
+        ratings(seasonMonth),
+      ),
+      all: computeClubLeaders(
+        filterStatisticTournaments(tournaments, 'all', format),
+        clubUsers,
+        ratings(),
+      ),
+    };
+  }, [tournaments, clubUsers, format, seasonMonth]);
+
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-[#110b09]">
       <CompactHeader title="Statistic" backTo="/profile" />
@@ -142,6 +235,20 @@ export function AdminStatisticScreen() {
         className="flex-1 scrollable px-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
+        {tournamentsLoading || !rostersReady ? (
+          <Notice tone="info">Загружаем турниры и составы — цифры могут быть неполными.</Notice>
+        ) : null}
+        {financeError ? (
+          <Notice
+            tone="error"
+            action={{ label: 'Повторить', onClick: () => void refreshFinance('all') }}
+          >
+            Касса не загрузилась — деньги, ребаи и аддоны могут быть неполными.
+          </Notice>
+        ) : financeLoading ? (
+          <Notice tone="info">Загружаем кассу — деньги, ребаи и аддоны появятся через секунду.</Notice>
+        ) : null}
+
         <div className="flex rounded-xl p-1 mb-3" style={{ background: '#1E1612' }}>
           {PERIODS.map(({ id, label }) => {
             const active = period === id;
@@ -293,14 +400,19 @@ export function AdminStatisticScreen() {
                   <Bar
                     dataKey="players"
                     maxBarSize={period === 'month' ? 10 : 36}
-                    minPointSize={period === 'all' ? 0 : 3}
+                    minPointSize={(_value, index) =>
+                      period === 'all' || stats.attendanceChart[index]?.future ? 0 : 3}
                     radius={period === 'month' ? [2, 2, 0, 0] : [6, 6, 0, 0]}
                   >
                     {stats.attendanceChart.map((row) => (
                       <Cell
                         key={row.id}
                         fill={
-                          row.players > 0 ? '#D99962' : 'rgba(217,153,98,0.18)'
+                          row.future
+                            ? 'transparent'
+                            : row.players > 0
+                              ? '#D99962'
+                              : 'rgba(217,153,98,0.18)'
                         }
                       />
                     ))}
@@ -309,29 +421,54 @@ export function AdminStatisticScreen() {
               </ResponsiveContainer>
             )}
           </div>
+          {stats.skippedSeats > 0 ? (
+            <p className="px-3 pt-3 text-[11px] leading-snug" style={{ color: '#8c8c88' }}>
+              Не вошли в расчёт: {stats.skippedSeats.toLocaleString('ru-RU')} мест без аккаунта
+              {stats.unboundNicks > 0 ? ` (${stats.unboundNicks.toLocaleString('ru-RU')} ников)` : ''}.{' '}
+              {stats.unboundNicks > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/users?view=guests')}
+                  className="underline font-700"
+                  style={{ color: '#D99962' }}
+                >
+                  Привязать ники
+                </button>
+              ) : null}
+            </p>
+          ) : null}
         </div>
 
-        <h2 className="text-[11px] font-800 uppercase tracking-[0.18em] mb-3" style={{ color: '#D99962' }}>
+        <h2 className="text-[11px] font-800 uppercase tracking-[0.18em] mb-1" style={{ color: '#D99962' }}>
           Топы игроков
         </h2>
+        <p className="text-[11px] mb-3" style={{ color: '#6B6360' }}>
+          Сезон — {seasonName}, общий — за всё время. Период сверху на топы не влияет.
+        </p>
         <div className="space-y-3">
           <LeaderList
             title="Топ-3 по посещаемости"
-            rows={stats.topAttendance}
+            rows={leaders[attendanceScope].attendance}
             suffix="игр"
             empty="Пока нет игроков в выборке"
+            scope={attendanceScope}
+            onScope={setAttendanceScope}
           />
           <LeaderList
             title="Топ-3 финалистов"
-            rows={stats.topFinalists}
+            rows={leaders[finalistScope].finalists}
             suffix="финалов"
             empty="Нет попаданий на финальный стол"
+            scope={finalistScope}
+            onScope={setFinalistScope}
           />
           <LeaderList
             title="Топ-3 баунти-хантеров"
-            rows={stats.topBounty}
+            rows={leaders[bountyScope].bounty}
             suffix="КО"
             empty="Нет нокаутов в выборке"
+            scope={bountyScope}
+            onScope={setBountyScope}
           />
           <MetricsLegend title="Как считаются цифры" notes={CLUB_STATISTIC_METRICS} />
         </div>

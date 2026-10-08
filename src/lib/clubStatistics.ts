@@ -1,8 +1,14 @@
 import { isComplimentaryCharge } from './entryFee';
 import { clubUserIdSet, isRegisteredClubSeat } from './clubRating';
 import { tournamentOffersAddon } from './playerAnalytics';
-import { buildAttendanceChart, type AttendanceSeed, type StatsPeriod } from './statsPeriod';
+import {
+  buildAttendanceChart,
+  type AttendanceChartRow,
+  type AttendanceSeed,
+  type StatsPeriod,
+} from './statsPeriod';
 import { cashierPlayers, scoringFieldSize } from './tournamentArrival';
+import { guestSeatKey, isUnboundGuestSeat } from './guestPlayer';
 import { displayedTeamPlace } from './teamBattle';
 import { finalTableSize } from '../data/prizeStructure';
 import type { Transaction } from '../types/finance';
@@ -26,7 +32,7 @@ export type ClubStatistics = {
   averageCheck: number;
   debtorPercent: number;
   biggestCheck: { amount: number; nickname: string; tournament: string };
-  attendanceChart: { id: string; label: string; tick: string; title: string; players: number }[];
+  attendanceChart: AttendanceChartRow[];
   topAttendance: ClubLeader[];
   topFinalists: ClubLeader[];
   topBounty: ClubLeader[];
@@ -37,6 +43,16 @@ export type ClubStatistics = {
   addonCount: number;
   seatedCount: number;
   addonEligibleSeats: number;
+  /** Checked-in seats that are not counted: nick-only players and archived accounts. */
+  skippedSeats: number;
+  /** Distinct nick-only players behind those seats. */
+  unboundNicks: number;
+};
+
+export type ClubLeaders = {
+  attendance: ClubLeader[];
+  finalists: ClubLeader[];
+  bounty: ClubLeader[];
 };
 
 const EMPTY_STATS: ClubStatistics = {
@@ -56,18 +72,33 @@ const EMPTY_STATS: ClubStatistics = {
   addonCount: 0,
   seatedCount: 0,
   addonEligibleSeats: 0,
+  skippedSeats: 0,
+  unboundNicks: 0,
 };
 
 export function tournamentTitles(tournaments: Tournament[]): string[] {
   return [...new Set(tournaments.filter((tournament) => tournament.hidden !== true).map((tournament) => tournament.title))];
 }
 
-function topThree(map: Map<string, { nickname: string; value: number }>): ClubLeader[] {
+function topThree(
+  map: Map<string, { nickname: string; value: number }>,
+  ratingById?: Map<string, number>,
+): ClubLeader[] {
   return [...map.entries()]
     .map(([id, row]) => ({ id, nickname: row.nickname, value: row.value }))
     .filter((row) => row.value > 0)
-    .sort((a, b) => b.value - a.value || a.nickname.localeCompare(b.nickname, 'ru'))
+    .sort(
+      (a, b) =>
+        b.value - a.value ||
+        (ratingById?.get(b.id) ?? 0) - (ratingById?.get(a.id) ?? 0) ||
+        a.nickname.localeCompare(b.nickname, 'ru'),
+    )
     .slice(0, 3);
+}
+
+/** A tournament that actually took place: somebody is checked in or already has a finishing place. */
+export function tournamentWasPlayed(tournament: Pick<Tournament, 'participants'>): boolean {
+  return cashierPlayers(tournament.participants).length > 0;
 }
 
 /** Accepts numeric places and string leftovers from older saved results. */
@@ -123,6 +154,7 @@ export function collectTopFinalists(
   tournaments: Tournament[],
   knownIds: Set<string>,
   names: Map<string, string>,
+  ratingById?: Map<string, number>,
 ): ClubLeader[] {
   const finalists = new Map<string, { nickname: string; value: number }>();
 
@@ -144,7 +176,37 @@ export function collectTopFinalists(
     }
   }
 
-  return topThree(finalists);
+  return topThree(finalists, ratingById);
+}
+
+/** Top-3 lists by attendance, final tables and knockouts. Tournaments that did not take place are ignored. */
+export function computeClubLeaders(
+  tournaments: Tournament[],
+  clubUsers: { id: string; nickname: string }[],
+  ratingById?: Map<string, number>,
+): ClubLeaders {
+  const knownIds = clubUserIdSet(clubUsers);
+  const names = new Map(clubUsers.map((user) => [user.id, user.nickname]));
+  const played = tournaments.filter(tournamentWasPlayed);
+  const attendance = new Map<string, { nickname: string; value: number }>();
+  const bounty = new Map<string, { nickname: string; value: number }>();
+
+  for (const tournament of played) {
+    for (const participant of clubCashierSeats(tournament, knownIds)) {
+      const userId = clubSeatId(participant, knownIds);
+      if (!userId) continue;
+      const nick = nicknameFor(userId, participant.nickname, names);
+      bumpLeader(attendance, userId, nick);
+      const knockouts = participant.knockouts ?? 0;
+      if (knockouts > 0) bumpLeader(bounty, userId, nick, knockouts);
+    }
+  }
+
+  return {
+    attendance: topThree(attendance, ratingById),
+    finalists: collectTopFinalists(played, knownIds, names, ratingById),
+    bounty: topThree(bounty, ratingById),
+  };
 }
 
 export function computeClubStatistics(
@@ -156,27 +218,37 @@ export function computeClubStatistics(
 ): ClubStatistics {
   const knownIds = clubUserIdSet(clubUsers);
   const names = new Map(clubUsers.map((user) => [user.id, user.nickname]));
+  // An upcoming or not-yet-started event has nobody checked in. Counting it would drag every average down.
+  const played = tournaments.filter(tournamentWasPlayed);
 
-  if (tournaments.length === 0) {
+  if (played.length === 0) {
     return {
       ...EMPTY_STATS,
       attendanceChart: buildAttendanceChart([], period, now),
     };
   }
-  const tournamentIds = new Set(tournaments.map((tournament) => tournament.id));
-  const titleById = new Map(tournaments.map((tournament) => [tournament.id, tournament.title]));
+  const tournamentIds = new Set(played.map((tournament) => tournament.id));
+  const titleById = new Map(played.map((tournament) => [tournament.id, tournament.title]));
   const ledger = transactions.filter(
     (tx) => !tx.voidedAt && tournamentIds.has(tx.tournamentId) && knownIds.has(tx.userId),
   );
 
-  const seatedByTournament = tournaments.map((tournament) =>
-    clubCashierSeats(tournament, knownIds),
-  );
+  const seatedByTournament = played.map((tournament) => clubCashierSeats(tournament, knownIds));
   const seatedCount = seatedByTournament.reduce((sum, seats) => sum + seats.length, 0);
-  const averageAttendance = seatedCount / tournaments.length;
+  const averageAttendance = seatedCount / played.length;
+
+  let skippedSeats = 0;
+  const unboundKeys = new Set<string>();
+  played.forEach((tournament, index) => {
+    const checkedIn = cashierPlayers(tournament.participants);
+    skippedSeats += checkedIn.length - seatedByTournament[index]!.length;
+    for (const player of checkedIn) {
+      if (isUnboundGuestSeat(player)) unboundKeys.add(guestSeatKey(player.id, tournament.id));
+    }
+  });
 
   const titleCounts = new Map<string, number>();
-  tournaments.forEach((tournament, index) => {
+  played.forEach((tournament, index) => {
     titleCounts.set(
       tournament.title,
       (titleCounts.get(tournament.title) ?? 0) + seatedByTournament[index]!.length,
@@ -222,24 +294,8 @@ export function computeClubStatistics(
     }
   }
 
-  const attendance = new Map<string, { nickname: string; value: number }>();
-  const bounty = new Map<string, { nickname: string; value: number }>();
-
-  seatedByTournament.forEach((seats) => {
-    for (const participant of seats) {
-      const userId = clubSeatId(participant, knownIds);
-      if (!userId) continue;
-      const nick = nicknameFor(userId, participant.nickname, names);
-      bumpLeader(attendance, userId, nick);
-
-      const knockouts = participant.knockouts ?? 0;
-      if (knockouts > 0) {
-        bumpLeader(bounty, userId, nick, knockouts);
-      }
-    }
-  });
-
-  const attendanceRows: AttendanceSeed[] = tournaments.map((tournament, index) => ({
+  const leaders = computeClubLeaders(played, clubUsers);
+  const attendanceRows: AttendanceSeed[] = played.map((tournament, index) => ({
     tournament,
     players: seatedByTournament[index]!.length,
   }));
@@ -247,7 +303,7 @@ export function computeClubStatistics(
 
   const rebuyCount = ledger.filter((tx) => tx.type === 'rebuy').length;
   const addonCount = ledger.filter((tx) => tx.type === 'addon').length;
-  const addonEligibleSeats = tournaments.reduce((sum, tournament, index) => {
+  const addonEligibleSeats = played.reduce((sum, tournament, index) => {
     if (!tournamentOffersAddon(tournament)) return sum;
     return sum + seatedByTournament[index]!.length;
   }, 0);
@@ -262,15 +318,17 @@ export function computeClubStatistics(
     debtorPercent,
     biggestCheck,
     attendanceChart,
-    topAttendance: topThree(attendance),
-    topFinalists: collectTopFinalists(tournaments, knownIds, names),
-    topBounty: topThree(bounty),
-    tournamentCount: tournaments.length,
+    topAttendance: leaders.attendance,
+    topFinalists: leaders.finalists,
+    topBounty: leaders.bounty,
+    tournamentCount: played.length,
     avgRebuys,
     addonRate,
     rebuyCount,
     addonCount,
     seatedCount,
     addonEligibleSeats,
+    skippedSeats,
+    unboundNicks: unboundKeys.size,
   };
 }

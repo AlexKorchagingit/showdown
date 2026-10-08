@@ -11,6 +11,8 @@ export type AttendanceChartRow = {
   tick: string;
   title: string;
   players: number;
+  /** A calendar day after today: nothing has happened yet, so it is drawn empty. */
+  future?: boolean;
 };
 
 export type AttendanceSeed = {
@@ -152,7 +154,7 @@ export function filterStatisticTournaments(
   });
 }
 
-/** Week/month: one bar per calendar day. All-time: one bar per tournament. */
+/** Week/month: one bar per calendar day. All-time: one bar per tournament that took place. */
 export function buildAttendanceChart(
   rows: AttendanceSeed[],
   period: StatsPeriod,
@@ -174,6 +176,7 @@ export function buildAttendanceChart(
       slot.players += players;
       if (tournament.title.trim()) slot.titles.push(tournament.title.trim());
     }
+    const today = startOfDay(now).getTime();
     return [...byDay.entries()].map(([id, slot]) => {
       const parsed = parseTournamentDay(id);
       const tick =
@@ -186,6 +189,7 @@ export function buildAttendanceChart(
         tick,
         title: slot.titles.join(' · '),
         players: slot.players,
+        future: parsed ? parsed.getTime() > today : false,
       };
     });
   }
