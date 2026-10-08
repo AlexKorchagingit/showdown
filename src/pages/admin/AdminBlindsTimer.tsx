@@ -38,6 +38,7 @@ import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
 import { timerChipTotals } from '../../lib/chipStacks';
+import { effectiveBigBlind, formatBigBlinds, stackInBigBlinds } from '../../lib/timerBlinds';
 import {
   nicknamesByPlace,
   prizePointsForTimerPlace,
@@ -78,7 +79,7 @@ function ControlButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="relative z-10 pointer-events-auto bg-white/5 hover:bg-white/20 text-white/80 hover:text-[#D99962] p-4 rounded-full transition-colors active:scale-95 disabled:opacity-30 disabled:hover:bg-white/5 disabled:hover:text-white/80"
+      className="relative z-10 pointer-events-auto bg-white/[0.025] hover:bg-white/15 text-white/45 hover:text-[#D99962] p-4 rounded-full transition-colors active:scale-95 disabled:opacity-30 disabled:hover:bg-white/[0.025] disabled:hover:text-white/45"
     >
       {children}
     </button>
@@ -238,6 +239,7 @@ export function AdminBlindsTimer() {
     [tournament, structure, transactions],
   );
   const avgStack = chipTotals.avgStack;
+  const avgBigBlinds = stackInBigBlinds(avgStack, effectiveBigBlind(structure?.levels, levelIndex));
   const rebuyLine = [
     chipTotals.rebuys > 0 ? `ребаев: ${chipTotals.rebuys}` : '',
     chipTotals.addons > 0 ? `аддонов: ${chipTotals.addons}` : '',
@@ -424,6 +426,11 @@ export function AdminBlindsTimer() {
             <FitText className="mt-2 text-[#F2D8A7]">
               {financeLoading && transactions.length === 0 ? '…' : avgStack.toLocaleString('ru-RU')}
             </FitText>
+            {avgBigBlinds != null && !(financeLoading && transactions.length === 0) ? (
+              <p className="mt-1.5 text-lg md:text-xl font-800 leading-none tabular-nums text-[#D99962]">
+                ≈ {formatBigBlinds(avgBigBlinds)}
+              </p>
+            ) : null}
           </section>
 
           {chipleader && (
@@ -513,7 +520,7 @@ export function AdminBlindsTimer() {
                           {currentBreakNote}
                         </p>
                       ) : null}
-                      <p className="mt-2 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                      <p className="mt-2 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                         {formatClock(secondsLeft)}
                       </p>
                     </>
@@ -530,7 +537,7 @@ export function AdminBlindsTimer() {
                           {anteLabel}
                         </p>
                       )}
-                      <p className="mt-1.5 text-[clamp(3rem,42cqi,8rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                      <p className="mt-1.5 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
                         {formatClock(secondsLeft)}
                       </p>
                     </>
