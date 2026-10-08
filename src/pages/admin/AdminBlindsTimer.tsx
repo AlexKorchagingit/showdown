@@ -54,6 +54,9 @@ const RADIUS = 194;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const GLASS =
   'bg-white/[0.03] border border-white/[0.05] rounded-2xl p-5 backdrop-blur-sm';
+/** Same glass, shorter, for the timer's "in play" and average-stack cards. */
+const GLASS_TIGHT =
+  'bg-white/[0.03] border border-white/[0.05] rounded-2xl px-4 py-2 backdrop-blur-sm';
 
 function formatClock(totalSeconds: number): string {
   const safe = Math.max(0, Math.ceil(totalSeconds));
@@ -403,31 +406,31 @@ export function AdminBlindsTimer() {
 
         <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-visible md:w-[260px]">
           {tournament && (
-            <section className={`${GLASS} text-center min-w-0`}>
-              <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
+            <section className={`${GLASS_TIGHT} text-center min-w-0`}>
+              <p className="text-xs md:text-sm font-800 uppercase tracking-[0.16em] text-white/40">
                 В ИГРЕ
               </p>
-              <FitText className="text-white mt-2">
+              <FitText compact maxPx={32} className="text-white">
                 {remaining}
                 <span className="text-white/35"> / {registered}</span>
               </FitText>
               {rebuyLine && (
-                <p className="text-sm md:text-base font-600 text-white/60 mt-2 first-letter:uppercase">
+                <p className="text-xs md:text-sm font-600 text-white/60 mt-1 first-letter:uppercase">
                   {rebuyLine}
                 </p>
               )}
             </section>
           )}
 
-          <section className={`${GLASS} text-center min-w-0`}>
-            <p className="text-sm md:text-base font-800 uppercase tracking-[0.18em] text-white/40">
+          <section className={`${GLASS_TIGHT} text-center min-w-0`}>
+            <p className="text-xs md:text-sm font-800 uppercase tracking-[0.16em] text-white/40">
               СРЕДНИЙ СТЕК
             </p>
-            <FitText className="mt-2 text-[#F2D8A7]">
+            <FitText compact maxPx={32} className="text-[#F2D8A7]">
               {financeLoading && transactions.length === 0 ? '…' : avgStack.toLocaleString('ru-RU')}
             </FitText>
             {avgBigBlinds != null && !(financeLoading && transactions.length === 0) ? (
-              <p className="mt-1.5 text-lg md:text-xl font-800 leading-none tabular-nums text-[#D99962]">
+              <p className="mt-1 text-base md:text-lg font-800 leading-none tabular-nums text-[#D99962]">
                 ≈ {formatBigBlinds(avgBigBlinds)}
               </p>
             ) : null}

@@ -5,10 +5,13 @@ export function FitText({
   children,
   className,
   maxPx = 40,
+  compact = false,
 }: {
   children: ReactNode;
   className?: string;
   maxPx?: number;
+  /** Shorter row for the timer side cards, so the chip-leader cat does not cover them. */
+  compact?: boolean;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -36,7 +39,9 @@ export function FitText({
   return (
     <div
       ref={boxRef}
-      className="@container mt-2 w-full min-w-0 overflow-hidden flex justify-center items-center h-[2.6rem]"
+      className={`@container w-full min-w-0 overflow-hidden flex justify-center items-center ${
+        compact ? 'mt-1 h-8' : 'mt-2 h-[2.6rem]'
+      }`}
       style={{ containerType: 'inline-size' }}
     >
       <div
