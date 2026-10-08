@@ -82,6 +82,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const financeScopeRef = useRef<'month' | 'all'>('month');
   const pendingFullLedgerRef = useRef(false);
+  const ledgerReadyRef = useRef(false);
+  const ledgerFailedRef = useRef(false);
   const { account } = useUser();
   const actorId = account?.id ?? '';
   const chargeRequests = useMemo(() => createChargeRequests(createCharge, undefined,
@@ -102,14 +104,19 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     refreshing.current.add(refreshScope);
     const sequence = ++fetchSequence.current;
     const version = mutationVersion.current;
+    // Only the first read of a session blocks screens; later polls update quietly.
+    if (!ledgerReadyRef.current && !ledgerFailedRef.current) setIsLoading(true);
     try {
       const snapshot = await fetchFinanceSnapshot(effective);
       if (sequence !== fetchSequence.current || version !== mutationVersion.current) return;
       setTransactions((prev) => reconcileTransactionSnapshot(prev, snapshot.transactions));
       setDealerHoursMap((prev) => mergeDealerHours(prev, snapshot.dealerHours));
       setLoadError(null);
+      ledgerReadyRef.current = true;
+      ledgerFailedRef.current = false;
     } catch {
       if (sequence !== fetchSequence.current || version !== mutationVersion.current) return;
+      ledgerFailedRef.current = true;
       setLoadError('Не удалось загрузить финансы. Повторите загрузку перед изменениями.');
     } finally {
       refreshing.current.delete(refreshScope);
@@ -123,6 +130,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     financeScopeRef.current = 'month';
+    ledgerReadyRef.current = false;
+    ledgerFailedRef.current = false;
     setTransactions([]);
     setDealerHoursMap({});
     setIsLoading(false);

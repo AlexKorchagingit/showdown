@@ -33,33 +33,40 @@ function asTournamentRow(data: unknown): TournamentRow | null {
   return data as TournamentRow;
 }
 
-async function selectParticipants(tournamentId?: string): Promise<JoinedParticipantRow[]> {
-  let query = supabase
-    .from('participants')
-    .select(PARTICIPANT_SELECT_WITH_USER)
-    .order('created_at', { ascending: true });
-  if (tournamentId) query = query.eq('tournament_id', tournamentId);
-  const { data, error } = await query;
-  if (!error && data) return data as unknown as JoinedParticipantRow[];
-  logSupabaseError(error, 'participants embed users');
+/** The API returns at most 1000 rows per request, so a full read walks the table page by page. */
+export const PARTICIPANT_PAGE_SIZE = 1000;
 
-  let fallback = supabase.from('participants').select('*').order('created_at', { ascending: true });
-  if (tournamentId) fallback = fallback.eq('tournament_id', tournamentId);
-  const retry = await fallback;
-  if (retry.error || !retry.data) {
-    logSupabaseError(retry.error, 'participants');
-    throw new Error(retry.error?.message || error?.message || 'Не удалось загрузить участников');
+async function selectParticipantPages(
+  columns: string,
+  tournamentId?: string,
+): Promise<{ rows: JoinedParticipantRow[]; error: { message?: string } | null }> {
+  const rows: JoinedParticipantRow[] = [];
+  for (let from = 0; ; from += PARTICIPANT_PAGE_SIZE) {
+    let query = supabase
+      .from('participants')
+      .select(columns)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, from + PARTICIPANT_PAGE_SIZE - 1);
+    if (tournamentId) query = query.eq('tournament_id', tournamentId);
+    const { data, error } = await query;
+    if (error || !data) return { rows: [], error: error ?? { message: 'empty response' } };
+    rows.push(...(data as unknown as JoinedParticipantRow[]));
+    if (data.length < PARTICIPANT_PAGE_SIZE) return { rows, error: null };
   }
-  return retry.data as unknown as JoinedParticipantRow[];
 }
 
-async function selectParticipantsSafe(tournamentId?: string): Promise<JoinedParticipantRow[]> {
-  try {
-    return await selectParticipants(tournamentId);
-  } catch (error) {
-    logSupabaseError(error instanceof Error ? error : { message: String(error) }, 'participants');
-    return [];
+async function selectParticipants(tournamentId?: string): Promise<JoinedParticipantRow[]> {
+  const joined = await selectParticipantPages(PARTICIPANT_SELECT_WITH_USER, tournamentId);
+  if (!joined.error) return joined.rows;
+  logSupabaseError(joined.error, 'participants embed users');
+
+  const retry = await selectParticipantPages('*', tournamentId);
+  if (retry.error) {
+    logSupabaseError(retry.error, 'participants');
+    throw new Error(retry.error.message || joined.error.message || 'Не удалось загрузить участников');
   }
+  return retry.rows;
 }
 
 function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participant[]> {
@@ -72,8 +79,9 @@ function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participan
   return grouped;
 }
 
+/** Throws when the read fails, so a bad network never replaces loaded rosters with empty ones. */
 export async function fetchParticipantsByTournament(): Promise<Map<string, Participant[]>> {
-  return groupParticipants(await selectParticipantsSafe());
+  return groupParticipants(await selectParticipants());
 }
 
 export async function fetchTournaments(): Promise<Tournament[]> {
