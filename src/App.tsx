@@ -46,6 +46,7 @@ const AdminFinanceScreen = lazy(() => loadWithChunkRecovery(() => import('./page
 const AdminTournamentFinance = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminTournamentFinance').then((module) => ({ default: module.AdminTournamentFinance }))));
 const AdminRubyScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminRubyScreen').then((module) => ({ default: module.AdminRubyScreen }))));
 const AdminStatisticScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminStatisticScreen').then((module) => ({ default: module.AdminStatisticScreen }))));
+const AdminBirthdaysRoute = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminBirthdaysScreen').then((module) => ({ default: module.AdminBirthdaysRoute }))));
 const AdminLogsScreen = lazy(() => loadWithChunkRecovery(() => import('./pages/admin/AdminLogsScreen').then((module) => ({ default: module.AdminLogsScreen }))));
 
 const NAV_HEIGHT = '5rem';
@@ -127,6 +128,7 @@ function AppLayout({ startupDeadlineAt }: { startupDeadlineAt: number }) {
               <Route path="/admin/blinds"          element={<Navigate to="/admin/blinds/settings" replace />} />
               <Route path="/admin/blinds/settings" element={<AdminBlindsSettings />} />
               <Route path="/admin/blinds/timer"    element={<AdminBlindsTimer />} />
+              <Route path="/admin/birthdays"       element={<AdminBirthdaysRoute />} />
               <Route path="/admin/finance"         element={<AdminFinanceScreen />} />
               <Route path="/admin/finance/tournaments/:id" element={<AdminTournamentFinance />} />
               <Route path="/admin/ruby"            element={<AdminRubyScreen />} />

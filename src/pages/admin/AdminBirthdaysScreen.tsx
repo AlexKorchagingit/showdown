@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CompactHeader } from '../../components/CompactHeader';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { ScreenLoading } from '../../components/ScreenLoading';
+import { useUser } from '../../context/UserContext';
 import {
   ageTurning,
   birthdaysInMonth,
@@ -21,6 +23,15 @@ function yearsLabel(age: number): string {
   if (last === 1) return `${age} год`;
   if (last >= 2 && last <= 4) return `${age} года`;
   return `${age} лет`;
+}
+
+/** Route page opened from the cake button on the home screen (admins only). */
+export function AdminBirthdaysRoute() {
+  const navigate = useNavigate();
+  const { clubUsers, isLoading } = useUser();
+  return (
+    <AdminBirthdaysScreen users={clubUsers} loading={isLoading} onBack={() => navigate('/')} />
+  );
 }
 
 export function AdminBirthdaysScreen({

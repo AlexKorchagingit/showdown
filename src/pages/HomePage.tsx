@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle,
+  Cake, ChevronRight, MapPin, Calendar, Clock, Phone, Info, MessageCircle,
   ExternalLink, Mail, X, Send,
 } from 'lucide-react';
 import { useFullTournamentRosters, useTournaments } from '../context/TournamentContext';
@@ -150,13 +150,20 @@ function SocialLinkRow({
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
-function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
+function Header({
+  onOpenSocials,
+  onOpenBirthdays,
+}: {
+  onOpenSocials: () => void;
+  /** Present only for admins. */
+  onOpenBirthdays?: () => void;
+}) {
   return (
     <header
       className="flex-shrink-0 flex items-center justify-between px-5 py-2"
       style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <BrandLogo
           className="h-16 w-auto object-contain"
           style={{ filter: 'drop-shadow(0 0 8px rgba(217,153,98,0.5))' }}
@@ -164,6 +171,21 @@ function Header({ onOpenSocials }: { onOpenSocials: () => void }) {
         <span className="inline-block font-900 text-[17px] uppercase tracking-[0.18em] bg-gradient-to-r from-[#8C4C27] via-[#F2D8A7] to-[#D99962] bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent">
           Showdown
         </span>
+        {onOpenBirthdays ? (
+          <button
+            type="button"
+            onClick={onOpenBirthdays}
+            aria-label="Дни рождения"
+            title="Дни рождения"
+            className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+            style={{
+              background: 'linear-gradient(to right, #8C4C27, #D99962)',
+              boxShadow: '0 0 12px rgba(217,153,98,0.3)',
+            }}
+          >
+            <Cake size={17} strokeWidth={2.4} style={{ color: '#0A0908' }} />
+          </button>
+        ) : null}
       </div>
 
       <button
@@ -474,6 +496,7 @@ function InfoGrid({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function HomePage() {
   const navigate = useNavigate();
+  const { isAdmin } = useUser();
   const { tournaments, isLoading, loadError, fetchTournaments } = useTournaments();
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isSocialsOpen, setIsSocialsOpen] = useState(false);
@@ -484,7 +507,10 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col h-full bg-obsidian">
-      <Header onOpenSocials={() => setIsSocialsOpen(true)} />
+      <Header
+        onOpenSocials={() => setIsSocialsOpen(true)}
+        onOpenBirthdays={isAdmin ? () => navigate('/admin/birthdays') : undefined}
+      />
       <div className="flex-1 scrollable" style={{ paddingBottom: '0.5rem' }}>
         <div className="px-5 pt-5 space-y-6">
           {loadError && !nextTournament && !isLoading ? (
