@@ -845,35 +845,37 @@ export function AdminBlindsSettings() {
                   </div>
                   <ChevronRight size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => exportBlindStructureToExcel(structure, tournaments)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.06)' }}
-                  aria-label={`Скачать ${structure.name} в Excel`}
-                  title="Скачать в Excel"
-                >
-                  <Download size={14} style={{ color: '#D99962' }} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openEditor(structure.id)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.06)' }}
-                  aria-label={`Редактировать ${structure.name}`}
-                >
-                  <Pencil size={14} style={{ color: '#D99962' }} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(structure)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}
-                  aria-label={`Удалить ${structure.name}`}
-                  title="Удалить структуру"
-                >
-                  <Trash2 size={14} style={{ color: '#f87171' }} />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => exportBlindStructureToExcel(structure, tournaments)}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
+                    aria-label={`Скачать ${structure.name} в Excel`}
+                    title="Скачать в Excel"
+                  >
+                    <Download size={14} style={{ color: '#D99962' }} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditor(structure.id)}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
+                    aria-label={`Редактировать ${structure.name}`}
+                  >
+                    <Pencil size={14} style={{ color: '#D99962' }} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(structure)}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}
+                    aria-label={`Удалить ${structure.name}`}
+                    title="Удалить структуру"
+                  >
+                    <Trash2 size={14} style={{ color: '#f87171' }} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
