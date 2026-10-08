@@ -11,7 +11,8 @@ import { cashierPlayers, scoringFieldSize } from './tournamentArrival';
 import { guestSeatKey, isUnboundGuestSeat } from './guestPlayer';
 import { displayedTeamPlace } from './teamBattle';
 import { finalTableSize } from '../data/prizeStructure';
-import type { Transaction } from '../types/finance';
+import { TRANSACTION_TYPE_LABEL, type Transaction } from '../types/finance';
+import { formatTxDate } from './transactionDisplay';
 import type { Participant, Tournament } from '../types/tournament';
 
 export type { StatsPeriod };
@@ -24,6 +25,32 @@ export type ClubLeader = {
   id: string;
   nickname: string;
   value: number;
+};
+
+/** One line of the list behind a Statistic number. */
+export type StatDetailRow = {
+  id: string;
+  date: string;
+  title: string;
+  note?: string;
+  value: string;
+};
+
+/** What a Statistic number is built from, with the arithmetic spelled out. */
+export type StatDetailList = {
+  summary: string;
+  rows: StatDetailRow[];
+  empty: string;
+};
+
+export type ClubStatisticDetails = {
+  attendance: StatDetailList;
+  popular: StatDetailList;
+  checks: StatDetailList;
+  debt: StatDetailList;
+  biggest: StatDetailList;
+  rebuys: StatDetailList;
+  addons: StatDetailList;
 };
 
 export type ClubStatistics = {
@@ -47,12 +74,27 @@ export type ClubStatistics = {
   skippedSeats: number;
   /** Distinct nick-only players behind those seats. */
   unboundNicks: number;
+  details: ClubStatisticDetails;
 };
 
 export type ClubLeaders = {
   attendance: ClubLeader[];
   finalists: ClubLeader[];
   bounty: ClubLeader[];
+};
+
+function emptyList(empty: string): StatDetailList {
+  return { summary: '', rows: [], empty };
+}
+
+const EMPTY_DETAILS: ClubStatisticDetails = {
+  attendance: emptyList('Нет сыгранных турниров в выборке'),
+  popular: emptyList('Нет сыгранных турниров в выборке'),
+  checks: emptyList('Нет оплат в выборке'),
+  debt: emptyList('Долгов нет'),
+  biggest: emptyList('Нет оплат в выборке'),
+  rebuys: emptyList('Нет ребаев'),
+  addons: emptyList('Нет аддонов'),
 };
 
 const EMPTY_STATS: ClubStatistics = {
@@ -74,6 +116,7 @@ const EMPTY_STATS: ClubStatistics = {
   addonEligibleSeats: 0,
   skippedSeats: 0,
   unboundNicks: 0,
+  details: EMPTY_DETAILS,
 };
 
 export function tournamentTitles(tournaments: Tournament[]): string[] {
@@ -83,6 +126,7 @@ export function tournamentTitles(tournaments: Tournament[]): string[] {
 function topThree(
   map: Map<string, { nickname: string; value: number }>,
   ratingById?: Map<string, number>,
+  limit = 3,
 ): ClubLeader[] {
   return [...map.entries()]
     .map(([id, row]) => ({ id, nickname: row.nickname, value: row.value }))
@@ -93,7 +137,7 @@ function topThree(
         (ratingById?.get(b.id) ?? 0) - (ratingById?.get(a.id) ?? 0) ||
         a.nickname.localeCompare(b.nickname, 'ru'),
     )
-    .slice(0, 3);
+    .slice(0, limit);
 }
 
 /** A tournament that actually took place: somebody is checked in or already has a finishing place. */
@@ -155,6 +199,7 @@ export function collectTopFinalists(
   knownIds: Set<string>,
   names: Map<string, string>,
   ratingById?: Map<string, number>,
+  limit = 3,
 ): ClubLeader[] {
   const finalists = new Map<string, { nickname: string; value: number }>();
 
@@ -176,7 +221,42 @@ export function collectTopFinalists(
     }
   }
 
-  return topThree(finalists, ratingById);
+  return topThree(finalists, ratingById, limit);
+}
+
+function money(value: number): string {
+  return `${Math.round(value).toLocaleString('ru-RU')} ₽`;
+}
+
+function tournamentDate(tournament: Pick<Tournament, 'startDate'>): string {
+  return formatTxDate(`${tournament.startDate.slice(0, 10)}T12:00:00`);
+}
+
+function newestTournamentFirst(
+  a: Pick<Tournament, 'startDate' | 'startTime'>,
+  b: Pick<Tournament, 'startDate' | 'startTime'>,
+): number {
+  return b.startDate.localeCompare(a.startDate) || b.startTime.localeCompare(a.startTime);
+}
+
+function newestChargeFirst(a: Transaction, b: Transaction): number {
+  return Date.parse(b.date) - Date.parse(a.date) || a.id.localeCompare(b.id);
+}
+
+function chargeRow(
+  tx: Transaction,
+  names: Map<string, string>,
+  titleById: Map<string, string>,
+): StatDetailRow {
+  const free = isComplimentaryCharge(tx);
+  const tournament = titleById.get(tx.tournamentId) ?? tx.tournamentId;
+  return {
+    id: tx.id,
+    date: formatTxDate(tx.date),
+    title: `${names.get(tx.userId) || tx.userId} · ${TRANSACTION_TYPE_LABEL[tx.type]}`,
+    note: `${tournament}${tx.status === 'unpaid' && !free ? ' · не оплачено' : ''}`,
+    value: free ? 'бесплатно' : money(tx.amount),
+  };
 }
 
 /** Top-3 lists by attendance, final tables and knockouts. Tournaments that did not take place are ignored. */
@@ -184,6 +264,7 @@ export function computeClubLeaders(
   tournaments: Tournament[],
   clubUsers: { id: string; nickname: string }[],
   ratingById?: Map<string, number>,
+  limit = 3,
 ): ClubLeaders {
   const knownIds = clubUserIdSet(clubUsers);
   const names = new Map(clubUsers.map((user) => [user.id, user.nickname]));
@@ -203,9 +284,9 @@ export function computeClubLeaders(
   }
 
   return {
-    attendance: topThree(attendance, ratingById),
-    finalists: collectTopFinalists(played, knownIds, names, ratingById),
-    bounty: topThree(bounty, ratingById),
+    attendance: topThree(attendance, ratingById, limit),
+    finalists: collectTopFinalists(played, knownIds, names, ratingById, limit),
+    bounty: topThree(bounty, ratingById, limit),
   };
 }
 
@@ -311,6 +392,102 @@ export function computeClubStatistics(
   const avgRebuys = seatedCount === 0 ? 0 : rebuyCount / seatedCount;
   const addonRate = addonDenom === 0 ? 0 : (addonCount / addonDenom) * 100;
 
+  const checkedInByTournament = played.map((tournament) => cashierPlayers(tournament.participants).length);
+  const popularEvents = new Map<string, number>();
+  for (const tournament of played) {
+    popularEvents.set(tournament.title, (popularEvents.get(tournament.title) ?? 0) + 1);
+  }
+  const debtRows = ledger.filter((tx) => tx.status === 'unpaid').sort(newestChargeFirst);
+  const allCharges = ledger.reduce((sum, tx) => sum + tx.amount, 0);
+  const biggestRows = [...checkByPlayerEvent.values()]
+    .sort((a, b) => b.amount - a.amount || a.userId.localeCompare(b.userId))
+    .slice(0, 30);
+  const rebuyRows = ledger.filter((tx) => tx.type === 'rebuy').sort(newestChargeFirst);
+  const addonRows = ledger.filter((tx) => tx.type === 'addon').sort(newestChargeFirst);
+
+  const details: ClubStatisticDetails = {
+    attendance: {
+      summary: `${seatedCount.toLocaleString('ru-RU')} клубных мест ÷ ${played.length} ${
+        played.length === 1 ? 'турнир' : 'турниров'
+      } = ${averageAttendance.toFixed(1).replace('.', ',')}`,
+      rows: played
+        .map((tournament, index) => ({ tournament, index }))
+        .sort((a, b) => newestTournamentFirst(a.tournament, b.tournament))
+        .map(({ tournament, index }) => {
+          const skipped = checkedInByTournament[index]! - seatedByTournament[index]!.length;
+          return {
+            id: tournament.id,
+            date: tournamentDate(tournament),
+            title: tournament.title,
+            note: skipped > 0 ? `+${skipped} без аккаунта, не считаются` : undefined,
+            value: `${seatedByTournament[index]!.length} чел.`,
+          };
+        }),
+      empty: EMPTY_DETAILS.attendance.empty,
+    },
+    popular: {
+      summary: popularCount > 0 ? `Больше всего входов у «${popularTournament}»: ${popularCount}` : '',
+      rows: [...titleCounts.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ru'))
+        .map(([title, count]) => ({
+          id: `title-${title}`,
+          date: `${popularEvents.get(title) ?? 0} турн.`,
+          title,
+          value: `${count} входов`,
+        })),
+      empty: EMPTY_DETAILS.popular.empty,
+    },
+    checks: {
+      summary:
+        paidCharges.length > 0
+          ? `${money(revenue)} ÷ ${paidCharges.length} оплат = ${money(averageCheck)}`
+          : '',
+      rows: [...paidCharges].sort(newestChargeFirst).map((tx) => chargeRow(tx, names, titleById)),
+      empty: EMPTY_DETAILS.checks.empty,
+    },
+    debt: {
+      summary:
+        allCharges > 0
+          ? `${money(unpaidSum)} не оплачено ÷ ${money(allCharges)} всех начислений = ${debtorPercent
+              .toFixed(debtorPercent % 1 === 0 ? 0 : 1)
+              .replace('.', ',')}%`
+          : '',
+      rows: debtRows.map((tx) => chargeRow(tx, names, titleById)),
+      empty: EMPTY_DETAILS.debt.empty,
+    },
+    biggest: {
+      summary: biggestRows.length > 0 ? 'Оплаты одного игрока за один турнир, по убыванию' : '',
+      rows: biggestRows.map((row) => ({
+        id: `${row.userId}::${row.tournamentId}`,
+        date: tournamentDate(
+          played.find((tournament) => tournament.id === row.tournamentId) ?? { startDate: '' },
+        ),
+        title: names.get(row.userId) || row.userId,
+        note: titleById.get(row.tournamentId) ?? row.tournamentId,
+        value: money(row.amount),
+      })),
+      empty: EMPTY_DETAILS.biggest.empty,
+    },
+    rebuys: {
+      summary:
+        seatedCount > 0
+          ? `${rebuyCount} ребаев ÷ ${seatedCount} входов = ${avgRebuys.toFixed(2).replace('.', ',')}`
+          : '',
+      rows: rebuyRows.map((tx) => chargeRow(tx, names, titleById)),
+      empty: EMPTY_DETAILS.rebuys.empty,
+    },
+    addons: {
+      summary:
+        addonDenom > 0
+          ? `${addonCount} аддонов ÷ ${addonDenom} ${
+              addonEligibleSeats > 0 ? 'мест на турнирах с аддоном' : 'входов'
+            } = ${Math.round(addonRate)}%`
+          : '',
+      rows: addonRows.map((tx) => chargeRow(tx, names, titleById)),
+      empty: EMPTY_DETAILS.addons.empty,
+    },
+  };
+
   return {
     averageAttendance,
     popularTournament,
@@ -330,5 +507,6 @@ export function computeClubStatistics(
     addonEligibleSeats,
     skippedSeats,
     unboundNicks: unboundKeys.size,
+    details,
   };
 }

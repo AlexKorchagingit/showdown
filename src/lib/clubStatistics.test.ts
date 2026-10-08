@@ -173,3 +173,69 @@ describe('top-3 lists', () => {
     expect(leaders.bounty).toEqual([]);
   });
 });
+
+describe('lists behind the numbers', () => {
+  const plain = (text: string) => text.replace(/\s/g, ' ');
+  const tournament = event('night', [
+    player('hero'),
+    player('rival'),
+    player('t-night:guest-ivan', { id: 't-night:guest-ivan', userId: null, nickname: 'Иван' }),
+  ]);
+  const ledger = [
+    tx('paid-hero', { amount: 1000 }),
+    tx('paid-rival', { userId: 'rival', type: 'rebuy', amount: 2000 }),
+    tx('debt-hero', { status: 'unpaid', type: 'addon', amount: 1000 }),
+    tx('ticket-rival', { userId: 'rival', type: 'rebuy', amount: 0 }),
+    tx('void', { amount: 5000, voidedAt: '2026-09-02T00:00:00Z' }),
+  ];
+  const stats = computeClubStatistics([tournament], ledger, club);
+
+  it('the average check list is exactly the paid charges it divides', () => {
+    const list = stats.details.checks;
+    expect(list.rows.map((row) => row.id).sort()).toEqual(['paid-hero', 'paid-rival']);
+    expect(plain(list.summary)).toBe('3 000 ₽ ÷ 2 оплат = 1 500 ₽');
+    expect(list.rows.find((row) => row.id === 'paid-rival')?.title).toBe('Rival · Ребай');
+  });
+
+  it('the debt list is the unpaid money, with the share spelled out', () => {
+    expect(stats.details.debt.rows.map((row) => row.id)).toEqual(['debt-hero']);
+    expect(plain(stats.details.debt.summary)).toBe('1 000 ₽ не оплачено ÷ 4 000 ₽ всех начислений = 25%');
+  });
+
+  it('rebuys and addons list their charges and show a ticket as free', () => {
+    expect(stats.details.rebuys.rows.map((row) => plain(row.value)).sort()).toEqual(
+      ['2 000 ₽', 'бесплатно'].sort(),
+    );
+    expect(stats.details.addons.rows.map((row) => row.id)).toEqual(['debt-hero']);
+    expect(stats.details.addons.rows[0]?.note).toContain('не оплачено');
+  });
+
+  it('the attendance list counts club seats per tournament and mentions the skipped nick', () => {
+    const [row] = stats.details.attendance.rows;
+    expect(row?.title).toBe('night');
+    expect(row?.value).toBe('2 чел.');
+    expect(row?.note).toBe('+1 без аккаунта, не считаются');
+    expect(plain(stats.details.attendance.summary)).toBe('2 клубных мест ÷ 1 турнир = 2,0');
+  });
+
+  it('the biggest check list is the per-player, per-tournament sums, largest first', () => {
+    expect(stats.details.biggest.rows.map((row) => row.title)).toEqual(['Rival', 'Hero']);
+  });
+
+  it('an empty sample gives empty lists with a reason', () => {
+    const none = computeClubStatistics([], [], club);
+    expect(none.details.checks.rows).toEqual([]);
+    expect(none.details.checks.empty).toMatch(/Нет оплат/);
+  });
+
+  it('can return the whole ranking instead of three', () => {
+    const many = event(
+      'big',
+      Array.from({ length: 6 }, (_, i) => player(`p${i}`)),
+    );
+    const users = Array.from({ length: 6 }, (_, i) => ({ id: `p${i}`, nickname: `P${i}` }));
+    expect(computeClubLeaders([many], users).attendance).toHaveLength(3);
+    expect(computeClubLeaders([many], users, undefined, Number.POSITIVE_INFINITY).attendance).toHaveLength(6);
+  });
+});
+
