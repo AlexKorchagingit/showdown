@@ -246,7 +246,7 @@ export function ProfilePage() {
 
       {/* Left stats */}
       {sideStats.length > 0 && (
-        <div className="relative mt-4 w-fit">
+        <div className="relative mt-1 w-fit">
           <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-[160px] h-[150%] bg-[#231A16]/80 blur-[30px] rounded-full z-0 pointer-events-none" />
 
           <div className="relative z-10 flex flex-col gap-3 pl-4 pr-8">
