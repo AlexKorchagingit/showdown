@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Archive, Cake, Check } from 'lucide-react';
+import { Archive, Check, UserX } from 'lucide-react';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { useUser } from '../../context/UserContext';
@@ -8,7 +8,7 @@ import { CompactHeader } from '../../components/CompactHeader';
 import { formatBirthDate } from '../../lib/playerName';
 import { archiveUserProfile } from '../../lib/profileArchive';
 import { supabase } from '../../lib/supabase';
-import { AdminBirthdaysScreen } from './AdminBirthdaysScreen';
+import { AdminGuestNicksScreen } from './AdminGuestNicksScreen';
 
 export function AdminUsersScreen() {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export function AdminUsersScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingArchive, setPendingArchive] = useState<(typeof clubUsers)[number] | null>(null);
   const [archiveReason, setArchiveReason] = useState('');
-  const showBirthdays = searchParams.get('view') === 'birthdays';
+  const showGuests = searchParams.get('view') === 'guests';
 
   const toggleAdmin = async (id: string) => {
     const target = clubUsers.find((u) => u.id === id);
@@ -50,14 +50,8 @@ export function AdminUsersScreen() {
     }
   };
 
-  if (showBirthdays) {
-    return (
-      <AdminBirthdaysScreen
-        users={clubUsers}
-        loading={isLoading}
-        onBack={() => navigate('/admin/users')}
-      />
-    );
+  if (showGuests) {
+    return <AdminGuestNicksScreen onBack={() => navigate('/admin/users')} />;
   }
 
   return (
@@ -68,15 +62,15 @@ export function AdminUsersScreen() {
         right={
           <button
             type="button"
-            onClick={() => navigate('/admin/users?view=birthdays')}
+            onClick={() => navigate('/admin/users?view=guests')}
             className="h-10 px-3 rounded-full flex items-center gap-1.5 text-[11px] font-800 uppercase tracking-wide"
             style={{
               background: 'linear-gradient(to right, #8C4C27, #D99962)',
               color: '#0A0908',
             }}
           >
-            <Cake size={15} strokeWidth={2.4} />
-            Дни рождения
+            <UserX size={15} strokeWidth={2.4} />
+            Без аккаунта
           </button>
         }
       />
