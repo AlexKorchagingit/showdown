@@ -175,6 +175,8 @@ interface BlindsContextValue {
   isRunning: boolean;
   activeStructure: BlindStructure | undefined;
   addStructure: (structure: BlindStructure) => void;
+  /** Removes a structure from the club catalog. Returns false when it is the last one. */
+  removeStructure: (structureId: string) => boolean;
   updateStructure: (structure: BlindStructure, change?: LevelListChange) => void;
   updateLevels: (structureId: string, levels: BlindLevel[], change?: LevelListChange) => void;
   ensureTimer: (structureId: string | null) => void;
@@ -595,6 +597,36 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     [publishStructures],
   );
 
+  const removeStructure = useCallback(
+    (structureId: string): boolean => {
+      const current = stateRef.current.structures;
+      if (current.length <= 1 || !current.some((row) => row.id === structureId)) return false;
+      const next = current.filter((row) => row.id !== structureId);
+      dispatch({ type: 'setStructures', structures: next });
+      publishStructures(next, 'now');
+      // A stopped timer must not keep pointing at a ladder that no longer exists.
+      const snapshot = stateRef.current.snapshot;
+      if (snapshot.structureId === structureId && !computeLiveClock(snapshot).isRunning) {
+        commit(
+          {
+            structureId: null,
+            tournamentId: null,
+            levelIndex: 0,
+            secondsLeft: 20 * 60,
+            isRunning: false,
+            levelDurations: [20 * 60],
+            levels: undefined,
+            chipleaderId: null,
+            chipleaderStack: null,
+          },
+          { persist: 'now', silent: true },
+        );
+      }
+      return true;
+    },
+    [commit, publishStructures],
+  );
+
   const updateStructure = useCallback(
     (structure: BlindStructure, change?: LevelListChange) => {
       replaceBlindStructure(structure);
@@ -744,6 +776,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       isRunning: state.isRunning,
       activeStructure,
       addStructure,
+      removeStructure,
       updateStructure,
       updateLevels,
       ensureTimer,
@@ -765,6 +798,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       levelDurationSeconds,
       activeStructure,
       addStructure,
+      removeStructure,
       updateStructure,
       updateLevels,
       ensureTimer,

@@ -6,6 +6,7 @@ import {
 } from '../data/blindStructures';
 import type { Tournament } from '../types/tournament';
 import {
+  blindStructureExportFilename,
   blindStructuresWorkbookXml,
   buildBlindStructureExportSheets,
   buildBlindStructureSheetRows,
@@ -117,5 +118,19 @@ describe('blind structure Excel export', () => {
     const featuresIndex = rows.findIndex((row) => row[0] === 'Особенности турнира');
     expect(rows[featuresIndex + 1]?.[0]).toBe('—');
     expect(rows.find((row) => row[0] === 'Анте')?.[1]).toBe('Да');
+  });
+
+  it('names a single-structure download after the structure and the day', () => {
+    const day = new Date('2026-10-08T12:00:00');
+    expect(blindStructureExportFilename('CHILL OUT', day)).toBe('showdown-blinds-chill-out-2026-10-08.xls');
+    expect(blindStructureExportFilename('Турбо / 30 мин!', day)).toBe('showdown-blinds-турбо-30-мин-2026-10-08.xls');
+    expect(blindStructureExportFilename('???', day)).toBe('showdown-blinds-structure-2026-10-08.xls');
+  });
+
+  it('a single structure produces exactly one worksheet', () => {
+    const only = structure('Phoenix', [playing(1), playing(2)]);
+    const xml = blindStructuresWorkbookXml(buildBlindStructureExportSheets([only], []));
+    expect(xml.match(/<Worksheet /g)).toHaveLength(1);
+    expect(xml).toContain('<Worksheet ss:Name="Phoenix">');
   });
 });

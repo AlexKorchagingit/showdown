@@ -8,7 +8,15 @@ import { useBlinds } from '../../context/BlindsContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
 import { formatTournamentHeldOn, openTournaments } from '../../lib/timerTournament';
-import { exportBlindStructuresToExcel } from '../../lib/exportBlindStructures';
+import {
+  exportBlindStructureToExcel,
+  exportBlindStructuresToExcel,
+} from '../../lib/exportBlindStructures';
+import {
+  structureDeleteBlock,
+  structureDeleteBlockMessage,
+  structureDeleteConfirm,
+} from '../../lib/blindStructureDeletion';
 import {
   BREAK_COMMENT_MAX,
   buildLevels,
@@ -673,6 +681,7 @@ export function AdminBlindsSettings() {
   const {
     structures,
     addStructure,
+    removeStructure,
     updateStructure,
     activeStructureId,
     isRunning,
@@ -705,6 +714,21 @@ export function AdminBlindsSettings() {
     addStructure(created);
     setIsCreating(false);
     openEditor(created.id);
+  };
+
+  const handleDelete = (structure: BlindStructure) => {
+    const block = structureDeleteBlock(structure, structures, tournaments, {
+      isRunning,
+      activeStructureId,
+    });
+    if (block) {
+      window.alert(structureDeleteBlockMessage(block, structure.name));
+      return;
+    }
+    if (!window.confirm(structureDeleteConfirm(structure.name))) return;
+    if (!removeStructure(structure.id)) {
+      window.alert('Не удалось удалить структуру');
+    }
   };
 
   const backFromEditor = () => {
@@ -823,12 +847,32 @@ export function AdminBlindsSettings() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => exportBlindStructureToExcel(structure, tournaments)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                  aria-label={`Скачать ${structure.name} в Excel`}
+                  title="Скачать в Excel"
+                >
+                  <Download size={14} style={{ color: '#D99962' }} />
+                </button>
+                <button
+                  type="button"
                   onClick={() => openEditor(structure.id)}
                   className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: 'rgba(255,255,255,0.06)' }}
                   aria-label={`Редактировать ${structure.name}`}
                 >
                   <Pencil size={14} style={{ color: '#D99962' }} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(structure)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}
+                  aria-label={`Удалить ${structure.name}`}
+                  title="Удалить структуру"
+                >
+                  <Trash2 size={14} style={{ color: '#f87171' }} />
                 </button>
               </div>
             ))}

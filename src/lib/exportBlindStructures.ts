@@ -202,6 +202,16 @@ export function blindStructuresExportFilename(now = new Date()): string {
   return `showdown-blinds-${formatIsoDay(now)}.xls`;
 }
 
+/** `showdown-blinds-chill-out-2026-10-08.xls` for one structure. */
+export function blindStructureExportFilename(name: string, now = new Date()): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+  return `showdown-blinds-${slug || 'structure'}-${formatIsoDay(now)}.xls`;
+}
+
 function triggerDownload(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -223,4 +233,13 @@ export function exportBlindStructuresToExcel(
     type: 'application/vnd.ms-excel;charset=utf-8;',
   });
   triggerDownload(filename, blob);
+}
+
+/** Same workbook layout as the full export, with only this structure's sheet. */
+export function exportBlindStructureToExcel(structure: BlindStructure, tournaments: Tournament[]) {
+  exportBlindStructuresToExcel(
+    [structure],
+    tournaments,
+    blindStructureExportFilename(structure.name),
+  );
 }
