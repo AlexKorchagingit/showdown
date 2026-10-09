@@ -147,17 +147,28 @@ button,
 }
 
 .draw-scene {
-  perspective: 900px;
+  perspective: 1200px;
 }
 
 .draw-card {
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.7s cubic-bezier(0.4, 0.1, 0.2, 1);
+  transition: transform 0.9s cubic-bezier(0.2, 1.25, 0.32, 1);
+  cursor: pointer;
+}
+
+.draw-card:active:not(:disabled) {
+  transform: scale(0.93) translateY(3px);
+  transition-duration: 0.08s;
 }
 
 .draw-card.is-flipped {
   transform: rotateY(180deg);
+}
+
+.draw-card.is-flipped:active:not(:disabled) {
+  transform: rotateY(180deg) scale(0.93);
+  transition-duration: 0.08s;
 }
 
 .draw-face {
@@ -172,21 +183,59 @@ button,
 .draw-spark {
   position: absolute;
   left: 50%;
-  top: 50%;
-  width: 7px;
-  height: 7px;
+  top: 46%;
+  z-index: 5;
   border-radius: 999px;
   pointer-events: none;
-  animation: drawSpark 0.9s ease-out forwards;
+  box-shadow: 0 0 10px currentColor;
+  animation: drawSpark 0.95s cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+
+.draw-spark.is-streak {
+  border-radius: 999px;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.draw-ring {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  z-index: 4;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(242, 216, 167, 0.9);
+  pointer-events: none;
+  animation: drawRing 0.85s ease-out forwards;
+}
+
+.draw-ring-late {
+  animation-delay: 0.18s;
+  border-color: rgba(217, 153, 98, 0.8);
 }
 
 @keyframes drawSpark {
   0% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.25);
+    opacity: 0;
+  }
+  16% {
     opacity: 1;
+    transform: translate(calc(-50% + var(--dx) * 0.18), calc(-50% + var(--dy) * 0.18)) rotate(var(--rot)) scale(1.25);
   }
   100% {
-    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.25);
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot)) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@keyframes drawRing {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(16);
     opacity: 0;
   }
 }

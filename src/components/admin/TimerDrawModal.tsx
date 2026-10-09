@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Minus, Plus, Settings, X } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Settings, X } from 'lucide-react';
 import { cashierPlayers } from '../../lib/tournamentArrival';
+import { sortFinancePlayers } from '../../lib/tournamentStatus';
 import {
   drawRandomPlayers,
   eligibleDrawPlayers,
@@ -10,27 +11,66 @@ import {
 } from '../../lib/timerDraw';
 import type { Tournament } from '../../types/tournament';
 
-type Spark = { id: number; dx: number; dy: number; delay: number; color: string };
+type Seat = DrawPlayer & { place?: number };
+
+type Spark = {
+  id: number;
+  dx: number;
+  dy: number;
+  delay: number;
+  color: string;
+  size: number;
+  rot: number;
+  duration: number;
+  streak: boolean;
+};
+
+const SPARK_COLORS = ['#F2D8A7', '#D99962', '#FFFFFF', '#FFB347', '#FFE7C2', '#E8C07A'];
 
 function burst(): Spark[] {
-  return Array.from({ length: 16 }, (_, index) => {
-    const side = index % 2 === 0 ? -1 : 1;
-    return {
-      id: index,
-      dx: side * (64 + Math.random() * 96),
-      dy: (Math.random() - 0.5) * 72,
-      delay: Math.random() * 0.08,
-      color: ['#F2D8A7', '#D99962', '#FFFFFF'][index % 3]!,
-    };
-  });
+  const sparks: Spark[] = [];
+  const push = (id: number, angle: number, dist: number, delay: number, streak: boolean) => {
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    sparks.push({
+      id,
+      dx,
+      dy,
+      delay,
+      color: SPARK_COLORS[id % SPARK_COLORS.length]!,
+      size: streak ? 10 + Math.random() * 10 : 4 + Math.random() * 8,
+      rot: (Math.atan2(dy, dx) * 180) / Math.PI,
+      duration: 0.75 + Math.random() * 0.55,
+      streak,
+    });
+  };
+  for (let index = 0; index < 32; index += 1) {
+    const angle = (Math.PI * 2 * index) / 32 + (Math.random() - 0.5) * 0.35;
+    push(index, angle, 110 + Math.random() * 150, Math.random() * 0.1, index % 4 === 0);
+  }
+  for (let index = 0; index < 16; index += 1) {
+    const angle = -Math.PI * 0.92 + Math.random() * Math.PI * 0.84;
+    push(100 + index, angle, 80 + Math.random() * 130, 0.16 + Math.random() * 0.22, index % 3 === 0);
+  }
+  return sparks;
 }
 
-function cashierDrawPlayers(tournament: Tournament | undefined): DrawPlayer[] {
+function cashierDrawPlayers(tournament: Tournament | undefined): Seat[] {
   if (!tournament) return [];
-  return cashierPlayers(tournament.participants).map((player) => ({
+  const field = cashierPlayers(tournament.participants).map((player) => ({
     id: player.id,
     nickname: player.nickname,
+    place: player.place,
   }));
+  return sortFinancePlayers(field, tournament.isClosed);
+}
+
+function nameSize(count: number): number {
+  if (count <= 1) return 36;
+  if (count === 2) return 28;
+  if (count === 3) return 22;
+  if (count <= 5) return 18;
+  return 15;
 }
 
 export function TimerDrawModal({
@@ -47,6 +87,7 @@ export function TimerDrawModal({
   const [flipped, setFlipped] = useState(false);
   const [drawn, setDrawn] = useState<DrawPlayer[]>([]);
   const [sparks, setSparks] = useState<Spark[]>([]);
+  const [burstId, setBurstId] = useState(0);
 
   useEffect(() => {
     const saved = tournament ? readDrawSettings(tournament.id) : { count: 1, excluded: [] };
@@ -75,6 +116,7 @@ export function TimerDrawModal({
     if (next.length === 0) return;
     setDrawn(next);
     setSparks(burst());
+    setBurstId((value) => value + 1);
     setFlipped(true);
   };
 
@@ -93,7 +135,7 @@ export function TimerDrawModal({
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-[380px] rounded-3xl px-4 pt-4 pb-5"
+        className="relative w-full max-w-[460px] rounded-3xl px-4 pt-4 pb-5"
         style={{
           background: '#1A1411',
           border: '1px solid rgba(217,153,98,0.35)',
@@ -112,10 +154,14 @@ export function TimerDrawModal({
               style={{
                 background: settingsOpen ? 'rgba(217,153,98,0.28)' : 'rgba(255,255,255,0.06)',
               }}
-              aria-label="Настройки выбора"
+              aria-label={settingsOpen ? 'Назад' : 'Настройки выбора'}
               aria-pressed={settingsOpen}
             >
-              <Settings size={16} strokeWidth={2.2} style={{ color: '#D99962' }} />
+              {settingsOpen ? (
+                <ArrowLeft size={16} strokeWidth={2.2} style={{ color: '#D99962' }} />
+              ) : (
+                <Settings size={16} strokeWidth={2.2} style={{ color: '#D99962' }} />
+              )}
             </button>
             <button
               type="button"
@@ -169,19 +215,20 @@ export function TimerDrawModal({
               <div className="space-y-1.5">
                 {players.map((player) => {
                   const included = !excluded.includes(player.id);
+                  const eliminated = typeof player.place === 'number';
                   return (
                     <label
                       key={player.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5"
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 ${eliminated ? 'opacity-50 grayscale' : ''}`}
                       style={{ background: '#231A16' }}
                     >
                       <input
                         type="checkbox"
                         checked={included}
                         onChange={() => toggle(player.id)}
-                        className="h-4 w-4 accent-[#D99962]"
+                        className="h-4 w-4 shrink-0 accent-[#D99962]"
                       />
-                      <span className="min-w-0 flex-1 truncate text-[14px] font-700 text-white">
+                      <span className="min-w-0 flex-1 break-words text-[14px] font-700 leading-snug text-white">
                         {player.nickname.trim() || player.id}
                       </span>
                     </label>
@@ -192,19 +239,13 @@ export function TimerDrawModal({
           </div>
         ) : (
           <div className="flex flex-col items-center">
-            <div className="draw-scene relative h-[250px] w-[190px]">
-              {sparks.map((spark) => (
-                <span
-                  key={`${spark.id}-${drawn.map((row) => row.id).join('-')}`}
-                  className="draw-spark"
-                  style={{
-                    background: spark.color,
-                    animationDelay: `${spark.delay}s`,
-                    ['--dx' as string]: `${spark.dx}px`,
-                    ['--dy' as string]: `${spark.dy}px`,
-                  }}
-                />
-              ))}
+            <div className="draw-scene relative h-[min(380px,58vh)] w-full max-w-[340px]">
+              {sparks.length > 0 && (
+                <span key={burstId}>
+                  <span className="draw-ring" />
+                  <span className="draw-ring draw-ring-late" />
+                </span>
+              )}
               <button
                 type="button"
                 onClick={flip}
@@ -213,17 +254,17 @@ export function TimerDrawModal({
                 className={`draw-card h-full w-full disabled:opacity-60 ${flipped ? 'is-flipped' : ''}`}
               >
                 <span
-                  className="draw-face absolute inset-0 flex items-center justify-center rounded-2xl"
+                  className="draw-face absolute inset-0 flex items-center justify-center rounded-3xl"
                   style={{
                     background: 'linear-gradient(160deg, #2A1C16, #120d0b)',
                     border: '1px solid rgba(217,153,98,0.55)',
-                    boxShadow: '0 0 24px rgba(217,153,98,0.18)',
+                    boxShadow: '0 0 28px rgba(217,153,98,0.22)',
                   }}
                 >
-                  <span className="text-[92px] font-900 leading-none text-[#D99962]">?</span>
+                  <span className="text-[clamp(5.5rem,22vw,8rem)] font-900 leading-none text-[#D99962]">?</span>
                 </span>
                 <span
-                  className="draw-face draw-face-back absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl px-3 text-center"
+                  className="draw-face draw-face-back absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-y-auto rounded-3xl px-5 py-4 text-center"
                   style={{
                     background: 'linear-gradient(160deg, #F2D8A7, #D99962 55%, #8C4C27)',
                     border: '1px solid rgba(242,216,167,0.8)',
@@ -232,14 +273,31 @@ export function TimerDrawModal({
                   {drawn.map((player) => (
                     <span
                       key={player.id}
-                      className="max-w-full truncate font-900 leading-tight text-[#0A0908]"
-                      style={{ fontSize: drawn.length > 3 ? 18 : drawn.length > 1 ? 22 : 28 }}
+                      className="max-w-full break-words font-900 leading-tight text-[#0A0908] line-clamp-4"
+                      style={{ fontSize: nameSize(drawn.length) }}
                     >
                       {player.nickname}
                     </span>
                   ))}
                 </span>
               </button>
+              {sparks.map((spark) => (
+                <span
+                  key={`${burstId}-${spark.id}`}
+                  className={`draw-spark ${spark.streak ? 'is-streak' : ''}`}
+                  style={{
+                    background: spark.color,
+                    color: spark.color,
+                    width: spark.streak ? spark.size * 2.2 : spark.size,
+                    height: spark.streak ? 3 : spark.size,
+                    animationDelay: `${spark.delay}s`,
+                    animationDuration: `${spark.duration}s`,
+                    ['--dx' as string]: `${spark.dx}px`,
+                    ['--dy' as string]: `${spark.dy}px`,
+                    ['--rot' as string]: `${spark.rot}deg`,
+                  }}
+                />
+              ))}
             </div>
             <p className="mt-3 text-center text-[12px] font-600" style={{ color: '#A39B98' }}>
               {eligible.length === 0
