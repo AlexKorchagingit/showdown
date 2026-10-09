@@ -148,10 +148,20 @@ button,
 
 .draw-scene {
   perspective: 1200px;
+  overflow: visible;
+}
+
+.draw-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
 }
 
 .draw-card {
   position: relative;
+  z-index: 2;
   transform-style: preserve-3d;
   transition: transform 0.9s cubic-bezier(0.2, 1.25, 0.32, 1);
   cursor: pointer;
@@ -182,9 +192,8 @@ button,
 
 .draw-spark {
   position: absolute;
-  left: 50%;
-  top: 46%;
-  z-index: 5;
+  left: var(--x);
+  top: var(--y);
   border-radius: 999px;
   pointer-events: none;
   box-shadow: 0 0 10px currentColor;
@@ -198,12 +207,8 @@ button,
 
 .draw-ring {
   position: absolute;
-  left: 50%;
-  top: 46%;
-  z-index: 4;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
+  inset: -2px;
+  border-radius: 1.6rem;
   border: 2px solid rgba(242, 216, 167, 0.9);
   pointer-events: none;
   animation: drawRing 0.85s ease-out forwards;
@@ -231,11 +236,11 @@ button,
 
 @keyframes drawRing {
   0% {
-    transform: translate(-50%, -50%) scale(0.4);
-    opacity: 0.95;
+    transform: scale(1);
+    opacity: 0.9;
   }
   100% {
-    transform: translate(-50%, -50%) scale(16);
+    transform: scale(1.18);
     opacity: 0;
   }
 }

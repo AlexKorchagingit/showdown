@@ -15,6 +15,9 @@ type Seat = DrawPlayer & { place?: number };
 
 type Spark = {
   id: number;
+  /** Start point on the card edge, in percent of the card. */
+  x: number;
+  y: number;
   dx: number;
   dy: number;
   delay: number;
@@ -27,31 +30,74 @@ type Spark = {
 
 const SPARK_COLORS = ['#F2D8A7', '#D99962', '#FFFFFF', '#FFB347', '#FFE7C2', '#E8C07A'];
 
+/** A point on the card outline and the direction that leaves the card. */
+function edgePoint(t: number): { x: number; y: number; nx: number; ny: number } {
+  const width = 0.9;
+  const height = 1;
+  const span = 2 * (width + height);
+  let distance = ((t % 1) + 1) % 1 * span;
+  if (distance < width) return { x: (distance / width) * 100, y: 0, nx: 0, ny: -1 };
+  distance -= width;
+  if (distance < height) return { x: 100, y: (distance / height) * 100, nx: 1, ny: 0 };
+  distance -= height;
+  if (distance < width) return { x: (1 - distance / width) * 100, y: 100, nx: 0, ny: 1 };
+  distance -= width;
+  return { x: 0, y: (1 - distance / height) * 100, nx: -1, ny: 0 };
+}
+
 function burst(): Spark[] {
   const sparks: Spark[] = [];
-  const push = (id: number, angle: number, dist: number, delay: number, streak: boolean) => {
-    const dx = Math.cos(angle) * dist;
-    const dy = Math.sin(angle) * dist;
+  const push = (
+    id: number,
+    x: number,
+    y: number,
+    nx: number,
+    ny: number,
+    dist: number,
+    delay: number,
+    streak: boolean,
+  ) => {
+    const tangent = (Math.random() - 0.5) * 22;
+    const dx = nx * dist - ny * tangent;
+    const dy = ny * dist + nx * tangent;
     sparks.push({
       id,
+      x,
+      y,
       dx,
       dy,
       delay,
       color: SPARK_COLORS[id % SPARK_COLORS.length]!,
-      size: streak ? 10 + Math.random() * 10 : 4 + Math.random() * 8,
+      size: streak ? 10 + Math.random() * 8 : 4 + Math.random() * 7,
       rot: (Math.atan2(dy, dx) * 180) / Math.PI,
-      duration: 0.75 + Math.random() * 0.55,
+      duration: 0.7 + Math.random() * 0.5,
       streak,
     });
   };
-  for (let index = 0; index < 32; index += 1) {
-    const angle = (Math.PI * 2 * index) / 32 + (Math.random() - 0.5) * 0.35;
-    push(index, angle, 110 + Math.random() * 150, Math.random() * 0.1, index % 4 === 0);
+  for (let index = 0; index < 36; index += 1) {
+    const point = edgePoint(index / 36 + (Math.random() - 0.5) * 0.015);
+    push(index, point.x, point.y, point.nx, point.ny, 42 + Math.random() * 74, Math.random() * 0.12, index % 4 === 0);
   }
-  for (let index = 0; index < 16; index += 1) {
-    const angle = -Math.PI * 0.92 + Math.random() * Math.PI * 0.84;
-    push(100 + index, angle, 80 + Math.random() * 130, 0.16 + Math.random() * 0.22, index % 3 === 0);
-  }
+  const corners = [
+    { x: 0, y: 0, nx: -0.72, ny: -0.7 },
+    { x: 100, y: 0, nx: 0.72, ny: -0.7 },
+    { x: 0, y: 100, nx: -0.72, ny: 0.7 },
+    { x: 100, y: 100, nx: 0.72, ny: 0.7 },
+  ];
+  corners.forEach((corner, cornerIndex) => {
+    for (let index = 0; index < 4; index += 1) {
+      push(
+        100 + cornerIndex * 4 + index,
+        corner.x,
+        corner.y,
+        corner.nx,
+        corner.ny,
+        56 + Math.random() * 70,
+        0.14 + Math.random() * 0.2,
+        index % 2 === 0,
+      );
+    }
+  });
   return sparks;
 }
 
@@ -241,9 +287,28 @@ export function TimerDrawModal({
           <div className="flex flex-col items-center">
             <div className="draw-scene relative h-[min(380px,58vh)] w-full max-w-[340px]">
               {sparks.length > 0 && (
-                <span key={burstId}>
+                <span key={burstId} className="draw-fx">
                   <span className="draw-ring" />
                   <span className="draw-ring draw-ring-late" />
+                  {sparks.map((spark) => (
+                    <span
+                      key={`${burstId}-${spark.id}`}
+                      className={`draw-spark ${spark.streak ? 'is-streak' : ''}`}
+                      style={{
+                        background: spark.color,
+                        color: spark.color,
+                        width: spark.streak ? spark.size * 2.2 : spark.size,
+                        height: spark.streak ? 3 : spark.size,
+                        animationDelay: `${spark.delay}s`,
+                        animationDuration: `${spark.duration}s`,
+                        ['--x' as string]: `${spark.x}%`,
+                        ['--y' as string]: `${spark.y}%`,
+                        ['--dx' as string]: `${spark.dx}px`,
+                        ['--dy' as string]: `${spark.dy}px`,
+                        ['--rot' as string]: `${spark.rot}deg`,
+                      }}
+                    />
+                  ))}
                 </span>
               )}
               <button
@@ -281,23 +346,6 @@ export function TimerDrawModal({
                   ))}
                 </span>
               </button>
-              {sparks.map((spark) => (
-                <span
-                  key={`${burstId}-${spark.id}`}
-                  className={`draw-spark ${spark.streak ? 'is-streak' : ''}`}
-                  style={{
-                    background: spark.color,
-                    color: spark.color,
-                    width: spark.streak ? spark.size * 2.2 : spark.size,
-                    height: spark.streak ? 3 : spark.size,
-                    animationDelay: `${spark.delay}s`,
-                    animationDuration: `${spark.duration}s`,
-                    ['--dx' as string]: `${spark.dx}px`,
-                    ['--dy' as string]: `${spark.dy}px`,
-                    ['--rot' as string]: `${spark.rot}deg`,
-                  }}
-                />
-              ))}
             </div>
             <p className="mt-3 text-center text-[12px] font-600" style={{ color: '#A39B98' }}>
               {eligible.length === 0
