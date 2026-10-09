@@ -1,0 +1,1 @@
+function e(e){return e.voidedAt?!1:e.type===`ticket`?!0:e.status===`paid`&&e.amount===0&&(e.type===`buy-in`||e.type===`rebuy`||e.type===`addon`)}export{e as t};

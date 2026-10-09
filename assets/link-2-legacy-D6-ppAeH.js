@@ -1,0 +1,1 @@
+(function(){System.register([`./jsx-runtime-legacy-BZx7q4KN.js`],function(e,t){var n,r;return{setters:[function(e){n=e.n}],execute:function(){r=[[`path`,{d:`M9 17H7A5 5 0 0 1 7 7h2`,key:`8i5ue5`}],[`path`,{d:`M15 7h2a5 5 0 1 1 0 10h-2`,key:`1b9ql8`}],[`line`,{x1:`8`,x2:`16`,y1:`12`,y2:`12`,key:`1jonct`}]],e(`t`,n(`link-2`,r))}}})})();
