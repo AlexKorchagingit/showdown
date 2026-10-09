@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  Dices,
   Maximize,
   Minimize,
   Pause,
@@ -15,6 +16,7 @@ import {
 import { ScreenLoading } from '../../components/ScreenLoading';
 import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { FitText } from '../../components/FitText';
+import { TimerDrawModal } from '../../components/admin/TimerDrawModal';
 import { useBlinds } from '../../context/BlindsContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useProfile } from '../../context/ProfileContext';
@@ -118,6 +120,7 @@ export function AdminBlindsTimer() {
 
   const { bindTournament } = useBindPokerTimer();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [drawOpen, setDrawOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
 
   const tournamentIdParam = searchParams.get('tournament');
@@ -615,6 +618,9 @@ export function AdminBlindsTimer() {
         <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
           <ArrowLeft size={22} strokeWidth={2.2} />
         </ControlButton>
+        <ControlButton label="Случайный игрок" onClick={() => setDrawOpen(true)}>
+          <Dices size={22} strokeWidth={2.2} />
+        </ControlButton>
         <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
           <Settings size={22} strokeWidth={2.2} />
         </ControlButton>
@@ -655,6 +661,8 @@ export function AdminBlindsTimer() {
           )}
         </ControlButton>
       </div>
+
+      {drawOpen && <TimerDrawModal tournament={tournament} onClose={() => setDrawOpen(false)} />}
 
       {settingsOpen && (
         <div className="absolute inset-0 z-[60] flex items-end justify-center">
