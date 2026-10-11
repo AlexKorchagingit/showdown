@@ -47,6 +47,7 @@ import {
 import { lobbyArrivedHitStyle, lobbyArrivedRowStyle, TMA_FILL } from '../../lib/tmaFill';
 import { FlatHit } from '../../components/FlatHit';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
+import { removeTournamentPlayerConfirm } from '../../lib/removePlayerConfirm';
 import {
   assignRandomTeamPairs,
   findTeamPartner,
@@ -692,6 +693,9 @@ function Editor({ tournament }: { tournament: Tournament }) {
   };
 
   const removeParticipant = (id: string) => {
+    const player = tournament.participants.find((p) => p.id === id);
+    if (!player) return;
+    if (!window.confirm(removeTournamentPlayerConfirm(player.nickname, tournament.title))) return;
     if (pairingPlayerId === id) setPairingPlayerId(null);
     patch({
       participants: alignBustOutPlaces(

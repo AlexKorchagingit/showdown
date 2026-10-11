@@ -12,6 +12,7 @@ import { TRANSACTION_STATUS_LABEL, TRANSACTION_TYPE_LABEL } from '../../types/fi
 import type { Transaction, TransactionType } from '../../types/finance';
 import { DebtPaymentModal } from '../../components/admin/DebtPaymentModal';
 import { transactionVoidPrompt } from '../../lib/transactionVoid';
+import { removeTournamentPlayerConfirm } from '../../lib/removePlayerConfirm';
 import {
   applyPlaceToParticipant,
   calculatePayouts,
@@ -440,7 +441,9 @@ export function AdminTournamentFinance() {
   };
 
   const removePlayerFromTournament = (playerId: string) => {
-    if (!window.confirm('Точно удалить игрока из турнира?')) return;
+    const player = tournament.participants.find((p) => p.id === playerId);
+    if (!player) return;
+    if (!window.confirm(removeTournamentPlayerConfirm(player.nickname, tournament.title))) return;
     void updateTournament(tournament.id, {
       participants: alignBustOutPlaces(
         removeSeatKeepingTeams(tournament.participants, playerId, tournament.id),
