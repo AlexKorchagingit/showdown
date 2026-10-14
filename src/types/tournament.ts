@@ -24,6 +24,13 @@ export interface Participant {
    * Mutual A↔B pairs only; omitted / empty means the player is solo.
    */
   teamPartnerId?: string;
+  /**
+   * Team 1–6 on the one-off FREEROLL TEAM BATTLE of 13 Oct 2026.
+   * Other tournaments leave this empty.
+   */
+  squadNo?: number;
+  /** Informational points an admin types for that one-off. They are not rating. */
+  squadPoints?: number;
   /** Server seat version. A stale edit does not overwrite a newer one. */
   rosterRevision?: number;
   /** When this seat was created. Signup order for the lobby waitlist. */

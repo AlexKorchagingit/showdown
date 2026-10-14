@@ -36,7 +36,10 @@ import {
   ledgerChargeId,
   normalizeGuestNickname,
 } from '../../lib/guestPlayer';
-import { sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
+import { participantRowId, sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
+import { isSquadScoreEvent } from '../../lib/squadScores';
+import { saveSquadScores } from '../../lib/squadScoresApi';
+import { SquadScoreBoard } from '../../components/SquadScoreBoard';
 import { isArrivedPlayer } from '../../lib/tournamentArrival';
 import {
   featuresWithStackDraft,
@@ -481,7 +484,7 @@ function ParticipantsEditor({
 /* ── Editor body ────────────────────────────────────────────────────────── */
 function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
-  const { tournaments, updateTournament, duplicateTournament, deleteTournament } = useTournaments();
+  const { tournaments, updateTournament, duplicateTournament, deleteTournament, refreshParticipants } = useTournaments();
   const { clubUsers } = useUser();
   const { transactions, addCharge, voidTransaction, refreshFinance } = useFinance();
   const { openTimerForTournament } = useBindPokerTimer();
@@ -497,10 +500,12 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [pairingPlayerId, setPairingPlayerId] = useState<string | null>(null);
   const [distributeNote, setDistributeNote] = useState<string | null>(null);
+  const [squadSaving, setSquadSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFinished = hasFinished(tournament);
-  const teamBattle = isTeamBattleEvent(tournament);
+  const squadEvent = isSquadScoreEvent(tournament);
+  const teamBattle = isTeamBattleEvent(tournament) && !squadEvent;
   const occupiedSeats = tournament.participants.length;
   const copyPlayerCount = countOccupiedLobbySeats(
     tournament.participants,
@@ -1014,6 +1019,36 @@ function Editor({ tournament }: { tournament: Tournament }) {
             onPickPartner={pickPartner}
             onClearPartner={clearPartner}
           />
+
+          {squadEvent ? (
+            <SquadScoreBoard
+              key={tournament.participants
+                .map((player) => `${player.id}:${player.squadNo ?? ''}:${player.squadPoints ?? ''}`)
+                .join('|')}
+              tournament={tournament}
+              players={tournament.participants}
+              editable
+              saving={squadSaving}
+              onSave={async (rows) => {
+                setSquadSaving(true);
+                try {
+                  await saveSquadScores(
+                    tournament.id,
+                    rows.map((row) => ({
+                      seat_id: participantRowId(tournament.id, row.id),
+                      squad_no: row.squadNo,
+                      squad_points: row.points,
+                    })),
+                  );
+                  await refreshParticipants(tournament.id);
+                } catch (error) {
+                  window.alert(error instanceof Error ? error.message : 'Не удалось сохранить команды');
+                } finally {
+                  setSquadSaving(false);
+                }
+              }}
+            />
+          ) : null}
 
           <button
             type="button"

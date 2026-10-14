@@ -28,6 +28,8 @@ import {
   withClubSeasonRating,
 } from '../lib/clubRating';
 import { cashierFieldSize, finishedLobbyPlayers } from '../lib/tournamentArrival';
+import { isSquadScoreEvent, squadNoOf } from '../lib/squadScores';
+import { SquadScoreBoard } from '../components/SquadScoreBoard';
 import { splitLobbyQueue } from '../lib/lobbyQueue';
 import { publicStackFeatureLines } from '../lib/chipStacks';
 import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
@@ -335,6 +337,17 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             </div>
 
             {/* ─── УЧАСТНИКИ ─── */}
+            {tournamentFinished && isSquadScoreEvent(live) ? (
+              <SquadScoreBoard
+                tournament={live}
+                players={live.participants.filter(
+                  (player) =>
+                    squadNoOf(player) != null ||
+                    player.arrived === true ||
+                    (typeof player.place === 'number' && player.place >= 1),
+                )}
+              />
+            ) : (
             <div className="rounded-2xl overflow-hidden"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div
@@ -495,6 +508,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 </div>
               )}
             </div>
+            )}
 
             {showServiceInfo && (
               <div

@@ -65,6 +65,8 @@ export type ParticipantRow = {
   comment: string | null;
   arrived?: boolean;
   team_partner_id?: string | null;
+  squad_no?: number | null;
+  squad_points?: number | null;
   roster_revision?: number | null;
   created_at?: string | null;
 };
@@ -357,6 +359,16 @@ export function participantToRow(
   };
 }
 
+function squadNumberFromRow(value: number | null | undefined): number | undefined {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 6) return undefined;
+  return value;
+}
+
+function squadPointsFromRow(value: number | null | undefined): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return undefined;
+  return Math.floor(value);
+}
+
 export function participantFromRow(row: ParticipantRow): Participant {
   const bound = sanitizeParticipantUserId(row.user_id);
   return {
@@ -370,6 +382,8 @@ export function participantFromRow(row: ParticipantRow): Participant {
     comment: row.comment || undefined,
     arrived: row.arrived === true,
     teamPartnerId: row.team_partner_id?.trim() || undefined,
+    squadNo: squadNumberFromRow(row.squad_no),
+    squadPoints: squadPointsFromRow(row.squad_points),
     rosterRevision: typeof row.roster_revision === 'number' ? row.roster_revision : undefined,
     joinedAt: row.created_at?.trim() || undefined,
   };

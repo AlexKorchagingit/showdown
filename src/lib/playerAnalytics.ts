@@ -1,6 +1,7 @@
-import { itmPlaceCount, knockoutBountyPoints, finalTableSize } from '../data/prizeStructure';
+import { itmPlaceCount, finalTableSize } from '../data/prizeStructure';
 import { calculateRubies, isBountyEvent } from './calculateRubies';
-import { displayedTeamPlace, teamRatingPointsForPlayer } from './teamBattle';
+import { displayedTeamPlace } from './teamBattle';
+import { eventRatingAward, isSquadScoreEvent, squadBoardActive, squadNoOf } from './squadScores';
 import { guestSeatKey } from './guestPlayer';
 import { sanitizeParticipantUserId } from './supabaseMap';
 import { isArrivedPlayer, scoringFieldSize } from './tournamentArrival';
@@ -67,15 +68,15 @@ export function collectPlayerGameHistory(
     if (!tournament.isClosed) continue;
     const participant = findPlayerInTournament(tournament, ids);
     if (!participant) continue;
-    if (typeof participant.place !== 'number' || participant.place < 1) continue;
+    const board = isSquadScoreEvent(tournament) && squadBoardActive(tournament.participants);
+    const hasPlace = typeof participant.place === 'number' && participant.place >= 1;
+    if (!hasPlace && !(board && squadNoOf(participant) != null)) continue;
 
     const field = scoringFieldSize(tournament);
     const place = displayedTeamPlace(participant, tournament) ??
       (typeof participant.place === 'number' ? participant.place : null);
     const knockouts = Math.max(0, Math.floor(Number(participant.knockouts) || 0));
-    const ratingAwarded =
-      teamRatingPointsForPlayer(participant, tournament, field) +
-      knockoutBountyPoints(knockouts, tournament.isBounty === true);
+    const ratingAwarded = eventRatingAward(participant, tournament, field);
     const storedRubies =
       typeof participant.rubiesAwarded === 'number' ? Math.max(0, Math.floor(participant.rubiesAwarded)) : null;
     const rubiesAwarded =
@@ -288,14 +289,11 @@ export function computePlayerAdminStats(
   for (const tournament of played) {
     const participant = findPlayerInTournament(tournament, ids);
     if (!participant) continue;
-    const scoringPlace =
-      displayedTeamPlace(participant, tournament) ??
-      (typeof participant.place === 'number' && participant.place >= 1 ? participant.place : null);
-    if (scoringPlace == null) continue;
+    const board = isSquadScoreEvent(tournament) && squadBoardActive(tournament.participants);
+    const hasPlace = typeof participant.place === 'number' && participant.place >= 1;
+    if (!hasPlace && !(board && squadNoOf(participant) != null)) continue;
     const field = scoringFieldSize(tournament);
-    const points =
-      teamRatingPointsForPlayer(participant, tournament, field) +
-      knockoutBountyPoints(participant.knockouts, tournament.isBounty === true);
+    const points = eventRatingAward(participant, tournament, field);
     prizePoints += points;
     prizeRows.push({
       id: `prize-${tournament.id}`,
