@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { Participant, Tournament } from '../types/tournament';
-import { eventRatingAward, isSquadScoreEvent, squadAwards, squadBoardActive, SQUAD_EVENT_ID } from './squadScores';
+import { eventRatingAward, isSquadScoreEvent, squadAwards, squadBoardActive, squadTeamsByPoints, SQUAD_EVENT_ID } from './squadScores';
 
 function player(id: string, squadNo?: number, squadPoints?: number): Participant {
   return { id, nickname: id, rating: 0, squadNo, squadPoints };
 }
 
 describe('13 Oct squad scoreboard', () => {
+  it('lists teams from the highest total points', () => {
+    expect(squadTeamsByPoints([0, 240, 280, 255, 250, 285, 270])).toEqual([5, 2, 6, 3, 4, 1]);
+    expect(squadTeamsByPoints([0, 10, 10, 0, 0, 0, 0])).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
   it('recognises only that one tournament', () => {
     expect(isSquadScoreEvent({ id: SQUAD_EVENT_ID })).toBe(true);
     expect(isSquadScoreEvent({ id: 't-other' })).toBe(false);

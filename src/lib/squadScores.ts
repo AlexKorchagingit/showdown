@@ -9,6 +9,13 @@ import { teamRatingPointsForPlayer } from './teamBattle';
 export const SQUAD_EVENT_ID = 't-9afeed39-2f42-49aa-bf94-d7b36e8a18b0';
 export const SQUAD_TEAM_COUNT = 6;
 
+/** Team numbers 1–6, highest total очки first. Equal totals keep the smaller number above. */
+export function squadTeamsByPoints(teamPoints: readonly number[]): number[] {
+  return Array.from({ length: SQUAD_TEAM_COUNT }, (_, index) => index + 1).sort(
+    (left, right) => (teamPoints[right] ?? 0) - (teamPoints[left] ?? 0) || left - right,
+  );
+}
+
 export function isSquadScoreEvent(tournament: { id?: string } | null | undefined): boolean {
   return tournament?.id === SQUAD_EVENT_ID;
 }

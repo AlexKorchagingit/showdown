@@ -8,6 +8,7 @@ import {
   squadBoardActive,
   squadNoOf,
   squadPointsOf,
+  squadTeamsByPoints,
   SQUAD_TEAM_COUNT,
 } from '../lib/squadScores';
 
@@ -135,7 +136,7 @@ export function SquadScoreBoard({
           </p>
         ) : null}
       </div>
-      {[1, 2, 3, 4, 5, 6].map((team) => (
+      {squadTeamsByPoints(awards.teamPoints).map((team) => (
         <TeamBlock
           key={team}
           title={`Команда ${team}`}
