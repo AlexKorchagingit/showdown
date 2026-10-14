@@ -89,11 +89,16 @@ export function squadAwards(players: readonly Participant[], guarantee: number):
  */
 export function eventRatingAward(
   player: Participant,
-  tournament: Pick<Tournament, 'id' | 'title' | 'blindStructure' | 'guarantee' | 'participants' | 'isBounty'>,
+  tournament: Pick<Tournament, 'id' | 'title' | 'blindStructure' | 'guarantee' | 'participants' | 'isBounty' | 'isClosed'>,
   fieldSize: number,
 ): number {
-  if (isSquadScoreEvent(tournament) && squadBoardActive(tournament.participants)) {
-    return squadAwards(tournament.participants, tournament.guarantee).awardById.get(player.id) ?? 0;
+  if (isSquadScoreEvent(tournament)) {
+    if (squadBoardActive(tournament.participants)) {
+      return squadAwards(tournament.participants, tournament.guarantee).awardById.get(player.id) ?? 0;
+    }
+    // Saved award from the last "Сохранить команды", even if team columns
+    // have not reached this screen yet.
+    if (tournament.isClosed) return Math.max(0, Math.floor(Number(player.rating) || 0));
   }
   return (
     teamRatingPointsForPlayer(player, tournament, fieldSize) +

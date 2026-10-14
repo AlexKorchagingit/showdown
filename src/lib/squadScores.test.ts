@@ -63,4 +63,37 @@ describe('13 Oct squad scoreboard', () => {
     const live = { ...tournament, participants: [teamed] };
     expect(eventRatingAward(teamed, live, 1)).toBe(1000);
   });
+
+  it('keeps the saved award when team numbers are not on this screen', () => {
+    const seated = player('solo');
+    seated.place = 1;
+    seated.rating = 949;
+    const tournament = {
+      id: SQUAD_EVENT_ID,
+      title: 'FREEROLL TEAM BATTLE',
+      blindStructure: '',
+      guarantee: 25000,
+      participants: [seated],
+      isBounty: false,
+      isClosed: true,
+    } as Tournament;
+    expect(eventRatingAward(seated, tournament, 24)).toBe(949);
+  });
+
+  it('changes the awarded rating when one player’s points change', () => {
+    const before = [
+      player('a', 1, 40),
+      player('b', 1, 50),
+      player('c', 2, 100),
+    ];
+    const after = [
+      player('a', 1, 90),
+      player('b', 1, 50),
+      player('c', 2, 100),
+    ];
+    const first = squadAwards(before, 25000).awardById.get('a');
+    const next = squadAwards(after, 25000).awardById.get('a');
+    expect(first).not.toBe(next);
+    expect(squadAwards(after, 25000).awardById.get('a')).toBe(squadAwards(after, 25000).awardById.get('b'));
+  });
 });
