@@ -1,7 +1,7 @@
 import { itmPlaceCount, finalTableSize } from '../data/prizeStructure';
 import { calculateRubies, isBountyEvent } from './calculateRubies';
 import { displayedTeamPlace } from './teamBattle';
-import { eventRatingAward, isSquadScoreEvent, squadBoardActive, squadNoOf } from './squadScores';
+import { eventRatingAward, isSquadScoreEvent, squadBoardActive, squadNoOf, squadTeamPlace } from './squadScores';
 import { guestSeatKey } from './guestPlayer';
 import { sanitizeParticipantUserId } from './supabaseMap';
 import { isArrivedPlayer, scoringFieldSize } from './tournamentArrival';
@@ -73,7 +73,8 @@ export function collectPlayerGameHistory(
     if (!hasPlace && !(board && squadNoOf(participant) != null)) continue;
 
     const field = scoringFieldSize(tournament);
-    const place = displayedTeamPlace(participant, tournament) ??
+    const place = (board ? squadTeamPlace(participant, tournament.participants) : null) ??
+      displayedTeamPlace(participant, tournament) ??
       (typeof participant.place === 'number' ? participant.place : null);
     const knockouts = Math.max(0, Math.floor(Number(participant.knockouts) || 0));
     const ratingAwarded = eventRatingAward(participant, tournament, field);

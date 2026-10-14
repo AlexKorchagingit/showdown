@@ -16,6 +16,27 @@ export function squadTeamsByPoints(teamPoints: readonly number[]): number[] {
   );
 }
 
+/** 1 when this player's team has the most очки. Ties keep the smaller team number ahead. */
+export function squadTeamPlace(
+  player: Pick<Participant, 'squadNo'>,
+  players: readonly Participant[],
+): number | null {
+  const team = squadNoOf(player);
+  if (team == null) return null;
+  const points = [0, 0, 0, 0, 0, 0, 0];
+  const present = new Set<number>();
+  for (const row of players) {
+    const squad = squadNoOf(row);
+    if (squad == null) continue;
+    present.add(squad);
+    points[squad] = (points[squad] ?? 0) + squadPointsOf(row);
+  }
+  if (!present.has(team)) return null;
+  const order = squadTeamsByPoints(points).filter((squad) => present.has(squad));
+  const index = order.indexOf(team);
+  return index >= 0 ? index + 1 : null;
+}
+
 export function isSquadScoreEvent(tournament: { id?: string } | null | undefined): boolean {
   return tournament?.id === SQUAD_EVENT_ID;
 }

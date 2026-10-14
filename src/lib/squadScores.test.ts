@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import type { Participant, Tournament } from '../types/tournament';
-import { eventRatingAward, isSquadScoreEvent, squadAwards, squadBoardActive, squadTeamsByPoints, SQUAD_EVENT_ID } from './squadScores';
+import { eventRatingAward, isSquadScoreEvent, squadAwards, squadBoardActive, squadTeamPlace, squadTeamsByPoints, SQUAD_EVENT_ID } from './squadScores';
 
 function player(id: string, squadNo?: number, squadPoints?: number): Participant {
   return { id, nickname: id, rating: 0, squadNo, squadPoints };
 }
 
 describe('13 Oct squad scoreboard', () => {
+  it('gives every player the place of their team', () => {
+    const players = [
+      player('freedom', 2, 100),
+      player('mate', 2, 180),
+      ...[1, 2, 3, 4, 5].map((index) => player(`win-${index}`, 5, 57)),
+    ];
+    expect(squadTeamPlace(players[0]!, players)).toBe(2);
+    expect(squadTeamPlace(players[2]!, players)).toBe(1);
+  });
+
   it('lists teams from the highest total points', () => {
     expect(squadTeamsByPoints([0, 240, 280, 255, 250, 285, 270])).toEqual([5, 2, 6, 3, 4, 1]);
     expect(squadTeamsByPoints([0, 10, 10, 0, 0, 0, 0])).toEqual([1, 2, 3, 4, 5, 6]);
