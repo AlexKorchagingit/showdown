@@ -128,13 +128,12 @@ export function SquadScoreBoard({
     >
       <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <h3 className="text-sm font-bold text-white uppercase">Команды</h3>
-        <p className="mt-2 text-[12px] leading-relaxed" style={{ color: '#A39B98' }}>
-          Очки ни на что сами не влияют — они для игроков. Рейтинг турнира (
-          {tournament.guarantee.toLocaleString('ru-RU')}) делится между 6 командами по сумме очков, а внутри
-          команды поровну.
-          {!tournament.isClosed ? ' В общий рейтинг это попадёт после закрытия турнира.' : ''}
-          {!boardOn ? ' Пока никого нет в команде, в столбце рейтинга остаются прежние очки за места.' : ''}
-        </p>
+        {!tournament.isClosed || !boardOn ? (
+          <p className="mt-2 text-[12px] leading-relaxed" style={{ color: '#A39B98' }}>
+            {!tournament.isClosed ? 'В общий рейтинг это попадёт после закрытия турнира. ' : ''}
+            {!boardOn ? 'Пока никого нет в команде, в столбце рейтинга остаются прежние очки за места.' : ''}
+          </p>
+        ) : null}
       </div>
       {[1, 2, 3, 4, 5, 6].map((team) => (
         <TeamBlock
