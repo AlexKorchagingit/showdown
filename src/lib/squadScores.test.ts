@@ -23,9 +23,10 @@ describe('13 Oct squad scoreboard', () => {
     const awards = squadAwards(players, 100);
     expect(awards.teamPoints[1]).toBe(40);
     expect(awards.teamPoints[2]).toBe(60);
-    expect(awards.awardById.get('a1')).toBe(20);
-    expect(awards.awardById.get('a2')).toBe(20);
-    expect(awards.awardById.get('b1')).toBe(60);
+    expect(awards.awardById.get('a1')).toBe(28);
+    expect(awards.awardById.get('a2')).toBe(28);
+    expect(awards.awardById.get('b1')).toBe(42);
+    expect(awards.awardById.get('b1')).toBeGreaterThan(awards.awardById.get('a1') ?? 0);
   });
 
   it('drops a remainder inside a team so nobody gets a different share', () => {
@@ -40,10 +41,24 @@ describe('13 Oct squad scoreboard', () => {
     const players = [1, 2, 3, 4, 5, 6].map((team) => player(`p${team}`, team, team));
     const awards = squadAwards(players, 25000);
     const shares = [1, 2, 3, 4, 5, 6].map((team) => awards.awardById.get(`p${team}`) ?? 0);
-    expect(shares.reduce((sum, value) => sum + value, 0)).toBe(25000);
+    expect(shares.reduce((sum, value) => sum + value, 0)).toBeLessThanOrEqual(25000);
     for (let index = 1; index < shares.length; index += 1) {
-      expect(shares[index]).toBeGreaterThanOrEqual(shares[index - 1] ?? 0);
+      expect(shares[index]).toBeGreaterThan(shares[index - 1] ?? 0);
     }
+  });
+
+  it('pays the leading team more per person even when that team is larger', () => {
+    const players = [
+      ...[1, 2, 3].map((index) => player(`small-${index}`, 3, 85)),
+      ...[1, 2, 3, 4, 5].map((index) => player(`win-${index}`, 5, 57)),
+    ];
+    const awards = squadAwards(players, 25000);
+    expect(awards.teamPoints[3]).toBe(255);
+    expect(awards.teamPoints[5]).toBe(285);
+    const winner = awards.awardById.get('win-1') ?? 0;
+    const smaller = awards.awardById.get('small-1') ?? 0;
+    expect(winner).toBeGreaterThan(smaller);
+    expect(awards.awardById.get('win-5')).toBe(winner);
   });
 
   it('leaves ordinary place prizes until someone is assigned to a team', () => {

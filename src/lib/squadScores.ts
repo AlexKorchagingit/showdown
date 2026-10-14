@@ -40,9 +40,11 @@ export type SquadAward = {
 };
 
 /**
- * Split `guarantee` across the six teams in proportion to their очки.
- * Inside a team every player receives the same whole number of rating;
- * a remainder that would make them unequal is left unawarded.
+ * Personal rating follows the team's total очки, not how many people share it.
+ * Teammates still get the same whole number. A larger winning team is no longer
+ * paid less per person than a smaller team with fewer points.
+ * The guarantee is spread across players in proportion to their team's total,
+ * and any remainder that would make teammates unequal is left unawarded.
  */
 export function squadAwards(players: readonly Participant[], guarantee: number): SquadAward {
   const teamPoints = [0, 0, 0, 0, 0, 0, 0];
@@ -56,28 +58,11 @@ export function squadAwards(players: readonly Participant[], guarantee: number):
 
   const awardById = new Map<string, number>();
   const pool = Math.max(0, Math.floor(Number(guarantee) || 0));
-  const total = teamPoints.reduce((sum, value) => sum + value, 0);
-  const teamAward = [0, 0, 0, 0, 0, 0, 0];
-  if (pool > 0 && total > 0) {
-    const rows = [1, 2, 3, 4, 5, 6].map((team) => {
-      const exact = (pool * (teamPoints[team] ?? 0)) / total;
-      const base = Math.floor(exact);
-      return { team, base, rest: exact - base };
-    });
-    let leftover = pool - rows.reduce((sum, row) => sum + row.base, 0);
-    const order = [...rows].sort((a, b) => b.rest - a.rest || a.team - b.team);
-    for (const row of order) {
-      if (leftover <= 0) break;
-      row.base += 1;
-      leftover -= 1;
-    }
-    for (const row of rows) teamAward[row.team] = row.base;
-  }
-
+  const weight = teamPoints.reduce((sum, points, team) => sum + points * (members[team]?.length ?? 0), 0);
   for (let team = 1; team <= SQUAD_TEAM_COUNT; team += 1) {
     const group = members[team] ?? [];
     if (group.length === 0) continue;
-    const each = Math.floor((teamAward[team] ?? 0) / group.length);
+    const each = pool > 0 && weight > 0 ? Math.floor((pool * (teamPoints[team] ?? 0)) / weight) : 0;
     for (const player of group) awardById.set(player.id, each);
   }
   return { teamPoints, awardById };
