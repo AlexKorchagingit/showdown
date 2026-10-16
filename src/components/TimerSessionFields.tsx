@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { HandOfDayPicker } from './HandOfDay';
 import { useBlinds } from '../context/BlindsContext';
 import { useFinance } from '../context/FinanceContext';
 import { useTournaments } from '../context/TournamentContext';
@@ -35,6 +36,8 @@ export function TimerSessionFields() {
     setChipleader,
     chipleaderStack,
     setChipleaderStack,
+    handOfDay,
+    setHandOfDay,
   } = useBlinds();
 
   const tournament = tournaments.find((row) => row.id === linkedTournamentId);
@@ -152,6 +155,8 @@ export function TimerSessionFields() {
           className={`${FIELD_CLASS} disabled:opacity-40`}
         />
       </label>
+
+      <HandOfDayPicker hand={handOfDay} onChange={setHandOfDay} />
     </div>
   );
 }

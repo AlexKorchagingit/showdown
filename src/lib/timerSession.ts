@@ -6,6 +6,7 @@ import {
   type LevelListChange,
 } from '../data/blindStructures';
 import { safeLocalStorage } from './safeStorage';
+import { normalizeHandOfDay, type HandOfDay } from './pokerCards';
 
 export const TIMER_SESSION_CACHE_KEY = 'showdown.timerSession';
 export const TIMER_SESSION_CHANNEL = 'showdown-timer-session';
@@ -30,6 +31,8 @@ export type TimerSnapshot = {
   chipleaderStack: number | null;
   /** Live ladder for the bound structure. Optional so older snapshots still parse. */
   levels?: BlindLevel[];
+  /** «Рука дня» shown on the timer. Absent until an admin picks it. */
+  handOfDay?: HandOfDay;
 };
 
 export type LiveTimerClock = {
@@ -160,6 +163,7 @@ export function parseTimerSnapshot(raw: unknown): TimerSnapshot | null {
   const last = Math.max(0, levelDurations.length - 1);
   const levelIndex = Math.min(last, Math.max(0, Math.trunc(asFiniteNumber(row.levelIndex, 0))));
   const levels = parseTimerLevels(row.levels);
+  const handOfDay = normalizeHandOfDay(row.handOfDay);
 
   return {
     v: 1,
@@ -179,6 +183,7 @@ export function parseTimerSnapshot(raw: unknown): TimerSnapshot | null {
     rebuyCount: asNullableNumber(row.rebuyCount),
     chipleaderStack: asNullableNumber(row.chipleaderStack),
     ...(levels ? { levels } : {}),
+    ...(handOfDay ? { handOfDay } : {}),
   };
 }
 

@@ -48,6 +48,7 @@ import {
   unlockBlindsAudio,
 } from '../lib/blindsAudio';
 import { BLINDS_SETTINGS_ROUTE, TIMER_ROUTE, TIMER_SYNC_POLL_MS } from '../lib/timerTournament';
+import { normalizeHandCards, type HandOfDay } from '../lib/pokerCards';
 import { supabase } from '../lib/supabase';
 import { useUser } from './UserContext';
 import {
@@ -191,6 +192,8 @@ interface BlindsContextValue {
   setChipleader: (userId: string | null) => void;
   setChipleaderStack: (value: number | null) => void;
   liveLevels: BlindLevel[] | undefined;
+  handOfDay: HandOfDay | undefined;
+  setHandOfDay: (hand: HandOfDay) => void;
 }
 
 const BlindsContext = createContext<BlindsContextValue | null>(null);
@@ -618,6 +621,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
             levels: undefined,
             chipleaderId: null,
             chipleaderStack: null,
+            handOfDay: undefined,
           },
           { persist: 'now', silent: true },
         );
@@ -736,7 +740,15 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
         tournamentId,
         chipleaderId: tournamentId === current.tournamentId ? current.chipleaderId : null,
         chipleaderStack: tournamentId === current.tournamentId ? current.chipleaderStack : null,
+        handOfDay: tournamentId === current.tournamentId ? current.handOfDay : undefined,
       });
+    },
+    [commit],
+  );
+
+  const setHandOfDay = useCallback(
+    (hand: HandOfDay) => {
+      commit({ handOfDay: { on: hand.on, cards: normalizeHandCards(hand.cards) } });
     },
     [commit],
   );
@@ -791,6 +803,8 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       setChipleader,
       setChipleaderStack,
       liveLevels: state.snapshot.levels,
+      handOfDay: state.snapshot.handOfDay,
+      setHandOfDay,
     }),
     [
       timerReady,
@@ -809,6 +823,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       setLinkedTournament,
       setChipleader,
       setChipleaderStack,
+      setHandOfDay,
     ],
   );
 

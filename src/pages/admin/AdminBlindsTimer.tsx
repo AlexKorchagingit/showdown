@@ -49,6 +49,8 @@ import {
 } from '../../lib/tournamentStats';
 import { isTeamBattleEvent, teamPrizeAtPlace } from '../../lib/teamBattle';
 import { timerStageFor, timerStageTransform } from '../../lib/timerStage';
+import { visibleHand } from '../../lib/pokerCards';
+import { HandOfDayCards } from '../../components/HandOfDay';
 
 const SETTINGS_ROUTE = '/admin/blinds/settings';
 const CIRCLE_SIZE = 420;
@@ -116,6 +118,7 @@ export function AdminBlindsTimer() {
     setChipleader,
     chipleaderStack,
     liveLevels,
+    handOfDay,
   } = useBlinds();
   const { transactions, isLoading: financeLoading } = useFinance();
 
@@ -272,6 +275,7 @@ export function AdminBlindsTimer() {
     levels: liveLevels,
   });
   const tournament = boundTournament;
+  const hand = visibleHand(handOfDay);
   const { remaining, registered } = tournamentPlayerCounts(tournament);
   const chipTotals = useMemo(
     () => timerChipTotals(tournament, structure, transactions),
@@ -614,7 +618,9 @@ export function AdminBlindsTimer() {
             <img
               src={asset('/SD.png')}
               alt="Showdown"
-              className="h-40 wide:h-56 w-auto object-contain opacity-90 self-end"
+              className={`${
+                hand ? 'h-24 wide:h-28' : 'h-40 wide:h-56'
+              } w-auto object-contain opacity-90 self-end`}
             />
             <section className={`${GLASS} w-full self-end text-right space-y-4`}>
               {timeToNextBreak != null && (
@@ -648,6 +654,14 @@ export function AdminBlindsTimer() {
                 <p className="text-xl text-white/35">Тайминги не заданы</p>
               )}
             </section>
+            {hand ? (
+              <section className="w-full self-end rounded-2xl border border-white/[0.05] bg-white/[0.03] px-3 pb-2 pt-3 text-center backdrop-blur-sm">
+                <p className="text-base wide:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
+                  Рука дня
+                </p>
+                <HandOfDayCards cards={hand} cardWidth={88} />
+              </section>
+            ) : null}
           </div>
         </div>
 

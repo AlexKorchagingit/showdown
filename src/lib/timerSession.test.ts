@@ -195,4 +195,29 @@ describe('parseTimerSnapshot', () => {
     expect(withLevels?.levels).toHaveLength(2);
     expect(withLevels?.levels?.[0]).toMatchObject({ smallBlind: 100, bigBlind: 200, ante: 200 });
   });
+
+  it('keeps the hand of the day and drops a broken one', () => {
+    const base = { ...emptyTimerSnapshot(), writeId: 'hand', anchorAt: '2026-10-16T12:00:00.000Z' };
+    expect(parseTimerSnapshot(base)?.handOfDay).toBeUndefined();
+    expect(parseTimerSnapshot({ ...base, handOfDay: { on: true, cards: ['As', 'Kh'] } })?.handOfDay).toEqual({
+      on: true,
+      cards: ['As', 'Kh'],
+    });
+    expect(parseTimerSnapshot({ ...base, handOfDay: { on: true, cards: ['As', 'As', 'zz'] } })?.handOfDay).toEqual({
+      on: true,
+      cards: ['As'],
+    });
+    expect(parseTimerSnapshot({ ...base, handOfDay: 'nope' })?.handOfDay).toBeUndefined();
+  });
+
+  it('carries the hand of the day through a clock freeze', () => {
+    const base = parseTimerSnapshot({
+      ...emptyTimerSnapshot(),
+      writeId: 'hand',
+      anchorAt: '2026-10-16T12:00:00.000Z',
+      handOfDay: { on: true, cards: ['As', 'Kh'] },
+    })!;
+    const frozen = freezeTimerSnapshot(base, { secondsLeft: 100 });
+    expect(frozen.handOfDay).toEqual({ on: true, cards: ['As', 'Kh'] });
+  });
 });
