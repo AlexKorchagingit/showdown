@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -48,6 +48,7 @@ import {
   tournamentPlayerCounts,
 } from '../../lib/tournamentStats';
 import { isTeamBattleEvent, teamPrizeAtPlace } from '../../lib/teamBattle';
+import { timerStageFor, timerStageTransform } from '../../lib/timerStage';
 
 const SETTINGS_ROUTE = '/admin/blinds/settings';
 const CIRCLE_SIZE = 420;
@@ -122,6 +123,38 @@ export function AdminBlindsTimer() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawOpen, setDrawOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
+  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+
+  useLayoutEffect(() => {
+    if (!rootEl) return;
+    const measure = () => {
+      const width = rootEl.clientWidth;
+      const height = rootEl.clientHeight;
+      setBox((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(rootEl);
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, [rootEl]);
+
+  const stage = timerStageFor(box.width, box.height);
+  const stageStyle = stage.scaled
+    ? {
+        left: '50%',
+        top: '50%',
+        width: stage.width,
+        height: stage.height,
+        transform: timerStageTransform(stage),
+      }
+    : undefined;
 
   const tournamentIdParam = searchParams.get('tournament');
   const structureIdParam = searchParams.get('structure');
@@ -332,334 +365,339 @@ export function AdminBlindsTimer() {
     : `Level ${levelNumber}`;
 
   return (
-    <div className="relative h-full w-full min-h-0 overflow-hidden text-white bg-[#0A0908]">
-      <div className="relative flex h-full w-full min-h-0 items-stretch gap-4 overflow-visible p-6 md:p-8 pb-28">
-        <div className="w-[240px] md:w-[280px] shrink-0 flex flex-col min-h-0">
-          <section className={`${GLASS} flex-1 min-h-0 overflow-y-auto`}>
-            <p className="text-sm md:text-lg font-800 uppercase tracking-[0.16em] text-[#D99962]">
-              Гарантия очков
-            </p>
-            <p className="text-4xl md:text-5xl font-black mt-3 leading-none tabular-nums text-[#F2D8A7]">
-              {prizePool.toLocaleString('ru-RU')}
-            </p>
+    <div ref={setRootEl} className="relative h-full w-full min-h-0 overflow-hidden text-white bg-[#0A0908]">
+      <div
+        className={stage.scaled ? 'timer-stage absolute' : 'absolute inset-0'}
+        style={stageStyle}
+      >
+        <div className="relative flex h-full w-full min-h-0 items-stretch gap-4 overflow-visible p-6 wide:p-8 pb-28">
+          <div className="w-[240px] wide:w-[280px] shrink-0 flex flex-col min-h-0">
+            <section className={`${GLASS} flex-1 min-h-0 overflow-y-auto`}>
+              <p className="text-sm wide:text-lg font-800 uppercase tracking-[0.16em] text-[#D99962]">
+                Гарантия очков
+              </p>
+              <p className="text-4xl wide:text-5xl font-black mt-3 leading-none tabular-nums text-[#F2D8A7]">
+                {prizePool.toLocaleString('ru-RU')}
+              </p>
 
-            <div className="mt-5 tabular-nums">
-              {hasEntries ? (
-                <>
-                  <p className="text-xs font-700 uppercase tracking-[0.14em] text-white/40 mb-3">
-                    В призах: {payouts.length}{' '}
-                    {isTeamBattleEvent(tournament) ? 'мест' : 'чел.'} ({itmSharePercent()}%)
-                  </p>
-                  {payouts.length === 0 ? (
-                    <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {payouts.map(({ place, points }) => {
-                        const teamBattle = isTeamBattleEvent(tournament);
-                        const teamRow =
-                          teamBattle && tournament
-                            ? teamPrizeAtPlace(tournament, place, fieldSize)
-                            : undefined;
-                        const awarded = teamBattle
-                          ? Boolean(teamRow)
-                          : place > activePlayersCount;
-                        const nickname = teamBattle
-                          ? teamRow?.names.join(' / ')
-                          : awarded
-                            ? eliminatedNickByPlace.get(place)
-                            : undefined;
-                        const label = nickname ?? `${place} место`;
-                        const shownPoints =
-                          teamRow && teamRow.names.length > 1
-                            ? prizePointsForTimerPlace(tournament, place, points, fieldSize)
-                            : points;
-                        return (
-                          <div
-                            key={place}
-                            className={`flex justify-between items-baseline gap-3 rounded-lg px-2 py-1 -mx-2 ${
-                              awarded ? 'opacity-50 text-[#A39B98] bg-black/20' : ''
-                            }`}
-                          >
-                            <span
-                              className={`text-lg md:text-xl font-700 truncate ${
-                                awarded ? '' : 'text-white/70'
+              <div className="mt-5 tabular-nums">
+                {hasEntries ? (
+                  <>
+                    <p className="text-xs font-700 uppercase tracking-[0.14em] text-white/40 mb-3">
+                      В призах: {payouts.length}{' '}
+                      {isTeamBattleEvent(tournament) ? 'мест' : 'чел.'} ({itmSharePercent()}%)
+                    </p>
+                    {payouts.length === 0 ? (
+                      <p className="text-sm font-600 text-white/40">Нет призовых мест</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {payouts.map(({ place, points }) => {
+                          const teamBattle = isTeamBattleEvent(tournament);
+                          const teamRow =
+                            teamBattle && tournament
+                              ? teamPrizeAtPlace(tournament, place, fieldSize)
+                              : undefined;
+                          const awarded = teamBattle
+                            ? Boolean(teamRow)
+                            : place > activePlayersCount;
+                          const nickname = teamBattle
+                            ? teamRow?.names.join(' / ')
+                            : awarded
+                              ? eliminatedNickByPlace.get(place)
+                              : undefined;
+                          const label = nickname ?? `${place} место`;
+                          const shownPoints =
+                            teamRow && teamRow.names.length > 1
+                              ? prizePointsForTimerPlace(tournament, place, points, fieldSize)
+                              : points;
+                          return (
+                            <div
+                              key={place}
+                              className={`flex justify-between items-baseline gap-3 rounded-lg px-2 py-1 -mx-2 ${
+                                awarded ? 'opacity-50 text-[#A39B98] bg-black/20' : ''
                               }`}
                             >
-                              {label}
-                            </span>
-                            <span
-                              className={`text-base md:text-lg font-black tabular-nums shrink-0 ${
-                                awarded ? '' : 'text-[#D99962]'
-                              }`}
-                            >
-                              {shownPoints.toLocaleString('ru-RU')}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-xl font-medium text-white/70">Идет подсчет распределения очков...</p>
-              )}
-            </div>
-          </section>
-        </div>
-
-        <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-visible md:w-[260px]">
-          {tournament && (
-            <section className={`${GLASS_TIGHT} text-center min-w-0`}>
-              <p className="text-xs md:text-sm font-800 uppercase tracking-[0.16em] text-white/40">
-                В ИГРЕ
-              </p>
-              <FitText compact maxPx={32} className="text-white">
-                {remaining}
-                <span className="text-white/35"> / {registered}</span>
-              </FitText>
-              {rebuyLine && (
-                <p className="text-xs md:text-sm font-600 text-white/60 mt-1 first-letter:uppercase">
-                  {rebuyLine}
-                </p>
-              )}
-            </section>
-          )}
-
-          <section className={`${GLASS_TIGHT} text-center min-w-0`}>
-            <p className="text-xs md:text-sm font-800 uppercase tracking-[0.16em] text-white/40">
-              СРЕДНИЙ СТЕК
-            </p>
-            <FitText compact maxPx={32} className="text-[#F2D8A7]">
-              {financeLoading && transactions.length === 0 ? '…' : avgStack.toLocaleString('ru-RU')}
-            </FitText>
-            {avgBigBlinds != null && !(financeLoading && transactions.length === 0) ? (
-              <p className="mt-1 text-base md:text-lg font-800 leading-none tabular-nums text-[#D99962]">
-                ≈ {formatBigBlinds(avgBigBlinds)}
-              </p>
-            ) : null}
-          </section>
-
-          {chipleader && (
-            <div className="relative z-[1] mt-auto w-full min-w-0 shrink-0">
-              <img
-                src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
-                alt=""
-                className="pointer-events-none absolute bottom-[calc(100%-12px)] left-1/2 z-20 h-[260px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom"
-              />
-              <section className="relative z-10 w-full min-w-0 overflow-hidden rounded-2xl border border-white/[0.05] bg-white/[0.03] px-4 pb-3 pt-2 text-center backdrop-blur-sm">
-                <p className="text-[11px] font-800 uppercase tracking-[0.28em] text-[#D99962] md:text-xs">
-                  CHIPLEADER
-                </p>
-                <p className="mt-0.5 w-full truncate px-1 text-center text-lg font-black leading-tight text-white md:text-xl">
-                  {chipleader.nickname}
-                </p>
-                <FitText maxPx={32} className="text-[#D99962]">
-                  {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
-                </FitText>
-              </section>
-            </div>
-          )}
-        </div>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center px-1 pt-0">
-          <p className="mt-1 inline-block bg-gradient-to-r from-[#8C4C27] via-[#F2D8A7] to-[#D99962] bg-[length:200%_auto] bg-clip-text text-xl font-800 uppercase tracking-widest text-transparent animate-gradient md:text-2xl">
-            SHOWDOWN
-          </p>
-          <h1 className="mt-1 text-center text-2xl font-black uppercase leading-tight tracking-wide text-[#D99962] md:text-3xl">
-            {eventTitle}
-          </h1>
-
-          <div
-            className="relative mt-2 flex min-h-0 w-full flex-1 items-center justify-center"
-            style={{ containerType: 'size' }}
-          >
-            <div className="relative aspect-square w-[min(100%,100cqh,38rem)] max-h-full">
-              <svg
-                viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
-                className="pointer-events-none h-full w-full -rotate-90"
-                aria-hidden
-              >
-                <defs>
-                  <filter id="timer-glow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                <circle
-                  cx={CIRCLE_SIZE / 2}
-                  cy={CIRCLE_SIZE / 2}
-                  r={RADIUS}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.08)"
-                  strokeWidth={STROKE}
-                />
-                <circle
-                  cx={CIRCLE_SIZE / 2}
-                  cy={CIRCLE_SIZE / 2}
-                  r={RADIUS}
-                  fill="none"
-                  stroke="#D99962"
-                  strokeWidth={STROKE}
-                  strokeLinecap="round"
-                  strokeDasharray={CIRCUMFERENCE}
-                  strokeDashoffset={dashOffset}
-                  filter="url(#timer-glow)"
-                  className="transition-all duration-1000 linear"
-                />
-              </svg>
-              {/* Clip to the inner ring so type can be large without leaving the circle. */}
-              <div
-                className="pointer-events-none absolute inset-[5%] overflow-hidden rounded-full px-4 text-center"
-                style={{ containerType: 'inline-size' }}
-              >
-                <div className="flex h-full w-full origin-center scale-[0.855] flex-col items-center justify-center">
-                  {isBreak ? (
-                    <>
-                      <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
-                        ПЕРЕРЫВ
-                      </p>
-                      {currentBreakNote ? (
-                        <p className="mt-2 max-w-full px-1 text-[clamp(0.95rem,8cqi,1.85rem)] font-800 leading-snug text-[#F2D8A7]">
-                          {currentBreakNote}
-                        </p>
-                      ) : null}
-                      <p className="mt-2 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                        {formatClock(secondsLeft)}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <span className="rounded-full bg-[#D99962]/20 px-5 py-1 text-[clamp(1.05rem,11cqi,2rem)] font-bold uppercase tracking-widest text-[#D99962]">
-                        {levelBadge}
-                      </span>
-                      <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
-                        {blindsLabel}
-                      </p>
-                      {hideAnte ? null : (
-                        <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
-                          {anteLabel}
-                        </p>
-                      )}
-                      <p className="mt-1.5 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                        {formatClock(secondsLeft)}
-                      </p>
-                    </>
-                  )}
-                </div>
+                              <span
+                                className={`text-lg wide:text-xl font-700 truncate ${
+                                  awarded ? '' : 'text-white/70'
+                                }`}
+                              >
+                                {label}
+                              </span>
+                              <span
+                                className={`text-base wide:text-lg font-black tabular-nums shrink-0 ${
+                                  awarded ? '' : 'text-[#D99962]'
+                                }`}
+                              >
+                                {shownPoints.toLocaleString('ru-RU')}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xl font-medium text-white/70">Идет подсчет распределения очков...</p>
+                )}
               </div>
-              <button
-                type="button"
-                className="absolute left-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
-                aria-label="Минус одна минута"
-                onClick={() => adjustSeconds(-60)}
-              />
-              <button
-                type="button"
-                className="absolute right-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
-                aria-label="Плюс одна минута"
-                onClick={() => adjustSeconds(60)}
-              />
-            </div>
+            </section>
           </div>
 
-          <p className="mt-2.5 mb-1.5 shrink-0 text-center text-[1.24rem] font-bold leading-snug text-white/70 md:text-[1.38rem]">
-            Next Blinds:{' '}
-            <span className="text-[#D99962]">
-              {formatNextBlinds(nextLevel, { hideAnte })}
-            </span>
-          </p>
-        </div>
-
-        <div className="w-64 md:w-80 shrink-0 flex flex-col items-end gap-4">
-          <img
-            src={asset('/SD.png')}
-            alt="Showdown"
-            className="h-40 md:h-56 w-auto object-contain opacity-90 self-end"
-          />
-          <section className={`${GLASS} w-full self-end text-right space-y-4`}>
-            {timeToNextBreak != null && (
-              <div>
-                <p className="text-base md:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
-                  Перерыв через
+          <div className="flex w-[220px] min-h-0 min-w-0 shrink-0 flex-col gap-4 overflow-visible wide:w-[260px]">
+            {tournament && (
+              <section className={`${GLASS_TIGHT} text-center min-w-0`}>
+                <p className="text-xs wide:text-sm font-800 uppercase tracking-[0.16em] text-white/40">
+                  В ИГРЕ
                 </p>
-                <p className="text-xl md:text-2xl font-black tabular-nums text-white mt-1">
-                  {formatEta(timeToNextBreak)}
-                </p>
-                {nextBreakNote ? (
-                  <p className="mt-1 text-base md:text-lg font-700 leading-snug text-[#F2D8A7]">
-                    {nextBreakNote}
+                <FitText compact maxPx={32} className="text-white">
+                  {remaining}
+                  <span className="text-white/35"> / {registered}</span>
+                </FitText>
+                {rebuyLine && (
+                  <p className="text-xs wide:text-sm font-600 text-white/60 mt-1 first-letter:uppercase">
+                    {rebuyLine}
                   </p>
-                ) : null}
-              </div>
+                )}
+              </section>
             )}
-            {lateRegClosed ? (
-              <p className="text-lg font-bold text-red-500">Регистрация закрыта</p>
-            ) : timeToLateRegEnd != null ? (
-              <div>
-                <p className="text-base md:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
-                  Поздняя регистрация
-                </p>
-                <p className="text-xl md:text-2xl font-black tabular-nums text-white mt-1">
-                  {formatEta(timeToLateRegEnd)}
-                </p>
-              </div>
-            ) : null}
-            {timeToNextBreak == null && !lateRegClosed && timeToLateRegEnd == null && (
-              <p className="text-xl text-white/35">Тайминги не заданы</p>
-            )}
-          </section>
-        </div>
-      </div>
 
-      <div className="absolute bottom-8 right-8 z-50 flex items-center gap-2 pointer-events-auto">
-        <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
-          <ArrowLeft size={22} strokeWidth={2.2} />
-        </ControlButton>
-        <ControlButton label="Случайный игрок" onClick={() => setDrawOpen(true)}>
-          <Dices size={22} strokeWidth={2.2} />
-        </ControlButton>
-        <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
-          <Settings size={22} strokeWidth={2.2} />
-        </ControlButton>
-        <ControlButton
-          label="Предыдущий уровень"
-          onClick={() => skipLevel(-1)}
-          disabled={levelIndex <= 0}
-        >
-          <SkipBack size={22} strokeWidth={2.2} />
-        </ControlButton>
-        <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={() => setRunning(!isRunning)}>
-          {isRunning ? (
-            <Pause size={22} strokeWidth={2.2} fill="currentColor" />
-          ) : (
-            <Play size={22} strokeWidth={2.2} fill="currentColor" className="pl-1" />
-          )}
-        </ControlButton>
-        <ControlButton
-          label="Следующий уровень"
-          onClick={() => skipLevel(1)}
-          disabled={levelIndex >= (structure?.levels.length ?? 1) - 1}
-        >
-          <SkipForward size={22} strokeWidth={2.2} />
-        </ControlButton>
-        <ControlButton label="Повторить уровень" onClick={restartLevel}>
-          <RotateCcw size={22} strokeWidth={2.2} />
-        </ControlButton>
-        <ControlButton
-          label={fullscreen ? 'Выйти из полноэкранного режима' : 'Полный экран'}
-          onClick={() => {
-            void toggleAppFullscreen().then(() => setFullscreen(isAppFullscreen()));
-          }}
-        >
-          {fullscreen ? (
-            <Minimize size={22} strokeWidth={2.2} />
-          ) : (
-            <Maximize size={22} strokeWidth={2.2} />
-          )}
-        </ControlButton>
+            <section className={`${GLASS_TIGHT} text-center min-w-0`}>
+              <p className="text-xs wide:text-sm font-800 uppercase tracking-[0.16em] text-white/40">
+                СРЕДНИЙ СТЕК
+              </p>
+              <FitText compact maxPx={32} className="text-[#F2D8A7]">
+                {financeLoading && transactions.length === 0 ? '…' : avgStack.toLocaleString('ru-RU')}
+              </FitText>
+              {avgBigBlinds != null && !(financeLoading && transactions.length === 0) ? (
+                <p className="mt-1 text-base wide:text-lg font-800 leading-none tabular-nums text-[#D99962]">
+                  ≈ {formatBigBlinds(avgBigBlinds)}
+                </p>
+              ) : null}
+            </section>
+
+            {chipleader && (
+              <div className="relative z-[1] mt-auto w-full min-w-0 shrink-0">
+                <img
+                  src={characterImageForPlayer(chipleader.id, chipleader.nickname, equippedChar)}
+                  alt=""
+                  className="pointer-events-none absolute bottom-[calc(100%-12px)] left-1/2 z-20 h-[260px] w-auto max-w-none -translate-x-1/2 object-contain object-bottom"
+                />
+                <section className="relative z-10 w-full min-w-0 overflow-hidden rounded-2xl border border-white/[0.05] bg-white/[0.03] px-4 pb-3 pt-2 text-center backdrop-blur-sm">
+                  <p className="text-[11px] font-800 uppercase tracking-[0.28em] text-[#D99962] wide:text-xs">
+                    CHIPLEADER
+                  </p>
+                  <p className="mt-0.5 w-full truncate px-1 text-center text-lg font-black leading-tight text-white wide:text-xl">
+                    {chipleader.nickname}
+                  </p>
+                  <FitText maxPx={32} className="text-[#D99962]">
+                    {chipleaderStack != null ? chipleaderStack.toLocaleString('ru-RU') : '—'}
+                  </FitText>
+                </section>
+              </div>
+            )}
+          </div>
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center px-1 pt-0">
+            <p className="mt-1 inline-block bg-gradient-to-r from-[#8C4C27] via-[#F2D8A7] to-[#D99962] bg-[length:200%_auto] bg-clip-text text-xl font-800 uppercase tracking-widest text-transparent animate-gradient wide:text-2xl">
+              SHOWDOWN
+            </p>
+            <h1 className="mt-1 text-center text-2xl font-black uppercase leading-tight tracking-wide text-[#D99962] wide:text-3xl">
+              {eventTitle}
+            </h1>
+
+            <div
+              className="relative mt-2 flex min-h-0 w-full flex-1 items-center justify-center"
+              style={{ containerType: 'size' }}
+            >
+              <div className="relative aspect-square w-[min(100%,100cqh,38rem)] max-h-full">
+                <svg
+                  viewBox={`0 0 ${CIRCLE_SIZE} ${CIRCLE_SIZE}`}
+                  className="pointer-events-none h-full w-full -rotate-90"
+                  aria-hidden
+                >
+                  <defs>
+                    <filter id="timer-glow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="3" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <circle
+                    cx={CIRCLE_SIZE / 2}
+                    cy={CIRCLE_SIZE / 2}
+                    r={RADIUS}
+                    fill="none"
+                    stroke="rgba(255,255,255,0.08)"
+                    strokeWidth={STROKE}
+                  />
+                  <circle
+                    cx={CIRCLE_SIZE / 2}
+                    cy={CIRCLE_SIZE / 2}
+                    r={RADIUS}
+                    fill="none"
+                    stroke="#D99962"
+                    strokeWidth={STROKE}
+                    strokeLinecap="round"
+                    strokeDasharray={CIRCUMFERENCE}
+                    strokeDashoffset={dashOffset}
+                    filter="url(#timer-glow)"
+                    className="transition-all duration-1000 linear"
+                  />
+                </svg>
+                {/* Clip to the inner ring so type can be large without leaving the circle. */}
+                <div
+                  className="pointer-events-none absolute inset-[5%] overflow-hidden rounded-full px-4 text-center"
+                  style={{ containerType: 'inline-size' }}
+                >
+                  <div className="flex h-full w-full origin-center scale-[0.855] flex-col items-center justify-center">
+                    {isBreak ? (
+                      <>
+                        <p className="text-[clamp(1.5rem,18cqi,3.25rem)] font-black uppercase leading-none tracking-[0.12em] text-white">
+                          ПЕРЕРЫВ
+                        </p>
+                        {currentBreakNote ? (
+                          <p className="mt-2 max-w-full px-1 text-[clamp(0.95rem,8cqi,1.85rem)] font-800 leading-snug text-[#F2D8A7]">
+                            {currentBreakNote}
+                          </p>
+                        ) : null}
+                        <p className="mt-2 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                          {formatClock(secondsLeft)}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="rounded-full bg-[#D99962]/20 px-5 py-1 text-[clamp(1.05rem,11cqi,2rem)] font-bold uppercase tracking-widest text-[#D99962]">
+                          {levelBadge}
+                        </span>
+                        <p className="mt-2 max-w-full px-0.5 text-[clamp(1.85rem,26cqi,5.5rem)] font-black leading-[1.05] text-white">
+                          {blindsLabel}
+                        </p>
+                        {hideAnte ? null : (
+                          <p className="mt-1.5 text-[clamp(1.2rem,14cqi,2.75rem)] font-700 text-[#F2D8A7]">
+                            {anteLabel}
+                          </p>
+                        )}
+                        <p className="mt-1.5 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
+                          {formatClock(secondsLeft)}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="absolute left-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
+                  aria-label="Минус одна минута"
+                  onClick={() => adjustSeconds(-60)}
+                />
+                <button
+                  type="button"
+                  className="absolute right-0 top-0 z-[1] h-full w-1/2 cursor-pointer bg-transparent"
+                  aria-label="Плюс одна минута"
+                  onClick={() => adjustSeconds(60)}
+                />
+              </div>
+            </div>
+
+            <p className="mt-2.5 mb-1.5 shrink-0 text-center text-[1.24rem] font-bold leading-snug text-white/70 wide:text-[1.38rem]">
+              Next Blinds:{' '}
+              <span className="text-[#D99962]">
+                {formatNextBlinds(nextLevel, { hideAnte })}
+              </span>
+            </p>
+          </div>
+
+          <div className="w-64 wide:w-80 shrink-0 flex flex-col items-end gap-4">
+            <img
+              src={asset('/SD.png')}
+              alt="Showdown"
+              className="h-40 wide:h-56 w-auto object-contain opacity-90 self-end"
+            />
+            <section className={`${GLASS} w-full self-end text-right space-y-4`}>
+              {timeToNextBreak != null && (
+                <div>
+                  <p className="text-base wide:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
+                    Перерыв через
+                  </p>
+                  <p className="text-xl wide:text-2xl font-black tabular-nums text-white mt-1">
+                    {formatEta(timeToNextBreak)}
+                  </p>
+                  {nextBreakNote ? (
+                    <p className="mt-1 text-base wide:text-lg font-700 leading-snug text-[#F2D8A7]">
+                      {nextBreakNote}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+              {lateRegClosed ? (
+                <p className="text-lg font-bold text-red-500">Регистрация закрыта</p>
+              ) : timeToLateRegEnd != null ? (
+                <div>
+                  <p className="text-base wide:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
+                    Поздняя регистрация
+                  </p>
+                  <p className="text-xl wide:text-2xl font-black tabular-nums text-white mt-1">
+                    {formatEta(timeToLateRegEnd)}
+                  </p>
+                </div>
+              ) : null}
+              {timeToNextBreak == null && !lateRegClosed && timeToLateRegEnd == null && (
+                <p className="text-xl text-white/35">Тайминги не заданы</p>
+              )}
+            </section>
+          </div>
+        </div>
+
+        <div className="absolute bottom-8 right-8 z-50 flex items-center gap-2 pointer-events-auto">
+          <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
+            <ArrowLeft size={22} strokeWidth={2.2} />
+          </ControlButton>
+          <ControlButton label="Случайный игрок" onClick={() => setDrawOpen(true)}>
+            <Dices size={22} strokeWidth={2.2} />
+          </ControlButton>
+          <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
+            <Settings size={22} strokeWidth={2.2} />
+          </ControlButton>
+          <ControlButton
+            label="Предыдущий уровень"
+            onClick={() => skipLevel(-1)}
+            disabled={levelIndex <= 0}
+          >
+            <SkipBack size={22} strokeWidth={2.2} />
+          </ControlButton>
+          <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={() => setRunning(!isRunning)}>
+            {isRunning ? (
+              <Pause size={22} strokeWidth={2.2} fill="currentColor" />
+            ) : (
+              <Play size={22} strokeWidth={2.2} fill="currentColor" className="pl-1" />
+            )}
+          </ControlButton>
+          <ControlButton
+            label="Следующий уровень"
+            onClick={() => skipLevel(1)}
+            disabled={levelIndex >= (structure?.levels.length ?? 1) - 1}
+          >
+            <SkipForward size={22} strokeWidth={2.2} />
+          </ControlButton>
+          <ControlButton label="Повторить уровень" onClick={restartLevel}>
+            <RotateCcw size={22} strokeWidth={2.2} />
+          </ControlButton>
+          <ControlButton
+            label={fullscreen ? 'Выйти из полноэкранного режима' : 'Полный экран'}
+            onClick={() => {
+              void toggleAppFullscreen().then(() => setFullscreen(isAppFullscreen()));
+            }}
+          >
+            {fullscreen ? (
+              <Minimize size={22} strokeWidth={2.2} />
+            ) : (
+              <Maximize size={22} strokeWidth={2.2} />
+            )}
+          </ControlButton>
+        </div>
       </div>
 
       {drawOpen && <TimerDrawModal tournament={tournament} onClose={() => setDrawOpen(false)} />}

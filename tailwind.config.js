@@ -1,3 +1,5 @@
+import plugin from 'tailwindcss/plugin';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -52,5 +54,11 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Laptop sizes: the md breakpoint on a wide screen, and always inside the
+    // scaled timer stage, whose real viewport may be a phone.
+    plugin(({ addVariant }) => {
+      addVariant('wide', ['@media (min-width: 768px)', '.timer-stage &']);
+    }),
+  ],
 }
