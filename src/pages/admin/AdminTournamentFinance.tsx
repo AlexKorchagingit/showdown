@@ -13,6 +13,7 @@ import type { Transaction, TransactionType } from '../../types/finance';
 import { DebtPaymentModal } from '../../components/admin/DebtPaymentModal';
 import { transactionVoidPrompt } from '../../lib/transactionVoid';
 import { removeTournamentPlayerConfirm } from '../../lib/removePlayerConfirm';
+import { cashierSummary } from '../../lib/cashierSummary';
 import {
   applyPlaceToParticipant,
   calculatePayouts,
@@ -232,6 +233,7 @@ export function AdminTournamentFinance() {
   const placedOrdered = sortByPlace(field.filter((p) => typeof p.place === 'number'));
   const remainingInPlay = cashierStillPlaying(tournament.participants).length;
   const closeBlocked = remainingInPlay > 1;
+  const summary = cashierSummary(tournament, transactions);
   const roster = personnelRosters[tournament.id];
   const nonPlayingDealers = roster?.entries.filter((row) => row.kind === 'dealer' && !row.archivedAt) ?? [];
   const archivedPersonnel = roster?.entries.filter((row) => row.archivedAt) ?? [];
@@ -581,6 +583,25 @@ export function AdminTournamentFinance() {
           </h2>
           {isRunning && linkedTournamentId === tournament.id ? <TimerRunningBadge /> : null}
         </div>
+
+        <p
+          className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-1 text-[12px] font-700 tabular-nums"
+          style={{ color: '#A39B98' }}
+        >
+          <span>
+            В игре <span className="text-white">{summary.remaining}</span> / {summary.field}
+          </span>
+          <span>
+            Ребай <span className="text-white">{summary.rebuyPeople}</span>
+            {summary.rebuyTotal > summary.rebuyPeople ? ` (${summary.rebuyTotal} шт.)` : ''}
+          </span>
+          {allowsAddon || summary.addonTotal > 0 ? (
+            <span>
+              Аддон <span className="text-white">{summary.addonPeople}</span>
+              {summary.addonTotal > summary.addonPeople ? ` (${summary.addonTotal} шт.)` : ''}
+            </span>
+          ) : null}
+        </p>
 
         {linkingPlayer ? (
           <div>
