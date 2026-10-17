@@ -35,6 +35,8 @@ import { publicStackFeatureLines } from '../lib/chipStacks';
 import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
 import { TournamentArtImage } from '../components/TournamentArtImage';
 import { formatTxDateTime } from '../lib/transactionDisplay';
+import { isFinalDrawEvent } from '../lib/finalDraw';
+import { FinalDrawBoard, FinalDrawNickLine } from '../components/FinalDrawSeats';
 
 interface Props {
   tournament: Tournament;
@@ -336,6 +338,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               )}
             </div>
 
+            {isFinalDrawEvent(live) ? (
+              <FinalDrawBoard tournamentId={live.id} players={live.participants} />
+            ) : null}
+
             {/* ─── УЧАСТНИКИ ─── */}
             {tournamentFinished && isSquadScoreEvent(live) ? (
               <SquadScoreBoard
@@ -460,6 +466,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                                 В очереди
                               </p>
                             ) : null}
+                            <FinalDrawNickLine tournamentId={live.id} box={p.drawBox} />
                             {partner ? (
                               <p className="text-[11px] mt-0.5 truncate" style={{ color: '#D99962' }}>
                                 {partner.nickname}

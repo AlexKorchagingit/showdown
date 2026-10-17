@@ -231,7 +231,8 @@ function sameSeat(left: Participant, right: Participant): boolean {
     (left.teamPartnerId ?? '') === (right.teamPartnerId ?? '') &&
     (left.squadNo ?? 0) === (right.squadNo ?? 0) &&
     (left.squadPoints ?? 0) === (right.squadPoints ?? 0) &&
-    (left.rosterRevision ?? 0) === (right.rosterRevision ?? 0)
+    (left.rosterRevision ?? 0) === (right.rosterRevision ?? 0) &&
+    (left.drawBox ?? 0) === (right.drawBox ?? 0)
   );
 }
 

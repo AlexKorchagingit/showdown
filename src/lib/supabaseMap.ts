@@ -3,6 +3,7 @@ import type { Transaction, TransactionStatus, TransactionType } from '../types/f
 import type { Participant, Tournament, TournamentDealer, TournamentStaffMember } from '../types/tournament';
 import type { PendingNotification, UserData } from './userStorage';
 import { avatarUrlForChar, DEFAULT_BG_ID, DEFAULT_CHARACTER_ID } from '../data/shopItems';
+import { drawBoxFromRow } from './finalDraw';
 import { asset } from './assets';
 import { hasAdminRole, isClubRole, type ClubRole } from './roles';
 
@@ -69,6 +70,7 @@ export type ParticipantRow = {
   squad_points?: number | null;
   roster_revision?: number | null;
   created_at?: string | null;
+  draw_box?: number | null;
 };
 
 /** Postgres `transactions` row. */
@@ -386,6 +388,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
     squadPoints: squadPointsFromRow(row.squad_points),
     rosterRevision: typeof row.roster_revision === 'number' ? row.roster_revision : undefined,
     joinedAt: row.created_at?.trim() || undefined,
+    drawBox: drawBoxFromRow(row.draw_box),
   };
 }
 

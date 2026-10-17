@@ -38,6 +38,8 @@ import {
 } from '../../lib/guestPlayer';
 import { participantRowId, sanitizeParticipantUserId, type MappedUser } from '../../lib/supabaseMap';
 import { isSquadScoreEvent } from '../../lib/squadScores';
+import { isFinalDrawEvent } from '../../lib/finalDraw';
+import { FinalDrawBoard, FinalDrawNickLine } from '../../components/FinalDrawSeats';
 import { saveSquadScores } from '../../lib/squadScoresApi';
 import { SquadScoreBoard } from '../../components/SquadScoreBoard';
 import { isArrivedPlayer } from '../../lib/tournamentArrival';
@@ -301,6 +303,12 @@ function ParticipantsEditor({
         </span>
       </div>
 
+      {isFinalDrawEvent({ id: tournamentId }) ? (
+        <div className="px-5 pb-4">
+          <FinalDrawBoard tournamentId={tournamentId} players={participants} />
+        </div>
+      ) : null}
+
       {displayRows.length === 0 ? (
         <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
           Участники не добавлены
@@ -361,6 +369,7 @@ function ParticipantsEditor({
                       В очереди
                     </p>
                   ) : null}
+                  <FinalDrawNickLine tournamentId={tournamentId} box={p.drawBox} />
                   {email ? (
                     <p className="text-[11px] text-white/80 truncate">{email}</p>
                   ) : unboundGuest ? (

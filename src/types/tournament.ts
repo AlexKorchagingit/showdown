@@ -35,6 +35,11 @@ export interface Participant {
   rosterRevision?: number;
   /** When this seat was created. Signup order for the lobby waitlist. */
   joinedAt?: string;
+  /**
+   * Random table box 1–27 on FINAL OF SEPTEMBER (17 Oct 2026).
+   * Assigned on the server when an admin marks the player arrived.
+   */
+  drawBox?: number;
 }
 
 export interface TournamentStaffMember {
