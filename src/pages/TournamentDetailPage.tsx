@@ -39,6 +39,8 @@ import { isFinalDrawEvent } from '../lib/finalDraw';
 import { FinalDrawBoard, FinalDrawNickLine } from '../components/FinalDrawSeats';
 import { useBlinds } from '../context/BlindsContext';
 import { BlindStructureModal } from '../components/BlindStructureModal';
+import { loadPublicBlindLadder } from '../lib/publicBlindLadder';
+import type { BlindStructure } from '../data/blindStructures';
 
 interface Props {
   tournament: Tournament;
@@ -178,6 +180,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { isAdmin, clubUsers } = useUser();
   const { structures } = useBlinds();
   const [structureOpen, setStructureOpen] = useState(false);
+  const [loadedStructure, setLoadedStructure] = useState<BlindStructure | null>(null);
+  const [structurePending, setStructurePending] = useState(false);
 
   useEffect(() => {
     void refreshParticipants(tournament.id);
@@ -226,10 +230,30 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     return place === tableSize ? index : last;
   }, -1);
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
-  const blindStructure =
+  const catalogStructure =
     structures.find((row) => row.id === live.blindStructureId) ??
     structures.find((row) => row.name === live.blindStructure.trim()) ??
     null;
+  const blindStructure = catalogStructure ?? loadedStructure;
+
+  useEffect(() => {
+    if (!structureOpen || catalogStructure) return;
+    let cancelled = false;
+    setStructurePending(true);
+    void loadPublicBlindLadder(live.id)
+      .then((row) => {
+        if (!cancelled) setLoadedStructure(row);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadedStructure(null);
+      })
+      .finally(() => {
+        if (!cancelled) setStructurePending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogStructure, live.id, structureOpen]);
   const playingDealers = live.participants
     .map((p) => ({ name: p.nickname, hours: getDealerHours(live.id, p.id) }))
     .filter((row) => row.hours > 0);
@@ -275,9 +299,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               {/* Guarantee sits on the left; admins get the structure button beside it. */}
               <div className="flex items-stretch gap-2">
                 <div
-                  className={`relative min-w-0 flex items-center gap-2.5 rounded-xl overflow-hidden px-3 py-1.5 ${
-                    isAdmin ? 'flex-[1.15]' : 'w-full'
-                  }`}
+                  className="relative min-w-0 flex-[1.15] flex items-center gap-2.5 rounded-xl overflow-hidden px-3 py-1.5"
                   style={{ border: '1px solid rgba(242,216,167,0.32)' }}
                 >
                   <div
@@ -299,20 +321,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     </p>
                   </div>
                 </div>
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => setStructureOpen(true)}
-                    className="relative flex-1 min-w-0 flex items-center justify-center rounded-xl px-3 py-1.5 text-center text-[13px] font-800 leading-tight active:scale-[0.98]"
-                    style={{
-                      background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                      color: '#0A0908',
-                      boxShadow: '0 0 16px rgba(217,153,98,0.45)',
-                    }}
-                  >
-                    Структура турнира
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setStructureOpen(true)}
+                  className="relative flex-1 min-w-0 flex items-center justify-center rounded-xl px-3 py-1.5 text-center text-[13px] font-800 leading-tight active:scale-[0.98]"
+                  style={{
+                    background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                    color: '#0A0908',
+                    boxShadow: '0 0 16px rgba(217,153,98,0.45)',
+                  }}
+                >
+                  Структура турнира
+                </button>
               </div>
 
               {/* Progress — tick-free */}
@@ -656,12 +676,13 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           )}
         </div>
       </div>
-      {isAdmin && structureOpen ? (
+      {structureOpen ? (
         <BlindStructureModal
           structure={blindStructure}
           fallbackName={live.blindStructure}
           startTime={live.startTime}
           lateRegUntil={live.lateRegUntil}
+          pending={structurePending && !blindStructure}
           onClose={() => setStructureOpen(false)}
         />
       ) : null}

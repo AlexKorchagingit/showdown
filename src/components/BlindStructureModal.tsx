@@ -8,12 +8,14 @@ export function BlindStructureModal({
   fallbackName,
   startTime,
   lateRegUntil,
+  pending = false,
   onClose,
 }: {
   structure: BlindStructure | null;
   fallbackName: string;
   startTime: string;
   lateRegUntil: string;
+  pending?: boolean;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -70,7 +72,7 @@ export function BlindStructureModal({
           </p>
           {rows.length === 0 ? (
             <p className="px-2 py-6 text-center text-[13px]" style={{ color: '#A39B98' }}>
-              Структура ещё не загружена
+              {pending ? 'Загрузка структуры…' : 'Структура ещё не загружена'}
             </p>
           ) : (
             <ul>

@@ -1,5 +1,6 @@
 import type { Transaction } from '../types/finance';
 import type { Tournament } from '../types/tournament';
+import { cashierPlayers } from './tournamentArrival';
 import { isActiveTransaction } from './transactionVoid';
 import { tournamentPlayerCounts } from './tournamentStats';
 
@@ -14,7 +15,7 @@ export type CashierSummary = {
   rebuyTotal: number;
   addonPeople: number;
   addonTotal: number;
-  /** People with an unpaid charge in this tournament dated today (Moscow). */
+  /** Cashier players with an unpaid charge in this tournament dated today (Moscow). */
   unpaidPeople: number;
 };
 
@@ -64,8 +65,12 @@ export function cashierSummary(
   );
   const rebuys = ledger.filter((tx) => tx.type === 'rebuy');
   const addons = ledger.filter((tx) => tx.type === 'addon');
+  const cashierIds = new Set(cashierPlayers(tournament.participants).map((player) => player.id));
   const unpaidToday = ledger.filter(
-    (tx) => tx.status === 'unpaid' && onMoscowDay(tx.date, today),
+    (tx) =>
+      tx.status === 'unpaid' &&
+      cashierIds.has(tx.userId) &&
+      onMoscowDay(tx.date, today),
   );
   return {
     remaining,

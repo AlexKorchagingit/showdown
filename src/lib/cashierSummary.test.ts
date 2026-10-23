@@ -85,6 +85,14 @@ describe('cashier top line', () => {
     expect(cashierSummary(tournament, ledger, '2026-10-23').unpaidPeople).toBe(1);
   });
 
+  it('does not count a charge when nobody is in the cashier', () => {
+    const tournament = event([player('a', { arrived: false })]);
+    const ledger = [
+      tx('1', 'a', 'buy-in', { status: 'unpaid', date: '2026-10-23T14:00:00Z' }),
+    ];
+    expect(cashierSummary(tournament, ledger, '2026-10-23').unpaidPeople).toBe(0);
+  });
+
   it('skips cancelled badges and other tournaments', () => {
     const tournament = event([player('a'), player('b')]);
     const ledger = [
