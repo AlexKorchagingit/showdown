@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { Participant, Tournament } from '../types/tournament';
@@ -65,6 +66,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const personnel = usePersonnel(account?.id ?? '', account?.role);
+  const rosterFetchGen = useRef<Record<string, number>>({});
   const visibleTournaments = useMemo(() => {
     const rows = tournaments.map((row) => withPersonnel(row, personnel.rosters[row.id]));
     return isAdmin ? rows : rows.filter((row) => row.hidden !== true);
@@ -112,8 +114,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   }, [fetchTournaments]);
 
   const refreshParticipants = useCallback(async (tournamentId: string) => {
+    const gen = (rosterFetchGen.current[tournamentId] ?? 0) + 1;
+    rosterFetchGen.current[tournamentId] = gen;
     try {
       const participants = await fetchParticipants(tournamentId);
+      if (rosterFetchGen.current[tournamentId] !== gen) return;
       setTournaments((prev) => {
         const current = prev.find((tournament) => tournament.id === tournamentId);
         if (current?.rosterLoaded && participantListsEqual(current.participants, participants)) return prev;
@@ -223,6 +228,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             account.id,
             { isClosed: current.isClosed === true },
           );
+          rosterFetchGen.current[tournamentId] = (rosterFetchGen.current[tournamentId] ?? 0) + 1;
         }
         setTournaments((prev) => prev.map((row) => row.id === tournamentId ? {
           ...row,...metadataPatch,

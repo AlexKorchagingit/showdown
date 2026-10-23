@@ -1,5 +1,5 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair, Pencil } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair, Layers, Pencil } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Tournament } from '../types/tournament';
 import { ProgressBar } from '../components/ProgressBar';
@@ -37,6 +37,8 @@ import { TournamentArtImage } from '../components/TournamentArtImage';
 import { formatTxDateTime } from '../lib/transactionDisplay';
 import { isFinalDrawEvent } from '../lib/finalDraw';
 import { FinalDrawBoard, FinalDrawNickLine } from '../components/FinalDrawSeats';
+import { useBlinds } from '../context/BlindsContext';
+import { BlindStructureModal } from '../components/BlindStructureModal';
 
 interface Props {
   tournament: Tournament;
@@ -174,6 +176,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { isRegistered, toggleRegistration, tournaments, refreshParticipants, isLoading } = useTournaments();
   const { getDealerHours } = useFinance();
   const { isAdmin, clubUsers } = useUser();
+  const { structures } = useBlinds();
+  const [structureOpen, setStructureOpen] = useState(false);
 
   useEffect(() => {
     void refreshParticipants(tournament.id);
@@ -222,6 +226,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
     return place === tableSize ? index : last;
   }, -1);
   const missingPlaces = tournamentFinished && hasMissingPlaces(live);
+  const blindStructure =
+    structures.find((row) => row.id === live.blindStructureId) ??
+    structures.find((row) => row.name === live.blindStructure.trim()) ??
+    null;
   const playingDealers = live.participants
     .map((p) => ({ name: p.nickname, hours: getDealerHours(live.id, p.id) }))
     .filter((row) => row.hours > 0);
@@ -264,29 +272,56 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
           <div className="px-5 pt-3 space-y-5">
             <div className="space-y-3">
-              {/* Guarantee — full width; compact gaps to hero and progress */}
-              <div
-                className="relative w-full flex items-center gap-3 rounded-xl overflow-hidden px-4 py-1.5"
-                style={{ border: '1px solid rgba(242,216,167,0.32)' }}
-              >
+              {/* Guarantee sits on the left; admins get the structure button beside it. */}
+              <div className="flex items-stretch gap-2">
                 <div
-                  className="absolute inset-0 opacity-[0.12] pointer-events-none"
-                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
-                />
-                <div
-                  className="relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                  className={`relative min-w-0 flex items-center gap-2.5 rounded-xl overflow-hidden px-3 py-1.5 ${
+                    isAdmin ? 'flex-[1.15]' : 'w-full'
+                  }`}
+                  style={{ border: '1px solid rgba(242,216,167,0.32)' }}
                 >
-                  <Star size={15} fill="currentColor" style={{ color: '#0A0908' }} />
+                  <div
+                    className="absolute inset-0 opacity-[0.12] pointer-events-none"
+                    style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                  />
+                  <div
+                    className="relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: 'linear-gradient(to right, #D99962, #F2D8A7)' }}
+                  >
+                    <Star size={15} fill="currentColor" style={{ color: '#0A0908' }} />
+                  </div>
+                  <div className="relative min-w-0">
+                    <p className="text-[10px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
+                      Гарантия
+                    </p>
+                    <p className="text-white font-900 text-base tracking-wide leading-tight truncate">
+                      {live.guarantee.toLocaleString('ru-RU')}
+                    </p>
+                  </div>
                 </div>
-                <div className="relative">
-                  <p className="text-[10px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
-                    Гарантия очков
-                  </p>
-                  <p className="text-white font-900 text-base tracking-wide leading-tight">
-                    {live.guarantee.toLocaleString('ru-RU')}
-                  </p>
-                </div>
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    onClick={() => setStructureOpen(true)}
+                    className="relative flex-1 min-w-0 flex items-center gap-2 rounded-xl px-3 py-1.5 text-left active:scale-[0.98]"
+                    style={{ border: '1px solid rgba(242,216,167,0.32)', background: '#2A211D' }}
+                  >
+                    <span
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: 'rgba(217,153,98,0.18)' }}
+                    >
+                      <Layers size={15} style={{ color: '#F2D8A7' }} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[10px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
+                        Структура
+                      </span>
+                      <span className="block text-[13px] font-800 text-white leading-tight truncate">
+                        турнира
+                      </span>
+                    </span>
+                  </button>
+                ) : null}
               </div>
 
               {/* Progress — tick-free */}
@@ -630,6 +665,13 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           )}
         </div>
       </div>
+      {isAdmin && structureOpen ? (
+        <BlindStructureModal
+          structure={blindStructure}
+          fallbackName={live.blindStructure}
+          onClose={() => setStructureOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

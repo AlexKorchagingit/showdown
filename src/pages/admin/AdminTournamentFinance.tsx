@@ -126,10 +126,6 @@ export function AdminTournamentFinance() {
   const navigate = useNavigate();
   const { tournaments, updateTournament, isLoading, loadError, fetchTournaments, refreshParticipants,
     personnelRosters, personnelCommand, isPersonnelPending } = useTournaments();
-
-  useEffect(() => {
-    if (id) void refreshParticipants(id);
-  }, [id, refreshParticipants]);
   const { account, clubUsers } = useUser();
   const { isRunning, linkedTournamentId } = useBlinds();
   const {
@@ -191,6 +187,22 @@ export function AdminTournamentFinance() {
   useEffect(() => {
     setTournamentComment(tournament?.adminSecretComment ?? '');
   }, [tournament?.id, tournament?.adminSecretComment]);
+
+  useEffect(() => {
+    if (!id) return;
+    const pull = () => {
+      if (document.visibilityState !== 'visible') return;
+      void refreshParticipants(id);
+      void refreshFinance();
+    };
+    pull();
+    const timer = window.setInterval(pull, 5000);
+    document.addEventListener('visibilitychange', pull);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', pull);
+    };
+  }, [id, refreshFinance, refreshParticipants]);
 
   useEffect(() => {
     closingRef.current = false;
