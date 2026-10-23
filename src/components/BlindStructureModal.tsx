@@ -1,15 +1,19 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { BlindStructure } from '../data/blindStructures';
-import { structurePreviewRows } from '../lib/structurePreview';
+import { lateRegEndClock, structurePreviewRows } from '../lib/structurePreview';
 
 export function BlindStructureModal({
   structure,
   fallbackName,
+  startTime,
+  lateRegUntil,
   onClose,
 }: {
   structure: BlindStructure | null;
   fallbackName: string;
+  startTime: string;
+  lateRegUntil: string;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -22,6 +26,7 @@ export function BlindStructureModal({
 
   const rows = structurePreviewRows(structure);
   const title = structure?.name?.trim() || fallbackName || 'Структура';
+  const lateRegClock = lateRegEndClock(startTime, structure?.levels) || lateRegUntil.trim();
 
   return (
     <div
@@ -58,6 +63,11 @@ export function BlindStructureModal({
           </button>
         </div>
         <div className="overflow-y-auto px-3 py-2">
+          <p className="px-1 py-2 text-[13px] font-800" style={{ color: '#F2D8A7' }}>
+            {lateRegClock
+              ? `Конец поздней регистрации — ${lateRegClock}`
+              : 'Конец поздней регистрации не задан'}
+          </p>
           {rows.length === 0 ? (
             <p className="px-2 py-6 text-center text-[13px]" style={{ color: '#A39B98' }}>
               Структура ещё не загружена
@@ -76,8 +86,8 @@ export function BlindStructureModal({
                   >
                     {row.label}
                   </span>
-                  <span className="min-w-0 flex-1 text-[12px] font-600 text-white truncate">
-                    {row.detail || (row.break ? 'Перерыв' : '—')}
+                  <span className={`min-w-0 flex-1 text-[12px] font-600 text-white ${row.lateRegEnd ? '' : 'truncate'}`}>
+                    {row.detail || '—'}
                   </span>
                   <span className="shrink-0 text-[11px] font-700" style={{ color: '#A39B98' }}>
                     {row.minutes}

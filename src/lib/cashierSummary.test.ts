@@ -73,6 +73,18 @@ describe('cashier top line', () => {
     expect(summary.addonTotal).toBe(1);
   });
 
+  it('counts people who still owe something today in Moscow', () => {
+    const tournament = event([player('a'), player('b'), player('c')]);
+    const ledger = [
+      tx('1', 'a', 'buy-in', { status: 'unpaid', date: '2026-10-23T14:00:00Z' }),
+      tx('2', 'a', 'rebuy', { status: 'unpaid', date: '2026-10-23T18:30:00Z' }),
+      tx('3', 'b', 'buy-in', { status: 'unpaid', date: '2026-10-22T20:00:00Z' }),
+      tx('4', 'c', 'buy-in', { status: 'paid', date: '2026-10-23T15:00:00Z' }),
+      tx('5', 'c', 'rebuy', { status: 'unpaid', date: '2026-10-23T15:10:00Z', voidedAt: '2026-10-23T16:00:00Z' }),
+    ];
+    expect(cashierSummary(tournament, ledger, '2026-10-23').unpaidPeople).toBe(1);
+  });
+
   it('skips cancelled badges and other tournaments', () => {
     const tournament = event([player('a'), player('b')]);
     const ledger = [
@@ -93,6 +105,7 @@ describe('cashier top line', () => {
       rebuyTotal: 0,
       addonPeople: 0,
       addonTotal: 0,
+      unpaidPeople: 0,
     });
   });
 });

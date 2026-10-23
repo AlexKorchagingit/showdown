@@ -1,5 +1,4 @@
 import {
-  breakComment,
   formatBlinds,
   isBreakLevel,
   type BlindLevel,
@@ -22,16 +21,31 @@ export function structurePreviewRows(
   return structure.levels.map((level, index) => previewRow(level, index));
 }
 
+/** Clock when the late-registration level starts, from the tournament start time. */
+export function lateRegEndClock(startTime: string, levels: readonly BlindLevel[] | undefined): string | null {
+  const match = startTime.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match || !levels) return null;
+  let minutes = Number(match[1]) * 60 + Number(match[2]);
+  if (!Number.isFinite(minutes)) return null;
+  for (const level of levels) {
+    if (level.isLateRegEnd === true) {
+      const hour = Math.floor(minutes / 60) % 24;
+      const minute = minutes % 60;
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+    minutes += Math.max(0, level.durationMinutes);
+  }
+  return null;
+}
+
 function previewRow(level: BlindLevel, index: number): StructurePreviewRow {
   const minutes = `${Math.max(0, level.durationMinutes)} мин`;
   if (isBreakLevel(level)) {
-    const note = breakComment(level);
     const lateRegEnd = level.isLateRegEnd === true;
-    const detail = [note, lateRegEnd ? 'конец реги' : ''].filter(Boolean).join(' · ');
     return {
       key: `break-${index}`,
       label: 'Перерыв',
-      detail,
+      detail: lateRegEnd ? 'Конец поздней регистрации' : '',
       minutes,
       break: true,
       lateRegEnd,

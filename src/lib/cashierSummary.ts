@@ -14,10 +14,28 @@ export type CashierSummary = {
   rebuyTotal: number;
   addonPeople: number;
   addonTotal: number;
+  /** People with an unpaid charge in this tournament dated today (Moscow). */
+  unpaidPeople: number;
 };
 
 function distinctPeople(rows: Transaction[]): number {
   return new Set(rows.map((row) => row.userId).filter(Boolean)).size;
+}
+
+/** Calendar day in Europe/Moscow, `YYYY-MM-DD`. */
+export function moscowCalendarDate(instant: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant);
+}
+
+function onMoscowDay(iso: string, day: string): boolean {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return moscowCalendarDate(parsed) === day;
 }
 
 /**
@@ -27,16 +45,28 @@ function distinctPeople(rows: Transaction[]): number {
 export function cashierSummary(
   tournament: Tournament | undefined,
   transactions: Transaction[],
+  today: string = moscowCalendarDate(),
 ): CashierSummary {
   const { remaining, registered } = tournamentPlayerCounts(tournament);
   if (!tournament) {
-    return { remaining, field: registered, rebuyPeople: 0, rebuyTotal: 0, addonPeople: 0, addonTotal: 0 };
+    return {
+      remaining,
+      field: registered,
+      rebuyPeople: 0,
+      rebuyTotal: 0,
+      addonPeople: 0,
+      addonTotal: 0,
+      unpaidPeople: 0,
+    };
   }
   const ledger = transactions.filter(
     (tx) => tx.tournamentId === tournament.id && isActiveTransaction(tx),
   );
   const rebuys = ledger.filter((tx) => tx.type === 'rebuy');
   const addons = ledger.filter((tx) => tx.type === 'addon');
+  const unpaidToday = ledger.filter(
+    (tx) => tx.status === 'unpaid' && onMoscowDay(tx.date, today),
+  );
   return {
     remaining,
     field: registered,
@@ -44,5 +74,6 @@ export function cashierSummary(
     rebuyTotal: rebuys.length,
     addonPeople: distinctPeople(addons),
     addonTotal: addons.length,
+    unpaidPeople: distinctPeople(unpaidToday),
   };
 }

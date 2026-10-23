@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair, Layers, Pencil } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair, Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Tournament } from '../types/tournament';
@@ -303,23 +303,14 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   <button
                     type="button"
                     onClick={() => setStructureOpen(true)}
-                    className="relative flex-1 min-w-0 flex items-center gap-2 rounded-xl px-3 py-1.5 text-left active:scale-[0.98]"
-                    style={{ border: '1px solid rgba(242,216,167,0.32)', background: '#2A211D' }}
+                    className="relative flex-1 min-w-0 flex items-center justify-center rounded-xl px-3 py-1.5 text-center text-[13px] font-800 leading-tight active:scale-[0.98]"
+                    style={{
+                      background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                      color: '#0A0908',
+                      boxShadow: '0 0 16px rgba(217,153,98,0.45)',
+                    }}
                   >
-                    <span
-                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: 'rgba(217,153,98,0.18)' }}
-                    >
-                      <Layers size={15} style={{ color: '#F2D8A7' }} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[10px] font-600 uppercase tracking-[0.12em]" style={{ color: '#A39B98' }}>
-                        Структура
-                      </span>
-                      <span className="block text-[13px] font-800 text-white leading-tight truncate">
-                        турнира
-                      </span>
-                    </span>
+                    Структура турнира
                   </button>
                 ) : null}
               </div>
@@ -669,6 +660,8 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
         <BlindStructureModal
           structure={blindStructure}
           fallbackName={live.blindStructure}
+          startTime={live.startTime}
+          lateRegUntil={live.lateRegUntil}
           onClose={() => setStructureOpen(false)}
         />
       ) : null}

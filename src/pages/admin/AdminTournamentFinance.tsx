@@ -614,6 +614,9 @@ export function AdminTournamentFinance() {
             </span>
           ) : null}
         </p>
+        <p className="px-1 -mt-1 text-[12px] font-700" style={{ color: '#f87171' }}>
+          неоплаченные: <span className="text-white tabular-nums">{summary.unpaidPeople}</span>
+        </p>
 
         {linkingPlayer ? (
           <div>
