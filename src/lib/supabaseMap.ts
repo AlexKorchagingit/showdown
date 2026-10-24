@@ -35,6 +35,8 @@ export type TournamentRow = {
   start_time: string;
   total_seats: number;
   guarantee: number;
+  overlay_base?: number | null;
+  overlay_per_head?: number | null;
   about: string;
   features: string[];
   late_reg_until: string;
@@ -282,6 +284,8 @@ export function tournamentFromRow(row: TournamentRow, participants: Participant[
     startTime: asString(row.start_time, '19:00'),
     totalSeats: asNumber(row.total_seats, 27),
     guarantee: asNumber(row.guarantee),
+    overlayBase: row.overlay_base == null ? undefined : asNumber(row.overlay_base),
+    overlayPerHead: row.overlay_per_head == null ? undefined : asNumber(row.overlay_per_head),
     about: asString(row.about),
     features: asStringArray(row.features),
     participants,

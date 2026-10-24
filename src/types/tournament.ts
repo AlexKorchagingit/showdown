@@ -82,6 +82,13 @@ export interface Tournament {
   startTime: string;
   totalSeats: number;
   guarantee: number;
+  /**
+   * Planner base for the overlay screen. Empty means the live guarantee is the base.
+   * Saving it does not rewrite points of a closed tournament.
+   */
+  overlayBase?: number;
+  /** Points added for each player above the series average. Rebuy is half, addon a quarter. */
+  overlayPerHead?: number;
   about: string;
   features: string[];
   /** Occupied seats. Empty until this event's roster is opened, unless a screen asked for every roster. */

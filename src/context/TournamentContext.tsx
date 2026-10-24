@@ -25,6 +25,7 @@ import { usePersonnel } from '../hooks/usePersonnel';
 import { withPersonnel, type PersonnelIntent, type PersonnelRoster } from '../lib/personnel';
 import { setTournamentRegistration } from '../lib/tournamentRegistration';
 import { requestErrorMessage } from '../lib/network';
+import { saveTournamentOverlay as saveTournamentOverlayRow } from '../lib/tournamentOverlayApi';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -45,6 +46,7 @@ interface TournamentContextValue {
     options: { includeParticipants: boolean },
   ) => Promise<string>;
   deleteTournament: (tournamentId: string) => Promise<boolean>;
+  saveTournamentOverlay: (tournamentId: string, base: number, perHead: number) => Promise<boolean>;
   personnelRosters: Record<string, PersonnelRoster>;
   personnelCommand: (intent: PersonnelIntent) => Promise<boolean>;
   isPersonnelPending: (tournamentId: string) => boolean;
@@ -347,6 +349,37 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     [account?.id],
   );
 
+  const saveTournamentOverlay = useCallback(
+    async (tournamentId: string, base: number, perHead: number) => {
+      if (!account?.id) {
+        window.alert('Не удалось подтвердить администратора');
+        return false;
+      }
+      try {
+        const saved = await saveTournamentOverlayRow(tournamentId, base, perHead);
+        setTournaments((prev) => prev.map((row) => (
+          row.id === tournamentId
+            ? {
+                ...row,
+                guarantee: saved.guarantee,
+                overlayBase: saved.overlayBase,
+                overlayPerHead: saved.overlayPerHead,
+              }
+            : row
+        )));
+        if (saved.guaranteeLocked) {
+          window.alert('Оверлей запомнен. Начальная гарантия закрытого турнира не менялась, уже начисленные очки на месте.');
+        }
+        return true;
+      } catch (error) {
+        console.error(error);
+        window.alert(error instanceof Error ? error.message : 'Не удалось сохранить оверлей');
+        return false;
+      }
+    },
+    [account?.id],
+  );
+
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchTournaments(), personnel.refresh()]);
   }, [fetchTournaments, personnel.refresh]);
@@ -368,11 +401,13 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       addTournament,
       duplicateTournament,
       deleteTournament,
+      saveTournamentOverlay,
     }),
     [
       addTournament,
       duplicateTournament,
       deleteTournament,
+      saveTournamentOverlay,
       fetchTournaments,
       isLoading,
       loadError,
