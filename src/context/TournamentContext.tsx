@@ -367,9 +367,6 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
               }
             : row
         )));
-        if (saved.guaranteeLocked) {
-          window.alert('Оверлей запомнен. Начальная гарантия закрытого турнира не менялась, уже начисленные очки на месте.');
-        }
         return true;
       } catch (error) {
         console.error(error);
