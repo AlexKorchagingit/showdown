@@ -34,6 +34,7 @@ export function TournamentsFinanceTab() {
         >
           <TournamentCard
             tournament={tournament}
+            cashierCounts
             timerRunning={isRunning && linkedTournamentId === tournament.id}
             onClick={(t) => navigate(`/admin/finance/tournaments/${t.id}`)}
           />

@@ -6,11 +6,14 @@ import { TournamentArtImage } from './TournamentArtImage';
 import { TimerRunningBadge } from './TimerRunningBadge';
 import { useUser } from '../context/UserContext';
 import { clubUserIdSet, countOccupiedLobbySeats } from '../lib/clubRating';
+import { tournamentPlayerCounts } from '../lib/tournamentStats';
 
 interface Props {
   tournament: Tournament;
   onClick: (tournament: Tournament) => void;
   timerRunning?: boolean;
+  /** Finance list: still playing / checked in, same as the cashier. */
+  cashierCounts?: boolean;
 }
 
 function occupiedSeatsClass(occupiedSeats: number): string {
@@ -19,13 +22,15 @@ function occupiedSeatsClass(occupiedSeats: number): string {
   return 'text-white';
 }
 
-export function TournamentCard({ tournament, onClick, timerRunning = false }: Props) {
+export function TournamentCard({ tournament, onClick, timerRunning = false, cashierCounts = false }: Props) {
   const { title, startDate, startTime, totalSeats, participants } = tournament;
   const { clubUsers } = useUser();
-
-  const occupiedSeats = tournament.rosterLoaded
+  const cashier = tournamentPlayerCounts(tournament);
+  const lobbySeats = tournament.rosterLoaded
     ? countOccupiedLobbySeats(participants, clubUserIdSet(clubUsers))
     : tournament.occupiedCount ?? 0;
+  const occupiedSeats = cashierCounts && cashier.registered > 0 ? cashier.remaining : lobbySeats;
+  const seatTotal = cashierCounts && cashier.registered > 0 ? cashier.registered : totalSeats;
   const isPast = isFinished(tournament);
 
   const dateObj = new Date(startDate);
@@ -88,7 +93,7 @@ export function TournamentCard({ tournament, onClick, timerRunning = false }: Pr
             <p className="text-sm font-medium">
               В игре:{' '}
               <span className={occupiedSeatsClass(occupiedSeats)}>
-                {occupiedSeats}/{totalSeats}
+                {occupiedSeats}/{seatTotal}
               </span>
             </p>
           )}
