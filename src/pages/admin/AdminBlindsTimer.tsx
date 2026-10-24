@@ -283,10 +283,6 @@ export function AdminBlindsTimer() {
   );
   const avgStack = chipTotals.avgStack;
   const avgBigBlinds = stackInBigBlinds(avgStack, effectiveBigBlind(structure?.levels, levelIndex));
-  const rebuyLine = [
-    chipTotals.rebuys > 0 ? `ребаев: ${chipTotals.rebuys}` : '',
-    chipTotals.addons > 0 ? `аддонов: ${chipTotals.addons}` : '',
-  ].filter(Boolean).join(' · ');
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
   const eventTitle = tournament?.title ?? structure?.name ?? '';
@@ -458,11 +454,6 @@ export function AdminBlindsTimer() {
                   {remaining}
                   <span className="text-white/35"> / {registered}</span>
                 </FitText>
-                {rebuyLine && (
-                  <p className="text-xs wide:text-sm font-600 text-white/60 mt-1 first-letter:uppercase">
-                    {rebuyLine}
-                  </p>
-                )}
               </section>
             )}
 
