@@ -1,0 +1,1 @@
+(function(){System.register([],function(e,t){function n(e){let t=e.trim();if(!t)return``;if(/^https?:\/\//i.test(t)||t.startsWith(`data:`))return t;let n=t.replace(/^\/+/,``).replace(/^showdown\//,``),r=`/showdown/`;return`${r.endsWith(`/`)?r:`${r}/`}${n}`}return e(`t`,n),{setters:[],execute:function(){}}})})();
