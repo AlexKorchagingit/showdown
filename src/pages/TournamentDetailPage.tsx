@@ -180,6 +180,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { isAdmin, clubUsers } = useUser();
   const { structures } = useBlinds();
   const [structureOpen, setStructureOpen] = useState(false);
+  const [overlayHelpOpen, setOverlayHelpOpen] = useState(false);
   const [loadedStructure, setLoadedStructure] = useState<BlindStructure | null>(null);
   const [structurePending, setStructurePending] = useState(false);
 
@@ -319,6 +320,23 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     <p className="text-white font-900 text-base tracking-wide leading-tight truncate">
                       {live.guarantee.toLocaleString('ru-RU')}
                     </p>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <p className="text-[11px] font-700 leading-none" style={{ color: '#D99962' }}>
+                        +оверлей
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setOverlayHelpOpen(true)}
+                        aria-label="Что такое оверлей"
+                        className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-800 leading-none active:scale-95"
+                        style={{
+                          color: '#0A0908',
+                          background: '#D99962',
+                        }}
+                      >
+                        ?
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <button
@@ -676,6 +694,38 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           )}
         </div>
       </div>
+      {overlayHelpOpen ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-6"
+          style={{ background: 'rgba(8,6,5,0.72)' }}
+          onClick={() => setOverlayHelpOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Что такое оверлей"
+            className="w-full max-w-xs rounded-2xl p-4 space-y-3"
+            style={{ background: '#1A1411', border: '1px solid rgba(242,216,167,0.28)' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className="text-[15px] font-800 text-white">Оверлей</h2>
+            <p className="text-[13px] leading-relaxed" style={{ color: '#F2D8A7' }}>
+              Это надбавка к начальной гарантии, когда на турнир приходит больше людей, чем обычно бывает на такой серии.
+            </p>
+            <p className="text-[13px] leading-relaxed text-white/85">
+              Каждый лишний человек добавляет оверлей целиком. Ребай добавляет половину, аддон — четверть. Пока людей не больше среднего, играется начальная гарантия. Призовых мест по-прежнему 35% от пришедших.
+            </p>
+            <button
+              type="button"
+              onClick={() => setOverlayHelpOpen(false)}
+              className="w-full py-2.5 rounded-xl text-[13px] font-800 text-[#0A0908]"
+              style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      ) : null}
       {structureOpen ? (
         <BlindStructureModal
           structure={blindStructure}
