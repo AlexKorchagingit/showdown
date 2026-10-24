@@ -292,7 +292,6 @@ export function AdminTournamentsScreen() {
                 {exportOpen ? (
                   <TournamentExportModal tournaments={tournaments} onClose={() => setExportOpen(false)} />
                 ) : null}
-                {overlayOpen ? <OverlayPlanner onClose={() => setOverlayOpen(false)} /> : null}
                 {sortedTournaments.map((tournament) => (
                   <div
                     key={tournament.id}
@@ -322,6 +321,7 @@ export function AdminTournamentsScreen() {
           </motion.div>
         </AnimatePresence>
       </div>
+      {overlayOpen ? <OverlayPlanner onClose={() => setOverlayOpen(false)} /> : null}
     </div>
   );
 }

@@ -16,6 +16,99 @@ import {
 } from '../../lib/overlayPlan';
 import type { Tournament } from '../../types/tournament';
 
+type OverlayMetric = 'guarantee' | 'first' | 'itm';
+
+const METRICS: { id: OverlayMetric; label: string }[] = [
+  { id: 'guarantee', label: 'Гарантия' },
+  { id: 'first', label: '1-е место' },
+  { id: 'itm', label: 'Призовых' },
+];
+
+function metricValue(metric: OverlayMetric, row: { guarantee: number; first: number; itm: number }): string {
+  if (metric === 'itm') return String(row.itm);
+  return (metric === 'guarantee' ? row.guarantee : row.first).toLocaleString('ru-RU');
+}
+
+function OverlayCompareTable({
+  samples,
+  activeHead,
+  nights,
+  metric,
+  onMetric,
+  previewFor,
+}: {
+  samples: number[];
+  activeHead: number;
+  nights: OverlayNight[];
+  metric: OverlayMetric;
+  onMetric: (metric: OverlayMetric) => void;
+  previewFor: (sample: number, night: OverlayNight) => { guarantee: number; first: number; itm: number };
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-1 rounded-xl p-1" style={{ background: '#1E1612' }}>
+        {METRICS.map((item) => {
+          const active = metric === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onMetric(item.id)}
+              className="py-2 rounded-lg text-[11px] font-700 leading-tight"
+              style={{
+                background: active ? 'linear-gradient(to right, #8C4C27, #D99962)' : 'transparent',
+                color: active ? '#0A0908' : '#6B6360',
+              }}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+        <table className="w-full min-w-[280px] border-collapse text-left">
+          <thead>
+            <tr style={{ background: '#2A211D' }}>
+              <th className="px-2 py-2 text-[11px] font-700" style={{ color: '#A39B98' }}>Оверлей</th>
+              {nights.map((night) => (
+                <th key={night.label} className="px-2 py-2 align-top">
+                  <span className="block text-[11px] font-800" style={{ color: '#F2D8A7' }}>{night.label}</span>
+                  <span className="mt-1 block text-[10px] font-600 leading-snug" style={{ color: '#8c8c88' }}>
+                    {nightLine(night.people, night.rebuys, night.addons)}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {samples.map((sample) => {
+              const active = sample === activeHead;
+              return (
+                <tr
+                  key={sample}
+                  style={{
+                    background: active ? 'rgba(217,153,98,0.16)' : 'transparent',
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                  }}
+                >
+                  <th className="px-2 py-2 text-[12px] font-800 text-white whitespace-nowrap">
+                    {sample.toLocaleString('ru-RU')}
+                  </th>
+                  {nights.map((night) => (
+                    <td key={night.label} className="px-2 py-2 text-[13px] font-700 text-white tabular-nums">
+                      {metricValue(metric, previewFor(sample, night))}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 const FIELD_CLASS =
   'w-full bg-[#231A16] text-white border border-[#D99962]/30 rounded-xl px-4 py-3 text-[16px] font-800 outline-none focus:border-[#D99962]/70';
 
@@ -41,7 +134,7 @@ export function OverlayPlanner({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <div className="absolute inset-0 z-[70] flex flex-col bg-[#110b09]">
+    <div className="absolute inset-0 z-[70] flex h-full w-full flex-col bg-[#110b09]">
       <CompactHeader title="Оверлей" onBack={selected ? () => setSelectedId(null) : onClose} />
       <div
         className="flex-1 scrollable px-4"
@@ -93,6 +186,7 @@ function OverlayEditor({ tournament }: { tournament: Tournament }) {
   );
   const [saving, setSaving] = useState(false);
   const [savedNote, setSavedNote] = useState('');
+  const [metric, setMetric] = useState<OverlayMetric>('guarantee');
 
   const base = parseCount(baseText);
   const perHead = parseCount(headText);
@@ -191,53 +285,21 @@ function OverlayEditor({ tournament }: { tournament: Tournament }) {
         </p>
       ) : null}
 
-      <div className="space-y-3">
-        {samples.map((sample) => {
-          const active = sample === perHead;
-          return (
-            <section
-              key={sample}
-              className="rounded-2xl overflow-hidden"
-              style={{
-                background: '#2A211D',
-                border: active ? '1px solid rgba(217,153,98,0.7)' : '1px solid rgba(255,255,255,0.06)',
-              }}
-            >
-              <p className="px-4 py-2 text-[13px] font-800" style={{ color: active ? '#F2D8A7' : '#ffffff' }}>
-                Оверлей {sample.toLocaleString('ru-RU')}
-                {active ? ' · сейчас в поле' : ''}
-              </p>
-              {nights.map((night) => {
-                const row = overlayPreview({
-                  base,
-                  perHead: sample,
-                  normPeople: norm,
-                  people: night.people,
-                  rebuys: night.rebuys,
-                  addons: night.addons,
-                });
-                return (
-                  <div
-                    key={night.label}
-                    className="px-4 py-2"
-                    style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
-                  >
-                    <p className="text-[12px] font-700" style={{ color: '#D99962' }}>
-                      {night.label}
-                    </p>
-                    <p className="text-[11px]" style={{ color: '#8c8c88' }}>{nightLine(night.people, night.rebuys, night.addons)}</p>
-                    <p className="text-[13px] font-700 text-white mt-1">
-                      Гарантия {row.guarantee.toLocaleString('ru-RU')}
-                      {' · '}1-е {row.first.toLocaleString('ru-RU')}
-                      {' · '}призовых {row.itm}
-                    </p>
-                  </div>
-                );
-              })}
-            </section>
-          );
+      <OverlayCompareTable
+        samples={samples}
+        activeHead={perHead}
+        nights={nights}
+        metric={metric}
+        onMetric={setMetric}
+        previewFor={(sample, night) => overlayPreview({
+          base,
+          perHead: sample,
+          normPeople: norm,
+          people: night.people,
+          rebuys: night.rebuys,
+          addons: night.addons,
         })}
-      </div>
+      />
     </div>
   );
 }

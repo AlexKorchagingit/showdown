@@ -6,7 +6,7 @@ import { useUser } from '../../context/UserContext';
 import { periodStart, type FinancePeriod } from '../../lib/financePeriod';
 import { logActionLabel, logTargetLabel } from '../../lib/auditLogStorage';
 import { exportAuditLogsToCSV } from '../../lib/exportToCSV';
-import { fetchLogs } from '../../lib/logApi';
+import { AUDIT_PAGE_SIZE, fetchAuditPage, fetchLogs } from '../../lib/logApi';
 import { formatLegalDateTime, formatTxDate, formatTxTime } from '../../lib/transactionDisplay';
 import type { ActionLog } from '../../types/auditLog';
 
@@ -39,28 +39,57 @@ export function AdminLogsScreen() {
   const { isSuperAdmin, clubUsers } = useUser();
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [tab, setTab] = useState<LogsTab>('general');
   const [period, setPeriod] = useState<AuditPeriod>('all');
 
+  const appendPage = (rows: ActionLog[], replace: boolean) => {
+    setLogs((prev) => {
+      const merged = replace ? rows : [...prev, ...rows];
+      const seen = new Set<string>();
+      return merged.filter((row) => {
+        if (seen.has(row.id)) return false;
+        seen.add(row.id);
+        return true;
+      });
+    });
+    setHasMore(rows.length >= AUDIT_PAGE_SIZE);
+  };
+
   useEffect(() => {
-    if (!isSuperAdmin) { setLogs([]); setIsLoading(false); return; }
+    if (!isSuperAdmin) { setLogs([]); setIsLoading(false); setHasMore(false); return; }
     let cancelled = false;
     setIsLoading(true);
     void (async () => {
       try {
-        const rows=await fetchLogs();
+        const rows = await fetchAuditPage(null);
         if (!cancelled) {
-          setLogs(rows);
+          appendPage(rows, true);
           setIsLoading(false);
         }
       } catch {
-        if(!cancelled){setLogs([]);setIsLoading(false);}
+        if (!cancelled) { setLogs([]); setHasMore(false); setIsLoading(false); }
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [isSuperAdmin]);
+
+  const loadMore = async () => {
+    const oldest = logs[logs.length - 1];
+    if (!oldest || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const rows = await fetchAuditPage({ timestamp: oldest.timestamp, id: oldest.id });
+      appendPage(rows, false);
+    } catch {
+      window.alert('Не удалось загрузить следующую порцию журнала');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const isSuperAdminUser = isSuperAdmin;
   const filtered = useMemo(
@@ -99,8 +128,16 @@ export function AdminLogsScreen() {
           tab === 'general' ? (
             <button
               type="button"
-              disabled={filtered.length === 0}
-              onClick={() => exportAuditLogsToCSV(filtered)}
+              disabled={filtered.length === 0 && !hasMore}
+              onClick={() => {
+                void (async () => {
+                  const source = hasMore ? await fetchLogs().catch(() => filtered) : filtered;
+                  const rows = source
+                    .filter((log) => inAuditPeriod(log.timestamp, period))
+                    .sort((a, b) => b.timestamp - a.timestamp);
+                  exportAuditLogsToCSV(rows);
+                })();
+              }}
               className="h-9 px-3 rounded-lg text-[11px] font-800 uppercase tracking-wide active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: 'linear-gradient(to right, #8C4C27, #D99962)',
@@ -215,6 +252,17 @@ export function AdminLogsScreen() {
                 );
               })
             )}
+            {hasMore ? (
+              <button
+                type="button"
+                disabled={loadingMore}
+                onClick={() => void loadMore()}
+                className="w-full mt-2 mb-4 py-3 rounded-xl text-[13px] font-800 active:scale-[0.98] disabled:opacity-50"
+                style={{ color: '#F2D8A7', border: '1px solid rgba(217,153,98,0.45)' }}
+              >
+                {loadingMore ? 'Загружаю…' : `Показать ещё ${AUDIT_PAGE_SIZE}`}
+              </button>
+            ) : null}
           </>
         ) : consents.length === 0 ? (
           <p className="text-[13px] px-1" style={{ color: '#6B6360' }}>
