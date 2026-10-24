@@ -1,6 +1,7 @@
 import { calculatePayouts, itmPlaceCount } from '../data/prizeStructure';
 import { isActiveTransaction } from './transactionVoid';
 import { cashierPlayers } from './tournamentArrival';
+import { isTeamBattleEvent } from './teamBattle';
 import type { Transaction } from '../types/finance';
 import type { Tournament } from '../types/tournament';
 
@@ -162,6 +163,39 @@ export type OverlayPreview = {
   guarantee: number;
   first: number;
 };
+
+/**
+ * Prize pool on the timer and at close.
+ * A saved overlay grows the base from the live cashier field.
+ * Closed nights keep the guarantee they were paid with.
+ * Team battles keep their own split.
+ */
+export function livePrizePool(
+  tournament: Tournament,
+  tournaments: readonly Tournament[],
+  transactions: readonly Transaction[],
+): number {
+  const stored = Math.max(0, Math.round(Number(tournament.guarantee) || 0));
+  if (
+    tournament.isClosed ||
+    tournament.resultsEntered ||
+    tournament.rubiesDistributed ||
+    isTeamBattleEvent(tournament) ||
+    typeof tournament.overlayPerHead !== 'number'
+  ) {
+    return stored;
+  }
+  const stats = seriesAverages(tournament, tournaments, transactions);
+  const entries = entryCounts(tournament.id, transactions);
+  return overlayGuarantee({
+    base: tournament.overlayBase ?? tournament.guarantee,
+    perHead: tournament.overlayPerHead,
+    normPeople: stats.nights > 0 ? Math.round(stats.people) : 17,
+    people: fieldSize(tournament),
+    rebuys: entries.rebuys,
+    addons: entries.addons,
+  });
+}
 
 export function overlayPreview(input: {
   base: number;

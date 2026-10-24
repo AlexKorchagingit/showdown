@@ -14,6 +14,7 @@ import { DebtPaymentModal } from '../../components/admin/DebtPaymentModal';
 import { transactionVoidPrompt } from '../../lib/transactionVoid';
 import { removeTournamentPlayerConfirm } from '../../lib/removePlayerConfirm';
 import { cashierSummary } from '../../lib/cashierSummary';
+import { livePrizePool } from '../../lib/overlayPlan';
 import {
   applyPlaceToParticipant,
   calculatePayouts,
@@ -322,7 +323,8 @@ export function AdminTournamentFinance() {
       window.alert('Не все участники вылетели!');
       return;
     }
-    const payouts = calculatePayouts(field.length, tournament.guarantee);
+    const prizePool = livePrizePool(tournament, tournaments, transactions);
+    const payouts = calculatePayouts(field.length, prizePool);
     const preview =
       payouts.length === 0
         ? 'Призовых мест нет.'
@@ -360,7 +362,7 @@ export function AdminTournamentFinance() {
     try {
       const settled = closeTournamentWithPayouts(
         closingParticipants,
-        tournament.guarantee,
+        prizePool,
         bountyEvent,
       );
       await closeTournamentOnServer({

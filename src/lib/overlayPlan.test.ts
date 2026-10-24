@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Tournament } from '../types/tournament';
 import {
+  livePrizePool,
   lobbyOverlayFigures,
   overlayGuarantee,
   overlayPreview,
@@ -90,6 +91,54 @@ describe('overlay plan', () => {
     expect(stats.people).toBe(15);
     expect(stats.rebuys).toBe(0.5);
     expect(stats.addons).toBe(0.5);
+  });
+
+  it('grows the live prize pool from the cashier field when an overlay is saved', () => {
+    const night = (id: string, arrived: number) => closed(id, 'BOUNTY HUNTER', arrived);
+    const open = {
+      ...night('open', 31),
+      isClosed: false,
+      guarantee: 10000,
+      overlayBase: 10000,
+      overlayPerHead: 100,
+      startDate: '2026-10-24',
+    };
+    const history = [night('a', 10), night('b', 20)];
+    const rebuys = Array.from({ length: 7 }, (_, index) => ({
+      id: `r${index}`,
+      date: '',
+      tournamentId: 'open',
+      userId: 'u',
+      type: 'rebuy' as const,
+      amount: 1000,
+      status: 'paid' as const,
+      comment: '',
+      isDealer: false,
+      dealerHours: 0,
+    }));
+    expect(livePrizePool(open, [open, ...history], rebuys)).toBe(11950);
+    expect(livePrizePool(
+      { ...open, overlayPerHead: undefined },
+      [open, ...history],
+      rebuys,
+    )).toBe(10000);
+  });
+
+  it('leaves a closed payout and a team battle on the stored guarantee', () => {
+    const closedNight = {
+      ...closed('chill', 'FREEROLL CHILL OUT', 41),
+      guarantee: 16000,
+      overlayBase: 12000,
+      overlayPerHead: 100,
+    };
+    expect(livePrizePool(closedNight, [closedNight], [])).toBe(16000);
+    const battle = {
+      ...closed('team', 'TEAM BATTLE', 20),
+      isClosed: false,
+      guarantee: 12000,
+      overlayPerHead: 100,
+    };
+    expect(livePrizePool(battle, [battle], [])).toBe(12000);
   });
 
   it('reads the series average and the saved overlay for the lobby hint', () => {

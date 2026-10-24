@@ -40,6 +40,7 @@ import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
 import { timerChipTotals } from '../../lib/chipStacks';
+import { livePrizePool } from '../../lib/overlayPlan';
 import { effectiveBigBlind, formatBigBlinds, stackInBigBlinds } from '../../lib/timerBlinds';
 import {
   nicknamesByPlace,
@@ -310,7 +311,15 @@ export function AdminBlindsTimer() {
     [structure, levelIndex],
   );
 
-  const prizePool = tournament?.guarantee ?? structure?.guarantee ?? 0;
+  const overlayConfigured = typeof tournament?.overlayPerHead === 'number';
+  const overlayLedgerReady = !(overlayConfigured && financeLoading && transactions.length === 0);
+  const prizePool = useMemo(() => {
+    if (!tournament) return structure?.guarantee ?? 0;
+    if (!overlayLedgerReady) return tournament.overlayBase ?? tournament.guarantee;
+    return livePrizePool(tournament, tournaments, transactions);
+  }, [overlayLedgerReady, structure?.guarantee, tournament, tournaments, transactions]);
+  const overlayBase = tournament?.overlayBase ?? tournament?.guarantee ?? prizePool;
+  const overlayAdded = overlayConfigured && overlayLedgerReady && prizePool !== overlayBase;
   const fieldSize = registered;
   const hasEntries = fieldSize > 0;
   const payouts = useMemo(
@@ -379,6 +388,11 @@ export function AdminBlindsTimer() {
               <p className="text-4xl wide:text-5xl font-black mt-3 leading-none tabular-nums text-[#F2D8A7]">
                 {prizePool.toLocaleString('ru-RU')}
               </p>
+              {overlayAdded ? (
+                <p className="mt-2 text-xs wide:text-sm font-700 uppercase tracking-[0.14em] text-[#D99962]">
+                  + оверлей
+                </p>
+              ) : null}
 
               <div className="mt-5 tabular-nums">
                 {hasEntries ? (
