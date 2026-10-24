@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Tournament } from '../types/tournament';
 import {
+  lobbyOverlayFigures,
   overlayGuarantee,
   overlayPreview,
   overlaySeriesKey,
@@ -89,5 +90,16 @@ describe('overlay plan', () => {
     expect(stats.people).toBe(15);
     expect(stats.rebuys).toBe(0.5);
     expect(stats.addons).toBe(0.5);
+  });
+
+  it('reads the series average and the saved overlay for the lobby hint', () => {
+    const older = { ...closed('old', 'CHILL OUT', 10), startDate: '2026-09-01', overlayPerHead: 80 };
+    const newer = { ...closed('new', 'FREEROLL CHILL OUT', 20), startDate: '2026-10-01', overlayPerHead: 100 };
+    const open = { ...closed('open', 'CHILL OUT', 0), isClosed: false, participants: [] };
+    expect(lobbyOverlayFigures(open, [open, older, newer])).toEqual({ people: 15, perHead: 100 });
+    expect(lobbyOverlayFigures({ ...open, overlayPerHead: 120 }, [open, older, newer])).toEqual({
+      people: 15,
+      perHead: 120,
+    });
   });
 });

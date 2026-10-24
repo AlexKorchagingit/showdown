@@ -64,6 +64,22 @@ function entryCounts(tournamentId: string, transactions: readonly Transaction[])
   return { rebuys, addons };
 }
 
+/** Average field and the overlay saved in the Overlay screen for this series. */
+export function lobbyOverlayFigures(
+  tournament: Tournament,
+  tournaments: readonly Tournament[],
+): { people: number; perHead: number } | null {
+  const stats = seriesAverages(tournament, tournaments, []);
+  const people = stats.nights > 0 ? Math.round(stats.people) : 0;
+  const key = overlaySeriesKey(tournament.title);
+  const inherited = tournaments
+    .filter((row) => row.id !== tournament.id && overlaySeriesKey(row.title) === key && typeof row.overlayPerHead === 'number')
+    .sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0))[0]?.overlayPerHead;
+  const perHead = typeof tournament.overlayPerHead === 'number' ? tournament.overlayPerHead : inherited;
+  if (people <= 0 || typeof perHead !== 'number') return null;
+  return { people, perHead };
+}
+
 /** Closed nights of the same series. The selected open event is not part of the average. */
 export function seriesAverages(
   tournament: Tournament,

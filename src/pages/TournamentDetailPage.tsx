@@ -40,6 +40,7 @@ import { FinalDrawBoard, FinalDrawNickLine } from '../components/FinalDrawSeats'
 import { useBlinds } from '../context/BlindsContext';
 import { BlindStructureModal } from '../components/BlindStructureModal';
 import { loadPublicBlindLadder } from '../lib/publicBlindLadder';
+import { lobbyOverlayFigures } from '../lib/overlayPlan';
 import type { BlindStructure } from '../data/blindStructures';
 
 interface Props {
@@ -190,6 +191,10 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
   const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
   const registered = isRegistered(live.id);
+  const overlayFigures = useMemo(
+    () => lobbyOverlayFigures(live, tournaments),
+    [live, tournaments],
+  );
 
   const formattedDate = new Date(live.startDate).toLocaleDateString('ru-RU', {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -710,11 +715,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           >
             <h2 className="text-[15px] font-800 text-white">Оверлей</h2>
             <p className="text-[13px] leading-relaxed" style={{ color: '#F2D8A7' }}>
-              Это надбавка к начальной гарантии, когда на турнир приходит больше людей, чем обычно бывает на такой серии.
+              Надбавка к начальной гарантии, если людей больше, чем обычно на этой серии.
             </p>
-            <p className="text-[13px] leading-relaxed text-white/85">
-              Каждый лишний человек добавляет оверлей целиком. Ребай добавляет половину, аддон — четверть. Пока людей не больше среднего, играется начальная гарантия. Призовых мест по-прежнему 35% от пришедших.
-            </p>
+            {overlayFigures ? (
+              <p className="text-[13px] leading-relaxed text-white">
+                Среднее поле — {overlayFigures.people}. С {overlayFigures.people + 1}-го игрока оверлей{' '}
+                {overlayFigures.perHead.toLocaleString('ru-RU')} очков за каждого. Ребай — половина, аддон — четверть.
+              </p>
+            ) : (
+              <p className="text-[13px] leading-relaxed text-white/85">
+                Лишний человек добавляет оверлей целиком, ребай — половину, аддон — четверть.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => setOverlayHelpOpen(false)}
