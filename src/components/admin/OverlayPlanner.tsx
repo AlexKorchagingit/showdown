@@ -7,6 +7,7 @@ import { useBlinds } from '../../context/BlindsContext';
 import { compareByStart, isFinished, isHidden } from '../../lib/tournamentStatus';
 import {
   busiestNight,
+  DEFAULT_OVERLAY_PER_HEAD,
   overlayPreview,
   overlaySampleHeads,
   overlaySeriesLabel,
@@ -182,7 +183,7 @@ function OverlayEditor({ tournament }: { tournament: Tournament }) {
   );
   const [baseText, setBaseText] = useState(String(tournament.overlayBase ?? tournament.guarantee));
   const [headText, setHeadText] = useState(
-    tournament.overlayPerHead == null ? '100' : String(tournament.overlayPerHead),
+    tournament.overlayPerHead == null ? String(DEFAULT_OVERLAY_PER_HEAD) : String(tournament.overlayPerHead),
   );
   const [saving, setSaving] = useState(false);
   const [savedNote, setSavedNote] = useState('');

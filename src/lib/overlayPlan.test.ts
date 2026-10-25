@@ -118,7 +118,24 @@ describe('overlay plan', () => {
     }));
     expect(livePrizePool(open, [open, ...history], rebuys)).toBe(11950);
     expect(livePrizePool(
-      { ...open, overlayPerHead: undefined },
+      { ...open, overlayPerHead: undefined, overlayBase: undefined },
+      [open, ...history],
+      rebuys,
+    )).toBe(11950);
+    const rated = {
+      ...night('rated', 0),
+      isClosed: false,
+      participants: [],
+      overlayPerHead: 200,
+      startDate: '2026-10-31',
+    };
+    expect(livePrizePool(
+      { ...open, overlayPerHead: undefined, overlayBase: undefined },
+      [open, ...history, rated],
+      rebuys,
+    )).toBe(13900);
+    expect(livePrizePool(
+      { ...open, overlayPerHead: 0 },
       [open, ...history],
       rebuys,
     )).toBe(10000);
@@ -149,6 +166,11 @@ describe('overlay plan', () => {
     expect(lobbyOverlayFigures({ ...open, overlayPerHead: 120 }, [open, older, newer])).toEqual({
       people: 15,
       perHead: 120,
+    });
+    const deep = { ...closed('deep-open', 'DEEPSTACK', 0), isClosed: false, participants: [] };
+    expect(lobbyOverlayFigures(deep, [deep, closed('deep-past', 'DEEPSTACK', 10)])).toEqual({
+      people: 10,
+      perHead: 100,
     });
   });
 });

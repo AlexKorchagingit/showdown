@@ -40,7 +40,7 @@ import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
 import { timerChipTotals, timerVisitLine } from '../../lib/chipStacks';
-import { livePrizePool } from '../../lib/overlayPlan';
+import { livePrizePool, overlayIsLive } from '../../lib/overlayPlan';
 import { effectiveBigBlind, formatBigBlinds, stackInBigBlinds } from '../../lib/timerBlinds';
 import {
   nicknamesByPlace,
@@ -313,15 +313,15 @@ export function AdminBlindsTimer() {
     [structure, levelIndex],
   );
 
-  const overlayConfigured = typeof tournament?.overlayPerHead === 'number';
-  const overlayLedgerReady = !(overlayConfigured && financeLoading && transactions.length === 0);
+  const overlayLive = tournament ? overlayIsLive(tournament) : false;
+  const overlayLedgerReady = !(overlayLive && financeLoading && transactions.length === 0);
   const prizePool = useMemo(() => {
     if (!tournament) return structure?.guarantee ?? 0;
     if (!overlayLedgerReady) return tournament.overlayBase ?? tournament.guarantee;
     return livePrizePool(tournament, tournaments, transactions);
   }, [overlayLedgerReady, structure?.guarantee, tournament, tournaments, transactions]);
   const overlayBase = tournament?.overlayBase ?? tournament?.guarantee ?? prizePool;
-  const overlayAdded = overlayConfigured && overlayLedgerReady && prizePool !== overlayBase;
+  const overlayAdded = overlayLive && overlayLedgerReady && prizePool !== overlayBase;
   const fieldSize = registered;
   const hasEntries = fieldSize > 0;
   const payouts = useMemo(

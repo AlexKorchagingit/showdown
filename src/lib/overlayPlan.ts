@@ -65,20 +65,47 @@ function entryCounts(tournamentId: string, transactions: readonly Transaction[])
   return { rebuys, addons };
 }
 
-/** Average field and the overlay saved in the Overlay screen for this series. */
+/** The overlay form starts here, and a night with no saved rate uses the same number. */
+export const DEFAULT_OVERLAY_PER_HEAD = 100;
+
+/** Open prize nights. Closed results and team battles keep the guarantee already stored. */
+export function overlayIsLive(tournament: Tournament): boolean {
+  return !(
+    tournament.isClosed ||
+    tournament.resultsEntered ||
+    tournament.rubiesDistributed ||
+    isTeamBattleEvent(tournament)
+  );
+}
+
+/**
+ * This night's saved rate, otherwise the latest saved rate of the same series,
+ * otherwise the form default. The base stays this night's own guarantee.
+ */
+export function overlayRate(
+  tournament: Tournament,
+  tournaments: readonly Tournament[],
+): { base: number; perHead: number } {
+  const base = tournament.overlayBase ?? tournament.guarantee;
+  if (typeof tournament.overlayPerHead === 'number') {
+    return { base, perHead: tournament.overlayPerHead };
+  }
+  const key = overlaySeriesKey(tournament.title);
+  const inherited = tournaments
+    .filter((row) => row.id !== tournament.id && overlaySeriesKey(row.title) === key && typeof row.overlayPerHead === 'number')
+    .sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0))[0]?.overlayPerHead;
+  return { base, perHead: inherited ?? DEFAULT_OVERLAY_PER_HEAD };
+}
+
+/** Average field and the overlay rate for this series. */
 export function lobbyOverlayFigures(
   tournament: Tournament,
   tournaments: readonly Tournament[],
 ): { people: number; perHead: number } | null {
   const stats = seriesAverages(tournament, tournaments, []);
   const people = stats.nights > 0 ? Math.round(stats.people) : 0;
-  const key = overlaySeriesKey(tournament.title);
-  const inherited = tournaments
-    .filter((row) => row.id !== tournament.id && overlaySeriesKey(row.title) === key && typeof row.overlayPerHead === 'number')
-    .sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0))[0]?.overlayPerHead;
-  const perHead = typeof tournament.overlayPerHead === 'number' ? tournament.overlayPerHead : inherited;
-  if (people <= 0 || typeof perHead !== 'number') return null;
-  return { people, perHead };
+  if (people <= 0) return null;
+  return { people, perHead: overlayRate(tournament, tournaments).perHead };
 }
 
 /** Closed nights of the same series. The selected open event is not part of the average. */
@@ -176,20 +203,13 @@ export function livePrizePool(
   transactions: readonly Transaction[],
 ): number {
   const stored = Math.max(0, Math.round(Number(tournament.guarantee) || 0));
-  if (
-    tournament.isClosed ||
-    tournament.resultsEntered ||
-    tournament.rubiesDistributed ||
-    isTeamBattleEvent(tournament) ||
-    typeof tournament.overlayPerHead !== 'number'
-  ) {
-    return stored;
-  }
+  if (!overlayIsLive(tournament)) return stored;
   const stats = seriesAverages(tournament, tournaments, transactions);
   const entries = entryCounts(tournament.id, transactions);
+  const rate = overlayRate(tournament, tournaments);
   return overlayGuarantee({
-    base: tournament.overlayBase ?? tournament.guarantee,
-    perHead: tournament.overlayPerHead,
+    base: rate.base,
+    perHead: rate.perHead,
     normPeople: stats.nights > 0 ? Math.round(stats.people) : 17,
     people: fieldSize(tournament),
     rebuys: entries.rebuys,
