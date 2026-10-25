@@ -5,6 +5,7 @@ import {
   rebuyLimitFrom,
   stackMultiplierNear,
   timerChipTotals,
+  timerVisitLine,
 } from './chipStacks';
 import type { BlindLevel, BlindStructure } from '../data/blindStructures';
 import type { Transaction } from '../types/finance';
@@ -139,6 +140,18 @@ describe('chip amounts written by hand', () => {
     expect(rebuyLimitFrom('Без ограничений по ре-энтри')).toBeNull();
     expect(rebuyLimitFrom('Без возможности ре-энтри')).toBe(0);
     expect(rebuyLimitFrom('Начальный стек 30000')).toBeNull();
+  });
+});
+
+describe('timer visit line', () => {
+  it('counts entries and every rebuy together, and keeps addons aside', () => {
+    expect(timerVisitLine({ entries: 31, rebuys: 6, rebuysBeyondLimit: 1, addons: 0 })).toBe('Входов: 38');
+    expect(timerVisitLine({ entries: 14, rebuys: 0, rebuysBeyondLimit: 0, addons: 0 })).toBe('Входов: 14');
+    expect(timerVisitLine({ entries: 18, rebuys: 4, rebuysBeyondLimit: 0, addons: 3 })).toBe(
+      'Входов: 22 · аддонов: 3',
+    );
+    expect(timerVisitLine({ entries: 0, rebuys: 0, rebuysBeyondLimit: 0, addons: 2 })).toBe('Аддонов: 2');
+    expect(timerVisitLine({ entries: 0, rebuys: 0, rebuysBeyondLimit: 0, addons: 0 })).toBe('');
   });
 });
 

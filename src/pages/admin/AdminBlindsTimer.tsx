@@ -39,7 +39,7 @@ import { isAppFullscreen, toggleAppFullscreen } from '../../lib/fullscreen';
 import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
-import { timerChipTotals } from '../../lib/chipStacks';
+import { timerChipTotals, timerVisitLine } from '../../lib/chipStacks';
 import { livePrizePool } from '../../lib/overlayPlan';
 import { effectiveBigBlind, formatBigBlinds, stackInBigBlinds } from '../../lib/timerBlinds';
 import {
@@ -283,6 +283,8 @@ export function AdminBlindsTimer() {
     [tournament, structure, transactions],
   );
   const avgStack = chipTotals.avgStack;
+  const visitLine =
+    financeLoading && transactions.length === 0 ? '' : timerVisitLine(chipTotals);
   const avgBigBlinds = stackInBigBlinds(avgStack, effectiveBigBlind(structure?.levels, levelIndex));
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
@@ -468,6 +470,11 @@ export function AdminBlindsTimer() {
                   {remaining}
                   <span className="text-white/35"> / {registered}</span>
                 </FitText>
+                {visitLine ? (
+                  <p className="mt-1 text-xs font-600 text-white/60 wide:text-sm">
+                    {visitLine}
+                  </p>
+                ) : null}
               </section>
             )}
 

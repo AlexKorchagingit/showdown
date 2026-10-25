@@ -3,7 +3,7 @@ import { HandOfDayPicker } from './HandOfDay';
 import { useBlinds } from '../context/BlindsContext';
 import { useFinance } from '../context/FinanceContext';
 import { useTournaments } from '../context/TournamentContext';
-import { timerChipTotals, type TimerChipTotals } from '../lib/chipStacks';
+import { timerChipTotals, timerVisitLine, type TimerChipTotals } from '../lib/chipStacks';
 import { remainingPlayers } from '../lib/tournamentStats';
 
 const FIELD_CLASS =
@@ -71,18 +71,18 @@ export function TimerSessionFields() {
       ) : null}
 
       <label className="block">
-        <span className={LABEL_CLASS}>Кол-во ребаев и аддонов</span>
+        <span className={LABEL_CLASS}>Входы</span>
         <input
           type="text"
           readOnly
           tabIndex={-1}
-          value={financeLoading ? '…' : `${totals.rebuys} + ${totals.addons}`}
-          aria-label="Ребаи и аддоны считаются по кассе турнира"
+          value={financeLoading ? '…' : timerVisitLine(totals) || '0'}
+          aria-label="Входы считаются как входы и ребаи по кассе турнира"
           className={READONLY_CLASS}
         />
         <p className={HINT_CLASS}>
-          Ребаев: {totals.rebuys} · аддонов: {totals.addons}. Считаем плашки «Ребай» и «Аддон»
-          в кассе турнира, отменённые не берём.
+          Входы — плашки входа плюс «Ребай». Аддоны, если они есть, пишем отдельно.
+          Отменённые не берём.
           {totals.rebuysBeyondLimit > 0
             ? ` Лишних плашек «Ребай» сверх лимита турнира (${totals.rebuyLimit} на игрока): ` +
               `${totals.rebuysBeyondLimit} — в стеке не учитываем.`

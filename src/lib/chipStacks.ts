@@ -313,6 +313,21 @@ export function timerChipTotals(
   };
 }
 
+/** Timer line: entries plus every rebuy badge. Addons stay their own phrase. */
+export function timerVisitLine(
+  totals: Pick<TimerChipTotals, 'entries' | 'rebuys' | 'rebuysBeyondLimit' | 'addons'>,
+): string {
+  const visits = Math.max(0, Math.round(totals.entries) || 0)
+    + Math.max(0, Math.round(totals.rebuys) || 0)
+    + Math.max(0, Math.round(totals.rebuysBeyondLimit) || 0);
+  const addons = Math.max(0, Math.round(totals.addons) || 0);
+  const parts: string[] = [];
+  if (visits > 0) parts.push(`Входов: ${visits.toLocaleString('ru-RU')}`);
+  if (addons > 0) parts.push(`аддонов: ${addons.toLocaleString('ru-RU')}`);
+  const line = parts.join(' · ');
+  return line ? line.charAt(0).toUpperCase() + line.slice(1) : '';
+}
+
 /** Bullets under «Особенности». A rebuy equal to the entry, and a missing addon, are omitted. */
 export function publicStackFeatureLines(tournament: Tournament | undefined): string[] {
   const features = tournament?.features ?? [];
