@@ -116,6 +116,11 @@ export type PlayerProfileStats = {
   top9: number;
 };
 
+/** First-place rows from the same history the profile win count uses. */
+export function playerWinHistory(history: readonly PlayerGameHistoryRow[]): PlayerGameHistoryRow[] {
+  return history.filter((row) => row.place === 1);
+}
+
 /** Same closed-event rows as the game-history sheet, rolled up for the profile column. */
 export function summarizePlayerGameHistory(history: PlayerGameHistoryRow[]): PlayerProfileStats {
   let wins = 0;

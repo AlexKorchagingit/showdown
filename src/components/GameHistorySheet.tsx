@@ -4,15 +4,22 @@ import type { PlayerGameHistoryRow } from '../lib/playerAnalytics';
 interface GameHistorySheetProps {
   rows: PlayerGameHistoryRow[];
   onClose: () => void;
+  title?: string;
+  emptyLabel?: string;
 }
 
-export function GameHistorySheet({ rows, onClose }: GameHistorySheetProps) {
+export function GameHistorySheet({
+  rows,
+  onClose,
+  title = 'История игр',
+  emptyLabel = 'Пока нет завершённых турниров',
+}: GameHistorySheetProps) {
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center">
       <button
         type="button"
         className="absolute inset-0 bg-black/65"
-        aria-label="Закрыть историю игр"
+        aria-label={`Закрыть: ${title}`}
         onClick={onClose}
       />
       <div
@@ -24,7 +31,7 @@ export function GameHistorySheet({ rows, onClose }: GameHistorySheetProps) {
         }}
       >
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-[15px] font-800 uppercase tracking-wide text-white">История игр</h2>
+          <h2 className="text-[15px] font-800 uppercase tracking-wide text-white">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -39,7 +46,7 @@ export function GameHistorySheet({ rows, onClose }: GameHistorySheetProps) {
         <div className="min-h-0 flex-1 overflow-y-auto">
           {rows.length === 0 ? (
             <p className="px-1 py-10 text-center text-[13px] text-[#6B6360]">
-              Пока нет завершённых турниров
+              {emptyLabel}
             </p>
           ) : (
             <div className="space-y-2 pb-2">

@@ -16,7 +16,7 @@ import {
 } from '../lib/playerCharacter';
 import { formatBirthDate, resolvePublicProfile, type PublicProfileStats } from '../lib/playerName';
 import { clubRatingPlayers } from '../lib/clubRating';
-import { collectPlayerGameHistory, computePlayerAdminStats, summarizePlayerGameHistory } from '../lib/playerAnalytics';
+import { collectPlayerGameHistory, computePlayerAdminStats, playerWinHistory, summarizePlayerGameHistory } from '../lib/playerAnalytics';
 import { clearAllDebtsConfirm } from '../lib/transactionVoid';
 import { AdminPlayerStats } from '../components/admin/AdminPlayerStats';
 import { GameHistorySheet } from '../components/GameHistorySheet';
@@ -44,6 +44,7 @@ export function ProfilePage() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
+  const [winsOpen, setWinsOpen] = useState(false);
 
   const readOnly = Boolean(playerId);
   const state = (location.state ?? null) as Partial<PublicProfileStats> | null;
@@ -102,6 +103,7 @@ export function ProfilePage() {
   }, [tournaments, readOnly, subjectUserId, userId, displayNickname]);
 
   const liveStats = useMemo(() => summarizePlayerGameHistory(gameHistory), [gameHistory]);
+  const winHistory = useMemo(() => playerWinHistory(gameHistory), [gameHistory]);
 
   const ratingPlace = useMemo(() => {
     if (!subjectUserId) return null;
@@ -251,12 +253,17 @@ export function ProfilePage() {
 
           <div className="relative z-10 flex flex-col gap-3 pl-4 pr-8">
             {sideStats.map(({ label, display, size }) => {
-              if (label === 'Игры') {
+              const openList = label === 'Игры'
+                ? () => setGamesOpen(true)
+                : label === 'Победы'
+                  ? () => setWinsOpen(true)
+                  : null;
+              if (openList) {
                 return (
                   <button
                     key={label}
                     type="button"
-                    onClick={() => setGamesOpen(true)}
+                    onClick={openList}
                     className="text-left active:opacity-80 transition-opacity"
                   >
                     <p className="text-[10px] text-white font-bold drop-shadow-md uppercase tracking-wide">
@@ -338,6 +345,14 @@ export function ProfilePage() {
       )}
       {gamesOpen ? (
         <GameHistorySheet rows={gameHistory} onClose={() => setGamesOpen(false)} />
+      ) : null}
+      {winsOpen ? (
+        <GameHistorySheet
+          rows={winHistory}
+          title="Победы"
+          emptyLabel="Пока нет побед"
+          onClose={() => setWinsOpen(false)}
+        />
       ) : null}
     </div>
   );

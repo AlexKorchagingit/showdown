@@ -3,6 +3,7 @@ import { finalTableSize, itmPlaceCount } from '../data/prizeStructure';
 import {
   collectPlayerGameHistory,
   computePlayerAdminStats,
+  playerWinHistory,
   summarizePlayerGameHistory,
 } from './playerAnalytics';
 import type { Participant, Tournament } from '../types/tournament';
@@ -82,6 +83,16 @@ describe('player profile history', () => {
     });
     expect(summarizePlayerGameHistory(itm)).toMatchObject({ finals: 1, top9: 1 });
     expect(summarizePlayerGameHistory(miss)).toMatchObject({ finals: 0, top9: 0 });
+  });
+
+  it('lists the same first places the profile win count uses', () => {
+    const history = [
+      ...collectPlayerGameHistory([event('win', fieldOf(8, 1))], ['hero']),
+      ...collectPlayerGameHistory([event('second', fieldOf(8, 2))], ['hero']),
+    ];
+    const wins = playerWinHistory(history);
+    expect(wins.map((row) => row.id)).toEqual(['win']);
+    expect(summarizePlayerGameHistory(history).wins).toBe(wins.length);
   });
 });
 
