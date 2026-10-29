@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import { formatWinnerPoints, winnerExportText, type WinnerExportRow } from '../lib/winnerExport';
+import { winnerExportScore, winnerExportText, type WinnerExportRow } from '../lib/winnerExport';
 
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -90,7 +90,9 @@ export function WinnerExportModal({
             </p>
           ) : (
             <div className="space-y-2">
-              {rows.map((row, index) => (
+              {rows.map((row, index) => {
+                const score = winnerExportScore(row);
+                return (
                 <div
                   key={`${row.place ?? 'x'}-${row.nickname}-${index}`}
                   className="flex items-baseline justify-between gap-3 rounded-xl px-3 py-2.5"
@@ -102,18 +104,19 @@ export function WinnerExportModal({
                     </span>
                     {row.nickname}
                   </p>
-                  {row.points > 0 || row.knockoutPoints > 0 ? (
+                  {score.points || score.knockout ? (
                     <p className="shrink-0 text-[13px] font-800 tabular-nums text-white">
-                      {row.points > 0 ? formatWinnerPoints(row.points) : null}
-                      {row.knockoutPoints > 0 ? (
-                        <span className={row.points > 0 ? 'ml-1.5' : ''} style={{ color: '#86efac' }}>
-                          +{formatWinnerPoints(row.knockoutPoints)}
+                      {score.points || null}
+                      {score.knockout ? (
+                        <span className={score.points ? 'ml-1.5' : ''} style={{ color: '#86efac' }}>
+                          +{score.knockout}
                         </span>
                       ) : null}
                     </p>
                   ) : null}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

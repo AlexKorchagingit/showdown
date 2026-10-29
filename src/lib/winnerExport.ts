@@ -71,13 +71,26 @@ export function formatWinnerPoints(points: number): string {
  */
 const NUMBER_GAP = '\u2060 ';
 
+/** Place points and knockout points worth showing. A rounded zero is omitted. */
+export function winnerExportScore(row: Pick<WinnerExportRow, 'points' | 'knockoutPoints'>): {
+  points: string;
+  knockout: string;
+} {
+  const points = Math.round(Number(row.points) || 0);
+  const knockout = Math.round(Number(row.knockoutPoints) || 0);
+  return {
+    points: points > 0 ? formatWinnerPoints(points) : '',
+    knockout: knockout > 0 ? formatWinnerPoints(knockout) : '',
+  };
+}
+
 export function winnerExportLine(row: WinnerExportRow, index: number): string {
   const number = row.place ?? index + 1;
-  const ko = row.knockoutPoints > 0 ? `+${formatWinnerPoints(row.knockoutPoints)}` : '';
-  let score = '';
-  if (row.points > 0) score = ` — ${formatWinnerPoints(row.points)}${ko ? ` ${ko}` : ''}`;
-  else if (ko) score = ` ${ko}`;
-  return `${number}.${NUMBER_GAP}${row.nickname}${score}`;
+  const score = winnerExportScore(row);
+  let tail = '';
+  if (score.points) tail = ` — ${score.points}${score.knockout ? ` +${score.knockout}` : ''}`;
+  else if (score.knockout) tail = ` +${score.knockout}`;
+  return `${number}.${NUMBER_GAP}${row.nickname}${tail}`.replace(/[ \t]*[—–−-][ \t]*0(?!\d)/g, '');
 }
 
 export function winnerExportText(rows: readonly WinnerExportRow[]): string {

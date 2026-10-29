@@ -443,9 +443,11 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             {/* ─── УЧАСТНИКИ ─── */}
             {tournamentFinished && isSquadScoreEvent(live) ? (
               <div className="space-y-2">
-                <div className="flex justify-end">
-                  <WinnerExportButton onClick={() => setWinnersOpen(true)} />
-                </div>
+                {isAdmin ? (
+                  <div className="flex justify-end">
+                    <WinnerExportButton onClick={() => setWinnersOpen(true)} />
+                  </div>
+                ) : null}
                 <SquadScoreBoard
                   tournament={live}
                   players={live.participants.filter(
@@ -467,7 +469,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                   Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
                 <div className="ml-auto flex items-center gap-2">
-                  {tournamentFinished ? (
+                  {tournamentFinished && isAdmin ? (
                     <WinnerExportButton onClick={() => setWinnersOpen(true)} />
                   ) : null}
                   <span className="text-sm text-gray-400">
@@ -593,9 +595,9 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                               style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                             >
                               {isClosedRow
-                                ? (p.place != null ? `+${award.toLocaleString('ru-RU')}` : '—')
+                                ? (award > 0 ? `+${award.toLocaleString('ru-RU')}` : null)
                                 : p.rating.toLocaleString('ru-RU')}
-                              {isClosedRow && live.isBounty && (
+                              {isClosedRow && live.isBounty && koBonus > 0 && (
                                 <span className="ml-1 font-800" style={{ color: '#86efac' }}>
                                   + {koBonus.toLocaleString('ru-RU')}
                                 </span>
@@ -738,7 +740,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           )}
         </div>
       </div>
-      {winnersOpen ? (
+      {winnersOpen && isAdmin ? (
         <WinnerExportModal
           title={live.title}
           rows={winnerRows}

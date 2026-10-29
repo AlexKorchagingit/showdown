@@ -49,5 +49,6 @@ describe('winner export', () => {
       ].join('\n'),
     );
     expect(winnerExportText(rows)).not.toContain(event.title);
+    expect(winnerExportText(rows)).not.toMatch(/[—–−-]\s*0(?!\d)/);
   });
 });
