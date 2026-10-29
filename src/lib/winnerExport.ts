@@ -35,7 +35,7 @@ function placePoints(player: Participant, tournament: ExportTournament, fieldSiz
     : 0;
 }
 
-/** Prize places, in finishing order. Knockout points stay separate from the place award. */
+/** Every listed player, in finishing order. Knockout points stay separate from the place award. */
 export function winnerExportRows(
   players: readonly Participant[],
   tournament: ExportTournament,
@@ -44,7 +44,6 @@ export function winnerExportRows(
   const rows: WinnerExportRow[] = [];
   for (const player of players) {
     const points = placePoints(player, tournament, fieldSize);
-    if (points <= 0) continue;
     const knockoutPoints = knockoutBountyPoints(player.knockouts, tournament.isBounty === true);
     rows.push({
       place: placeOf(player, tournament),
@@ -72,8 +71,6 @@ export function winnerExportLine(row: WinnerExportRow, index: number): string {
   return `${number}. ${row.nickname} — ${formatWinnerPoints(row.points)}${ko}`;
 }
 
-export function winnerExportText(title: string, rows: readonly WinnerExportRow[]): string {
-  const lines = rows.map((row, index) => winnerExportLine(row, index));
-  const head = title.trim();
-  return [head, ...lines].filter((line) => line.length > 0).join('\n');
+export function winnerExportText(rows: readonly WinnerExportRow[]): string {
+  return rows.map((row, index) => winnerExportLine(row, index)).join('\n');
 }

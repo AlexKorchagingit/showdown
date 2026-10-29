@@ -34,15 +34,19 @@ describe('winner export', () => {
     const players = [player('Ann', 1), player('Bob', 2, 1), player('Carl', 8, 3)];
     const event = tournament({ participants: players, isBounty: true, guarantee: 10_000 });
     const rows = winnerExportRows(players, event, 10);
-    expect(rows.map((row) => row.nickname)).toEqual(['Ann', 'Bob']);
+    expect(rows.map((row) => row.nickname)).toEqual(['Ann', 'Bob', 'Carl']);
     expect(rows[0]).toMatchObject({ place: 1, points: ratingPointsForPlace(1, 10_000, 10), knockoutPoints: 0 });
     expect(rows[1]?.knockoutPoints).toBe(100);
-    expect(winnerExportText(event.title, rows)).toBe(
+    expect(rows[2]).toMatchObject({ place: 8, points: 0, knockoutPoints: 300 });
+    const points = (place: number) =>
+      ratingPointsForPlace(place, 10_000, 10).toLocaleString('ru-RU').replace(/[\u00a0\u202f]/g, ' ');
+    expect(winnerExportText(rows)).toBe(
       [
-        'FREEROLL',
-        `1. Ann — ${ratingPointsForPlace(1, 10_000, 10).toLocaleString('ru-RU').replace(/[\u00a0\u202f]/g, ' ')}`,
-        `2. Bob — ${ratingPointsForPlace(2, 10_000, 10).toLocaleString('ru-RU').replace(/[\u00a0\u202f]/g, ' ')} +100`,
+        `1. Ann — ${points(1)}`,
+        `2. Bob — ${points(2)} +100`,
+        '8. Carl — 0 +300',
       ].join('\n'),
     );
+    expect(winnerExportText(rows)).not.toContain(event.title);
   });
 });

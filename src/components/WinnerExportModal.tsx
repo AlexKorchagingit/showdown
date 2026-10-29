@@ -40,7 +40,7 @@ export function WinnerExportModal({
 }) {
   const [note, setNote] = useState('');
   const timer = useRef<number | null>(null);
-  const text = winnerExportText(title, rows);
+  const text = winnerExportText(rows);
 
   useEffect(() => () => {
     if (timer.current != null) window.clearTimeout(timer.current);
@@ -62,14 +62,14 @@ export function WinnerExportModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Список победителей"
+        aria-label="Список участников"
         className="flex max-h-[82vh] w-full max-w-sm flex-col rounded-2xl"
         style={{ background: '#1A1411', border: '1px solid rgba(242,216,167,0.28)' }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 px-4 pt-4">
           <div className="min-w-0">
-            <h2 className="text-[15px] font-800 text-white">Победители</h2>
+            <h2 className="text-[15px] font-800 text-white">Участники</h2>
             <p className="mt-0.5 truncate text-[12px] font-600" style={{ color: '#D99962' }}>{title}</p>
           </div>
           <button
@@ -86,7 +86,7 @@ export function WinnerExportModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           {rows.length === 0 ? (
             <p className="py-8 text-center text-[13px]" style={{ color: '#6B6360' }}>
-              Призовых очков нет
+              В списке никого нет
             </p>
           ) : (
             <ol className="space-y-2">
