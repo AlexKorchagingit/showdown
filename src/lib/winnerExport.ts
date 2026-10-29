@@ -65,10 +65,19 @@ export function formatWinnerPoints(points: number): string {
   return Math.max(0, Math.round(points)).toLocaleString('ru-RU').replace(/[\u00a0\u202f]/g, ' ');
 }
 
+/**
+ * A word joiner after the dot keeps "1. Имя" as plain text.
+ * Messengers otherwise turn "1. " into a list and drop the space.
+ */
+const NUMBER_GAP = '\u2060 ';
+
 export function winnerExportLine(row: WinnerExportRow, index: number): string {
   const number = row.place ?? index + 1;
-  const ko = row.knockoutPoints > 0 ? ` +${formatWinnerPoints(row.knockoutPoints)}` : '';
-  return `${number}. ${row.nickname} — ${formatWinnerPoints(row.points)}${ko}`;
+  const ko = row.knockoutPoints > 0 ? `+${formatWinnerPoints(row.knockoutPoints)}` : '';
+  let score = '';
+  if (row.points > 0) score = ` — ${formatWinnerPoints(row.points)}${ko ? ` ${ko}` : ''}`;
+  else if (ko) score = ` ${ko}`;
+  return `${number}.${NUMBER_GAP}${row.nickname}${score}`;
 }
 
 export function winnerExportText(rows: readonly WinnerExportRow[]): string {

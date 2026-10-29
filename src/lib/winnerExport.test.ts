@@ -31,10 +31,10 @@ function tournament(patch: Partial<Tournament> = {}): Tournament {
 
 describe('winner export', () => {
   it('numbers prize places and adds knockout points only when there are knockouts', () => {
-    const players = [player('Ann', 1), player('Bob', 2, 1), player('Carl', 8, 3)];
+    const players = [player('Ann', 1), player('Bob', 2, 1), player('Carl', 8, 3), player('Dana', 9)];
     const event = tournament({ participants: players, isBounty: true, guarantee: 10_000 });
     const rows = winnerExportRows(players, event, 10);
-    expect(rows.map((row) => row.nickname)).toEqual(['Ann', 'Bob', 'Carl']);
+    expect(rows.map((row) => row.nickname)).toEqual(['Ann', 'Bob', 'Carl', 'Dana']);
     expect(rows[0]).toMatchObject({ place: 1, points: ratingPointsForPlace(1, 10_000, 10), knockoutPoints: 0 });
     expect(rows[1]?.knockoutPoints).toBe(100);
     expect(rows[2]).toMatchObject({ place: 8, points: 0, knockoutPoints: 300 });
@@ -42,9 +42,10 @@ describe('winner export', () => {
       ratingPointsForPlace(place, 10_000, 10).toLocaleString('ru-RU').replace(/[\u00a0\u202f]/g, ' ');
     expect(winnerExportText(rows)).toBe(
       [
-        `1. Ann — ${points(1)}`,
-        `2. Bob — ${points(2)} +100`,
-        '8. Carl — 0 +300',
+        `1.\u2060 Ann — ${points(1)}`,
+        `2.\u2060 Bob — ${points(2)} +100`,
+        '8.\u2060 Carl +300',
+        '9.\u2060 Dana',
       ].join('\n'),
     );
     expect(winnerExportText(rows)).not.toContain(event.title);

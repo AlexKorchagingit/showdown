@@ -89,30 +89,32 @@ export function WinnerExportModal({
               В списке никого нет
             </p>
           ) : (
-            <ol className="space-y-2">
+            <div className="space-y-2">
               {rows.map((row, index) => (
-                <li
+                <div
                   key={`${row.place ?? 'x'}-${row.nickname}-${index}`}
                   className="flex items-baseline justify-between gap-3 rounded-xl px-3 py-2.5"
                   style={{ background: '#2A211D' }}
                 >
                   <p className="min-w-0 truncate text-[13px] font-700 text-white">
                     <span className="tabular-nums" style={{ color: '#D99962' }}>
-                      {row.place ?? index + 1}.
-                    </span>{' '}
+                      {row.place ?? index + 1}.{'\u2060'}{' '}
+                    </span>
                     {row.nickname}
                   </p>
-                  <p className="shrink-0 text-[13px] font-800 tabular-nums text-white">
-                    {formatWinnerPoints(row.points)}
-                    {row.knockoutPoints > 0 ? (
-                      <span className="ml-1.5" style={{ color: '#86efac' }}>
-                        +{formatWinnerPoints(row.knockoutPoints)}
-                      </span>
-                    ) : null}
-                  </p>
-                </li>
+                  {row.points > 0 || row.knockoutPoints > 0 ? (
+                    <p className="shrink-0 text-[13px] font-800 tabular-nums text-white">
+                      {row.points > 0 ? formatWinnerPoints(row.points) : null}
+                      {row.knockoutPoints > 0 ? (
+                        <span className={row.points > 0 ? 'ml-1.5' : ''} style={{ color: '#86efac' }}>
+                          +{formatWinnerPoints(row.knockoutPoints)}
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
               ))}
-            </ol>
+            </div>
           )}
         </div>
 
