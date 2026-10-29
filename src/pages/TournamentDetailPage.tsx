@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, Clock, CheckCircle2, XCircle, Star, MapPin, Crosshair, Pencil } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle2, Download, XCircle, Star, MapPin, Crosshair, Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Tournament } from '../types/tournament';
@@ -41,6 +41,8 @@ import { useBlinds } from '../context/BlindsContext';
 import { BlindStructureModal } from '../components/BlindStructureModal';
 import { loadPublicBlindLadder } from '../lib/publicBlindLadder';
 import { lobbyOverlayFigures } from '../lib/overlayPlan';
+import { winnerExportRows } from '../lib/winnerExport';
+import { WinnerExportModal } from '../components/WinnerExportModal';
 import type { BlindStructure } from '../data/blindStructures';
 
 interface Props {
@@ -166,6 +168,20 @@ function LobbyHero({
   );
 }
 
+function WinnerExportButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-800 uppercase tracking-wide active:scale-[0.98]"
+      style={{ color: '#0A0908', background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
+    >
+      <Download size={13} strokeWidth={2.6} />
+      Выгрузка
+    </button>
+  );
+}
+
 function formatDealerHours(hours: number, minutes = 0): string {
   if (minutes > 0) return `${hours} ч ${minutes} мин`;
   const whole = Math.floor(hours);
@@ -182,6 +198,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const { structures } = useBlinds();
   const [structureOpen, setStructureOpen] = useState(false);
   const [overlayHelpOpen, setOverlayHelpOpen] = useState(false);
+  const [winnersOpen, setWinnersOpen] = useState(false);
   const [loadedStructure, setLoadedStructure] = useState<BlindStructure | null>(null);
   const [structurePending, setStructurePending] = useState(false);
 
@@ -230,6 +247,18 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const queue = queueSplit.queue;
   const occupiedSeats = tournamentFinished ? participants.length : seated.length;
   const fieldSize = Math.max(cashierFieldSize(live), participants.length);
+  const winnerRows = useMemo(() => {
+    if (!tournamentFinished) return [];
+    const players = isSquadScoreEvent(live)
+      ? live.participants.filter(
+          (player) =>
+            squadNoOf(player) != null ||
+            player.arrived === true ||
+            (typeof player.place === 'number' && player.place >= 1),
+        )
+      : participants;
+    return winnerExportRows(players, live, fieldSize);
+  }, [tournamentFinished, live, participants, fieldSize]);
   const tableSize = finalTableSize(fieldSize);
   const lastFinalTableIndex = participants.reduce((last, row, index) => {
     const place = displayedTeamPlace(row, live);
@@ -413,28 +442,38 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
 
             {/* ─── УЧАСТНИКИ ─── */}
             {tournamentFinished && isSquadScoreEvent(live) ? (
-              <SquadScoreBoard
-                tournament={live}
-                players={live.participants.filter(
-                  (player) =>
-                    squadNoOf(player) != null ||
-                    player.arrived === true ||
-                    (typeof player.place === 'number' && player.place >= 1),
-                )}
-              />
+              <div className="space-y-2">
+                <div className="flex justify-end">
+                  <WinnerExportButton onClick={() => setWinnersOpen(true)} />
+                </div>
+                <SquadScoreBoard
+                  tournament={live}
+                  players={live.participants.filter(
+                    (player) =>
+                      squadNoOf(player) != null ||
+                      player.arrived === true ||
+                      (typeof player.place === 'number' && player.place >= 1),
+                  )}
+                />
+              </div>
             ) : (
             <div className="rounded-2xl overflow-hidden"
                  style={{ background: '#2A211D', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div
-                className="flex flex-col px-5 py-4"
+                className="flex flex-wrap items-center justify-between gap-2 px-5 py-4"
                 style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <h3 className="text-sm font-bold text-white uppercase">
                   Участники ({occupiedSeats}/{live.totalSeats})
                 </h3>
-                <span className="text-sm text-gray-400 text-right mt-1">
-                  {tournamentFinished ? 'Очки' : 'Рейтинг сезона'}
-                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  {tournamentFinished ? (
+                    <WinnerExportButton onClick={() => setWinnersOpen(true)} />
+                  ) : null}
+                  <span className="text-sm text-gray-400">
+                    {tournamentFinished ? 'Очки' : 'Рейтинг сезона'}
+                  </span>
+                </div>
               </div>
 
               {/* Participant rows */}
@@ -699,6 +738,13 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
           )}
         </div>
       </div>
+      {winnersOpen ? (
+        <WinnerExportModal
+          title={live.title}
+          rows={winnerRows}
+          onClose={() => setWinnersOpen(false)}
+        />
+      ) : null}
       {overlayHelpOpen ? (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center p-6"
