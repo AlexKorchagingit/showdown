@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_ENTRY_FEE, FREEZEOUT_ENTRY_FEE } from '../types/finance';
-import { chargeAmountFor, isComplimentaryCharge, isFreezeoutEvent } from './entryFee';
+import { DEFAULT_ENTRY_FEE, FREEZEOUT_ENTRY_FEE, PHOENIX_REBUY_FEE } from '../types/finance';
+import { chargeAmountFor, isComplimentaryCharge, isFreezeoutEvent, isPhoenixEvent } from './entryFee';
 
 function event(
   title: string,
@@ -31,8 +31,20 @@ describe('isFreezeoutEvent', () => {
 describe('chargeAmountFor', () => {
   it('keeps the default 1000 tariff and free tickets', () => {
     expect(chargeAmountFor('buy-in', event('Chill out'))).toBe(DEFAULT_ENTRY_FEE);
-    expect(chargeAmountFor('rebuy', event('Phoenix'))).toBe(DEFAULT_ENTRY_FEE);
+    expect(chargeAmountFor('rebuy', event('Chill out'))).toBe(DEFAULT_ENTRY_FEE);
     expect(chargeAmountFor('ticket', event('Freezeout'))).toBe(0);
+  });
+
+  it('charges 1500 for a phoenix rebuy and leaves the buy-in and addon at 1000', () => {
+    expect(isPhoenixEvent(event('FREEROLL PHOENIX'))).toBe(true);
+    expect(isPhoenixEvent(event('Night', 'Phoenix', 'bs-phoenix'))).toBe(true);
+    expect(isPhoenixEvent(event('Феникс'))).toBe(true);
+    expect(isPhoenixEvent(event('Chill out'))).toBe(false);
+    expect(chargeAmountFor('rebuy', event('FREEROLL PHOENIX'))).toBe(PHOENIX_REBUY_FEE);
+    expect(chargeAmountFor('rebuy', event('Friday', 'Phoenix'))).toBe(PHOENIX_REBUY_FEE);
+    expect(chargeAmountFor('buy-in', event('Phoenix'))).toBe(DEFAULT_ENTRY_FEE);
+    expect(chargeAmountFor('addon', event('Phoenix'))).toBe(DEFAULT_ENTRY_FEE);
+    expect(chargeAmountFor('ticket', event('Phoenix'))).toBe(0);
   });
 
   it('charges 1200 on freezeout paid entries', () => {

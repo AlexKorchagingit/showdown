@@ -1,7 +1,13 @@
-import { DEFAULT_ENTRY_FEE, FREEZEOUT_ENTRY_FEE, type TransactionType } from '../types/finance';
+import {
+  DEFAULT_ENTRY_FEE,
+  FREEZEOUT_ENTRY_FEE,
+  PHOENIX_REBUY_FEE,
+  type TransactionType,
+} from '../types/finance';
 import type { Tournament } from '../types/tournament';
 
 const FREEZEOUT_RE = /freeze[\s-]?out|фриз{1,2}[\s-]?аут/i;
+const PHOENIX_RE = /phoenix|феникс/i;
 
 /** Title, assigned structure name, or catalog id looks like Freezeout. */
 export function isFreezeoutEvent(
@@ -16,6 +22,19 @@ export function isFreezeoutEvent(
   );
 }
 
+/** Title, assigned structure name, or catalog id looks like Phoenix. */
+export function isPhoenixEvent(
+  tournament:
+    | Pick<Tournament, 'title' | 'blindStructure' | 'blindStructureId'>
+    | null
+    | undefined,
+): boolean {
+  if (!tournament) return false;
+  return PHOENIX_RE.test(
+    `${tournament.title} ${tournament.blindStructure ?? ''} ${tournament.blindStructureId ?? ''}`,
+  );
+}
+
 /** Cash amount the server writes for a charge. Tickets stay free. */
 export function chargeAmountFor(
   type: TransactionType,
@@ -25,7 +44,9 @@ export function chargeAmountFor(
     | undefined,
 ): number {
   if (type === 'ticket') return 0;
-  return isFreezeoutEvent(tournament) ? FREEZEOUT_ENTRY_FEE : DEFAULT_ENTRY_FEE;
+  if (isFreezeoutEvent(tournament)) return FREEZEOUT_ENTRY_FEE;
+  if (type === 'rebuy' && isPhoenixEvent(tournament)) return PHOENIX_REBUY_FEE;
+  return DEFAULT_ENTRY_FEE;
 }
 
 /** A cashier plate that counts as chips but not as money: legacy ticket, or a comped entry/rebuy/addon. */

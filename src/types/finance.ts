@@ -36,3 +36,5 @@ export const TRANSACTION_STATUS_LABEL: Record<TransactionStatus, string> = {
 export const DEFAULT_ENTRY_FEE = 1000;
 /** Freezeout buy-in / rebuy / addon (server `club_create_charge` is the source of truth). */
 export const FREEZEOUT_ENTRY_FEE = 1200;
+/** Phoenix rebuy only. Buy-in and addon stay on the default tariff. */
+export const PHOENIX_REBUY_FEE = 1500;
