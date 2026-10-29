@@ -292,15 +292,12 @@ function ParticipantsEditor({
       </div>
 
       <div
-        className="flex items-center justify-between px-5 py-3"
+        className="flex items-center px-5 py-3"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
       >
         <h3 className={SECTION_TITLE} style={{ color: '#F2D8A7' }}>
           Участники ({participants.length}/{totalSeats})
         </h3>
-        <span className="text-[12px] font-600" style={{ color: '#D99962' }}>
-          Рейтинг сезона
-        </span>
       </div>
 
       {isFinalDrawEvent({ id: tournamentId }) ? (
@@ -383,13 +380,6 @@ function ParticipantsEditor({
                     </p>
                   ) : null}
                 </div>
-
-                <span
-                  className="text-[12px] font-700 block text-right min-w-[52px] shrink-0"
-                  style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
-                >
-                  {p.rating.toLocaleString('ru-RU')}
-                </span>
 
                 {teamBattle && pairingEnabled ? (
                   <button
