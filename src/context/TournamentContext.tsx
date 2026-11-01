@@ -26,6 +26,7 @@ import { withPersonnel, type PersonnelIntent, type PersonnelRoster } from '../li
 import { setTournamentRegistration } from '../lib/tournamentRegistration';
 import { requestErrorMessage } from '../lib/network';
 import { saveTournamentOverlay as saveTournamentOverlayRow } from '../lib/tournamentOverlayApi';
+import { saveTournamentClock } from '../lib/tournamentClockApi';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -47,6 +48,7 @@ interface TournamentContextValue {
   ) => Promise<string>;
   deleteTournament: (tournamentId: string) => Promise<boolean>;
   saveTournamentOverlay: (tournamentId: string, base: number, perHead: number) => Promise<boolean>;
+  savePlayedClock: (tournamentId: string, start: string, end: string) => Promise<boolean>;
   personnelRosters: Record<string, PersonnelRoster>;
   personnelCommand: (intent: PersonnelIntent) => Promise<boolean>;
   isPersonnelPending: (tournamentId: string) => boolean;
@@ -330,6 +332,29 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     [addTournament, clubUsers, tournaments],
   );
 
+  const savePlayedClock = useCallback(
+    async (tournamentId: string, start: string, end: string) => {
+      if (!account?.id) {
+        window.alert('Не удалось подтвердить администратора');
+        return false;
+      }
+      try {
+        const saved = await saveTournamentClock(tournamentId, start, end);
+        setTournaments((prev) => prev.map((row) => (
+          row.id === tournamentId
+            ? { ...row, playedStart: saved.playedStart, playedEnd: saved.playedEnd }
+            : row
+        )));
+        return true;
+      } catch (error) {
+        console.error(error);
+        window.alert(error instanceof Error ? error.message : 'Не удалось сохранить начало и конец');
+        return false;
+      }
+    },
+    [account?.id],
+  );
+
   const deleteTournament = useCallback(
     async (tournamentId: string) => {
       if (!account?.id) {
@@ -399,12 +424,14 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       duplicateTournament,
       deleteTournament,
       saveTournamentOverlay,
+      savePlayedClock,
     }),
     [
       addTournament,
       duplicateTournament,
       deleteTournament,
       saveTournamentOverlay,
+      savePlayedClock,
       fetchTournaments,
       isLoading,
       loadError,

@@ -8,6 +8,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Rows3,
   Settings,
   SkipBack,
   SkipForward,
@@ -17,6 +18,7 @@ import { ScreenLoading } from '../../components/ScreenLoading';
 import { TimerSessionFields } from '../../components/TimerSessionFields';
 import { FitText } from '../../components/FitText';
 import { TimerDrawModal } from '../../components/admin/TimerDrawModal';
+import { BlindPaceModal } from '../../components/admin/BlindPaceModal';
 import { useBlinds } from '../../context/BlindsContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useProfile } from '../../context/ProfileContext';
@@ -40,7 +42,15 @@ import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
 import { timerChipTotals, timerVisitLine } from '../../lib/chipStacks';
-import { livePrizePool, overlayIsLive } from '../../lib/overlayPlan';
+import { livePrizePool, overlayIsLive, seriesAverages } from '../../lib/overlayPlan';
+import {
+  elapsedSinceStart,
+  forecastEndMinutes,
+  formatClockMinutes,
+  seriesKeyOf,
+  typicalEndMinutes,
+} from '../../lib/finishForecast';
+import { clockToMinutes } from '../../lib/playedClock';
 import { effectiveBigBlind, formatBigBlinds, stackInBigBlinds } from '../../lib/timerBlinds';
 import {
   nicknamesByPlace,
@@ -120,12 +130,14 @@ export function AdminBlindsTimer() {
     chipleaderStack,
     liveLevels,
     handOfDay,
+    applyLiveLevelDurations,
   } = useBlinds();
   const { transactions, isLoading: financeLoading } = useFinance();
 
   const { bindTournament } = useBindPokerTimer();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawOpen, setDrawOpen] = useState(false);
+  const [paceOpen, setPaceOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ width: 0, height: 0 });
@@ -282,6 +294,34 @@ export function AdminBlindsTimer() {
     () => timerChipTotals(tournament, structure, transactions),
     [tournament, structure, transactions],
   );
+  const finish = useMemo(() => {
+    if (!tournament) return null;
+    const series = seriesKeyOf(tournament.title);
+    const stats = seriesAverages(tournament, tournaments, transactions);
+    const normPeople = stats.nights > 0 ? Math.round(stats.people) : 17;
+    const normRebuys = stats.nights > 0 ? Math.round(stats.rebuys) : 10;
+    const normAddons = stats.nights > 0 ? Math.round(stats.addons) : 1;
+    const countsKnown = !(financeLoading && transactions.length === 0);
+    const startClock = tournament.playedStart || tournament.startTime;
+    const startMinutes = clockToMinutes(startClock);
+    const elapsed = elapsedSinceStart(tournament.startDate, startClock);
+    const forecastEnd = forecastEndMinutes({
+      startMinutes,
+      series,
+      field: registered,
+      rebuys: countsKnown ? chipTotals.rebuys + chipTotals.rebuysBeyondLimit : normRebuys,
+      addons: countsKnown ? chipTotals.addons : normAddons,
+      normPeople,
+      normRebuys,
+      normAddons,
+      elapsedMinutes: elapsed,
+      playersLeft: remaining,
+    });
+    const targetEnd = tournament.playedEnd
+      ? clockToMinutes(tournament.playedEnd, startMinutes)
+      : typicalEndMinutes(startMinutes, series);
+    return { forecastEnd, targetEnd, nowMinutes: startMinutes + elapsed };
+  }, [chipTotals, financeLoading, registered, remaining, tournament, tournaments, transactions]);
   const avgStack = chipTotals.avgStack;
   const visitLine =
     financeLoading && transactions.length === 0 ? '' : timerVisitLine(chipTotals);
@@ -665,6 +705,16 @@ export function AdminBlindsTimer() {
               {timeToNextBreak == null && !lateRegClosed && timeToLateRegEnd == null && (
                 <p className="text-xl text-white/35">Тайминги не заданы</p>
               )}
+              {finish ? (
+                <div>
+                  <p className="text-base wide:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
+                    Конец ≈
+                  </p>
+                  <p className="text-xl wide:text-2xl font-black tabular-nums text-[#F2D8A7] mt-1">
+                    {formatClockMinutes(finish.forecastEnd)}
+                  </p>
+                </div>
+              ) : null}
             </section>
             {hand ? (
               <section className="w-full self-end rounded-2xl border border-white/[0.05] bg-white/[0.03] px-3 pb-2 pt-3 text-center backdrop-blur-sm">
@@ -686,6 +736,9 @@ export function AdminBlindsTimer() {
           </ControlButton>
           <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
             <Settings size={22} strokeWidth={2.2} />
+          </ControlButton>
+          <ControlButton label="Длительность уровней" onClick={() => setPaceOpen(true)} disabled={!structure}>
+            <Rows3 size={22} strokeWidth={2.2} />
           </ControlButton>
           <ControlButton
             label="Предыдущий уровень"
@@ -727,6 +780,19 @@ export function AdminBlindsTimer() {
       </div>
 
       {drawOpen && <TimerDrawModal tournament={tournament} onClose={() => setDrawOpen(false)} />}
+      {paceOpen && structure && finish ? (
+        <BlindPaceModal
+          levels={structure.levels}
+          currentIndex={levelIndex}
+          forecastEnd={finish.forecastEnd}
+          targetEnd={finish.targetEnd}
+          nowMinutes={finish.nowMinutes}
+          onClose={() => setPaceOpen(false)}
+          onAccept={(levels) => {
+            if (applyLiveLevelDurations(levels)) setPaceOpen(false);
+          }}
+        />
+      ) : null}
 
       {settingsOpen && (
         <div className="absolute inset-0 z-[60] flex items-end justify-center">

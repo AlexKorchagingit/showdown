@@ -45,6 +45,7 @@ import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
 import { applyServerComment, type CashierCommentState } from '../../lib/cashierComment';
+import { isClockText, parseCommentClocks } from '../../lib/playedClock';
 import { rebindTeamPartnerIdentity, removeSeatKeepingTeams } from '../../lib/teamBattle';
 import {
   GOLD_HIT_STYLE,
@@ -108,6 +109,47 @@ function formatHourDelta(delta: number): string {
   return `${delta > 0 ? '+' : '−'}${amount}ч`;
 }
 
+function ClockField({
+  label,
+  value,
+  readOnly,
+  onChange,
+  onCommit,
+}: {
+  label: string;
+  value: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
+  onCommit: (value: string) => void;
+}) {
+  return (
+    <label
+      className="rounded-2xl p-4 block"
+      style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
+    >
+      <span className="mb-2 block text-[12px] font-700 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
+        {label}
+      </span>
+      {readOnly ? (
+        <p className="text-[18px] font-800 tabular-nums text-white">{value || '—'}</p>
+      ) : (
+        <input
+          type="time"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={(event) => {
+            const next = event.target.value;
+            if (next && !isClockText(next)) return;
+            onCommit(next);
+          }}
+          className="h-11 w-full rounded-xl px-3 text-[16px] font-700 text-white outline-none"
+          style={{ background: '#231A16', border: '1px solid rgba(217,153,98,0.28)' }}
+        />
+      )}
+    </label>
+  );
+}
+
 function FadingHoursDelta({ flash }: { flash?: { delta: number; token: number } }) {
   if (!flash) return null;
   return (
@@ -127,7 +169,7 @@ export function AdminTournamentFinance() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { tournaments, updateTournament, isLoading, loadError, fetchTournaments, refreshParticipants,
-    personnelRosters, personnelCommand, isPersonnelPending } = useTournaments();
+    personnelRosters, personnelCommand, isPersonnelPending, savePlayedClock } = useTournaments();
   const { account, clubUsers } = useUser();
   const { isRunning, linkedTournamentId } = useBlinds();
   const {
@@ -163,6 +205,8 @@ export function AdminTournamentFinance() {
   commentShown.current = commentState.shown;
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const [clockStart, setClockStart] = useState('');
+  const [clockEnd, setClockEnd] = useState('');
   const closingRef = useRef(false);
 
   const tournament = tournaments.find((t) => t.id === id);
@@ -194,6 +238,11 @@ export function AdminTournamentFinance() {
     if (!query.trim()) return;
     resultsRef.current?.scrollTo({ top: 0 });
   }, [query]);
+
+  useEffect(() => {
+    setClockStart(tournament?.playedStart ?? '');
+    setClockEnd(tournament?.playedEnd ?? '');
+  }, [tournament?.id, tournament?.playedStart, tournament?.playedEnd]);
 
   useEffect(() => {
     const server = tournament?.adminSecretComment ?? '';
@@ -338,6 +387,14 @@ export function AdminTournamentFinance() {
 
   const closeTournament = async () => {
     if (closingRef.current || tournament.isClosed || tournament.rubiesDistributed) return;
+    if (!isClockText(clockStart) || !isClockText(clockEnd)) {
+      window.alert('Укажите начало и конец турнира внизу кассы');
+      return;
+    }
+    if (clockStart !== (tournament.playedStart ?? '') || clockEnd !== (tournament.playedEnd ?? '')) {
+      const saved = await savePlayedClock(tournament.id, clockStart, clockEnd);
+      if (!saved) return;
+    }
     if (closeBlocked) {
       window.alert('Не все участники вылетели!');
       return;
@@ -537,6 +594,12 @@ export function AdminTournamentFinance() {
       setDealerName('');
       setDealerHours('');
     }
+  };
+
+  const parsedClock = tournament.isClosed ? parseCommentClocks(tournament.adminSecretComment ?? '') : {};
+  const shownClock = {
+    start: tournament.isClosed ? (tournament.playedStart || parsedClock.start || '') : clockStart,
+    end: tournament.isClosed ? (tournament.playedEnd || parsedClock.end || '') : clockEnd,
   };
 
   const archiveNonPlayingDealer = (entry: PersonnelEntry) => {
@@ -1088,6 +1151,23 @@ export function AdminTournamentFinance() {
               background: '#231A16',
               border: '1px solid rgba(217,153,98,0.28)',
             }}
+          />
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <ClockField
+            label="Начало"
+            value={shownClock.start}
+            readOnly={tournament.isClosed}
+            onChange={setClockStart}
+            onCommit={(value) => void savePlayedClock(tournament.id, value, clockEnd)}
+          />
+          <ClockField
+            label="Конец"
+            value={shownClock.end}
+            readOnly={tournament.isClosed}
+            onChange={setClockEnd}
+            onCommit={(value) => void savePlayedClock(tournament.id, clockStart, value)}
           />
         </div>
       </div>

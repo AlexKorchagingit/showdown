@@ -63,6 +63,7 @@ import {
   readTimerSessionCache,
   structureWithLiveLevels,
   timerPatchForSavedStructure,
+  timerPatchForStructure,
   writeTimerSessionCache,
   cloneTimerLevels,
   type TimerSnapshot,
@@ -180,6 +181,8 @@ interface BlindsContextValue {
   removeStructure: (structureId: string) => boolean;
   updateStructure: (structure: BlindStructure, change?: LevelListChange) => void;
   updateLevels: (structureId: string, levels: BlindLevel[], change?: LevelListChange) => void;
+  /** Tonight's clock only. The shared catalog ladder stays as it was. */
+  applyLiveLevelDurations: (levels: BlindLevel[]) => boolean;
   ensureTimer: (structureId: string | null) => void;
   setRunning: (value: boolean) => void;
   restartLevel: () => void;
@@ -654,6 +657,19 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
     [publishStructures, syncTimerToStructure],
   );
 
+  const applyLiveLevelDurations = useCallback((levels: BlindLevel[]) => {
+    const snapshot = stateRef.current.snapshot;
+    const structure = stateRef.current.structures.find((row) => row.id === snapshot.structureId);
+    if (!structure) return false;
+    const next = { ...structure, levels: cloneTimerLevels(levels) };
+    const patch = timerPatchForStructure(snapshot, next) ?? {
+      levelDurations: durationsFromStructure(next),
+      levels: next.levels,
+    };
+    commit(patch, { persist: 'now' });
+    return true;
+  }, [commit]);
+
   const ensureTimer = useCallback(
     (structureId: string | null) => {
       if (!structureId || !readyRef.current) return;
@@ -791,6 +807,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       removeStructure,
       updateStructure,
       updateLevels,
+      applyLiveLevelDurations,
       ensureTimer,
       setRunning,
       restartLevel,
@@ -815,6 +832,7 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
       removeStructure,
       updateStructure,
       updateLevels,
+      applyLiveLevelDurations,
       ensureTimer,
       setRunning,
       restartLevel,

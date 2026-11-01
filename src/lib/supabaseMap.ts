@@ -6,6 +6,7 @@ import { avatarUrlForChar, DEFAULT_BG_ID, DEFAULT_CHARACTER_ID } from '../data/s
 import { drawBoxFromRow } from './finalDraw';
 import { asset } from './assets';
 import { hasAdminRole, isClubRole, type ClubRole } from './roles';
+import { clockFromStored } from './playedClock';
 
 /** Postgres `users` row. */
 export type UserRow = {
@@ -37,6 +38,8 @@ export type TournamentRow = {
   guarantee: number;
   overlay_base?: number | null;
   overlay_per_head?: number | null;
+  played_start?: string | null;
+  played_end?: string | null;
   about: string;
   features: string[];
   late_reg_until: string;
@@ -286,6 +289,8 @@ export function tournamentFromRow(row: TournamentRow, participants: Participant[
     guarantee: asNumber(row.guarantee),
     overlayBase: row.overlay_base == null ? undefined : asNumber(row.overlay_base),
     overlayPerHead: row.overlay_per_head == null ? undefined : asNumber(row.overlay_per_head),
+    playedStart: clockFromStored(row.played_start),
+    playedEnd: clockFromStored(row.played_end),
     about: asString(row.about),
     features: asStringArray(row.features),
     participants,

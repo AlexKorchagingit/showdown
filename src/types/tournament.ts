@@ -89,6 +89,10 @@ export interface Tournament {
   overlayBase?: number;
   /** Points added for each player above the series average. Rebuy is half, addon a quarter. */
   overlayPerHead?: number;
+  /** Clock the cards actually started, `HH:MM`. Empty until the cashier fills it. */
+  playedStart?: string;
+  /** Clock the tournament finished or is aimed at, `HH:MM`. */
+  playedEnd?: string;
   about: string;
   features: string[];
   /** Occupied seats. Empty until this event's roster is opened, unless a screen asked for every roster. */
