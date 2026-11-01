@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Dices,
   Maximize,
   Minimize,
@@ -138,6 +141,7 @@ export function AdminBlindsTimer() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawOpen, setDrawOpen] = useState(false);
   const [paceOpen, setPaceOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ width: 0, height: 0 });
@@ -727,53 +731,88 @@ export function AdminBlindsTimer() {
           </div>
         </div>
 
-        <div className="absolute bottom-8 right-8 z-50 flex items-center gap-2 pointer-events-auto">
-          <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
-            <ArrowLeft size={22} strokeWidth={2.2} />
-          </ControlButton>
-          <ControlButton label="Случайный игрок" onClick={() => setDrawOpen(true)}>
-            <Dices size={22} strokeWidth={2.2} />
-          </ControlButton>
-          <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
-            <Settings size={22} strokeWidth={2.2} />
-          </ControlButton>
-          <ControlButton label="Длительность уровней" onClick={() => setPaceOpen(true)} disabled={!structure}>
-            <Rows3 size={22} strokeWidth={2.2} />
-          </ControlButton>
+        <div
+          className="absolute bottom-8 right-8 z-50 flex items-center pointer-events-auto overflow-hidden rounded-2xl p-1.5"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.03))',
+            border: '1px solid rgba(242,216,167,0.32)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 10px 28px rgba(0,0,0,0.28)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+          }}
+        >
+          <AnimatePresence initial={false}>
+            {controlsOpen ? (
+              <motion.div
+                key="timer-controls"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 'auto', opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="flex w-max items-center gap-1 pr-1">
+                  <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
+                    <ArrowLeft size={22} strokeWidth={2.2} />
+                  </ControlButton>
+                  <ControlButton label="Случайный игрок" onClick={() => setDrawOpen(true)}>
+                    <Dices size={22} strokeWidth={2.2} />
+                  </ControlButton>
+                  <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
+                    <Settings size={22} strokeWidth={2.2} />
+                  </ControlButton>
+                  <ControlButton label="Длительность уровней" onClick={() => setPaceOpen(true)} disabled={!structure}>
+                    <Rows3 size={22} strokeWidth={2.2} />
+                  </ControlButton>
+                  <ControlButton
+                    label="Предыдущий уровень"
+                    onClick={() => skipLevel(-1)}
+                    disabled={levelIndex <= 0}
+                  >
+                    <SkipBack size={22} strokeWidth={2.2} />
+                  </ControlButton>
+                  <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={() => setRunning(!isRunning)}>
+                    {isRunning ? (
+                      <Pause size={22} strokeWidth={2.2} fill="currentColor" />
+                    ) : (
+                      <Play size={22} strokeWidth={2.2} fill="currentColor" className="pl-1" />
+                    )}
+                  </ControlButton>
+                  <ControlButton
+                    label="Следующий уровень"
+                    onClick={() => skipLevel(1)}
+                    disabled={levelIndex >= (structure?.levels.length ?? 1) - 1}
+                  >
+                    <SkipForward size={22} strokeWidth={2.2} />
+                  </ControlButton>
+                  <ControlButton label="Повторить уровень" onClick={restartLevel}>
+                    <RotateCcw size={22} strokeWidth={2.2} />
+                  </ControlButton>
+                  <ControlButton
+                    label={fullscreen ? 'Выйти из полноэкранного режима' : 'Полный экран'}
+                    onClick={() => {
+                      void toggleAppFullscreen().then(() => setFullscreen(isAppFullscreen()));
+                    }}
+                  >
+                    {fullscreen ? (
+                      <Minimize size={22} strokeWidth={2.2} />
+                    ) : (
+                      <Maximize size={22} strokeWidth={2.2} />
+                    )}
+                  </ControlButton>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
           <ControlButton
-            label="Предыдущий уровень"
-            onClick={() => skipLevel(-1)}
-            disabled={levelIndex <= 0}
+            label={controlsOpen ? 'Свернуть управление' : 'Открыть управление'}
+            onClick={() => setControlsOpen((open) => !open)}
           >
-            <SkipBack size={22} strokeWidth={2.2} />
-          </ControlButton>
-          <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={() => setRunning(!isRunning)}>
-            {isRunning ? (
-              <Pause size={22} strokeWidth={2.2} fill="currentColor" />
+            {controlsOpen ? (
+              <ChevronRight size={22} strokeWidth={2.4} />
             ) : (
-              <Play size={22} strokeWidth={2.2} fill="currentColor" className="pl-1" />
-            )}
-          </ControlButton>
-          <ControlButton
-            label="Следующий уровень"
-            onClick={() => skipLevel(1)}
-            disabled={levelIndex >= (structure?.levels.length ?? 1) - 1}
-          >
-            <SkipForward size={22} strokeWidth={2.2} />
-          </ControlButton>
-          <ControlButton label="Повторить уровень" onClick={restartLevel}>
-            <RotateCcw size={22} strokeWidth={2.2} />
-          </ControlButton>
-          <ControlButton
-            label={fullscreen ? 'Выйти из полноэкранного режима' : 'Полный экран'}
-            onClick={() => {
-              void toggleAppFullscreen().then(() => setFullscreen(isAppFullscreen()));
-            }}
-          >
-            {fullscreen ? (
-              <Minimize size={22} strokeWidth={2.2} />
-            ) : (
-              <Maximize size={22} strokeWidth={2.2} />
+              <ChevronLeft size={22} strokeWidth={2.4} />
             )}
           </ControlButton>
         </div>
