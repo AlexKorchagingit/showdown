@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { BlindLevel } from '../data/blindStructures';
-import { forecastDurationMinutes, remainingAfterDurationChange, suggestLevelMinutes } from './finishForecast';
+import {
+  forecastDurationMinutes,
+  remainingAfterDurationChange,
+  suggestLevelMinutes,
+  typicalEndMinutes,
+} from './finishForecast';
 
 function level(minutes: number, isBreak = false): BlindLevel {
   return {
@@ -22,6 +27,12 @@ describe('finish forecast', () => {
       series: 'chill', field: 33, rebuys: 29, addons: 4, normPeople: 17, normRebuys: 12, normAddons: 2,
     });
     expect(busy).toBeGreaterThan(calm);
+  });
+
+  it('aims the pace grid at the usual series finish', () => {
+    const start = 19 * 60;
+    expect(typicalEndMinutes(start, 'bounty')).toBe(start + 408);
+    expect(typicalEndMinutes(start, 'chill')).toBe(start + 378);
   });
 
   it('shortens only future playing levels and reports the earlier finish', () => {

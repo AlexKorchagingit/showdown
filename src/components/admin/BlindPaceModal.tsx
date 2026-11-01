@@ -74,7 +74,7 @@ export function BlindPaceModal({
               {formatFinishShift(forecastEnd, nextEnd)}
             </p>
             <p className="mt-0.5 text-[11px]" style={{ color: '#8c8c88' }}>
-              Сейчас {formatClockMinutes(forecastEnd)} · цель {formatClockMinutes(targetEnd)}
+              Сейчас {formatClockMinutes(forecastEnd)} · обычный финиш {formatClockMinutes(targetEnd)}
             </p>
           </div>
           <button

@@ -93,7 +93,11 @@ export function forecastEndMinutes(input: {
   return input.startMinutes + forecastDurationMinutes(input);
 }
 
-/** Usual finish for this series, before the live field and rebuys move it. */
+/**
+ * Usual finish for this series, before the live field and rebuys move it.
+ * The cashier end is the time written when the night closes. It is a record,
+ * not a target, so the pace grid always aims here.
+ */
 export function typicalEndMinutes(startMinutes: number, series: string): number {
   return startMinutes + Math.round((BASE_HOURS[series] ?? 6.2) * 60);
 }

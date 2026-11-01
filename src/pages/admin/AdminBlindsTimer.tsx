@@ -321,9 +321,7 @@ export function AdminBlindsTimer() {
       elapsedMinutes: elapsed,
       playersLeft: remaining,
     });
-    const targetEnd = tournament.playedEnd
-      ? clockToMinutes(tournament.playedEnd, startMinutes)
-      : typicalEndMinutes(startMinutes, series);
+    const targetEnd = typicalEndMinutes(startMinutes, series);
     return { forecastEnd, targetEnd, nowMinutes: startMinutes + elapsed };
   }, [chipTotals, financeLoading, registered, remaining, tournament, tournaments, transactions]);
   const avgStack = chipTotals.avgStack;
