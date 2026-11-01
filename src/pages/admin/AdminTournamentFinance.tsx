@@ -44,6 +44,7 @@ import { sanitizeParticipantUserId } from '../../lib/supabaseMap';
 import { closeTournamentOnServer } from '../../lib/tournamentClosure';
 import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival';
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
+import { applyServerComment, type CashierCommentState } from '../../lib/cashierComment';
 import { rebindTeamPartnerIdentity, removeSeatKeepingTeams } from '../../lib/teamBattle';
 import {
   GOLD_HIT_STYLE,
@@ -134,11 +135,7 @@ export function AdminTournamentFinance() {
     isLoading: financeLoading,
     loadError: financeError,
     refreshFinance,
-    isDealerHoursPending,
     addCharge,
-    getDealerHours,
-    getDealerLoggedAt,
-    adjustDealerHours,
     unpaidForPlayer,
     unpaidTotalForPlayer,
     markPaid,
@@ -156,8 +153,16 @@ export function AdminTournamentFinance() {
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
-  const [tournamentComment, setTournamentComment] = useState('');
+  const [commentState, setCommentState] = useState<CashierCommentState>({
+    shown: '',
+    draft: null,
+    focused: false,
+  });
+  const commentTournamentId = useRef<string | undefined>(undefined);
+  const commentShown = useRef('');
+  commentShown.current = commentState.shown;
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
 
   const tournament = tournaments.find((t) => t.id === id);
@@ -186,7 +191,15 @@ export function AdminTournamentFinance() {
   }, [searchOpen]);
 
   useEffect(() => {
-    setTournamentComment(tournament?.adminSecretComment ?? '');
+    if (!query.trim()) return;
+    resultsRef.current?.scrollTo({ top: 0 });
+  }, [query]);
+
+  useEffect(() => {
+    const server = tournament?.adminSecretComment ?? '';
+    const tournamentChanged = commentTournamentId.current !== tournament?.id;
+    commentTournamentId.current = tournament?.id;
+    setCommentState((prev) => applyServerComment(prev, server, tournamentChanged));
   }, [tournament?.id, tournament?.adminSecretComment]);
 
   useEffect(() => {
@@ -275,9 +288,14 @@ export function AdminTournamentFinance() {
   };
 
   const handleCommentChange = (value: string) => {
-    setTournamentComment(value);
+    commentShown.current = value;
+    setCommentState({ shown: value, draft: value, focused: true });
     if (commentTimer.current) clearTimeout(commentTimer.current);
     commentTimer.current = setTimeout(() => persistComment(value), 400);
+  };
+
+  const handleCommentFocus = () => {
+    setCommentState((prev) => ({ ...prev, focused: true, draft: prev.draft ?? prev.shown }));
   };
 
   const handleCommentBlur = () => {
@@ -285,7 +303,8 @@ export function AdminTournamentFinance() {
       clearTimeout(commentTimer.current);
       commentTimer.current = null;
     }
-    persistComment(tournamentComment);
+    setCommentState((prev) => ({ ...prev, focused: false }));
+    persistComment(commentShown.current);
   };
 
   const handleCharge = (
@@ -665,6 +684,7 @@ export function AdminTournamentFinance() {
       </div>
 
       <div
+        ref={resultsRef}
         className="flex-1 scrollable px-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
@@ -688,8 +708,6 @@ export function AdminTournamentFinance() {
               const plates = playerLedger
                 .filter((tx) => tx.type === 'buy-in' || tx.type === 'rebuy' || tx.type === 'addon' || tx.type === 'ticket')
                 .sort(chargeOrder);
-              const hours = getDealerHours(tournament.id, player.id);
-              const dealerLoggedAt = getDealerLoggedAt(tournament.id, player.id);
               const hasLocalDebt = unpaid.length > 0;
               const hasDebt = hasGlobalUnpaidDebt(transactions, player.id);
               const eliminated = typeof player.place === 'number';
@@ -880,60 +898,6 @@ export function AdminTournamentFinance() {
                     </FlatHit>
                   )}
 
-                  {unboundGuest ? null : (
-                  <>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[11px] font-600" style={{ color: '#8c8c88' }}>
-                      Дилер-часы:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="relative w-0 h-0 overflow-visible">
-                        <span className="absolute right-1 bottom-3 whitespace-nowrap">
-                          <FadingHoursDelta flash={hourFlash[player.id]} />
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        disabled={hours <= 0 || isDealerHoursPending(tournament.id, player.id)}
-                        onClick={async () => {
-                          if (await adjustDealerHours(tournament.id, player.id, -0.5)) flashHours(player.id, -0.5);
-                        }}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95 disabled:opacity-40"
-                        style={{
-                          background: 'rgba(255,255,255,0.06)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }}
-                        aria-label="Минус полчаса"
-                      >
-                        <Minus size={14} style={{ color: '#A39B98' }} />
-                      </button>
-                      <span className="text-[14px] font-800 w-10 text-center text-white">
-                        {hours}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={isDealerHoursPending(tournament.id, player.id)}
-                        onClick={async () => {
-                          if (await adjustDealerHours(tournament.id, player.id, 0.5)) flashHours(player.id, 0.5);
-                        }}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-95 disabled:opacity-40"
-                        style={{
-                          background: 'rgba(255,255,255,0.06)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }}
-                        aria-label="Плюс полчаса"
-                      >
-                        <Plus size={14} style={{ color: '#D99962' }} />
-                      </button>
-                    </div>
-                  </div>
-                  {dealerLoggedAt ? (
-                    <p className="text-[10px] font-600 -mt-2 text-right" style={{ color: '#8c8c88' }}>
-                      {formatTxDateTime(dealerLoggedAt)}
-                    </p>
-                  ) : null}
-                  </>
-                  )}
                   </div>
 
                   {tournament.isClosed ? (
@@ -972,7 +936,7 @@ export function AdminTournamentFinance() {
           style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
         >
           <h3 className="text-[12px] font-700 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
-            Добавить неиграющего дилера
+            Дилер часы
           </h3>
 
           {nonPlayingDealers.length > 0 && (
@@ -1109,12 +1073,17 @@ export function AdminTournamentFinance() {
             Комментарии по турниру
           </h3>
           <textarea
-            value={tournamentComment}
+            value={commentState.shown}
             onChange={(e) => handleCommentChange(e.target.value)}
+            onFocus={handleCommentFocus}
             onBlur={handleCommentBlur}
             placeholder="Заметки для служебной информации…"
             rows={4}
-            className="w-full rounded-xl px-3 py-2.5 text-[13px] text-white outline-none resize-none"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            className="w-full rounded-xl px-3 py-2.5 text-[13px] text-white outline-none resize-y whitespace-pre-wrap break-words"
             style={{
               background: '#231A16',
               border: '1px solid rgba(217,153,98,0.28)',

@@ -72,6 +72,51 @@ export function TournamentPlayerPicker({
                 />
               </label>
             ) : null}
+            {!linkingNickname && onAddGuestNick ? (
+              <div>
+                {guestNickOpen ? (
+                  <form
+                    className="flex gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      onAddGuestNick(guestNick);
+                      setGuestNick('');
+                    }}
+                  >
+                    <input
+                      value={guestNick}
+                      onChange={(e) => setGuestNick(e.target.value)}
+                      maxLength={GUEST_NICKNAME_MAX}
+                      placeholder="Ник игрока"
+                      autoFocus
+                      className="flex-1 min-w-0 h-10 rounded-lg px-3 text-[13px] text-white outline-none"
+                      style={{
+                        background: '#231A16',
+                        border: '1px solid rgba(217,153,98,0.35)',
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      className="h-10 px-3 rounded-lg text-[12px] font-800 shrink-0"
+                      style={{
+                        background: 'linear-gradient(to right, #8C4C27, #D99962)',
+                        color: '#0A0908',
+                      }}
+                    >
+                      Ок
+                    </button>
+                  </form>
+                ) : (
+                  <FlatHit
+                    onClick={() => setGuestNickOpen(true)}
+                    className="w-full h-10 rounded-lg overflow-hidden text-[12px] font-800 flex items-center justify-center active:scale-[0.98]"
+                    style={GOLD_HIT_STYLE}
+                  >
+                    Добавить ник игрока
+                  </FlatHit>
+                )}
+              </div>
+            ) : null}
             <div className="max-h-64 scrollable space-y-1.5">
               {users.length === 0 ? (
                 <p className="text-center text-[12px] py-3" style={{ color: '#6B6360' }}>
@@ -111,51 +156,6 @@ export function TournamentPlayerPicker({
                   </button>
                 ))
               )}
-              {!linkingNickname && onAddGuestNick ? (
-                <div className="pt-1.5 mt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                  {guestNickOpen ? (
-                    <form
-                      className="flex gap-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        onAddGuestNick(guestNick);
-                        setGuestNick('');
-                      }}
-                    >
-                      <input
-                        value={guestNick}
-                        onChange={(e) => setGuestNick(e.target.value)}
-                        maxLength={GUEST_NICKNAME_MAX}
-                        placeholder="Ник игрока"
-                        autoFocus
-                        className="flex-1 min-w-0 h-10 rounded-lg px-3 text-[13px] text-white outline-none"
-                        style={{
-                          background: '#231A16',
-                          border: '1px solid rgba(217,153,98,0.35)',
-                        }}
-                      />
-                      <button
-                        type="submit"
-                        className="h-10 px-3 rounded-lg text-[12px] font-800 shrink-0"
-                        style={{
-                          background: 'linear-gradient(to right, #8C4C27, #D99962)',
-                          color: '#0A0908',
-                        }}
-                      >
-                        Ок
-                      </button>
-                    </form>
-                  ) : (
-                    <FlatHit
-                      onClick={() => setGuestNickOpen(true)}
-                      className="w-full h-10 rounded-lg overflow-hidden text-[12px] font-800 flex items-center justify-center active:scale-[0.98]"
-                      style={GOLD_HIT_STYLE}
-                    >
-                      Добавить ник игрока
-                    </FlatHit>
-                  )}
-                </div>
-              ) : null}
             </div>
           </div>
         </motion.div>
