@@ -730,16 +730,25 @@ export function AdminBlindsTimer() {
         </div>
 
         <div
-          className="absolute bottom-8 right-8 z-50 flex items-center pointer-events-auto overflow-hidden rounded-2xl p-1.5"
+          className="absolute bottom-8 right-8 z-50 flex items-center pointer-events-auto rounded-[1.7rem] p-1.5"
           style={{
-            background:
-              'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.03))',
-            border: '1px solid rgba(242,216,167,0.32)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 10px 28px rgba(0,0,0,0.28)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            background: `
+              linear-gradient(180deg, rgba(255,255,255,0.028), rgba(255,255,255,0.01) 46%, rgba(255,255,255,0.02)) padding-box,
+              linear-gradient(128deg, rgba(255,255,255,0.82), rgba(255,255,255,0.14) 22%, rgba(176,214,255,0.38) 48%, rgba(255,255,255,0.08) 68%, rgba(255,206,164,0.5)) border-box
+            `,
+            border: '1px solid transparent',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.72), inset 0 -12px 18px rgba(255,255,255,0.05), inset 10px 0 16px rgba(255,255,255,0.04)',
           }}
         >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-[1.7rem]"
+            style={{
+              background:
+                'radial-gradient(125% 70% at 50% -18%, rgba(255,255,255,0.42), rgba(255,255,255,0.08) 28%, transparent 52%)',
+            }}
+          />
+          <div className="relative z-10 flex items-center">
           <AnimatePresence initial={false}>
             {controlsOpen ? (
               <motion.div
@@ -813,6 +822,7 @@ export function AdminBlindsTimer() {
               <ChevronLeft size={22} strokeWidth={2.4} />
             )}
           </ControlButton>
+          </div>
         </div>
       </div>
 
