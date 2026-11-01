@@ -1,5 +1,5 @@
 import type { Transaction } from '../types/finance';
-import type { Tournament } from '../types/tournament';
+import type { Participant, Tournament } from '../types/tournament';
 import { cashierPlayers } from './tournamentArrival';
 import { isActiveTransaction } from './transactionVoid';
 import { tournamentPlayerCounts } from './tournamentStats';
@@ -15,7 +15,7 @@ export type CashierSummary = {
   rebuyTotal: number;
   addonPeople: number;
   addonTotal: number;
-  /** Cashier players with an unpaid charge in this tournament dated today (Moscow). */
+  /** Cashier players who still owe an entry, rebuy or addon in this tournament. */
   unpaidPeople: number;
 };
 
@@ -23,20 +23,13 @@ function distinctPeople(rows: Transaction[]): number {
   return new Set(rows.map((row) => row.userId).filter(Boolean)).size;
 }
 
-/** Calendar day in Europe/Moscow, `YYYY-MM-DD`. */
-export function moscowCalendarDate(instant: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Moscow',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(instant);
-}
-
-function onMoscowDay(iso: string, day: string): boolean {
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return false;
-  return moscowCalendarDate(parsed) === day;
+function chargeIds(players: Participant[]): Set<string> {
+  const ids = new Set<string>();
+  for (const player of players) {
+    if (player.id) ids.add(player.id);
+    if (player.userId) ids.add(player.userId);
+  }
+  return ids;
 }
 
 /**
@@ -46,7 +39,6 @@ function onMoscowDay(iso: string, day: string): boolean {
 export function cashierSummary(
   tournament: Tournament | undefined,
   transactions: Transaction[],
-  today: string = moscowCalendarDate(),
 ): CashierSummary {
   const { remaining, registered } = tournamentPlayerCounts(tournament);
   if (!tournament) {
@@ -65,13 +57,8 @@ export function cashierSummary(
   );
   const rebuys = ledger.filter((tx) => tx.type === 'rebuy');
   const addons = ledger.filter((tx) => tx.type === 'addon');
-  const cashierIds = new Set(cashierPlayers(tournament.participants).map((player) => player.id));
-  const unpaidToday = ledger.filter(
-    (tx) =>
-      tx.status === 'unpaid' &&
-      cashierIds.has(tx.userId) &&
-      onMoscowDay(tx.date, today),
-  );
+  const cashierIds = chargeIds(cashierPlayers(tournament.participants));
+  const unpaid = ledger.filter((tx) => tx.status === 'unpaid' && cashierIds.has(tx.userId));
   return {
     remaining,
     field: registered,
@@ -79,6 +66,6 @@ export function cashierSummary(
     rebuyTotal: rebuys.length,
     addonPeople: distinctPeople(addons),
     addonTotal: addons.length,
-    unpaidPeople: distinctPeople(unpaidToday),
+    unpaidPeople: distinctPeople(unpaid),
   };
 }

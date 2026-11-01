@@ -28,17 +28,24 @@ export function elapsedSinceStart(startDate: string, startClock: string, now = n
   return Math.max(0, days * 24 * 60 + moscow.minutes - start);
 }
 
-/** Typical length once the field and rebuys are at the series norm. */
+/**
+ * Usual length once the field and rebuys are at the series norm.
+ * Deepstack is the clock from closed nights (about 17:15–00:00), not a short early guess.
+ */
 const BASE_HOURS: Record<string, number> = {
   freeroll: 5.8,
   chill: 6.3,
   phoenix: 6.1,
   freezeout: 6.4,
-  deepstack: 6.4,
+  deepstack: 6.7,
   bounty: 6.8,
   team: 6.5,
   triple: 5.6,
 };
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
 
 const MIN_LEVEL_MINUTES = 8;
 const MAX_LEVEL_MINUTES = 30;
@@ -57,25 +64,43 @@ export function forecastDurationMinutes(input: {
   playersLeft?: number;
 }): number {
   const base = BASE_HOURS[input.series] ?? 6.2;
-  let hours = base
-    + 0.04 * (input.field - input.normPeople)
-    + 0.06 * (input.rebuys - input.normRebuys)
-    + 0.03 * (input.addons - input.normAddons);
-  hours = Math.min(10, Math.max(4, hours));
-
   const elapsed = input.elapsedMinutes ?? 0;
   const field = Math.max(0, input.field);
+  const normPeople = Math.max(0, input.normPeople);
+
+  // A small field and zero rebuys in the first hours are not the final totals.
+  // Registration stays open, and most rebuys are still ahead.
+  const fieldTrust = clamp(elapsed / 240, 0, 1);
+  const rebuyTrust = clamp((elapsed - 60) / 180, 0, 1);
+  const people = normPeople + (field - normPeople) * fieldTrust;
+  const peopleScale = normPeople > 0 ? people / normPeople : 1;
+  const expectedRebuys = input.normRebuys * peopleScale;
+  const expectedAddons = input.normAddons * peopleScale;
+  const rebuys = expectedRebuys + (input.rebuys - expectedRebuys) * rebuyTrust;
+  const addons = expectedAddons + (input.addons - expectedAddons) * rebuyTrust;
+
+  let hours = base
+    + 0.025 * (people - normPeople)
+    + 0.03 * (rebuys - input.normRebuys)
+    + 0.02 * (addons - input.normAddons);
+  hours = clamp(hours, 4.5, 9);
+  const prior = hours;
+
+  // Elapsed ÷ a small early bust rate used to invent a ten-hour night.
+  // Trust that pace only once half the field is out, and only as a nudge.
   const left = input.playersLeft;
-  if (elapsed >= 30 && field > 0 && typeof left === 'number') {
-    const remainingShare = Math.min(1, Math.max(0, left / field));
-    const progress = 1 - remainingShare ** 0.7;
-    if (progress >= 0.2) {
+  if (elapsed >= 90 && field >= 8 && typeof left === 'number') {
+    const busted = 1 - clamp(left / field, 0, 1);
+    if (busted >= 0.5) {
+      const progress = Math.max(0.2, 1 - clamp(left / field, 0, 1) ** 0.8);
       const paceHours = (elapsed / 60) / progress;
-      hours = hours * 0.45 + paceHours * 0.55;
-      hours = Math.min(10, Math.max(elapsed / 60 + 0.25, hours));
+      const weight = clamp((busted - 0.5) / 0.5, 0, 1) * 0.45;
+      hours = prior * (1 - weight) + paceHours * weight;
+      hours = clamp(hours, prior - 1.25, prior + 1.25);
     }
   }
-  return Math.round(hours * 60);
+  hours = Math.max(hours, elapsed / 60 + 0.15);
+  return Math.round(clamp(hours, 0.25, 10) * 60);
 }
 
 export function forecastEndMinutes(input: {

@@ -73,7 +73,7 @@ describe('cashier top line', () => {
     expect(summary.addonTotal).toBe(1);
   });
 
-  it('counts people who still owe something today in Moscow', () => {
+  it('counts every cashier player who still owes, including a charge from another day', () => {
     const tournament = event([player('a'), player('b'), player('c')]);
     const ledger = [
       tx('1', 'a', 'buy-in', { status: 'unpaid', date: '2026-10-23T14:00:00Z' }),
@@ -82,7 +82,7 @@ describe('cashier top line', () => {
       tx('4', 'c', 'buy-in', { status: 'paid', date: '2026-10-23T15:00:00Z' }),
       tx('5', 'c', 'rebuy', { status: 'unpaid', date: '2026-10-23T15:10:00Z', voidedAt: '2026-10-23T16:00:00Z' }),
     ];
-    expect(cashierSummary(tournament, ledger, '2026-10-23').unpaidPeople).toBe(1);
+    expect(cashierSummary(tournament, ledger).unpaidPeople).toBe(2);
   });
 
   it('does not count a charge when nobody is in the cashier', () => {
@@ -90,7 +90,7 @@ describe('cashier top line', () => {
     const ledger = [
       tx('1', 'a', 'buy-in', { status: 'unpaid', date: '2026-10-23T14:00:00Z' }),
     ];
-    expect(cashierSummary(tournament, ledger, '2026-10-23').unpaidPeople).toBe(0);
+    expect(cashierSummary(tournament, ledger).unpaidPeople).toBe(0);
   });
 
   it('skips cancelled badges and other tournaments', () => {
