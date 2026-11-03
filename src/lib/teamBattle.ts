@@ -244,14 +244,13 @@ export function displayedTeamPlace(
   );
 }
 
-/** Floor-half each when paired; leftover odd point is dropped so both get the same. */
+/** One player's half of the place. The odd point is dropped so both teammates get the same. */
 export function splitTeamPlacePoints(
   pool: number,
   _ownPlace: number,
-  partnerPlace: number | undefined,
+  _partnerPlace: number | undefined,
 ): number {
   if (pool <= 0) return 0;
-  if (partnerPlace == null || partnerPlace < 1) return pool;
   return Math.floor(pool / 2);
 }
 
@@ -296,6 +295,6 @@ export function teamPrizeAtPlace(
     ).values(),
   ].sort((left, right) => left.localeCompare(right, 'ru'));
   const pool = ratingPointsForPlace(place, tournament.guarantee, fieldSize);
-  const pointsEach = names.length > 1 ? Math.floor(pool / 2) : pool;
+  const pointsEach = Math.floor(pool / 2);
   return { names, pointsEach };
 }

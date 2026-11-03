@@ -227,8 +227,8 @@ describe('TEAM BATTLE scoring', () => {
     expect(teamPrizeAtPlace(event(participants), 8, 23)).toBeUndefined();
   });
 
-  it('gives a solo player the full place award and the same floor-half to both teammates', () => {
-    expect(splitTeamPlacePoints(3481, 1, undefined)).toBe(3481);
+  it('gives each player half the place, including when the teammate is not stored yet', () => {
+    expect(splitTeamPlacePoints(3481, 1, undefined)).toBe(1740);
     expect(splitTeamPlacePoints(3481, 1, 2)).toBe(1740);
     expect(splitTeamPlacePoints(3481, 2, 1)).toBe(1740);
   });

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { nicknamesByPlace, prizePointsForTimerPlace, remainingPlayers, tournamentPlayerCounts } from './tournamentStats';
+import {
+  nicknamesByPlace,
+  prizePointsForTimerPlace,
+  remainingPlayers,
+  timerTeamPlaceLabel,
+  tournamentPlayerCounts,
+} from './tournamentStats';
 import type { Participant, Tournament } from '../types/tournament';
 
 function player(id: string, patch: Partial<Participant> = {}): Participant {
@@ -65,6 +71,8 @@ describe('TEAM BATTLE timer labels', () => {
     expect(nicknamesByPlace(tournament).get(3)).toBe('solo-b');
     expect(nicknamesByPlace(tournament).has(4)).toBe(false);
     expect(prizePointsForTimerPlace(tournament, 1, 7800, 4)).toBe(3900);
-    expect(prizePointsForTimerPlace(tournament, 2, 4200, 4)).toBe(4200);
+    expect(prizePointsForTimerPlace(tournament, 2, 4200, 4)).toBe(2100);
+    expect(timerTeamPlaceLabel(1, ['Алиса', 'Борис'])).toBe('Алиса / Борис');
+    expect(timerTeamPlaceLabel(2, ['solo-a'])).toBe('2 место');
   });
 });

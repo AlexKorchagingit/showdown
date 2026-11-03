@@ -35,17 +35,21 @@ export function nicknamesByPlace(tournament: Tournament | undefined): Map<number
   return byPlace;
 }
 
-/** Points shown on the blinds-timer prize row (split per person in TEAM BATTLE). */
+/** Place title on the timer. A team row names both players; one nick is not a team. */
+export function timerTeamPlaceLabel(place: number, names: readonly string[] | undefined): string {
+  if (names && names.length > 1) return names.join(' / ');
+  return `${place} место`;
+}
+
+/** Points shown on the blinds-timer prize row. TEAM BATTLE always shows one player's half. */
 export function prizePointsForTimerPlace(
   tournament: Tournament | undefined,
-  place: number,
+  _place: number,
   fullPoints: number,
-  fieldSize: number,
+  _fieldSize: number,
 ): number {
   if (!tournament || !isTeamBattleEvent(tournament)) return fullPoints;
-  const row = teamPrizeAtPlace(tournament, place, fieldSize);
-  if (!row || row.names.length <= 1) return fullPoints;
-  return row.pointsEach;
+  return Math.floor(fullPoints / 2);
 }
 
 export function tournamentPlayerCounts(tournament: Tournament | undefined): {

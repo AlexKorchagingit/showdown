@@ -58,6 +58,7 @@ import { effectiveBigBlind, formatBigBlinds, stackInBigBlinds } from '../../lib/
 import {
   nicknamesByPlace,
   prizePointsForTimerPlace,
+  timerTeamPlaceLabel,
   remainingPlayers,
   tournamentPlayerCounts,
 } from '../../lib/tournamentStats';
@@ -459,15 +460,16 @@ export function AdminBlindsTimer() {
                             ? Boolean(teamRow)
                             : place > activePlayersCount;
                           const nickname = teamBattle
-                            ? teamRow?.names.join(' / ')
+                            ? undefined
                             : awarded
                               ? eliminatedNickByPlace.get(place)
                               : undefined;
-                          const label = nickname ?? `${place} место`;
-                          const shownPoints =
-                            teamRow && teamRow.names.length > 1
-                              ? prizePointsForTimerPlace(tournament, place, points, fieldSize)
-                              : points;
+                          const label = teamBattle
+                            ? timerTeamPlaceLabel(place, teamRow?.names)
+                            : nickname ?? `${place} место`;
+                          const shownPoints = teamBattle
+                            ? prizePointsForTimerPlace(tournament, place, points, fieldSize)
+                            : points;
                           return (
                             <div
                               key={place}
