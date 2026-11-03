@@ -10,6 +10,8 @@ import {
   removeSeatKeepingTeams,
   setTeamPartner,
   splitTeamPlacePoints,
+  remainingTeamCount,
+  TEAM_FINAL_TEAMS,
   teamBattleFinalTableSize,
   teamPrizeAtPlace,
   teamRatingPointsForPlayer,
@@ -241,6 +243,31 @@ describe('TEAM BATTLE scoring', () => {
     const row = teamPrizeAtPlace(tournament, 1, 2);
     expect(row?.names).toEqual(['Алиса', 'Борис']);
     expect(row?.pointsEach).toBe(Math.floor(first.points / 2));
+  });
+
+  it('counts a pair once and a solo player as a team, and drops a team only when both are out', () => {
+    const playing = [
+      player('a', { teamPartnerId: 'b' }),
+      player('b', { teamPartnerId: 'a' }),
+      player('solo'),
+      player('waiting', { arrived: false }),
+    ];
+    expect(remainingTeamCount(playing)).toBe(2);
+
+    const oneLeft = [
+      player('a', { place: 4, teamPartnerId: 'b' }),
+      player('b', { teamPartnerId: 'a' }),
+      player('solo'),
+    ];
+    expect(remainingTeamCount(oneLeft)).toBe(2);
+
+    const pairOut = [
+      player('a', { place: 4, teamPartnerId: 'b' }),
+      player('b', { place: 5, teamPartnerId: 'a' }),
+      player('solo'),
+    ];
+    expect(remainingTeamCount(pairOut)).toBe(1);
+    expect(TEAM_FINAL_TEAMS).toBe(9);
   });
 
   it('sizes the final table as ITM places + 1, capped at 10', () => {

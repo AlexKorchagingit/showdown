@@ -193,6 +193,14 @@ export function teamMinPlace(
   return Math.min(own, partnerPlace);
 }
 
+/** Redraw the final table when this many teams are still in. */
+export const TEAM_FINAL_TEAMS = 9;
+
+/** Teams still in. A pair counts once until both are out. A player without a partner is a team of one. */
+export function remainingTeamCount(players: readonly Participant[], tournamentId = ''): number {
+  return aliveTeamCount(players, tournamentId);
+}
+
 function aliveTeamCount(players: readonly Participant[], tournamentId: string): number {
   const keys = new Set<string>();
   for (const player of players) {

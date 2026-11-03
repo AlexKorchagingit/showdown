@@ -46,7 +46,14 @@ import { cashierPlayers, cashierStillPlaying } from '../../lib/tournamentArrival
 import { alignBustOutPlaces } from '../../lib/bustOutPlaces';
 import { applyServerComment, type CashierCommentState } from '../../lib/cashierComment';
 import { isClockText, parseCommentClocks } from '../../lib/playedClock';
-import { rebindTeamPartnerIdentity, removeSeatKeepingTeams } from '../../lib/teamBattle';
+import {
+  findTeamPartner,
+  isTeamBattleEvent,
+  rebindTeamPartnerIdentity,
+  remainingTeamCount,
+  removeSeatKeepingTeams,
+  TEAM_FINAL_TEAMS,
+} from '../../lib/teamBattle';
 import {
   GOLD_HIT_STYLE,
   PAID_CHIP_STYLE,
@@ -300,6 +307,9 @@ export function AdminTournamentFinance() {
   if (financeError) return <FetchErrorCard message={financeError} onRetry={() => void refreshFinance()} />;
 
   const bountyEvent = isBountyEvent(tournament);
+  const teamEvent = isTeamBattleEvent(tournament);
+  const teamsLeft = teamEvent ? remainingTeamCount(tournament.participants, tournament.id) : 0;
+  const teamFinal = teamEvent && teamsLeft > 0 && teamsLeft <= TEAM_FINAL_TEAMS;
   const allowsAddon = tournamentOffersAddon(tournament);
   const chargeActions = allowsAddon
     ? CHARGE_ACTIONS
@@ -687,6 +697,12 @@ export function AdminTournamentFinance() {
           <span>
             В игре <span className="text-white">{summary.remaining}</span> / {summary.field}
           </span>
+          {teamEvent ? (
+            <span style={{ color: teamFinal ? '#F2D8A7' : undefined }}>
+              Команд <span className="text-white">{teamsLeft}</span>
+              {teamFinal ? ' · финалка' : ''}
+            </span>
+          ) : null}
           <span>
             Ребай <span className="text-white">{summary.rebuyPeople}</span>
             {summary.rebuyTotal > summary.rebuyPeople ? ` (${summary.rebuyTotal} шт.)` : ''}
@@ -778,6 +794,10 @@ export function AdminTournamentFinance() {
               const canMoveUp = eliminated && placedIdx > 0;
               const canMoveDown = eliminated && placedIdx >= 0 && placedIdx < placedOrdered.length - 1;
               const email = unboundGuest ? undefined : playerEmail(player.id, player.nickname);
+              const partner = teamEvent
+                ? findTeamPartner(tournament.participants, player, tournament.id)
+                : undefined;
+              const partnerOut = Boolean(partner && typeof partner.place === 'number' && partner.place >= 1);
 
               return (
                 <div
@@ -808,6 +828,13 @@ export function AdminTournamentFinance() {
                           />
                         )}
                       </div>
+                      {teamEvent ? (
+                        <p className="truncate text-[11px] font-700" style={{ color: '#F2D8A7' }}>
+                          {partner
+                            ? `с ${partner.nickname}${partnerOut && !eliminated ? ' · вылетел' : ''}`
+                            : 'один'}
+                        </p>
+                      ) : null}
                       {email ? (
                         <p className="text-[10px] text-[#8c8c88] truncate">{email}</p>
                       ) : unboundGuest ? (
