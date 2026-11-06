@@ -717,11 +717,11 @@ export function AdminBlindsTimer() {
               ) : null}
             </section>
             {hand ? (
-              <section className="w-full self-end rounded-2xl border border-white/[0.05] bg-white/[0.03] px-2 py-1.5 text-center backdrop-blur-sm">
-                <p className="text-sm wide:text-base font-800 uppercase tracking-[0.08em] text-white/55">
+              <section className="w-full self-end rounded-2xl border border-white/[0.05] bg-white/[0.03] px-3 pb-2 pt-3 text-center backdrop-blur-sm">
+                <p className="text-base wide:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
                   Рука дня
                 </p>
-                <HandOfDayCards cards={hand} cardWidth={64} />
+                <HandOfDayCards cards={hand} cardWidth={88} />
               </section>
             ) : null}
           </div>

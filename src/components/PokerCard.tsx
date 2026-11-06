@@ -111,15 +111,16 @@ function CardCenter({
   rank,
   suit,
   color,
-  compact,
+  bold,
 }: {
   rank: CardRank;
   suit: CardSuit;
   color: string;
-  compact: boolean;
+  bold: boolean;
 }) {
-  const scale = compact ? 0.82 : 1;
-  if (rank === 'A') return <Pip suit={suit} x={50} y={70} size={Math.round(58 * scale)} color={color} />;
+  const scale = bold ? 1.22 : 1;
+  const pipScale = bold ? 1.08 : 1;
+  if (rank === 'A') return <Pip suit={suit} x={50} y={74} size={Math.round(58 * scale)} color={color} />;
   if (rank === 'K' || rank === 'Q' || rank === 'J') {
     return (
       <>
@@ -129,7 +130,7 @@ function CardCenter({
         <Pip suit={suit} x={50} y={99} size={Math.round(14 * scale)} color={color} flip />
         <text
           x="50"
-          y="82"
+          y="84"
           textAnchor="middle"
           fontSize={Math.round(50 * scale)}
           fontWeight="900"
@@ -145,9 +146,12 @@ function CardCenter({
   if (!layout) return null;
   return (
     <>
-      {layout.spots.map(([x, y], index) => (
-        <Pip key={index} suit={suit} x={x} y={y} size={Math.round(layout.size * scale)} flip={y > 70} color={color} />
-      ))}
+      {layout.spots.map(([x, y], index) => {
+        const nudged = !bold ? x : x < 45 ? x + 4 : x > 55 ? x - 4 : x;
+        return (
+          <Pip key={index} suit={suit} x={nudged} y={y} size={Math.round(layout.size * pipScale)} flip={y > 70} color={color} />
+        );
+      })}
     </>
   );
 }
@@ -159,14 +163,14 @@ function CardCenter({
 export function PokerCard({
   code,
   width = 100,
-  compact = false,
+  bold = false,
   className,
   style,
 }: {
   code: CardCode;
   width?: number;
-  /** Tighter rank, suit and center picture. Used by the hand of the day. */
-  compact?: boolean;
+  /** Larger corner rank, suit and center picture. The card frame stays the same size. */
+  bold?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -197,33 +201,33 @@ export function PokerCard({
         <rect x="3" y="3" width="94" height="134" rx="6" fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1.2" />
         <g>
           <text
-            x="13"
-            y={compact ? 21 : 25}
+            x={bold ? 16 : 13}
+            y={bold ? 30 : 25}
             textAnchor="middle"
-            fontSize={label.length > 1 ? (compact ? 14 : 17) : (compact ? 18 : 22)}
+            fontSize={label.length > 1 ? (bold ? 24 : 17) : (bold ? 30 : 22)}
             fontWeight="900"
             fill={color}
             style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}
           >
             {label}
           </text>
-          <Pip suit={suit} x={13} y={compact ? 33 : 40} size={compact ? 10 : 13} color={color} />
+          <Pip suit={suit} x={bold ? 16 : 13} y={bold ? 50 : 40} size={bold ? 20 : 13} color={color} />
         </g>
         <g transform="rotate(180 50 70)">
           <text
-            x="13"
-            y={compact ? 21 : 25}
+            x={bold ? 16 : 13}
+            y={bold ? 30 : 25}
             textAnchor="middle"
-            fontSize={label.length > 1 ? (compact ? 14 : 17) : (compact ? 18 : 22)}
+            fontSize={label.length > 1 ? (bold ? 24 : 17) : (bold ? 30 : 22)}
             fontWeight="900"
             fill={color}
             style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}
           >
             {label}
           </text>
-          <Pip suit={suit} x={13} y={compact ? 33 : 40} size={compact ? 10 : 13} color={color} />
+          <Pip suit={suit} x={bold ? 16 : 13} y={bold ? 50 : 40} size={bold ? 20 : 13} color={color} />
         </g>
-        <CardCenter rank={rank} suit={suit} color={color} compact={compact} />
+        <CardCenter rank={rank} suit={suit} color={color} bold={bold} />
       </svg>
     </div>
   );
