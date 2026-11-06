@@ -27,6 +27,7 @@ import { setTournamentRegistration } from '../lib/tournamentRegistration';
 import { requestErrorMessage } from '../lib/network';
 import { saveTournamentOverlay as saveTournamentOverlayRow } from '../lib/tournamentOverlayApi';
 import { saveTournamentClock } from '../lib/tournamentClockApi';
+import type { FinishForecastMark } from '../lib/finishForecastLog';
 
 /** Legacy seat id for the signed-in player; new rows use the real user id. */
 export const CURRENT_USER_ID = 'me';
@@ -49,6 +50,7 @@ interface TournamentContextValue {
   deleteTournament: (tournamentId: string) => Promise<boolean>;
   saveTournamentOverlay: (tournamentId: string, base: number, perHead: number) => Promise<boolean>;
   savePlayedClock: (tournamentId: string, start: string, end: string) => Promise<boolean>;
+  rememberFinishForecasts: (tournamentId: string, marks: FinishForecastMark[]) => void;
   personnelRosters: Record<string, PersonnelRoster>;
   personnelCommand: (intent: PersonnelIntent) => Promise<boolean>;
   isPersonnelPending: (tournamentId: string) => boolean;
@@ -355,6 +357,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     [account?.id],
   );
 
+  const rememberFinishForecasts = useCallback((tournamentId: string, marks: FinishForecastMark[]) => {
+    setTournaments((prev) => prev.map((row) => (
+      row.id === tournamentId ? { ...row, finishForecasts: marks } : row
+    )));
+  }, []);
+
   const deleteTournament = useCallback(
     async (tournamentId: string) => {
       if (!account?.id) {
@@ -425,6 +433,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       deleteTournament,
       saveTournamentOverlay,
       savePlayedClock,
+      rememberFinishForecasts,
     }),
     [
       addTournament,
@@ -432,6 +441,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       deleteTournament,
       saveTournamentOverlay,
       savePlayedClock,
+      rememberFinishForecasts,
       fetchTournaments,
       isLoading,
       loadError,

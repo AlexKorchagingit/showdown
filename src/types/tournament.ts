@@ -93,6 +93,8 @@ export interface Tournament {
   playedStart?: string;
   /** Clock the tournament finished or is aimed at, `HH:MM`. */
   playedEnd?: string;
+  /** Finish forecasts written about every two hours, oldest first. */
+  finishForecasts?: { at: string; end: string }[];
   about: string;
   features: string[];
   /** Occupied seats. Empty until this event's roster is opened, unless a screen asked for every roster. */

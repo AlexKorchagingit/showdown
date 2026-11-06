@@ -13,12 +13,13 @@ import {
 } from '../lib/pokerCards';
 
 /** The two cards of the day, fanned like a hand, for the timer. */
-export function HandOfDayCards({ cards, cardWidth = 88 }: { cards: [CardCode, CardCode]; cardWidth?: number }) {
+export function HandOfDayCards({ cards, cardWidth = 68 }: { cards: [CardCode, CardCode]; cardWidth?: number }) {
   return (
-    <div className="flex items-end justify-center" style={{ paddingTop: 6, paddingBottom: 4 }}>
-      <PokerCard code={cards[0]} width={cardWidth} style={{ transform: 'rotate(-7deg)', transformOrigin: 'bottom right' }} />
+    <div className="flex items-end justify-center" style={{ paddingTop: 2, paddingBottom: 2 }}>
+      <PokerCard code={cards[0]} compact width={cardWidth} style={{ transform: 'rotate(-7deg)', transformOrigin: 'bottom right' }} />
       <PokerCard
         code={cards[1]}
+        compact
         width={cardWidth}
         style={{ transform: 'rotate(7deg)', transformOrigin: 'bottom left', marginLeft: -Math.round(cardWidth * 0.22) }}
       />

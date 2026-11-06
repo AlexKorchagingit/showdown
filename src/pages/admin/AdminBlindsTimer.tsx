@@ -45,15 +45,10 @@ import { asset } from '../../lib/assets';
 import { characterImageForPlayer } from '../../lib/playerCharacter';
 import { supabase } from '../../lib/supabase';
 import { timerChipTotals, timerVisitLine } from '../../lib/chipStacks';
-import { livePrizePool, overlayIsLive, seriesAverages } from '../../lib/overlayPlan';
-import {
-  elapsedSinceStart,
-  forecastEndMinutes,
-  formatClockMinutes,
-  seriesKeyOf,
-  typicalEndMinutes,
-} from '../../lib/finishForecast';
-import { clockToMinutes } from '../../lib/playedClock';
+import { livePrizePool, overlayIsLive } from '../../lib/overlayPlan';
+import { formatClockMinutes } from '../../lib/finishForecast';
+import { liveForecastEndMinutes } from '../../lib/liveFinishForecast';
+import { useFinishForecastLog } from '../../hooks/useFinishForecastLog';
 import { effectiveBigBlind, formatBigBlinds, stackInBigBlinds } from '../../lib/timerBlinds';
 import {
   nicknamesByPlace,
@@ -143,7 +138,24 @@ export function AdminBlindsTimer() {
   const [drawOpen, setDrawOpen] = useState(false);
   const [paceOpen, setPaceOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const controlsTouched = useRef(false);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
+
+  useEffect(() => {
+    if (!controlsOpen) {
+      controlsTouched.current = false;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (!controlsTouched.current) setControlsOpen(false);
+    }, 10_000);
+    return () => window.clearTimeout(timer);
+  }, [controlsOpen]);
+
+  const pressControl = (action: () => void) => () => {
+    controlsTouched.current = true;
+    action();
+  };
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ width: 0, height: 0 });
 
@@ -301,30 +313,14 @@ export function AdminBlindsTimer() {
   );
   const finish = useMemo(() => {
     if (!tournament) return null;
-    const series = seriesKeyOf(tournament.title);
-    const stats = seriesAverages(tournament, tournaments, transactions);
-    const normPeople = stats.nights > 0 ? Math.round(stats.people) : 17;
-    const normRebuys = stats.nights > 0 ? Math.round(stats.rebuys) : 10;
-    const normAddons = stats.nights > 0 ? Math.round(stats.addons) : 1;
-    const countsKnown = !(financeLoading && transactions.length === 0);
-    const startClock = tournament.playedStart || tournament.startTime;
-    const startMinutes = clockToMinutes(startClock);
-    const elapsed = elapsedSinceStart(tournament.startDate, startClock);
-    const forecastEnd = forecastEndMinutes({
-      startMinutes,
-      series,
-      field: registered,
-      rebuys: countsKnown ? chipTotals.rebuys + chipTotals.rebuysBeyondLimit : normRebuys,
-      addons: countsKnown ? chipTotals.addons : normAddons,
-      normPeople,
-      normRebuys,
-      normAddons,
-      elapsedMinutes: elapsed,
-      playersLeft: remaining,
+    return liveForecastEndMinutes({
+      tournament,
+      tournaments,
+      transactions,
+      countsKnown: !(financeLoading && transactions.length === 0),
     });
-    const targetEnd = typicalEndMinutes(startMinutes, series);
-    return { forecastEnd, targetEnd, nowMinutes: startMinutes + elapsed };
-  }, [chipTotals, financeLoading, registered, remaining, tournament, tournaments, transactions]);
+  }, [financeLoading, tournament, tournaments, transactions]);
+  useFinishForecastLog(tournament);
   const avgStack = chipTotals.avgStack;
   const visitLine =
     financeLoading && transactions.length === 0 ? '' : timerVisitLine(chipTotals);
@@ -721,11 +717,11 @@ export function AdminBlindsTimer() {
               ) : null}
             </section>
             {hand ? (
-              <section className="w-full self-end rounded-2xl border border-white/[0.05] bg-white/[0.03] px-3 pb-2 pt-3 text-center backdrop-blur-sm">
-                <p className="text-base wide:text-lg font-800 uppercase tracking-[0.08em] text-white/55">
+              <section className="w-full self-end rounded-2xl border border-white/[0.05] bg-white/[0.03] px-2 py-1.5 text-center backdrop-blur-sm">
+                <p className="text-sm wide:text-base font-800 uppercase tracking-[0.08em] text-white/55">
                   Рука дня
                 </p>
-                <HandOfDayCards cards={hand} cardWidth={88} />
+                <HandOfDayCards cards={hand} cardWidth={64} />
               </section>
             ) : null}
           </div>
@@ -743,26 +739,26 @@ export function AdminBlindsTimer() {
                 className="overflow-hidden"
               >
                 <div className="flex w-max items-center gap-1 pr-1">
-                  <ControlButton label="Назад к структурам" onClick={() => navigate(SETTINGS_ROUTE)}>
+                  <ControlButton label="Назад к структурам" onClick={pressControl(() => navigate(SETTINGS_ROUTE))}>
                     <ArrowLeft size={22} strokeWidth={2.2} />
                   </ControlButton>
-                  <ControlButton label="Случайный игрок" onClick={() => setDrawOpen(true)}>
+                  <ControlButton label="Случайный игрок" onClick={pressControl(() => setDrawOpen(true))}>
                     <Dices size={22} strokeWidth={2.2} />
                   </ControlButton>
-                  <ControlButton label="Настройки" onClick={() => setSettingsOpen(true)}>
+                  <ControlButton label="Настройки" onClick={pressControl(() => setSettingsOpen(true))}>
                     <Settings size={22} strokeWidth={2.2} />
                   </ControlButton>
-                  <ControlButton label="Длительность уровней" onClick={() => setPaceOpen(true)} disabled={!structure}>
+                  <ControlButton label="Длительность уровней" onClick={pressControl(() => setPaceOpen(true))} disabled={!structure}>
                     <Rows3 size={22} strokeWidth={2.2} />
                   </ControlButton>
                   <ControlButton
                     label="Предыдущий уровень"
-                    onClick={() => skipLevel(-1)}
+                    onClick={pressControl(() => skipLevel(-1))}
                     disabled={levelIndex <= 0}
                   >
                     <SkipBack size={22} strokeWidth={2.2} />
                   </ControlButton>
-                  <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={() => setRunning(!isRunning)}>
+                  <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={pressControl(() => setRunning(!isRunning))}>
                     {isRunning ? (
                       <Pause size={22} strokeWidth={2.2} fill="currentColor" />
                     ) : (
@@ -771,19 +767,19 @@ export function AdminBlindsTimer() {
                   </ControlButton>
                   <ControlButton
                     label="Следующий уровень"
-                    onClick={() => skipLevel(1)}
+                    onClick={pressControl(() => skipLevel(1))}
                     disabled={levelIndex >= (structure?.levels.length ?? 1) - 1}
                   >
                     <SkipForward size={22} strokeWidth={2.2} />
                   </ControlButton>
-                  <ControlButton label="Повторить уровень" onClick={restartLevel}>
+                  <ControlButton label="Повторить уровень" onClick={pressControl(restartLevel)}>
                     <RotateCcw size={22} strokeWidth={2.2} />
                   </ControlButton>
                   <ControlButton
                     label={fullscreen ? 'Выйти из полноэкранного режима' : 'Полный экран'}
-                    onClick={() => {
+                    onClick={pressControl(() => {
                       void toggleAppFullscreen().then(() => setFullscreen(isAppFullscreen()));
-                    }}
+                    })}
                   >
                     {fullscreen ? (
                       <Minimize size={22} strokeWidth={2.2} />

@@ -19,6 +19,15 @@ export function moscowClock(now = new Date()): { date: string; minutes: number }
   };
 }
 
+/** True once the Moscow clock has reached the advertised start. */
+export function tournamentHasStarted(startDate: string, startClock: string, now = new Date()): boolean {
+  const moscow = moscowClock(now);
+  const day = startDate.slice(0, 10);
+  if (moscow.date < day) return false;
+  if (moscow.date > day) return true;
+  return moscow.minutes >= clockToMinutes(startClock);
+}
+
 /** Minutes since the cards started. A clock after midnight counts as the next day. */
 export function elapsedSinceStart(startDate: string, startClock: string, now = new Date()): number {
   const moscow = moscowClock(now);

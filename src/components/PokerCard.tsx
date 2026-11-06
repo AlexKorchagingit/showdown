@@ -107,20 +107,31 @@ const PIPS: Record<string, { size: number; spots: [number, number][] }> = {
   },
 };
 
-function CardCenter({ rank, suit, color }: { rank: CardRank; suit: CardSuit; color: string }) {
-  if (rank === 'A') return <Pip suit={suit} x={50} y={70} size={58} color={color} />;
+function CardCenter({
+  rank,
+  suit,
+  color,
+  compact,
+}: {
+  rank: CardRank;
+  suit: CardSuit;
+  color: string;
+  compact: boolean;
+}) {
+  const scale = compact ? 0.82 : 1;
+  if (rank === 'A') return <Pip suit={suit} x={50} y={70} size={Math.round(58 * scale)} color={color} />;
   if (rank === 'K' || rank === 'Q' || rank === 'J') {
     return (
       <>
         <rect x="24" y="25" width="52" height="90" rx="7" fill={color} fillOpacity="0.1" stroke={color} strokeWidth="1.6" />
         <rect x="29" y="30" width="42" height="80" rx="4" fill="none" stroke={color} strokeOpacity="0.35" strokeWidth="1" />
-        <Pip suit={suit} x={50} y={41} size={14} color={color} />
-        <Pip suit={suit} x={50} y={99} size={14} color={color} flip />
+        <Pip suit={suit} x={50} y={41} size={Math.round(14 * scale)} color={color} />
+        <Pip suit={suit} x={50} y={99} size={Math.round(14 * scale)} color={color} flip />
         <text
           x="50"
           y="82"
           textAnchor="middle"
-          fontSize="50"
+          fontSize={Math.round(50 * scale)}
           fontWeight="900"
           fill={color}
           style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}
@@ -135,7 +146,7 @@ function CardCenter({ rank, suit, color }: { rank: CardRank; suit: CardSuit; col
   return (
     <>
       {layout.spots.map(([x, y], index) => (
-        <Pip key={index} suit={suit} x={x} y={y} size={layout.size} flip={y > 70} color={color} />
+        <Pip key={index} suit={suit} x={x} y={y} size={Math.round(layout.size * scale)} flip={y > 70} color={color} />
       ))}
     </>
   );
@@ -148,11 +159,14 @@ function CardCenter({ rank, suit, color }: { rank: CardRank; suit: CardSuit; col
 export function PokerCard({
   code,
   width = 100,
+  compact = false,
   className,
   style,
 }: {
   code: CardCode;
   width?: number;
+  /** Tighter rank, suit and center picture. Used by the hand of the day. */
+  compact?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -184,32 +198,32 @@ export function PokerCard({
         <g>
           <text
             x="13"
-            y="25"
+            y={compact ? 21 : 25}
             textAnchor="middle"
-            fontSize={label.length > 1 ? 17 : 22}
+            fontSize={label.length > 1 ? (compact ? 14 : 17) : (compact ? 18 : 22)}
             fontWeight="900"
             fill={color}
             style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}
           >
             {label}
           </text>
-          <Pip suit={suit} x={13} y={40} size={13} color={color} />
+          <Pip suit={suit} x={13} y={compact ? 33 : 40} size={compact ? 10 : 13} color={color} />
         </g>
         <g transform="rotate(180 50 70)">
           <text
             x="13"
-            y="25"
+            y={compact ? 21 : 25}
             textAnchor="middle"
-            fontSize={label.length > 1 ? 17 : 22}
+            fontSize={label.length > 1 ? (compact ? 14 : 17) : (compact ? 18 : 22)}
             fontWeight="900"
             fill={color}
             style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}
           >
             {label}
           </text>
-          <Pip suit={suit} x={13} y={40} size={13} color={color} />
+          <Pip suit={suit} x={13} y={compact ? 33 : 40} size={compact ? 10 : 13} color={color} />
         </g>
-        <CardCenter rank={rank} suit={suit} color={color} />
+        <CardCenter rank={rank} suit={suit} color={color} compact={compact} />
       </svg>
     </div>
   );
