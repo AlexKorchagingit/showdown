@@ -29,6 +29,7 @@ import {
 } from '../lib/clubRating';
 import { cashierFieldSize, finishedLobbyPlayers } from '../lib/tournamentArrival';
 import { parseCommentClocks } from '../lib/playedClock';
+import { formatForecastMarkTime } from '../lib/finishForecastLog';
 import { isSquadScoreEvent, squadNoOf } from '../lib/squadScores';
 import { SquadScoreBoard } from '../components/SquadScoreBoard';
 import { splitLobbyQueue } from '../lib/lobbyQueue';
@@ -296,8 +297,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const nonPlayingDealers = (live.dealers ?? []).filter((d) => d.name.trim());
   const hasDealers = playingDealers.length > 0 || nonPlayingDealers.length > 0;
   const adminComment = live.adminSecretComment?.trim() ?? '';
-  const showServiceInfo =
-    isAdmin && tournamentFinished && (hasDealers || adminComment.length > 0);
+  const showServiceInfo = isAdmin && tournamentFinished;
   const lobbyClock = isAdmin
     ? {
         start: live.playedStart || (tournamentFinished ? parseCommentClocks(adminComment).start : '') || '',
@@ -708,6 +708,23 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                     {adminComment || 'Комментарий не указан'}
                   </p>
                 </section>
+                <section>
+                  <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-2" style={{ color: '#D99962' }}>
+                    Прогнозы конца
+                  </p>
+                  {(live.finishForecasts ?? []).length === 0 ? (
+                    <p className="text-[13px]" style={{ color: '#A39B98' }}>Снимков нет</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {(live.finishForecasts ?? []).map((mark) => (
+                        <p key={mark.at} className="flex justify-between text-[13px] font-700 tabular-nums text-white">
+                          <span style={{ color: '#A39B98' }}>{formatForecastMarkTime(mark.at)}</span>
+                          <span>{mark.end}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </section>
                 {lobbyClock ? (
                   <section>
                     <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-2" style={{ color: '#D99962' }}>
@@ -720,19 +737,6 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
                 ) : null}
               </div>
             )}
-            {isAdmin && !showServiceInfo && lobbyClock ? (
-              <div
-                className="rounded-2xl p-5"
-                style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
-              >
-                <p className="text-[11px] font-700 uppercase tracking-[0.14em] mb-2" style={{ color: '#D99962' }}>
-                  Начало и конец
-                </p>
-                <p className="text-[13px] font-700 tabular-nums text-white">
-                  {lobbyClock.start || '—'} – {lobbyClock.end || '—'}
-                </p>
-              </div>
-            ) : null}
           </div>
         </div>{/* end scrollable */}
 

@@ -1184,6 +1184,27 @@ export function AdminTournamentFinance() {
           />
         </div>
 
+        <div
+          className="mt-6 rounded-2xl p-4 space-y-2"
+          style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
+        >
+          <h3 className="text-[12px] font-700 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
+            Прогнозы конца
+          </h3>
+          {(tournament.finishForecasts ?? []).length === 0 ? (
+            <p className="text-[13px]" style={{ color: '#A39B98' }}>Снимков нет</p>
+          ) : (
+            <div className="space-y-1">
+              {(tournament.finishForecasts ?? []).map((mark) => (
+                <p key={mark.at} className="flex justify-between text-[13px] font-700 tabular-nums text-white">
+                  <span style={{ color: '#A39B98' }}>{formatForecastMarkTime(mark.at)}</span>
+                  <span>{mark.end}</span>
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="mt-6 grid grid-cols-2 gap-3">
           <ClockField
             label="Начало"
@@ -1199,35 +1220,6 @@ export function AdminTournamentFinance() {
             onChange={setClockEnd}
             onCommit={(value) => void savePlayedClock(tournament.id, clockStart, value)}
           />
-        </div>
-
-        <div
-          className="mt-6 rounded-2xl p-4 space-y-2"
-          style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
-        >
-          <h3 className="text-[12px] font-700 uppercase tracking-[0.16em]" style={{ color: '#F2D8A7' }}>
-            Прогнозы конца
-          </h3>
-          <p className="text-[11px] leading-snug" style={{ color: '#8c8c88' }}>
-            Снимок примерно раз в два часа, чтобы сверить с фактическим концом.
-          </p>
-          {(tournament.finishForecasts ?? []).length === 0 ? (
-            <p className="text-[13px]" style={{ color: '#A39B98' }}>Пока нет</p>
-          ) : (
-            <div className="space-y-1">
-              {(tournament.finishForecasts ?? []).map((mark) => (
-                <p key={mark.at} className="flex justify-between text-[13px] font-700 tabular-nums text-white">
-                  <span style={{ color: '#A39B98' }}>{formatForecastMarkTime(mark.at)}</span>
-                  <span>{mark.end}</span>
-                </p>
-              ))}
-            </div>
-          )}
-          {shownClock.end ? (
-            <p className="pt-1 text-[13px] font-800 tabular-nums" style={{ color: '#F2D8A7' }}>
-              Факт {shownClock.end}
-            </p>
-          ) : null}
         </div>
       </div>
 
