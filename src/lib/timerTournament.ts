@@ -7,8 +7,23 @@ export const BLINDS_SETTINGS_ROUTE = '/admin/blinds/settings';
 /** Backup read when the live listener misses a pause or a saved ladder. */
 export const TIMER_SYNC_POLL_MS = 20_000;
 
-export function timerPathForTournament(tournamentId: string): string {
-  return `${TIMER_ROUTE}?tournament=${encodeURIComponent(tournamentId)}`;
+export function timerPathForTournament(tournamentId: string, local = false): string {
+  const path = `${TIMER_ROUTE}?tournament=${encodeURIComponent(tournamentId)}`;
+  return local ? `${path}&local=1` : path;
+}
+
+/**
+ * A running floor timer must stay on its tournament.
+ * Another event gets a separate clock that is not written into the shared session.
+ */
+export function shouldKeepLiveTimer(input: {
+  liveTournamentId: string | null;
+  nextTournamentId: string | null;
+  isRunning: boolean;
+}): boolean {
+  return input.isRunning
+    && Boolean(input.liveTournamentId)
+    && input.nextTournamentId !== input.liveTournamentId;
 }
 
 export function timerPathForStructure(structureId: string): string {

@@ -47,7 +47,7 @@ import {
   playLevelUp,
   unlockBlindsAudio,
 } from '../lib/blindsAudio';
-import { BLINDS_SETTINGS_ROUTE, TIMER_ROUTE, TIMER_SYNC_POLL_MS } from '../lib/timerTournament';
+import { BLINDS_SETTINGS_ROUTE, shouldKeepLiveTimer, TIMER_ROUTE, TIMER_SYNC_POLL_MS } from '../lib/timerTournament';
 import { normalizeHandCards, type HandOfDay } from '../lib/pokerCards';
 import { supabase } from '../lib/supabase';
 import { useUser } from './UserContext';
@@ -752,6 +752,12 @@ export function BlindsProvider({ children }: { children: ReactNode }) {
   const setLinkedTournament = useCallback(
     (tournamentId: string | null) => {
       const current = stateRef.current.snapshot;
+      const live = computeLiveClock(current);
+      if (shouldKeepLiveTimer({
+        liveTournamentId: current.tournamentId,
+        nextTournamentId: tournamentId,
+        isRunning: live.isRunning,
+      })) return;
       commit({
         tournamentId,
         chipleaderId: tournamentId === current.tournamentId ? current.chipleaderId : null,

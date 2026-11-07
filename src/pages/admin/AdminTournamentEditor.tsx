@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DEFAULT_TOTAL_SEATS, type Participant, type Tournament } from '../../types/tournament';
 import { useTournaments } from '../../context/TournamentContext';
+import { useBlinds } from '../../context/BlindsContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUser } from '../../context/UserContext';
 import { ScreenLoading } from '../../components/ScreenLoading';
@@ -20,6 +21,7 @@ import { TOURNAMENT_ART_FADE } from '../../lib/tournamentArt';
 import { TournamentArtImage } from '../../components/TournamentArtImage';
 import { fileToTournamentImageUrl } from '../../lib/tournamentPhoto';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
+import { shouldKeepLiveTimer } from '../../lib/timerTournament';
 import { seasonPointsByUserId, withClubSeasonRating, clubUserIdSet, countOccupiedLobbySeats } from '../../lib/clubRating';
 import { splitLobbyQueue } from '../../lib/lobbyQueue';
 import { CopyTournamentModal } from '../../components/admin/CopyTournamentModal';
@@ -487,6 +489,12 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const { clubUsers } = useUser();
   const { transactions, addCharge, voidTransaction, refreshFinance } = useFinance();
   const { openTimerForTournament } = useBindPokerTimer();
+  const { isRunning, linkedTournamentId } = useBlinds();
+  const separateTimer = shouldKeepLiveTimer({
+    liveTournamentId: linkedTournamentId,
+    nextTournamentId: tournament.id,
+    isRunning,
+  });
   const entryGuard = useRef(new Set<string>());
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -894,7 +902,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
                 }}
               >
                 <Timer size={16} strokeWidth={2.4} />
-                Запустить таймер
+                {separateTimer ? 'Отдельный таймер' : 'Запустить таймер'}
               </button>
             )}
             <button

@@ -60,7 +60,8 @@ import {
 import { isTeamBattleEvent, teamPrizeAtPlace } from '../../lib/teamBattle';
 import { timerStageFor, timerStageTransform } from '../../lib/timerStage';
 import { visibleHand } from '../../lib/pokerCards';
-import { HandOfDayCards } from '../../components/HandOfDay';
+import { HandOfDayCards, HandOfDayPicker } from '../../components/HandOfDay';
+import { useLocalTournamentTimer } from '../../hooks/useLocalTournamentTimer';
 
 const SETTINGS_ROUTE = '/admin/blinds/settings';
 const CIRCLE_SIZE = 420;
@@ -221,6 +222,7 @@ export function AdminBlindsTimer() {
   useEffect(() => {
     if (!timerReady) return;
     if (tournamentIdParam) {
+      if (searchParams.get('local') === '1') return;
       applyBind(`tournament:${tournamentIdParam}`, tournamentIdParam);
       return;
     }
@@ -248,6 +250,7 @@ export function AdminBlindsTimer() {
     linkedTournamentId,
     structures,
     isRunning,
+    searchParams,
   ]);
 
   useEffect(() => {
@@ -300,12 +303,30 @@ export function AdminBlindsTimer() {
     };
   }, [liveTournamentId, refreshParticipants]);
 
-  const structure = structureWithLiveLevels(resolvedStructure, {
-    structureId: activeStructureId,
-    levels: liveLevels,
-  });
+  const localMode = searchParams.get('local') === '1' && Boolean(tournamentIdParam);
+  const localClock = useLocalTournamentTimer(
+    localMode ? tournamentIdParam : null,
+    localMode ? resolvedStructure : undefined,
+  );
+  const viewLevelIndex = localMode ? localClock.levelIndex : levelIndex;
+  const viewSecondsLeft = localMode ? localClock.secondsLeft : secondsLeft;
+  const viewRunning = localMode ? localClock.isRunning : isRunning;
+  const viewHand = localMode ? localClock.handOfDay : handOfDay;
+  const viewSetRunning = localMode ? localClock.setRunning : setRunning;
+  const viewRestartLevel = localMode ? localClock.restartLevel : restartLevel;
+  const viewSkipLevel = localMode ? localClock.skipLevel : skipLevel;
+  const viewApplyDurations = localMode ? localClock.applyLevelDurations : applyLiveLevelDurations;
+  const structure = localMode
+    ? structureWithLiveLevels(resolvedStructure, localClock.snapshot ?? {
+        structureId: resolvedStructure?.id ?? null,
+        levels: undefined,
+      })
+    : structureWithLiveLevels(resolvedStructure, {
+        structureId: activeStructureId,
+        levels: liveLevels,
+      });
   const tournament = boundTournament;
-  const hand = visibleHand(handOfDay);
+  const hand = visibleHand(viewHand);
   const { remaining, registered } = tournamentPlayerCounts(tournament);
   const chipTotals = useMemo(
     () => timerChipTotals(tournament, structure, transactions),
@@ -324,7 +345,7 @@ export function AdminBlindsTimer() {
   const avgStack = chipTotals.avgStack;
   const visitLine =
     financeLoading && transactions.length === 0 ? '' : timerVisitLine(chipTotals);
-  const avgBigBlinds = stackInBigBlinds(avgStack, effectiveBigBlind(structure?.levels, levelIndex));
+  const avgBigBlinds = stackInBigBlinds(avgStack, effectiveBigBlind(structure?.levels, viewLevelIndex));
   const seated = remainingPlayers(tournament);
   const chipleader = seated.find((p) => p.id === chipleaderId) ?? null;
   const eventTitle = tournament?.title ?? structure?.name ?? '';
@@ -332,24 +353,24 @@ export function AdminBlindsTimer() {
   const timeToNextBreak = useMemo(
     () =>
       structure
-        ? secondsUntilNextBreak(structure.levels, levelIndex, secondsLeft)
+        ? secondsUntilNextBreak(structure.levels, viewLevelIndex, viewSecondsLeft)
         : null,
-    [structure, levelIndex, secondsLeft],
+    [structure, viewLevelIndex, viewSecondsLeft],
   );
   const nextBreakNote = useMemo(
-    () => (structure ? breakComment(upcomingBreakLevel(structure.levels, levelIndex)) : ''),
-    [structure, levelIndex],
+    () => (structure ? breakComment(upcomingBreakLevel(structure.levels, viewLevelIndex)) : ''),
+    [structure, viewLevelIndex],
   );
   const timeToLateRegEnd = useMemo(
     () =>
       structure
-        ? secondsUntilLateRegEnd(structure.levels, levelIndex, secondsLeft)
+        ? secondsUntilLateRegEnd(structure.levels, viewLevelIndex, viewSecondsLeft)
         : null,
-    [structure, levelIndex, secondsLeft],
+    [structure, viewLevelIndex, viewSecondsLeft],
   );
   const lateRegClosed = useMemo(
-    () => (structure ? isLateRegClosed(structure.levels, levelIndex) : false),
-    [structure, levelIndex],
+    () => (structure ? isLateRegClosed(structure.levels, viewLevelIndex) : false),
+    [structure, viewLevelIndex],
   );
 
   const overlayLive = tournament ? overlayIsLive(tournament) : false;
@@ -372,11 +393,19 @@ export function AdminBlindsTimer() {
   const eliminatedNickByPlace = useMemo(() => nicknamesByPlace(tournament), [tournament]);
 
   useEffect(() => {
-    if (!chipleaderId || !tournament) return;
+    if (localMode || !chipleaderId || !tournament) return;
     if (!remainingPlayers(tournament).some((p) => p.id === chipleaderId)) {
       setChipleader(null);
     }
-  }, [chipleaderId, tournament, setChipleader]);
+  }, [chipleaderId, localMode, tournament, setChipleader]);
+
+  if (localMode && !localClock.ready) {
+    return (
+      <div className="relative h-full w-full min-h-0 overflow-hidden text-white bg-[#0A0908]">
+        <ScreenLoading label="Отдельный таймер…" />
+      </div>
+    );
+  }
 
   if (!timerReady) {
     return (
@@ -388,14 +417,16 @@ export function AdminBlindsTimer() {
 
   if (!structure && !activeStructureId) return <Navigate to={SETTINGS_ROUTE} replace />;
 
-  const currentLevel = structure?.levels[levelIndex];
-  const nextLevel = structure?.levels[levelIndex + 1];
-  const levelSeconds = Math.max(1, levelDurationSeconds);
-  const percent = Math.min(100, Math.max(0, (secondsLeft / Math.max(1, levelSeconds)) * 100));
+  const currentLevel = structure?.levels[viewLevelIndex];
+  const nextLevel = structure?.levels[viewLevelIndex + 1];
+  const levelSeconds = Math.max(1, localMode
+    ? (localClock.snapshot?.levelDurations[viewLevelIndex] ?? levelDurationSeconds)
+    : levelDurationSeconds);
+  const percent = Math.min(100, Math.max(0, (viewSecondsLeft / Math.max(1, levelSeconds)) * 100));
   const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
   const isBreak = isBreakLevel(currentLevel);
   const currentBreakNote = breakComment(currentLevel);
-  const levelNumber = currentLevel?.level ?? levelIndex + 1;
+  const levelNumber = currentLevel?.level ?? viewLevelIndex + 1;
   const blindsLabel = isBreak
     ? 'Перерыв'
     : currentLevel
@@ -561,6 +592,11 @@ export function AdminBlindsTimer() {
             <h1 className="mt-1 text-center text-2xl font-black uppercase leading-tight tracking-wide text-[#D99962] wide:text-3xl">
               {eventTitle}
             </h1>
+            {localMode ? (
+              <p className="mt-1 text-center text-sm font-800 uppercase tracking-[0.12em] text-[#F2D8A7]">
+                Отдельный таймер · идущий в зале не меняется
+              </p>
+            ) : null}
 
             <div
               className="relative mt-2 flex min-h-0 w-full flex-1 items-center justify-center"
@@ -620,7 +656,7 @@ export function AdminBlindsTimer() {
                           </p>
                         ) : null}
                         <p className="mt-2 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                          {formatClock(secondsLeft)}
+                          {formatClock(viewSecondsLeft)}
                         </p>
                       </>
                     ) : (
@@ -637,7 +673,7 @@ export function AdminBlindsTimer() {
                           </p>
                         )}
                         <p className="mt-1.5 text-[clamp(2.4rem,33cqi,6.5rem)] font-black leading-none tabular-nums drop-shadow-[0_0_20px_rgba(217,153,98,0.5)]">
-                          {formatClock(secondsLeft)}
+                          {formatClock(viewSecondsLeft)}
                         </p>
                       </>
                     )}
@@ -753,13 +789,13 @@ export function AdminBlindsTimer() {
                   </ControlButton>
                   <ControlButton
                     label="Предыдущий уровень"
-                    onClick={pressControl(() => skipLevel(-1))}
-                    disabled={levelIndex <= 0}
+                    onClick={pressControl(() => viewSkipLevel(-1))}
+                    disabled={viewLevelIndex <= 0}
                   >
                     <SkipBack size={22} strokeWidth={2.2} />
                   </ControlButton>
-                  <ControlButton label={isRunning ? 'Пауза' : 'Запустить'} onClick={pressControl(() => setRunning(!isRunning))}>
-                    {isRunning ? (
+                  <ControlButton label={viewRunning ? 'Пауза' : 'Запустить'} onClick={pressControl(() => viewSetRunning(!viewRunning))}>
+                    {viewRunning ? (
                       <Pause size={22} strokeWidth={2.2} fill="currentColor" />
                     ) : (
                       <Play size={22} strokeWidth={2.2} fill="currentColor" className="pl-1" />
@@ -767,12 +803,12 @@ export function AdminBlindsTimer() {
                   </ControlButton>
                   <ControlButton
                     label="Следующий уровень"
-                    onClick={pressControl(() => skipLevel(1))}
-                    disabled={levelIndex >= (structure?.levels.length ?? 1) - 1}
+                    onClick={pressControl(() => viewSkipLevel(1))}
+                    disabled={viewLevelIndex >= (structure?.levels.length ?? 1) - 1}
                   >
                     <SkipForward size={22} strokeWidth={2.2} />
                   </ControlButton>
-                  <ControlButton label="Повторить уровень" onClick={pressControl(restartLevel)}>
+                  <ControlButton label="Повторить уровень" onClick={pressControl(viewRestartLevel)}>
                     <RotateCcw size={22} strokeWidth={2.2} />
                   </ControlButton>
                   <ControlButton
@@ -808,13 +844,13 @@ export function AdminBlindsTimer() {
       {paceOpen && structure && finish ? (
         <BlindPaceModal
           levels={structure.levels}
-          currentIndex={levelIndex}
+          currentIndex={viewLevelIndex}
           forecastEnd={finish.forecastEnd}
           targetEnd={finish.targetEnd}
           nowMinutes={finish.nowMinutes}
           onClose={() => setPaceOpen(false)}
           onAccept={(levels) => {
-            if (applyLiveLevelDurations(levels)) setPaceOpen(false);
+            if (viewApplyDurations(levels)) setPaceOpen(false);
           }}
         />
       ) : null}
@@ -843,7 +879,16 @@ export function AdminBlindsTimer() {
                 <X size={16} style={{ color: '#A39B98' }} />
               </button>
             </div>
-            <TimerSessionFields />
+            {localMode ? (
+              <div className="space-y-3">
+                <p className="text-[12px] font-700 leading-snug text-[#F2D8A7]">
+                  Это отдельный таймер. Идущий в зале не меняется.
+                </p>
+                <HandOfDayPicker hand={localClock.handOfDay} onChange={localClock.setHandOfDay} />
+              </div>
+            ) : (
+              <TimerSessionFields />
+            )}
           </div>
         </div>
       )}

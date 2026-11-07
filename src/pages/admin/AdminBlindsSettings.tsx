@@ -7,7 +7,7 @@ import { ImportStructureModal } from '../../components/admin/ImportStructureModa
 import { useBlinds } from '../../context/BlindsContext';
 import { useTournaments } from '../../context/TournamentContext';
 import { useBindPokerTimer } from '../../hooks/useBindPokerTimer';
-import { formatTournamentHeldOn, openTournaments } from '../../lib/timerTournament';
+import { formatTournamentHeldOn, openTournaments, shouldKeepLiveTimer } from '../../lib/timerTournament';
 import {
   exportBlindStructureToExcel,
   exportBlindStructuresToExcel,
@@ -932,6 +932,11 @@ export function AdminBlindsSettings() {
                     <p className="text-[11px] font-500" style={{ color: '#8c8c88' }}>
                       {tournament.participants.length} игр. · {tournament.blindStructure}
                       {tournament.isBounty ? ' · bounty' : ''}
+                      {shouldKeepLiveTimer({
+                        liveTournamentId: linkedTournamentId,
+                        nextTournamentId: tournament.id,
+                        isRunning,
+                      }) ? ' · отдельный таймер' : ''}
                     </p>
                   </div>
                   <ChevronRight size={16} strokeWidth={2.4} style={{ color: '#D99962' }} />

@@ -5,6 +5,7 @@ import { useTournaments } from '../context/TournamentContext';
 import {
   resolveStructureForTournament,
   resolveTournamentForTimer,
+  shouldKeepLiveTimer,
   timerPathForStructure,
   timerPathForTournament,
 } from '../lib/timerTournament';
@@ -20,6 +21,7 @@ export function useBindPokerTimer() {
     setLinkedTournament,
     linkedTournamentId,
     activeStructureId,
+    isRunning,
   } = useBlinds();
 
   const bindTournament = useCallback(
@@ -48,10 +50,18 @@ export function useBindPokerTimer() {
 
   const openTimerForTournament = useCallback(
     (tournamentId: string) => {
+      if (shouldKeepLiveTimer({
+        liveTournamentId: linkedTournamentId,
+        nextTournamentId: tournamentId,
+        isRunning,
+      })) {
+        navigate(timerPathForTournament(tournamentId, true));
+        return;
+      }
       bindTournament(tournamentId);
       navigate(timerPathForTournament(tournamentId));
     },
-    [bindTournament, navigate],
+    [bindTournament, isRunning, linkedTournamentId, navigate],
   );
 
   const openTimerForStructure = useCallback(

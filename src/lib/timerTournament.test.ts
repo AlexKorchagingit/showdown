@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Tournament } from '../types/tournament';
-import { formatTournamentHeldOn, openTournaments, resolveTournamentForTimer } from './timerTournament';
+import { formatTournamentHeldOn, openTournaments, resolveTournamentForTimer, shouldKeepLiveTimer } from './timerTournament';
 import type { BlindStructure } from '../data/blindStructures';
 
 function event(id: string, startDate: string, startTime = '19:00', isClosed = false): Tournament {
@@ -107,5 +107,25 @@ describe('resolveTournamentForTimer', () => {
 
   it('does not clear a link when the tournament list has not loaded yet', () => {
     expect(resolveTournamentForTimer(structure('bs-phoenix', 'Phoenix'), [], 'phoenix')).toBeUndefined();
+  });
+});
+
+describe('a running timer stays put', () => {
+  it('keeps the live tournament when another event asks for the clock', () => {
+    expect(shouldKeepLiveTimer({
+      liveTournamentId: 'today',
+      nextTournamentId: 'other',
+      isRunning: true,
+    })).toBe(true);
+    expect(shouldKeepLiveTimer({
+      liveTournamentId: 'today',
+      nextTournamentId: 'today',
+      isRunning: true,
+    })).toBe(false);
+    expect(shouldKeepLiveTimer({
+      liveTournamentId: 'today',
+      nextTournamentId: 'other',
+      isRunning: false,
+    })).toBe(false);
   });
 });
