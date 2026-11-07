@@ -1,0 +1,1 @@
+(function(){System.register([`./jsx-runtime-legacy-BZx7q4KN.js`],function(e,t){var n,r;function i(){return(0,r.jsx)(`span`,{className:`bg-green-500/20 text-green-400 border border-green-500/50 px-2 py-1 rounded text-xs animate-pulse uppercase font-bold shrink-0`,children:`Таймер запущен`})}return e(`t`,i),{setters:[function(e){n=e.t}],execute:function(){r=n()}}})})();
