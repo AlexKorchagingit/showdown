@@ -28,9 +28,15 @@ export function FinalDrawNickLine({
 export function FinalDrawBoard({
   tournamentId,
   players,
+  canShuffle = false,
+  shuffling = false,
+  onShuffle,
 }: {
   tournamentId: string;
   players: readonly Participant[];
+  canShuffle?: boolean;
+  shuffling?: boolean;
+  onShuffle?: () => void;
 }) {
   if (!isFinalDrawEvent({ id: tournamentId })) return null;
   const names = finalDrawNames(players);
@@ -45,9 +51,22 @@ export function FinalDrawBoard({
         <h3 className="text-[12px] font-700 uppercase tracking-[0.2em]" style={{ color: '#F2D8A7' }}>
           Рассадка
         </h3>
-        <span className="text-[11px] font-600" style={{ color: '#A39B98' }}>
-          {drawn} / {FINAL_DRAW_TABLES * FINAL_DRAW_SEATS_PER_TABLE}
-        </span>
+        <div className="flex items-center gap-2">
+          {canShuffle && onShuffle ? (
+            <button
+              type="button"
+              onClick={onShuffle}
+              disabled={shuffling}
+              className="rounded-lg px-2.5 py-1 text-[11px] font-800 disabled:opacity-40"
+              style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)', color: '#0A0908' }}
+            >
+              {shuffling ? 'Мешаем…' : 'Перемешать'}
+            </button>
+          ) : null}
+          <span className="text-[11px] font-600" style={{ color: '#A39B98' }}>
+            {drawn} / {FINAL_DRAW_TABLES * FINAL_DRAW_SEATS_PER_TABLE}
+          </span>
+        </div>
       </div>
       <div className="space-y-3">
         {Array.from({ length: FINAL_DRAW_TABLES }, (_, tableIndex) => {

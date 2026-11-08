@@ -12,6 +12,7 @@ import {
   finalDrawNames,
   finalDrawSeat,
   isFinalDrawEvent,
+  shuffleFinalDrawBoxes,
 } from './finalDraw';
 
 describe('final draw seats', () => {
@@ -51,6 +52,21 @@ describe('final draw seats', () => {
     expect([...names.entries()]).toEqual([[1, 'Аня']]);
     expect(drawBoxFromRow(27)).toBe(27);
     expect(drawBoxFromRow(1.5)).toBeUndefined();
+  });
+
+  it('reshuffles only arrived players onto distinct seats', () => {
+    const players = [
+      { id: 'a', arrived: true },
+      { id: 'b', arrived: true },
+      { id: 'c', arrived: false },
+      { id: 'd', arrived: true },
+    ];
+    const boxes = shuffleFinalDrawBoxes(players, () => 0.999);
+    expect([...boxes.keys()]).toEqual(['a', 'b', 'd']);
+    expect(new Set(boxes.values()).size).toBe(3);
+    for (const box of boxes.values()) {
+      expect(finalDrawSeat(box)).not.toBeNull();
+    }
   });
 
   it('reads the server box and treats a new box as a roster change', () => {

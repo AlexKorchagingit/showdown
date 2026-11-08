@@ -38,6 +38,7 @@ import { TOURNAMENT_ART_FADE } from '../lib/tournamentArt';
 import { TournamentArtImage } from '../components/TournamentArtImage';
 import { formatTxDateTime } from '../lib/transactionDisplay';
 import { isFinalDrawEvent } from '../lib/finalDraw';
+import { reshuffleFinalDraw } from '../lib/finalDrawApi';
 import { FinalDrawBoard, FinalDrawNickLine } from '../components/FinalDrawSeats';
 import { useBlinds } from '../context/BlindsContext';
 import { BlindStructureModal } from '../components/BlindStructureModal';
@@ -201,6 +202,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const [structureOpen, setStructureOpen] = useState(false);
   const [overlayHelpOpen, setOverlayHelpOpen] = useState(false);
   const [winnersOpen, setWinnersOpen] = useState(false);
+  const [drawShuffling, setDrawShuffling] = useState(false);
   const [loadedStructure, setLoadedStructure] = useState<BlindStructure | null>(null);
   const [structurePending, setStructurePending] = useState(false);
 
@@ -444,7 +446,22 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
             </div>
 
             {isFinalDrawEvent(live) ? (
-              <FinalDrawBoard tournamentId={live.id} players={live.participants} />
+              <FinalDrawBoard
+                tournamentId={live.id}
+                players={live.participants}
+                canShuffle={isAdmin}
+                shuffling={drawShuffling}
+                onShuffle={() => {
+                  if (drawShuffling) return;
+                  setDrawShuffling(true);
+                  void reshuffleFinalDraw(live.id)
+                    .then(() => refreshParticipants(live.id))
+                    .catch((error: unknown) => {
+                      window.alert(error instanceof Error ? error.message : 'Не удалось перемешать рассадку');
+                    })
+                    .finally(() => setDrawShuffling(false));
+                }}
+              />
             ) : null}
 
             {/* ─── УЧАСТНИКИ ─── */}

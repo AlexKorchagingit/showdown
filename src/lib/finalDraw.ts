@@ -45,6 +45,25 @@ export function drawBoxFromRow(value: number | null | undefined): number | undef
   return value;
 }
 
+/**
+ * A fresh random seat for every arrived cashier player.
+ * Non-arrived seats stay out. At most 27 people are seated.
+ */
+export function shuffleFinalDrawBoxes<T extends { id: string; arrived?: boolean }>(
+  players: readonly T[],
+  random: () => number = Math.random,
+): Map<string, number> {
+  const seated = players.filter((player) => player.arrived === true).slice(0, FINAL_DRAW_BOXES);
+  const boxes = Array.from({ length: FINAL_DRAW_BOXES }, (_, index) => index + 1);
+  for (let index = boxes.length - 1; index > 0; index -= 1) {
+    const swapWith = Math.floor(random() * (index + 1));
+    const current = boxes[index]!;
+    boxes[index] = boxes[swapWith]!;
+    boxes[swapWith] = current;
+  }
+  return new Map(seated.map((player, index) => [player.id, boxes[index]!]));
+}
+
 /** Names already drawn, keyed by box. Unsigned and unseated players are skipped. */
 export function finalDrawNames(players: readonly Pick<Participant, 'nickname' | 'drawBox' | 'arrived'>[]): Map<number, string> {
   const names = new Map<number, string>();
