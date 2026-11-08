@@ -1,14 +1,19 @@
 import type { Participant } from '../types/tournament';
 
-/** FINAL OF SEPTEMBER, 17 Oct 2026. Seating is not used by any other event. */
-export const FINAL_DRAW_EVENT_ID = 't-21b2bdbf-3744-4db7-810c-dca678462101';
+/** Finals that draw a random seat on 3 tables when a player is marked arrived. */
+export const FINAL_DRAW_EVENT_IDS = [
+  't-21b2bdbf-3744-4db7-810c-dca678462101', // FINAL OF SEPTEMBER, 17 Oct 2026
+  't-6835c66f-eb54-4a7d-8c0a-25eb44ebae21', // FINAL OF OCTOBER, 8 Nov 2026
+] as const;
+
+export const FINAL_DRAW_EVENT_ID = FINAL_DRAW_EVENT_IDS[0];
 
 export const FINAL_DRAW_TABLES = 3;
 export const FINAL_DRAW_SEATS_PER_TABLE = 9;
 export const FINAL_DRAW_BOXES = FINAL_DRAW_TABLES * FINAL_DRAW_SEATS_PER_TABLE;
 
 export function isFinalDrawEvent(tournament: { id?: string } | null | undefined): boolean {
-  return tournament?.id === FINAL_DRAW_EVENT_ID;
+  return Boolean(tournament?.id && (FINAL_DRAW_EVENT_IDS as readonly string[]).includes(tournament.id));
 }
 
 /** Box 1–9 are table 1, 10–18 table 2, 19–27 table 3. Seats on a table are 1–9. */

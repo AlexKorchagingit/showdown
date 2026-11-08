@@ -3,6 +3,7 @@ import { participantFromRow } from './supabaseMap';
 import {
   FINAL_DRAW_BOXES,
   FINAL_DRAW_EVENT_ID,
+  FINAL_DRAW_EVENT_IDS,
   FINAL_DRAW_SEATS_PER_TABLE,
   FINAL_DRAW_TABLES,
   drawBoxFromRow,
@@ -14,8 +15,9 @@ import {
 } from './finalDraw';
 
 describe('final draw seats', () => {
-  it('recognises only today\'s final', () => {
+  it('recognises the September and October finals', () => {
     expect(isFinalDrawEvent({ id: FINAL_DRAW_EVENT_ID })).toBe(true);
+    expect(isFinalDrawEvent({ id: FINAL_DRAW_EVENT_IDS[1] })).toBe(true);
     expect(isFinalDrawEvent({ id: 't-other' })).toBe(false);
     expect(isFinalDrawEvent(null)).toBe(false);
   });
