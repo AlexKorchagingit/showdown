@@ -45,23 +45,40 @@ export function drawBoxFromRow(value: number | null | undefined): number | undef
   return value;
 }
 
+function hasBustOutPlace(place: number | undefined): boolean {
+  return typeof place === 'number' && place >= 1;
+}
+
+/** Still in the cashier: checked in, and not marked out. */
+export function isStillInFinalDraw(player: { arrived?: boolean; place?: number }): boolean {
+  return player.arrived === true && !hasBustOutPlace(player.place);
+}
+
 /**
- * A fresh random seat for every arrived cashier player.
- * Non-arrived seats stay out. At most 27 people are seated.
+ * A fresh random seat for cashier players who are still in.
+ * Players already marked out keep their seats. At most the free boxes are used.
  */
-export function shuffleFinalDrawBoxes<T extends { id: string; arrived?: boolean }>(
+export function shuffleFinalDrawBoxes<T extends { id: string; arrived?: boolean; place?: number; drawBox?: number }>(
   players: readonly T[],
   random: () => number = Math.random,
 ): Map<string, number> {
-  const seated = players.filter((player) => player.arrived === true).slice(0, FINAL_DRAW_BOXES);
-  const boxes = Array.from({ length: FINAL_DRAW_BOXES }, (_, index) => index + 1);
+  const held = new Set(
+    players.flatMap((player) => (
+      player.arrived === true && hasBustOutPlace(player.place) && typeof player.drawBox === 'number'
+        ? [player.drawBox]
+        : []
+    )),
+  );
+  const seated = players.filter((player) => isStillInFinalDraw(player));
+  const boxes = Array.from({ length: FINAL_DRAW_BOXES }, (_, index) => index + 1)
+    .filter((box) => !held.has(box));
   for (let index = boxes.length - 1; index > 0; index -= 1) {
     const swapWith = Math.floor(random() * (index + 1));
     const current = boxes[index]!;
     boxes[index] = boxes[swapWith]!;
     boxes[swapWith] = current;
   }
-  return new Map(seated.map((player, index) => [player.id, boxes[index]!]));
+  return new Map(seated.slice(0, boxes.length).map((player, index) => [player.id, boxes[index]!]));
 }
 
 /** Names already drawn, keyed by box. Unsigned and unseated players are skipped. */

@@ -54,19 +54,19 @@ describe('final draw seats', () => {
     expect(drawBoxFromRow(1.5)).toBeUndefined();
   });
 
-  it('reshuffles only arrived players onto distinct seats', () => {
+  it('reshuffles only players who are still in and leaves busted seats alone', () => {
     const players = [
       { id: 'a', arrived: true },
-      { id: 'b', arrived: true },
+      { id: 'b', arrived: true, place: 8, drawBox: 1 },
       { id: 'c', arrived: false },
       { id: 'd', arrived: true },
     ];
     const boxes = shuffleFinalDrawBoxes(players, () => 0.999);
-    expect([...boxes.keys()]).toEqual(['a', 'b', 'd']);
-    expect(new Set(boxes.values()).size).toBe(3);
-    for (const box of boxes.values()) {
-      expect(finalDrawSeat(box)).not.toBeNull();
-    }
+    expect([...boxes.keys()]).toEqual(['a', 'd']);
+    expect(boxes.has('b')).toBe(false);
+    expect(boxes.get('a')).not.toBe(1);
+    expect(boxes.get('d')).not.toBe(1);
+    expect(new Set(boxes.values()).size).toBe(2);
   });
 
   it('reads the server box and treats a new box as a roster change', () => {
