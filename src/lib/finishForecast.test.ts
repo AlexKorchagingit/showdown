@@ -65,7 +65,22 @@ describe('finish forecast', () => {
   it('aims the pace grid at the usual series finish', () => {
     const start = 19 * 60;
     expect(typicalEndMinutes(start, 'bounty')).toBe(start + 408);
-    expect(typicalEndMinutes(start, 'chill')).toBe(start + 378);
+    expect(typicalEndMinutes(start, 'chill')).toBe(start + 390);
+  });
+
+  it('does not stretch a heads-up finish hours past the clock', () => {
+    const minutes = forecastDurationMinutes({
+      series: 'freezeout',
+      field: 18,
+      rebuys: 8,
+      addons: 0,
+      normPeople: 17,
+      normRebuys: 10,
+      normAddons: 1,
+      elapsedMinutes: 300,
+      playersLeft: 2,
+    });
+    expect(minutes).toBeLessThanOrEqual(300 + 27);
   });
 
   it('shortens only future playing levels and reports the earlier finish', () => {

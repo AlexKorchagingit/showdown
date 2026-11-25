@@ -42,13 +42,13 @@ export function elapsedSinceStart(startDate: string, startClock: string, now = n
  * Deepstack is the clock from closed nights (about 17:15–00:00), not a short early guess.
  */
 const BASE_HOURS: Record<string, number> = {
-  freeroll: 5.8,
-  chill: 6.3,
-  phoenix: 6.1,
-  freezeout: 6.4,
+  freeroll: 6.2,
+  chill: 6.5,
+  phoenix: 5.8,
+  freezeout: 6.1,
   deepstack: 6.7,
   bounty: 6.8,
-  team: 6.5,
+  team: 6.4,
   triple: 5.6,
 };
 
@@ -71,8 +71,12 @@ export function forecastDurationMinutes(input: {
   normAddons: number;
   elapsedMinutes?: number;
   playersLeft?: number;
+  /** Median length of closed nights in this series, when enough of them have a real clock. */
+  baseHours?: number;
 }): number {
-  const base = BASE_HOURS[input.series] ?? 6.2;
+  const base = input.baseHours && input.baseHours >= 4 && input.baseHours <= 9
+    ? input.baseHours
+    : BASE_HOURS[input.series] ?? 6.2;
   const elapsed = input.elapsedMinutes ?? 0;
   const field = Math.max(0, input.field);
   const normPeople = Math.max(0, input.normPeople);
@@ -103,12 +107,15 @@ export function forecastDurationMinutes(input: {
     if (busted >= 0.5) {
       const progress = Math.max(0.2, 1 - clamp(left / field, 0, 1) ** 0.8);
       const paceHours = (elapsed / 60) / progress;
-      const weight = clamp((busted - 0.5) / 0.5, 0, 1) * 0.45;
+      const weight = clamp((busted - 0.5) / 0.5, 0, 1) * 0.55;
       hours = prior * (1 - weight) + paceHours * weight;
-      hours = clamp(hours, prior - 1.25, prior + 1.25);
+      hours = clamp(hours, prior - 1, prior + 1);
     }
   }
   hours = Math.max(hours, elapsed / 60 + 0.15);
+  if (typeof left === 'number' && left <= 2 && field >= 8 && elapsed >= 120) {
+    hours = Math.min(hours, elapsed / 60 + 0.45);
+  }
   return Math.round(clamp(hours, 0.25, 10) * 60);
 }
 
@@ -123,6 +130,7 @@ export function forecastEndMinutes(input: {
   normAddons: number;
   elapsedMinutes?: number;
   playersLeft?: number;
+  baseHours?: number;
 }): number {
   return input.startMinutes + forecastDurationMinutes(input);
 }
@@ -138,6 +146,29 @@ export function typicalEndMinutes(startMinutes: number, series: string): number 
 
 export function seriesKeyOf(title: string): string {
   return overlaySeriesKey(title);
+}
+
+/** Median played length of closed nights in this series. Short or broken clocks are left out. */
+export function observedSeriesHours(
+  tournaments: readonly { title: string; isClosed?: boolean; playedStart?: string; playedEnd?: string }[],
+  series: string,
+): number | undefined {
+  const lengths: number[] = [];
+  for (const tournament of tournaments) {
+    if (!tournament.isClosed || seriesKeyOf(tournament.title) !== series) continue;
+    if (!tournament.playedStart || !tournament.playedEnd) continue;
+    const start = clockToMinutes(tournament.playedStart);
+    let end = clockToMinutes(tournament.playedEnd);
+    if (end + 6 * 60 < start) end += 24 * 60;
+    const hours = (end - start) / 60;
+    if (hours >= 4 && hours <= 9) lengths.push(hours);
+  }
+  if (lengths.length < 4) return undefined;
+  lengths.sort((a, b) => a - b);
+  const mid = lengths.length % 2 === 1
+    ? lengths[(lengths.length - 1) / 2]!
+    : (lengths[lengths.length / 2 - 1]! + lengths[lengths.length / 2]!) / 2;
+  return Math.round(mid * 20) / 20;
 }
 
 function isRealPlayingLevel(level: BlindLevel): boolean {

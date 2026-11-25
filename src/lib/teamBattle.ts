@@ -1,14 +1,14 @@
 import { finalTableSize, ratingPointsForPlace } from '../data/prizeStructure';
 import type { Participant, Tournament } from '../types/tournament';
+import { eventFormatOf } from './eventFormat';
 import { sanitizeParticipantUserId, unwrapParticipantSeatKey } from './supabaseMap';
 import { isArrivedPlayer } from './tournamentArrival';
 
-/** Title (or assigned structure name) contains "TEAM BATTLE". */
+/** Saved Team Battle format, or an older night whose title says TEAM BATTLE. */
 export function isTeamBattleEvent(
-  tournament: Pick<Tournament, 'title' | 'blindStructure'> | null | undefined,
+  tournament: Pick<Tournament, 'title' | 'blindStructure' | 'eventFormat' | 'isBounty'> | null | undefined,
 ): boolean {
-  if (!tournament) return false;
-  return /team battle/i.test(`${tournament.title} ${tournament.blindStructure ?? ''}`);
+  return eventFormatOf(tournament) === 'team';
 }
 
 /** Stable seat key used as `teamPartnerId` (`users.id` or `guest-…`). */

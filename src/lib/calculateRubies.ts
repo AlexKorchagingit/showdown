@@ -1,4 +1,5 @@
 import type { Participant, Tournament } from '../types/tournament';
+import { eventFormatOf } from './eventFormat';
 
 function placeBase(place: number, totalPlayers: number): number {
   const field = Math.max(0, Math.trunc(Number(totalPlayers) || 0));
@@ -29,10 +30,9 @@ export function calculateRubies(
 
 /** Bounty flag, or the word "Bounty" in the title / assigned structure name. */
 export function isBountyEvent(
-  tournament: Pick<Tournament, 'isBounty' | 'title' | 'blindStructure'>,
+  tournament: Pick<Tournament, 'isBounty' | 'title' | 'blindStructure' | 'eventFormat'>,
 ): boolean {
-  if (tournament.isBounty === true) return true;
-  return /bounty/i.test(`${tournament.title} ${tournament.blindStructure ?? ''}`);
+  return eventFormatOf(tournament) === 'knockout';
 }
 
 /** Stamp each participant with a one-shot ruby award from their finishing place. */

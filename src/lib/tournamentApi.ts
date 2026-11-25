@@ -123,7 +123,8 @@ function tournamentValues(tournament: Tournament): TournamentValues {
     features:row.features,late_reg_until:row.late_reg_until,blind_structure:row.blind_structure,
     blind_structure_id:row.blind_structure_id,stack_size:row.stack_size,level_duration:row.level_duration,
     is_bounty:row.is_bounty,admin_secret_comment:row.admin_secret_comment,
-    ...(tournament.hidden ? { hidden: true } : {})};
+    ...(tournament.hidden ? { hidden: true } : {}),
+    ...(tournament.eventFormat ? { event_format: tournament.eventFormat } : {})};
 }
 
 function tournamentChanges(patch: Partial<Tournament>): TournamentChanges {
@@ -143,6 +144,7 @@ function tournamentChanges(patch: Partial<Tournament>): TournamentChanges {
   if('stackSize' in patch)changes.stack_size=patch.stackSize!;
   if('levelDuration' in patch)changes.level_duration=patch.levelDuration!;
   if('isBounty' in patch)changes.is_bounty=patch.isBounty===true;
+  if('eventFormat' in patch && patch.eventFormat)changes.event_format=patch.eventFormat;
   if('hidden' in patch)changes.hidden=patch.hidden===true;
   if('adminSecretComment' in patch)changes.admin_secret_comment=patch.adminSecretComment??null;
   return changes;

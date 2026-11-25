@@ -4,6 +4,7 @@ import { timerChipTotals } from './chipStacks';
 import {
   elapsedSinceStart,
   forecastEndMinutes,
+  observedSeriesHours,
   seriesKeyOf,
   tournamentHasStarted,
   typicalEndMinutes,
@@ -35,6 +36,7 @@ export function liveForecastEndMinutes(input: {
   const forecastEnd = forecastEndMinutes({
     startMinutes,
     series,
+    baseHours: observedSeriesHours(input.tournaments, series),
     field: registered,
     rebuys: input.countsKnown ? chipTotals.rebuys + chipTotals.rebuysBeyondLimit : normRebuys,
     addons: input.countsKnown ? chipTotals.addons : normAddons,

@@ -1,14 +1,14 @@
-import { PokerCard, SuitIcon } from './PokerCard';
+import { PokerCard } from './PokerCard';
 import {
   CARD_RANKS,
   CARD_SUITS,
-  SUIT_COLORS,
   cardCode,
   cardName,
   normalizeHandCards,
   rankLabel,
-  toggleHandCard,
   type CardCode,
+  type CardRank,
+  type CardSuit,
   type HandOfDay,
 } from '../lib/pokerCards';
 
@@ -28,6 +28,18 @@ export function HandOfDayCards({ cards, cardWidth = 88 }: { cards: [CardCode, Ca
 }
 
 const PICKER_CELL_BG = 'linear-gradient(155deg, #FFFFFF 0%, #F6E9C8 100%)';
+
+function freeSuit(rank: CardRank, cards: readonly CardCode[]): CardSuit {
+  const used = new Set(cards.filter((code) => code.startsWith(rank)).map((code) => code[1]));
+  return CARD_SUITS.find((suit) => !used.has(suit)) ?? 's';
+}
+
+function toggleRank(cards: readonly CardCode[], rank: CardRank): CardCode[] {
+  if (cards.length < 2) return [...cards, cardCode(rank, freeSuit(rank, cards))];
+  const existing = cards.find((code) => code.startsWith(rank));
+  if (!existing) return [...cards];
+  return cards.filter((code) => code !== existing);
+}
 
 /** «Рука дня» in the timer settings: a tick, and when it is on, a list of 52 cards to choose two from. */
 export function HandOfDayPicker({
@@ -75,7 +87,7 @@ export function HandOfDayPicker({
                     aria-label={`Убрать: ${cardName(code)}`}
                     className="rounded-lg active:scale-95"
                   >
-                    <PokerCard code={code} width={62} />
+                    <PokerCard code={code} rankOnly width={62} />
                   </button>
                 ))
               )}
@@ -95,36 +107,30 @@ export function HandOfDayPicker({
             ) : null}
           </div>
 
-          <div className="space-y-1">
-            {CARD_SUITS.map((suit) => (
-              <div key={suit} className="flex gap-[3px]">
-                {CARD_RANKS.map((rank) => {
-                  const code = cardCode(rank, suit);
-                  const picked = cards.includes(code);
-                  return (
-                    <button
-                      key={code}
-                      type="button"
-                      onClick={() => setCards(toggleHandCard(cards, code))}
-                      aria-pressed={picked}
-                      aria-label={cardName(code)}
-                      className="flex h-10 min-w-0 flex-1 flex-col items-center justify-center gap-[2px] rounded-md active:scale-95"
-                      style={{
-                        background: PICKER_CELL_BG,
-                        color: SUIT_COLORS[suit],
-                        boxShadow: picked
-                          ? '0 0 0 2px #D99962, 0 0 10px rgba(217,153,98,0.65)'
-                          : 'inset 0 0 0 1px rgba(0,0,0,0.12)',
-                        opacity: !picked && cards.length === 2 ? 0.85 : 1,
-                      }}
-                    >
-                      <span className="text-[11px] font-900 leading-none">{rankLabel(rank)}</span>
-                      <SuitIcon suit={suit} size={11} />
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+          <div className="grid grid-cols-7 gap-1">
+            {CARD_RANKS.map((rank) => {
+              const picked = cards.some((code) => code.startsWith(rank));
+              return (
+                <button
+                  key={rank}
+                  type="button"
+                  onClick={() => setCards(toggleRank(cards, rank))}
+                  aria-pressed={picked}
+                  aria-label={rankLabel(rank)}
+                  className="flex h-11 items-center justify-center rounded-md text-[15px] font-900 active:scale-95"
+                  style={{
+                    background: PICKER_CELL_BG,
+                    color: '#1A1411',
+                    boxShadow: picked
+                      ? '0 0 0 2px #D99962, 0 0 10px rgba(217,153,98,0.65)'
+                      : 'inset 0 0 0 1px rgba(0,0,0,0.12)',
+                    opacity: !picked && cards.length === 2 ? 0.45 : 1,
+                  }}
+                >
+                  {rankLabel(rank)}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : null}

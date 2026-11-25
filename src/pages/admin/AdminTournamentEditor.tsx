@@ -14,7 +14,8 @@ import { isFinished as hasFinished, sortByRating } from '../../lib/tournamentSta
 import { EditableText } from '../../components/admin/EditableText';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { StackFeatureFields } from '../../components/admin/StackFeatureFields';
-import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
+import { FormatSelect } from '../../components/admin/FormatSelect';
+import { eventFormatOf, isFreerollEvent } from '../../lib/eventFormat';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { TOURNAMENT_ART_FADE } from '../../lib/tournamentArt';
@@ -487,7 +488,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
   const navigate = useNavigate();
   const { tournaments, updateTournament, duplicateTournament, deleteTournament, refreshParticipants } = useTournaments();
   const { clubUsers } = useUser();
-  const { transactions, addCharge, voidTransaction, refreshFinance } = useFinance();
+  const { transactions, addCharge, addTicket, voidTransaction, refreshFinance } = useFinance();
   const { openTimerForTournament } = useBindPokerTimer();
   const { isRunning, linkedTournamentId } = useBlinds();
   const separateTimer = shouldKeepLiveTimer({
@@ -559,7 +560,8 @@ function Editor({ tournament }: { tournament: Tournament }) {
     );
     if (hasEntry) return;
     entryGuard.current.add(key);
-    addCharge(tournament.id, uid, 'buy-in');
+    if (isFreerollEvent(tournament)) addTicket(tournament.id, uid, 'Фриролл');
+    else addCharge(tournament.id, uid, 'buy-in');
     window.setTimeout(() => entryGuard.current.delete(key), 5000);
   };
 
@@ -569,10 +571,12 @@ function Editor({ tournament }: { tournament: Tournament }) {
     const rows = transactions.filter(
       (tx) => tx.tournamentId === tournament.id && tx.userId === uid && !tx.voidedAt,
     );
-    const unpaidEntries = rows.filter((tx) => tx.type === 'buy-in' && tx.status === 'unpaid');
-    const kept = rows.some((tx) => tx.type !== 'buy-in' || tx.status !== 'unpaid');
-    if (unpaidEntries.length === 1 && !kept) {
-      void voidTransaction(unpaidEntries[0]!.id, 'Снята отметка «пришёл»');
+    const arrivalRows = rows.filter((tx) =>
+      isFreerollEvent(tournament) ? tx.type === 'ticket' : tx.type === 'buy-in' && tx.status === 'unpaid',
+    );
+    const kept = rows.some((tx) => !arrivalRows.includes(tx));
+    if (arrivalRows.length === 1 && !kept) {
+      void voidTransaction(arrivalRows[0]!.id, 'Снята отметка «пришёл»');
     }
   };
 
@@ -882,9 +886,10 @@ function Editor({ tournament }: { tournament: Tournament }) {
           </div>
 
           <div className="rounded-2xl p-4 space-y-4" style={CARD_STYLE}>
-            <BountyCheckbox
-              checked={tournament.isBounty === true}
-              onChange={(checked) => patch({ isBounty: checked })}
+            <FormatSelect
+              value={eventFormatOf(tournament)}
+              disabled={isFinished}
+              onChange={(format) => patch({ eventFormat: format, isBounty: format === 'knockout' })}
             />
             <BlindStructurePicker
               structureId={tournament.blindStructureId}

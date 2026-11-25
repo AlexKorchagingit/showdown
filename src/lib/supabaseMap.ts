@@ -51,6 +51,7 @@ export type TournamentRow = {
   level_duration: string;
   is_closed: boolean;
   is_bounty: boolean;
+  event_format?: string | null;
   /** Admin-only tournaments stay out of the player-facing lists. */
   hidden?: boolean;
   results_entered: boolean;
@@ -270,6 +271,7 @@ export function tournamentToRow(tournament: Tournament): TournamentRow {
     level_duration: tournament.levelDuration,
     is_closed: tournament.isClosed === true,
     is_bounty: tournament.isBounty === true,
+    event_format: tournament.eventFormat,
     hidden: tournament.hidden === true,
     results_entered: tournament.resultsEntered === true,
     rubies_distributed: tournament.rubiesDistributed === true,
@@ -307,6 +309,9 @@ export function tournamentFromRow(row: TournamentRow, participants: Participant[
     levelDuration: asString(row.level_duration),
     isClosed: asBoolean(row.is_closed),
     isBounty: asBoolean(row.is_bounty) || undefined,
+    eventFormat: row.event_format === 'regular' || row.event_format === 'knockout' || row.event_format === 'freeroll' || row.event_format === 'team'
+      ? row.event_format
+      : undefined,
     hidden: asBoolean(row.hidden) || undefined,
     resultsEntered: asBoolean(row.results_entered) || undefined,
     rubiesDistributed: asBoolean(row.rubies_distributed) || undefined,

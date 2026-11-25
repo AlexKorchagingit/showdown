@@ -6,7 +6,8 @@ import { useTournaments } from '../../context/TournamentContext';
 import { TournamentCard } from '../../components/TournamentCard';
 import { CompactHeader } from '../../components/CompactHeader';
 import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
-import { BountyCheckbox } from '../../components/admin/BountyCheckbox';
+import { FormatSelect } from '../../components/admin/FormatSelect';
+import type { EventFormat } from '../../lib/eventFormat';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { compareByStart, isFinished, isHidden } from '../../lib/tournamentStatus';
 import { TournamentExportModal } from '../../components/admin/TournamentExportModal';
@@ -38,7 +39,7 @@ interface CreateForm {
   guarantee: string;
   about: string;
   features: string[];
-  isBounty: boolean;
+  eventFormat: EventFormat;
   blindStructureId: string;
 }
 
@@ -50,7 +51,7 @@ const EMPTY_FORM: CreateForm = {
   guarantee: '20000',
   about: '',
   features: [],
-  isBounty: false,
+  eventFormat: 'regular',
   blindStructureId: '',
 };
 
@@ -79,7 +80,8 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       guarantee: Number(form.guarantee) || 0,
       about: form.about.trim(),
       features: form.features,
-      isBounty: form.isBounty,
+      eventFormat: form.eventFormat,
+      isBounty: form.eventFormat === 'knockout',
       participants: [],
       lateRegUntil: '22:45',
       blindStructure: selectedStructure?.name ?? 'Плавная',
@@ -170,7 +172,7 @@ function CreateTournamentForm({ onCreated }: { onCreated: (id: string) => void }
       </section>
 
       <section>
-        <BountyCheckbox checked={form.isBounty} onChange={(checked) => set('isBounty', checked)} />
+        <FormatSelect value={form.eventFormat} onChange={(format) => set('eventFormat', format)} />
       </section>
 
       <section>

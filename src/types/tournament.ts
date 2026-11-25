@@ -117,6 +117,8 @@ export interface Tournament {
   isClosed: boolean;
   /** Knockout / bounty format: extra rating for knockouts on close. */
   isBounty?: boolean;
+  /** Admin choice: regular, knockout, freeroll or team. Older nights leave this empty. */
+  eventFormat?: 'regular' | 'knockout' | 'freeroll' | 'team';
   /** Hidden by an admin: players do not see it in the Tournaments tab. */
   hidden?: boolean;
   /** True after finishing places / rating awards have been submitted. */
