@@ -1,4 +1,5 @@
 import { isComplimentaryCharge } from './entryFee';
+import { chargeCountsAsRevenue } from './tournamentRevenue';
 import { clubUserIdSet, isRegisteredClubSeat } from './clubRating';
 import { tournamentOffersAddon } from './playerAnalytics';
 import {
@@ -52,6 +53,7 @@ export type ClubStatisticDetails = {
   rebuys: StatDetailList;
   addons: StatDetailList;
   visitors: StatDetailList;
+  revenue: StatDetailList;
 };
 
 export type ClubStatistics = {
@@ -77,6 +79,10 @@ export type ClubStatistics = {
   unboundNicks: number;
   /** People who checked in during the selected period, each person once. */
   uniqueVisitors: number;
+  /** Paid cashier money of the played tournaments, including guests and after midnight. */
+  revenue: number;
+  /** That revenue divided by the number of played tournaments. */
+  averageRevenue: number;
   details: ClubStatisticDetails;
 };
 
@@ -88,6 +94,18 @@ export type ClubLeaders = {
 
 function emptyList(empty: string): StatDetailList {
   return { summary: '', rows: [], empty };
+}
+
+function tournamentCountLabel(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  const word =
+    mod10 === 1 && mod100 !== 11
+      ? 'турнир'
+      : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+        ? 'турнира'
+        : 'турниров';
+  return `${count} ${word}`;
 }
 
 function visitTimes(count: number): string {
@@ -111,6 +129,7 @@ const EMPTY_DETAILS: ClubStatisticDetails = {
   rebuys: emptyList('Нет ребаев'),
   addons: emptyList('Нет аддонов'),
   visitors: emptyList('Нет посетителей в выборке'),
+  revenue: emptyList('Нет оплаченной выручки'),
 };
 
 const EMPTY_STATS: ClubStatistics = {
@@ -133,6 +152,8 @@ const EMPTY_STATS: ClubStatistics = {
   skippedSeats: 0,
   unboundNicks: 0,
   uniqueVisitors: 0,
+  revenue: 0,
+  averageRevenue: 0,
   details: EMPTY_DETAILS,
 };
 
@@ -377,8 +398,17 @@ export function computeClubStatistics(
   }
 
   const paidCharges = ledger.filter((tx) => tx.status === 'paid' && tx.amount > 0 && !isComplimentaryCharge(tx));
-  const revenue = paidCharges.reduce((sum, tx) => sum + tx.amount, 0);
-  const averageCheck = paidCharges.length > 0 ? revenue / paidCharges.length : 0;
+  const revenueCharges = transactions.filter(
+    (tx) => tournamentIds.has(tx.tournamentId) && chargeCountsAsRevenue(tx),
+  );
+  const revenueByTournament = new Map<string, number>();
+  for (const tx of revenueCharges) {
+    revenueByTournament.set(tx.tournamentId, (revenueByTournament.get(tx.tournamentId) ?? 0) + tx.amount);
+  }
+  const revenue = revenueCharges.reduce((sum, tx) => sum + tx.amount, 0);
+  const averageRevenue = revenue / played.length;
+  const checkRevenue = paidCharges.reduce((sum, tx) => sum + tx.amount, 0);
+  const averageCheck = paidCharges.length > 0 ? checkRevenue / paidCharges.length : 0;
 
   const unpaidSum = ledger
     .filter((tx) => tx.status === 'unpaid')
@@ -472,7 +502,7 @@ export function computeClubStatistics(
     checks: {
       summary:
         paidCharges.length > 0
-          ? `${money(revenue)} ÷ ${paidCharges.length} оплат = ${money(averageCheck)}`
+          ? `${money(checkRevenue)} ÷ ${paidCharges.length} оплат = ${money(averageCheck)}`
           : '',
       rows: [...paidCharges].sort(newestChargeFirst).map((tx) => chargeRow(tx, names, titleById)),
       empty: EMPTY_DETAILS.checks.empty,
@@ -523,6 +553,19 @@ export function computeClubStatistics(
         })),
       empty: EMPTY_DETAILS.visitors.empty,
     },
+    revenue: {
+      summary:
+        played.length > 0
+          ? `${money(revenue)} ÷ ${tournamentCountLabel(played.length)} = ${money(averageRevenue)}`
+          : '',
+      rows: [...played].sort(newestTournamentFirst).map((tournament) => ({
+        id: tournament.id,
+        date: tournamentDate(tournament),
+        title: tournament.title,
+        value: money(revenueByTournament.get(tournament.id) ?? 0),
+      })),
+      empty: EMPTY_DETAILS.revenue.empty,
+    },
     addons: {
       summary:
         addonDenom > 0
@@ -555,6 +598,8 @@ export function computeClubStatistics(
     skippedSeats,
     unboundNicks: unboundKeys.size,
     uniqueVisitors,
+    revenue,
+    averageRevenue,
     details,
   };
 }

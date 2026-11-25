@@ -268,64 +268,57 @@ export function RatingPage() {
           РЕЙТИНГ
         </h1>
 
-        <div className="relative flex rounded-xl p-1" style={{ background: '#1E1612' }}>
-          {(['general', 'seasonal'] as RatingTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              className="relative flex-1 py-2.5 text-[13px] font-600 rounded-lg transition-colors"
-              style={{ color: activeTab === tab ? '#0A0908' : '#6B6360' }}
-            >
-              {activeTab === tab && (
-                <motion.span
-                  layoutId="rating-tab-active"
-                  className="absolute inset-0 rounded-lg"
-                  style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.38 }}
-                />
-              )}
-              <span className="relative z-10">
-                {tab === 'general' ? 'Общий' : 'Сезонный'}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <AnimatePresence initial={false}>
-          {activeTab === 'seasonal' && (
-            <motion.div
-              key="month-nav"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22 }}
-              className="overflow-hidden"
-            >
-              <div
-                className="flex items-center justify-between rounded-xl px-2 py-2"
-                style={{ background: '#1E1612' }}
+        <div className="flex items-center gap-2">
+          <div className="relative flex min-w-0 flex-1 rounded-xl p-0.5" style={{ background: '#1E1612' }}>
+            {(['general', 'seasonal'] as RatingTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => handleTabChange(tab)}
+                className="relative flex-1 py-2 text-[12px] font-600 rounded-lg transition-colors"
+                style={{ color: activeTab === tab ? '#0A0908' : '#6B6360' }}
               >
-                <button
-                  onClick={prevMonth}
-                  className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-                  style={{ color: '#A39B98' }}
-                >
-                  <ChevronLeft size={18} strokeWidth={2.5} />
-                </button>
-                <span className="text-[15px] font-700 text-white tracking-wide">
-                  {MONTHS[selectedMonth]}
+                {activeTab === tab && (
+                  <motion.span
+                    layoutId="rating-tab-active"
+                    className="absolute inset-0 rounded-lg"
+                    style={{ background: 'linear-gradient(to right, #8C4C27, #D99962)' }}
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.38 }}
+                  />
+                )}
+                <span className="relative z-10">
+                  {tab === 'general' ? 'Общий' : 'Сезонный'}
                 </span>
-                <button
-                  onClick={nextMonth}
-                  className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-                  style={{ color: '#A39B98' }}
-                >
-                  <ChevronRight size={18} strokeWidth={2.5} />
-                </button>
-              </div>
-            </motion.div>
+              </button>
+            ))}
+          </div>
+
+          {activeTab === 'seasonal' && (
+            <div
+              className="flex min-w-0 flex-1 items-center justify-between rounded-xl px-1 py-0.5"
+              style={{ background: '#1E1612' }}
+            >
+              <button
+                onClick={prevMonth}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{ color: '#A39B98' }}
+                aria-label="Предыдущий месяц"
+              >
+                <ChevronLeft size={16} strokeWidth={2.5} />
+              </button>
+              <span className="min-w-0 truncate text-center text-[13px] font-700 text-white tracking-wide">
+                {MONTHS[selectedMonth]}
+              </span>
+              <button
+                onClick={nextMonth}
+                className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                style={{ color: '#A39B98' }}
+                aria-label="Следующий месяц"
+              >
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+            </div>
           )}
-        </AnimatePresence>
+        </div>
 
         <div className="flex items-center justify-end gap-0">
           <ColumnSelector active={activeColumn} onChange={setColumn} />

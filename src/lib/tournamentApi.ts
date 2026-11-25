@@ -57,16 +57,25 @@ async function selectParticipantPages(
 }
 
 async function selectParticipants(tournamentId?: string): Promise<JoinedParticipantRow[]> {
-  const joined = await selectParticipantPages(PARTICIPANT_SELECT_WITH_USER, tournamentId);
-  if (!joined.error) return joined.rows;
-  logSupabaseError(joined.error, 'participants embed users');
+  const plain = await selectParticipantPages('*', tournamentId);
+  if (!plain.error) return plain.rows;
+  logSupabaseError(plain.error, 'participants');
+  throw new Error(plain.error.message || 'Не удалось загрузить участников');
+}
 
-  const retry = await selectParticipantPages('*', tournamentId);
-  if (retry.error) {
-    logSupabaseError(retry.error, 'participants');
-    throw new Error(retry.error.message || joined.error.message || 'Не удалось загрузить участников');
+/** Avatars and the account nickname. The seat list does not wait for this join. */
+export async function fetchParticipantFaces(tournamentId: string): Promise<Participant[] | null> {
+  try {
+    const joined = await withRequestDeadline(
+      selectParticipantPages(PARTICIPANT_SELECT_WITH_USER, tournamentId),
+      12_000,
+    );
+    if (joined.error || joined.rows.length === 0) return null;
+    return joined.rows.map(participantFromJoinedRow);
+  } catch (error) {
+    console.error(error);
+    return null;
   }
-  return retry.rows;
 }
 
 function groupParticipants(rows: JoinedParticipantRow[]): Map<string, Participant[]> {
@@ -103,7 +112,7 @@ export async function fetchTournaments(): Promise<Tournament[]> {
 }
 
 export async function fetchParticipants(tournamentId: string): Promise<Participant[]> {
-  return (await withRequestDeadline(selectParticipants(tournamentId), 15_000))
+  return (await withRequestDeadline(selectParticipants(tournamentId), 8_000))
     .map(participantFromJoinedRow);
 }
 
@@ -113,7 +122,8 @@ function tournamentValues(tournament: Tournament): TournamentValues {
     start_time:row.start_time,total_seats:row.total_seats,guarantee:row.guarantee,about:row.about,
     features:row.features,late_reg_until:row.late_reg_until,blind_structure:row.blind_structure,
     blind_structure_id:row.blind_structure_id,stack_size:row.stack_size,level_duration:row.level_duration,
-    is_bounty:row.is_bounty,admin_secret_comment:row.admin_secret_comment};
+    is_bounty:row.is_bounty,admin_secret_comment:row.admin_secret_comment,
+    ...(tournament.hidden ? { hidden: true } : {})};
 }
 
 function tournamentChanges(patch: Partial<Tournament>): TournamentChanges {

@@ -267,7 +267,7 @@ export function AdminBlindsTimer() {
   const liveTournamentId = boundTournament?.id ?? linkedTournamentId;
   useEffect(() => {
     if (!liveTournamentId) return;
-    let refreshRequest: Promise<void> | null = null;
+    let refreshRequest: Promise<boolean> | null = null;
     const refreshRoster = async () => {
       if (refreshRequest) return await refreshRequest;
       const request = refreshParticipants(liveTournamentId);

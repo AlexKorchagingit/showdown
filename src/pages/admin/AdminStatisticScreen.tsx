@@ -49,6 +49,7 @@ type DetailKey =
   | 'rebuys'
   | 'addons'
   | 'visitors'
+  | 'revenue'
   | 'top-attendance'
   | 'top-finalists'
   | 'top-bounty';
@@ -62,6 +63,7 @@ const DETAIL_TITLE: Record<DetailKey, string> = {
   rebuys: 'Ребаи',
   addons: 'Аддоны',
   visitors: 'Уникальные посетители',
+  revenue: 'Средняя выручка',
   'top-attendance': 'Посещаемость игроков',
   'top-finalists': 'Финалисты',
   'top-bounty': 'Баунти-хантеры',
@@ -454,6 +456,12 @@ export function AdminStatisticScreen() {
             value={stats.popularTournament}
             hint={`${stats.tournamentCount} турн. в выборке`}
             onClick={() => setDetail('popular')}
+          />
+          <StatCard
+            label="Средняя выручка"
+            value={formatRub(stats.averageRevenue)}
+            hint="на сыгранный турнир"
+            onClick={() => setDetail('revenue')}
           />
           <StatCard
             label="Средний чек"

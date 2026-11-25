@@ -770,7 +770,11 @@ export function AdminTournamentFinance() {
         className="flex-1 scrollable px-4"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)' }}
       >
-        {filtered.length === 0 ? (
+        {!tournament.rosterLoaded && tournament.participants.length === 0 ? (
+          <p className="text-center text-[13px] pt-12" style={{ color: '#6B6360' }}>
+            Загрузка участников…
+          </p>
+        ) : filtered.length === 0 ? (
           <p className="text-center text-[13px] pt-12" style={{ color: '#6B6360' }}>
             {tournament.participants.length === 0
               ? 'Участников нет'

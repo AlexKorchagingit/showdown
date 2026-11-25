@@ -210,6 +210,9 @@ describe('lists behind the numbers', () => {
     expect(stats.details.addons.rows.map((row) => row.id)).toEqual(['debt-hero']);
     expect(stats.details.addons.rows[0]?.note).toContain('не оплачено');
     expect(plain(stats.details.rebuys.summary)).toBe('2 ребаев ÷ 2 входов = 100%');
+    expect(stats.revenue).toBe(3000);
+    expect(stats.averageRevenue).toBe(3000);
+    expect(plain(stats.details.revenue.summary)).toBe('3 000 ₽ ÷ 1 турнир = 3 000 ₽');
     expect(formatAvgRebuys(2 / 2, 2)).toBe('100%');
     expect(formatAvgRebuys(1 / 4, 4)).toBe('25%');
     expect(formatAvgRebuys(0, 0)).toBe('0%');

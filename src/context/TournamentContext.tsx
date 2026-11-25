@@ -11,6 +11,7 @@ import type { Participant, Tournament } from '../types/tournament';
 import { useUser } from './UserContext';
 import {
   fetchParticipants,
+  fetchParticipantFaces,
   fetchParticipantsByTournament,
   fetchTournaments as loadTournaments,
   insertTournament,
@@ -38,7 +39,7 @@ interface TournamentContextValue {
   loadError: string | null;
   fetchTournaments: () => Promise<void>;
   loadAllRosters: () => Promise<void>;
-  refreshParticipants: (tournamentId: string) => Promise<void>;
+  refreshParticipants: (tournamentId: string) => Promise<boolean>;
   toggleRegistration: (tournamentId: string) => Promise<void>;
   isRegistered: (tournamentId: string) => boolean;
   updateTournament: (tournamentId: string, patch: Partial<Tournament>) => Promise<boolean>;
@@ -73,6 +74,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [loadError, setLoadError] = useState<string | null>(null);
   const personnel = usePersonnel(account?.id ?? '', account?.role);
   const rosterFetchGen = useRef<Record<string, number>>({});
+  const tournamentsRef = useRef<Tournament[]>([]);
+  tournamentsRef.current = tournaments;
   const visibleTournaments = useMemo(() => {
     const rows = tournaments.map((row) => withPersonnel(row, personnel.rosters[row.id]));
     return isAdmin ? rows : rows.filter((row) => row.hidden !== true);
@@ -119,34 +122,74 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     void fetchTournaments();
   }, [fetchTournaments]);
 
+  const applyRoster = useCallback((tournamentId: string, participants: Participant[], gen: number) => {
+    if (rosterFetchGen.current[tournamentId] !== gen) return false;
+    const current = tournamentsRef.current.find((tournament) => tournament.id === tournamentId);
+    if (!current) return false;
+    const suspiciousEmpty =
+      participants.length === 0 &&
+      (current.occupiedCount ?? 0) > 0 &&
+      current.participants.length === 0;
+    if (suspiciousEmpty) return false;
+    setTournaments((prev) => {
+      const row = prev.find((tournament) => tournament.id === tournamentId);
+      if (!row) return prev;
+      if (
+        participants.length === 0 &&
+        (row.occupiedCount ?? 0) > 0 &&
+        row.participants.length === 0
+      ) {
+        return prev;
+      }
+      if (row.rosterLoaded && participantListsEqual(row.participants, participants)) return prev;
+      return prev.map((tournament) =>
+        tournament.id === tournamentId
+          ? { ...tournament, participants, rosterLoaded: true }
+          : tournament,
+      );
+    });
+    return true;
+  }, []);
+
   const refreshParticipants = useCallback(async (tournamentId: string) => {
     const gen = (rosterFetchGen.current[tournamentId] ?? 0) + 1;
     rosterFetchGen.current[tournamentId] = gen;
     try {
       const participants = await fetchParticipants(tournamentId);
-      if (rosterFetchGen.current[tournamentId] !== gen) return;
-      setTournaments((prev) => {
-        const current = prev.find((tournament) => tournament.id === tournamentId);
-        if (current?.rosterLoaded && participantListsEqual(current.participants, participants)) return prev;
-        return prev.map((tournament) =>
-          tournament.id === tournamentId
-            ? { ...tournament, participants, rosterLoaded: true }
-            : tournament,
-        );
+      if (rosterFetchGen.current[tournamentId] !== gen) return false;
+      const applied = applyRoster(tournamentId, participants, gen);
+      if (!applied) return false;
+      void fetchParticipantFaces(tournamentId).then((faces) => {
+        if (!faces) return;
+        applyRoster(tournamentId, faces, gen);
       });
+      return true;
     } catch (error) {
       console.error(error);
+      return false;
     }
-  }, []);
+  }, [applyRoster]);
 
   const loadAllRosters = useCallback(async () => {
     try {
       const grouped = await fetchParticipantsByTournament();
-      setTournaments((prev) => prev.map((tournament) => ({
-        ...tournament,
-        participants: grouped.get(tournament.id) ?? [],
-        rosterLoaded: true,
-      })));
+      setTournaments((prev) => {
+        if (
+          grouped.size === 0 &&
+          prev.some((row) => (row.occupiedCount ?? 0) > 0 || row.participants.length > 0)
+        ) {
+          return prev;
+        }
+        return prev.map((tournament) => {
+          const next = grouped.get(tournament.id);
+          if (!next && (tournament.occupiedCount ?? 0) > 0) return tournament;
+          return {
+            ...tournament,
+            participants: next ?? [],
+            rosterLoaded: true,
+          };
+        });
+      });
     } catch (error) {
       console.error(error);
     }
@@ -316,13 +359,17 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       }
 
       const { id: _id, ...rest } = current;
-      return addTournament({
+      const guarantee = current.overlayBase ?? current.guarantee;
+      const newId = await addTournament({
         ...rest,
         title: `${current.title} Copy`,
+        guarantee,
+        overlayBase: undefined,
+        overlayPerHead: undefined,
         participants: copiedSeats,
         features: [...current.features],
         isClosed: false,
-        hidden: false,
+        hidden: true,
         rubiesDistributed: false,
         resultsEntered: false,
         adminSecretComment: '',
@@ -330,6 +377,25 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         staff: undefined,
         results: undefined,
       });
+      if (!newId) return '';
+      try {
+        const saved = await saveTournamentOverlayRow(newId, guarantee, 0);
+        setTournaments((prev) => prev.map((row) => (
+          row.id === newId
+            ? {
+                ...row,
+                hidden: true,
+                guarantee: saved.guarantee,
+                overlayBase: saved.overlayBase,
+                overlayPerHead: saved.overlayPerHead,
+              }
+            : row
+        )));
+      } catch (error) {
+        console.error(error);
+        window.alert('Копия создана скрытой, но оверлей не удалось отключить');
+      }
+      return newId;
     },
     [addTournament, clubUsers, tournaments],
   );

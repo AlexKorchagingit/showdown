@@ -20,7 +20,14 @@ import {
   voidTransactionConfirm,
 } from '../../../lib/transactionVoid';
 import { exportToCSV } from '../../../lib/exportToCSV';
-import { datesInPeriod, isInPeriod, sameDay, type FinancePeriod } from '../../../lib/financePeriod';
+import { isInPeriod, type FinancePeriod } from '../../../lib/financePeriod';
+import {
+  chargeCountsAsRevenue,
+  nightsInFinancePeriod,
+  nightInFinancePeriod,
+  revenueNight,
+  sameNight,
+} from '../../../lib/tournamentRevenue';
 import { isComplimentaryCharge } from '../../../lib/entryFee';
 import { guestSeatKey } from '../../../lib/guestPlayer';
 import { playerNickname } from '../../../lib/playerName';
@@ -75,23 +82,30 @@ export function CashierTab() {
   const [period, setPeriod] = useState<FinancePeriod>('today');
 
   useEffect(() => {
-    if (period === 'all') void refreshFinance('all');
-  }, [period, refreshFinance]);
+    void refreshFinance('all');
+  }, [refreshFinance]);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
 
   const tournamentTitle = (id: string) => tournaments.find((t) => t.id === id)?.title ?? id;
+  const startByTournament = useMemo(
+    () => new Map(tournaments.map((tournament) => [tournament.id, tournament.startDate])),
+    [tournaments],
+  );
 
   const filtered = useMemo(
     () =>
       transactions
-        .filter((tx) => isInPeriod(ledgerTimestamp(tx), period))
+        .filter((tx) => {
+          const night = revenueNight(tx, startByTournament);
+          return night ? nightInFinancePeriod(night, period) : false;
+        })
         .slice()
         .sort(newestFirst),
-    [transactions, period],
+    [transactions, period, startByTournament],
   );
 
   const paid = useMemo(
-    () => filtered.filter((tx) => tx.status === 'paid' && tx.amount > 0 && !isComplimentaryCharge(tx)),
+    () => filtered.filter((tx) => chargeCountsAsRevenue(tx)),
     [filtered],
   );
 
@@ -115,14 +129,17 @@ export function CashierTab() {
   const expected = allUnpaid.reduce((sum, tx) => sum + tx.amount, 0);
 
   const chartData = useMemo(() => {
-    const stamps = paid.map((tx) => ledgerTimestamp(tx));
-    return datesInPeriod(period, new Date(), stamps).map((day) => ({
+    const nights = paid.flatMap((tx) => {
+      const night = revenueNight(tx, startByTournament);
+      return night ? [night] : [];
+    });
+    return nightsInFinancePeriod(period, new Date(), nights).map((day) => ({
       label: day.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
       amount: paid
-        .filter((tx) => sameDay(ledgerTimestamp(tx), day))
+        .filter((tx) => sameNight(revenueNight(tx, startByTournament), day))
         .reduce((sum, tx) => sum + tx.amount, 0),
     }));
-  }, [paid, period]);
+  }, [paid, period, startByTournament]);
 
   const sheetItems =
     sheet === 'voided' ? voided : sheet === 'revenue' ? paid : sheet === 'tickets' ? tickets : allUnpaid;
@@ -192,7 +209,7 @@ export function CashierTab() {
         style={{ background: '#2A211D', border: '1px solid rgba(217,153,98,0.22)' }}
       >
         <p className="px-3 text-[11px] font-700 uppercase tracking-[0.16em] mb-2" style={{ color: '#8c8c88' }}>
-          Выручка по дням
+          Выручка по турнирам
         </p>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">

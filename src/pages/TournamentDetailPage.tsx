@@ -195,7 +195,7 @@ function formatDealerHours(hours: number, minutes = 0): string {
 
 export function TournamentDetailPage({ tournament, onBack }: Props) {
   const navigate = useNavigate();
-  const { isRegistered, toggleRegistration, tournaments, refreshParticipants, isLoading } = useTournaments();
+  const { isRegistered, toggleRegistration, tournaments, refreshParticipants } = useTournaments();
   const { getDealerHours } = useFinance();
   const { isAdmin, clubUsers } = useUser();
   const { structures } = useBlinds();
@@ -205,9 +205,27 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
   const [drawShuffling, setDrawShuffling] = useState(false);
   const [loadedStructure, setLoadedStructure] = useState<BlindStructure | null>(null);
   const [structurePending, setStructurePending] = useState(false);
+  const [rosterPending, setRosterPending] = useState(true);
 
   useEffect(() => {
-    void refreshParticipants(tournament.id);
+    let stopped = false;
+    setRosterPending(true);
+    const run = async () => {
+      for (let attempt = 0; attempt < 6 && !stopped; attempt += 1) {
+        const loaded = await refreshParticipants(tournament.id);
+        if (stopped) return;
+        if (loaded) {
+          setRosterPending(false);
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+      }
+      if (!stopped) setRosterPending(false);
+    };
+    void run();
+    return () => {
+      stopped = true;
+    };
   }, [tournament.id, refreshParticipants]);
 
   const live       = tournaments.find((t) => t.id === tournament.id) ?? tournament;
@@ -503,7 +521,7 @@ export function TournamentDetailPage({ tournament, onBack }: Props) {
               </div>
 
               {/* Participant rows */}
-              {isLoading && participants.length === 0 ? (
+              {rosterPending && !live.rosterLoaded && participants.length === 0 ? (
                 <p className="px-5 py-4 text-[13px] font-500" style={{ color: '#6B6360' }}>
                   Загрузка участников…
                 </p>

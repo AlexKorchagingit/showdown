@@ -5,7 +5,7 @@ import type { TournamentRow } from './supabaseMap';
 export type TournamentValues = Pick<TournamentRow,
   'title'|'image_url'|'address'|'start_date'|'start_time'|'total_seats'|'guarantee'|'about'|
   'features'|'late_reg_until'|'blind_structure'|'blind_structure_id'|'stack_size'|'level_duration'|
-  'is_bounty'|'admin_secret_comment'>;
+  'is_bounty'|'admin_secret_comment'> & { hidden?: boolean };
 /** `hidden` is optional on create, so it only travels with explicit changes. */
 export type TournamentChanges = Partial<TournamentValues & Pick<TournamentRow, 'hidden'>>;
 
