@@ -97,11 +97,11 @@ describe('player profile history', () => {
 });
 
 describe('player admin dashboard', () => {
-  it('treats an open check-in as a visit but not as a finished ITM sample', () => {
+  it('ignores an open check-in until the tournament is closed', () => {
     const live = event('live', [player('hero')], { isClosed: false });
     const done = event('done', fieldOf(22, 8));
     const stats = computePlayerAdminStats('hero', 'hero', [live, done], [], () => 0);
-    expect(stats.tournamentsPlayed).toBe(2);
+    expect(stats.tournamentsPlayed).toBe(1);
     expect(stats.finishedCount).toBe(1);
     expect(stats.itmCount).toBe(1);
     expect(stats.winrate).toBe(100);

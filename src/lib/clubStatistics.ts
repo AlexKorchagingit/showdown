@@ -178,9 +178,11 @@ function topThree(
     .slice(0, limit);
 }
 
-/** A tournament that actually took place: somebody is checked in or already has a finishing place. */
-export function tournamentWasPlayed(tournament: Pick<Tournament, 'participants'>): boolean {
-  return cashierPlayers(tournament.participants).length > 0;
+/** A closed tournament that actually took place: somebody checked in or already has a place. */
+export function tournamentWasPlayed(
+  tournament: Pick<Tournament, 'participants' | 'isClosed'>,
+): boolean {
+  return tournament.isClosed === true && cashierPlayers(tournament.participants).length > 0;
 }
 
 /** Accepts numeric places and string leftovers from older saved results. */

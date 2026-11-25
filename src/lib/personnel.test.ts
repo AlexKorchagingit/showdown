@@ -13,7 +13,7 @@ const raw = { tournament_id:'event',revision:3,entries:[{ id:'entry',kind:'deale
 const saved = parsePersonnelRoster(raw);
 const tournament: Tournament = { id:'event',title:'Test',imageUrl:'',address:'',startDate:'2026-09-03',startTime:'19:00',
   totalSeats:27,guarantee:0,about:'',features:[],participants:[],lateRegUntil:'21:00',blindStructure:'Test',
-  stackSize:30000,levelDuration:'15',isClosed:false,dealers:[{ name:'Legacy',hours:100,minutes:0 }],
+  stackSize:30000,levelDuration:'15',isClosed:true,dealers:[{ name:'Legacy',hours:100,minutes:0 }],
   staff:[{ role:'Admin',name:'Legacy staff',hours:50,minutes:0 }] };
 const intent: PersonnelIntent = { tournamentId:'event',action:'add_dealer',values:{ name:' Same name ',minutes:90 } };
 const requestId = '11111111-1111-4111-8111-111111111111';

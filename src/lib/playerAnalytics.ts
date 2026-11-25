@@ -220,7 +220,10 @@ export function computePlayerAdminStats(
   transactions: Transaction[],
   getDealerHours: (tournamentId: string, userId: string) => number,
 ): PlayerAdminStats {
-  const mine = transactions.filter((tx) => !tx.voidedAt && tx.userId === playerId);
+  const closedIds = new Set(tournaments.filter((tournament) => tournament.isClosed).map((tournament) => tournament.id));
+  const mine = transactions.filter(
+    (tx) => !tx.voidedAt && tx.userId === playerId && closedIds.has(tx.tournamentId),
+  );
   const paid = mine.filter((tx) => tx.status === 'paid');
   const unpaid = mine.filter((tx) => tx.status === 'unpaid');
   const ltv = paid.reduce((sum, tx) => sum + tx.amount, 0);
@@ -230,10 +233,11 @@ export function computePlayerAdminStats(
 
   const ids = new Set([playerId].filter(Boolean));
   const played = tournaments.filter((tournament) => {
+    if (!tournament.isClosed) return false;
     const participant = findPlayerInTournament(tournament, ids);
     if (!participant) return false;
     if (typeof participant.place === 'number' && participant.place >= 1) return true;
-    return !tournament.isClosed && isArrivedPlayer(participant);
+    return isArrivedPlayer(participant);
   });
   const addonEligible = played.filter(tournamentOffersAddon);
   const addonDenom = addonEligible.length > 0 ? addonEligible.length : played.length;
@@ -265,6 +269,7 @@ export function computePlayerAdminStats(
   let dealerHours = 0;
   const dealerRows: PlayerLedgerRow[] = [];
   for (const tournament of tournaments) {
+    if (!tournament.isClosed) continue;
     // A matching name is not an identity link. Unbound personnel stays in the event roster.
     const hours = getDealerHours(tournament.id, playerId);
     if (hours <= 0) continue;

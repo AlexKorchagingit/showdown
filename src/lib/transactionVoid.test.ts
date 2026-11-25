@@ -53,7 +53,7 @@ describe('non-destructive financial cancellation',()=>{
     expect(reconcileTransactionSnapshot([cancelled],[{...cancelled,voidReason:undefined}])[0].voidReason).toBeUndefined();
   });
   it('excludes cancellations from debts, club totals and player statistics',()=>{
-    const tournament: Tournament = {id:'event',title:'Test',startDate:'2026-09-03',startTime:'19:00',isClosed:false,
+    const tournament: Tournament = {id:'event',title:'Test',startDate:'2026-09-03',startTime:'19:00',isClosed:true,
       imageUrl:'',address:'Test',totalSeats:27,about:'',lateRegUntil:'21:00',blindStructure:'Test',
       stackSize:30000,levelDuration:'15',guarantee:0,features:[],
       participants:[{id:'user',userId:'user',nickname:'Test',rating:0,arrived:true}]};

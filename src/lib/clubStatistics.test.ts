@@ -109,9 +109,11 @@ describe('club Statistic formulas', () => {
     });
     expect(tournamentWasPlayed(played)).toBe(true);
     expect(tournamentWasPlayed(upcoming)).toBe(false);
+    const stillOpen = event('tonight', [player('hero')], { startDate: '2026-09-02', isClosed: false });
+    expect(tournamentWasPlayed(stillOpen)).toBe(false);
 
     const stats = computeClubStatistics(
-      [played, upcoming, event('empty', [], { startDate: '2026-09-05', isClosed: false })],
+      [played, upcoming, stillOpen, event('empty', [], { startDate: '2026-09-05', isClosed: false })],
       [],
       club,
       'all',
