@@ -277,7 +277,7 @@ export function AdminPlayerStats({
           />
           <StatCard
             icon={<RefreshCw size={16} strokeWidth={2.3} />}
-            label="Ср. ребаев за турнир"
+            label="Ребаи"
             value={formatAvgRebuys(stats.avgRebuys, stats.tournamentsPlayed)}
             hint={`${stats.rebuyCount} ребаев · ${stats.tournamentsPlayed} турн.`}
             onClick={() => setDrill('rebuys')}

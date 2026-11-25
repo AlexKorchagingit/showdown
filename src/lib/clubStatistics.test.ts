@@ -5,6 +5,7 @@ import {
   computeClubStatistics,
   tournamentWasPlayed,
 } from './clubStatistics';
+import { formatAvgRebuys } from './playerAnalytics';
 import type { Participant, Tournament } from '../types/tournament';
 import type { Transaction } from '../types/finance';
 
@@ -208,6 +209,19 @@ describe('lists behind the numbers', () => {
     );
     expect(stats.details.addons.rows.map((row) => row.id)).toEqual(['debt-hero']);
     expect(stats.details.addons.rows[0]?.note).toContain('не оплачено');
+    expect(plain(stats.details.rebuys.summary)).toBe('2 ребаев ÷ 2 входов = 100%');
+    expect(formatAvgRebuys(2 / 2, 2)).toBe('100%');
+    expect(formatAvgRebuys(1 / 4, 4)).toBe('25%');
+    expect(formatAvgRebuys(0, 0)).toBe('0%');
+  });
+
+  it('counts each person once across the selected tournaments', () => {
+    const again = event('later', [player('hero'), player('rival')], { startDate: '2026-09-08' });
+    const stats = computeClubStatistics([tournament, again], ledger, club);
+    expect(stats.uniqueVisitors).toBe(3);
+    expect(stats.details.visitors.rows.map((row) => row.title).sort()).toEqual(['Hero', 'Rival', 'Иван']);
+    expect(stats.details.visitors.rows.find((row) => row.title === 'Hero')?.value).toBe('2 раза');
+    expect(plain(stats.details.visitors.summary)).toBe('3 уникальных за период · 5 входов');
   });
 
   it('the attendance list counts club seats per tournament and mentions the skipped nick', () => {

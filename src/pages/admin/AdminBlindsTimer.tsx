@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -139,22 +138,24 @@ export function AdminBlindsTimer() {
   const [drawOpen, setDrawOpen] = useState(false);
   const [paceOpen, setPaceOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const controlsTouched = useRef(false);
+  const controlsDeadline = useRef(0);
   const [fullscreen, setFullscreen] = useState(isAppFullscreen);
 
+  const armControlsIdle = () => {
+    controlsDeadline.current = Date.now() + 10_000;
+  };
+
   useEffect(() => {
-    if (!controlsOpen) {
-      controlsTouched.current = false;
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      if (!controlsTouched.current) setControlsOpen(false);
-    }, 10_000);
-    return () => window.clearTimeout(timer);
+    if (!controlsOpen) return;
+    armControlsIdle();
+    const timer = window.setInterval(() => {
+      if (Date.now() >= controlsDeadline.current) setControlsOpen(false);
+    }, 500);
+    return () => window.clearInterval(timer);
   }, [controlsOpen]);
 
   const pressControl = (action: () => void) => () => {
-    controlsTouched.current = true;
+    armControlsIdle();
     action();
   };
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
@@ -764,17 +765,19 @@ export function AdminBlindsTimer() {
         </div>
 
         <div className="absolute bottom-8 right-8 z-50 flex items-center pointer-events-auto rounded-2xl border border-white/[0.06] bg-transparent p-1.5">
-          <AnimatePresence initial={false}>
-            {controlsOpen ? (
-              <motion.div
-                key="timer-controls"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 'auto', opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="flex w-max items-center gap-1 pr-1">
+          <div
+            className={`grid min-w-0 transition-[grid-template-columns,opacity] duration-300 ease-out ${
+              controlsOpen
+                ? 'grid-cols-[1fr] opacity-100'
+                : 'pointer-events-none grid-cols-[0fr] opacity-0'
+            }`}
+          >
+            <div
+              className="min-w-0 overflow-hidden"
+              inert={controlsOpen ? undefined : true}
+              style={controlsOpen ? undefined : { maxWidth: 0 }}
+            >
+            <div className="flex w-max items-center gap-1 pr-1">
                   <ControlButton label="Назад к структурам" onClick={pressControl(() => navigate(SETTINGS_ROUTE))}>
                     <ArrowLeft size={22} strokeWidth={2.2} />
                   </ControlButton>
@@ -823,10 +826,9 @@ export function AdminBlindsTimer() {
                       <Maximize size={22} strokeWidth={2.2} />
                     )}
                   </ControlButton>
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
+            </div>
+            </div>
+          </div>
           <ControlButton
             label={controlsOpen ? 'Свернуть управление' : 'Открыть управление'}
             onClick={() => setControlsOpen((open) => !open)}

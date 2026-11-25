@@ -16,10 +16,10 @@ import {
 export function HandOfDayCards({ cards, cardWidth = 88 }: { cards: [CardCode, CardCode]; cardWidth?: number }) {
   return (
     <div className="flex items-end justify-center" style={{ paddingTop: 6, paddingBottom: 4 }}>
-      <PokerCard code={cards[0]} bold width={cardWidth} style={{ transform: 'rotate(-7deg)', transformOrigin: 'bottom right' }} />
+      <PokerCard code={cards[0]} rankOnly width={cardWidth} style={{ transform: 'rotate(-7deg)', transformOrigin: 'bottom right' }} />
       <PokerCard
         code={cards[1]}
-        bold
+        rankOnly
         width={cardWidth}
         style={{ transform: 'rotate(7deg)', transformOrigin: 'bottom left', marginLeft: -Math.round(cardWidth * 0.22) }}
       />

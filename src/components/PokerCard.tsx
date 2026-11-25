@@ -164,6 +164,7 @@ export function PokerCard({
   code,
   width = 100,
   bold = false,
+  rankOnly = false,
   className,
   style,
 }: {
@@ -171,6 +172,8 @@ export function PokerCard({
   width?: number;
   /** Larger corner rank, suit and center picture. The card frame stays the same size. */
   bold?: boolean;
+  /** Hand of the day: the rank alone, large, inside the card outline. */
+  rankOnly?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -179,23 +182,45 @@ export function PokerCard({
   const { rank, suit } = parsed;
   const color = SUIT_COLORS[suit];
   const label = rankLabel(rank);
+  const frame = {
+    width,
+    height: Math.round(width * 1.4),
+    boxSizing: 'border-box' as const,
+    flexShrink: 0,
+    borderRadius: Math.max(6, Math.round(width * 0.09)),
+    border: '2px solid #E8C88A',
+    background: 'linear-gradient(155deg, #FFFFFF 0%, #FBF3DF 58%, #F0DFB8 100%)',
+    boxShadow: '0 8px 18px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.7)',
+    ...style,
+  };
+
+  if (rankOnly) {
+    return (
+      <div role="img" aria-label={cardName(code)} className={className} style={frame}>
+        <svg viewBox="0 0 100 140" width="100%" height="100%" aria-hidden style={{ display: 'block' }}>
+          <rect x="6" y="6" width="88" height="128" rx="8" fill="none" stroke="#1A1411" strokeOpacity="0.16" strokeWidth="1.4" />
+          <text
+            x="50"
+            y={label.length > 1 ? 84 : 90}
+            textAnchor="middle"
+            fontSize={label.length > 1 ? 54 : 78}
+            fontWeight="900"
+            fill="#1A1411"
+            style={{ fontFamily: 'Montserrat, system-ui, sans-serif' }}
+          >
+            {label}
+          </text>
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div
       role="img"
       aria-label={cardName(code)}
       className={className}
-      style={{
-        width,
-        height: Math.round(width * 1.4),
-        boxSizing: 'border-box',
-        flexShrink: 0,
-        borderRadius: Math.max(6, Math.round(width * 0.09)),
-        border: '2px solid #E8C88A',
-        background: 'linear-gradient(155deg, #FFFFFF 0%, #FBF3DF 58%, #F0DFB8 100%)',
-        boxShadow: '0 8px 18px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.7)',
-        ...style,
-      }}
+      style={frame}
     >
       <svg viewBox="0 0 100 140" width="100%" height="100%" aria-hidden style={{ display: 'block' }}>
         <rect x="3" y="3" width="94" height="134" rx="6" fill="none" stroke={color} strokeOpacity="0.4" strokeWidth="1.2" />

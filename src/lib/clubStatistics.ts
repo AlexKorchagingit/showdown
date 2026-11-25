@@ -51,6 +51,7 @@ export type ClubStatisticDetails = {
   biggest: StatDetailList;
   rebuys: StatDetailList;
   addons: StatDetailList;
+  visitors: StatDetailList;
 };
 
 export type ClubStatistics = {
@@ -74,6 +75,8 @@ export type ClubStatistics = {
   skippedSeats: number;
   /** Distinct nick-only players behind those seats. */
   unboundNicks: number;
+  /** People who checked in during the selected period, each person once. */
+  uniqueVisitors: number;
   details: ClubStatisticDetails;
 };
 
@@ -87,6 +90,18 @@ function emptyList(empty: string): StatDetailList {
   return { summary: '', rows: [], empty };
 }
 
+function visitTimes(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  const word =
+    mod10 === 1 && mod100 !== 11
+      ? 'раз'
+      : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+        ? 'раза'
+        : 'раз';
+  return `${count} ${word}`;
+}
+
 const EMPTY_DETAILS: ClubStatisticDetails = {
   attendance: emptyList('Нет сыгранных турниров в выборке'),
   popular: emptyList('Нет сыгранных турниров в выборке'),
@@ -95,6 +110,7 @@ const EMPTY_DETAILS: ClubStatisticDetails = {
   biggest: emptyList('Нет оплат в выборке'),
   rebuys: emptyList('Нет ребаев'),
   addons: emptyList('Нет аддонов'),
+  visitors: emptyList('Нет посетителей в выборке'),
 };
 
 const EMPTY_STATS: ClubStatistics = {
@@ -116,6 +132,7 @@ const EMPTY_STATS: ClubStatistics = {
   addonEligibleSeats: 0,
   skippedSeats: 0,
   unboundNicks: 0,
+  uniqueVisitors: 0,
   details: EMPTY_DETAILS,
 };
 
@@ -320,13 +337,28 @@ export function computeClubStatistics(
 
   let skippedSeats = 0;
   const unboundKeys = new Set<string>();
+  const visitorVisits = new Map<string, { nickname: string; visits: number }>();
+  const noteVisitor = (id: string, nickname: string) => {
+    const row = visitorVisits.get(id) ?? { nickname: nickname || id, visits: 0 };
+    row.visits += 1;
+    if (nickname) row.nickname = nickname;
+    visitorVisits.set(id, row);
+  };
   played.forEach((tournament, index) => {
     const checkedIn = cashierPlayers(tournament.participants);
     skippedSeats += checkedIn.length - seatedByTournament[index]!.length;
+    for (const player of seatedByTournament[index]!) {
+      const id = clubSeatId(player, knownIds);
+      if (id) noteVisitor(`u:${id}`, names.get(id) || player.nickname);
+    }
     for (const player of checkedIn) {
-      if (isUnboundGuestSeat(player)) unboundKeys.add(guestSeatKey(player.id, tournament.id));
+      if (!isUnboundGuestSeat(player)) continue;
+      unboundKeys.add(guestSeatKey(player.id, tournament.id));
+      const nick = player.nickname.trim();
+      if (nick) noteVisitor(`g:${nick.toLowerCase()}`, nick);
     }
   });
+  const uniqueVisitors = visitorVisits.size;
 
   const titleCounts = new Map<string, number>();
   played.forEach((tournament, index) => {
@@ -471,10 +503,25 @@ export function computeClubStatistics(
     rebuys: {
       summary:
         seatedCount > 0
-          ? `${rebuyCount} ребаев ÷ ${seatedCount} входов = ${avgRebuys.toFixed(2).replace('.', ',')}`
+          ? `${rebuyCount} ребаев ÷ ${seatedCount} входов = ${Math.round(avgRebuys * 100)}%`
           : '',
       rows: rebuyRows.map((tx) => chargeRow(tx, names, titleById)),
       empty: EMPTY_DETAILS.rebuys.empty,
+    },
+    visitors: {
+      summary:
+        uniqueVisitors > 0
+          ? `${uniqueVisitors} уникальных за период · ${seatedCount + unboundKeys.size} входов`
+          : '',
+      rows: [...visitorVisits.entries()]
+        .sort((a, b) => b[1].visits - a[1].visits || a[1].nickname.localeCompare(b[1].nickname, 'ru'))
+        .map(([id, row]) => ({
+          id,
+          date: `${row.visits} виз.`,
+          title: row.nickname,
+          value: visitTimes(row.visits),
+        })),
+      empty: EMPTY_DETAILS.visitors.empty,
     },
     addons: {
       summary:
@@ -507,6 +554,7 @@ export function computeClubStatistics(
     addonEligibleSeats,
     skippedSeats,
     unboundNicks: unboundKeys.size,
+    uniqueVisitors,
     details,
   };
 }

@@ -48,6 +48,7 @@ type DetailKey =
   | 'biggest'
   | 'rebuys'
   | 'addons'
+  | 'visitors'
   | 'top-attendance'
   | 'top-finalists'
   | 'top-bounty';
@@ -60,6 +61,7 @@ const DETAIL_TITLE: Record<DetailKey, string> = {
   biggest: 'Самый большой чек',
   rebuys: 'Ребаи',
   addons: 'Аддоны',
+  visitors: 'Уникальные посетители',
   'top-attendance': 'Посещаемость игроков',
   'top-finalists': 'Финалисты',
   'top-bounty': 'Баунти-хантеры',
@@ -436,6 +438,12 @@ export function AdminStatisticScreen() {
         </h2>
         <div className="grid grid-cols-2 gap-3 mb-4">
           <StatCard
+            label="Уникальные посетители"
+            value={String(stats.uniqueVisitors)}
+            hint="разные люди за период"
+            onClick={() => setDetail('visitors')}
+          />
+          <StatCard
             label="Средняя посещаемость"
             value={stats.averageAttendance ? stats.averageAttendance.toFixed(1).replace('.', ',') : '0'}
             hint="чел. на турнир"
@@ -468,7 +476,7 @@ export function AdminStatisticScreen() {
             />
           </div>
           <StatCard
-            label="Ср. ребаев за турнир"
+            label="Ребаи"
             value={formatAvgRebuys(stats.avgRebuys, stats.seatedCount)}
             hint={`${stats.rebuyCount} ребаев · ${stats.seatedCount} входов`}
             onClick={() => setDetail('rebuys')}

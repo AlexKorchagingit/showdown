@@ -185,8 +185,8 @@ export function tournamentOffersAddon(tournament: Tournament): boolean {
 }
 
 export function formatAvgRebuys(avg: number, tournamentsPlayed: number): string {
-  if (tournamentsPlayed <= 0) return '0';
-  return avg.toFixed(1);
+  if (tournamentsPlayed <= 0) return '0%';
+  return `${Math.round(avg * 100)}%`;
 }
 
 export function formatAddonRate(percent: number): string {
