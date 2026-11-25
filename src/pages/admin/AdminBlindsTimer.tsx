@@ -766,17 +766,11 @@ export function AdminBlindsTimer() {
 
         <div className="absolute bottom-8 right-8 z-50 flex items-center pointer-events-auto rounded-2xl border border-white/[0.06] bg-transparent p-1.5">
           <div
-            className={`grid min-w-0 transition-[grid-template-columns,opacity] duration-300 ease-out ${
-              controlsOpen
-                ? 'grid-cols-[1fr] opacity-100'
-                : 'pointer-events-none grid-cols-[0fr] opacity-0'
+            className={`min-w-0 overflow-hidden transition-opacity duration-200 ${
+              controlsOpen ? 'w-max opacity-100' : 'pointer-events-none w-0 opacity-0'
             }`}
+            inert={controlsOpen ? undefined : true}
           >
-            <div
-              className="min-w-0 overflow-hidden"
-              inert={controlsOpen ? undefined : true}
-              style={controlsOpen ? undefined : { maxWidth: 0 }}
-            >
             <div className="flex w-max items-center gap-1 pr-1">
                   <ControlButton label="Назад к структурам" onClick={pressControl(() => navigate(SETTINGS_ROUTE))}>
                     <ArrowLeft size={22} strokeWidth={2.2} />
@@ -826,7 +820,6 @@ export function AdminBlindsTimer() {
                       <Maximize size={22} strokeWidth={2.2} />
                     )}
                   </ControlButton>
-            </div>
             </div>
           </div>
           <ControlButton
