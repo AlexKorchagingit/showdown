@@ -253,9 +253,12 @@ function ParticipantsEditor({
   const pairingPlayer = pairingPlayerId
     ? participants.find((player) => player.id === pairingPlayerId)
     : undefined;
-  const partnerChoices = pairingPlayer
+  const arrivedOthers = pairingPlayer
     ? participants.filter((player) => player.id !== pairingPlayer.id && isArrivedPlayer(player))
     : [];
+  const partnerChoices = arrivedOthers.filter(
+    (player) => !findTeamPartner(participants, player, tournamentId),
+  );
 
   return (
     <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
@@ -453,7 +456,9 @@ function ParticipantsEditor({
                   ) : null}
                   {partnerChoices.length === 0 ? (
                     <p className="text-[12px] px-1" style={{ color: '#6B6360' }}>
-                      Нет других игроков из кассы
+                      {arrivedOthers.length === 0
+                        ? 'Нет других игроков из кассы'
+                        : 'Остальные уже в парах'}
                     </p>
                   ) : (
                     partnerChoices.map((candidate) => (
