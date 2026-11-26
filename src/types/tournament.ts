@@ -25,6 +25,11 @@ export interface Participant {
    */
   teamPartnerId?: string;
   /**
+   * Arrived on time: this seat's starting stack on the timer is 50% larger.
+   * Chips stay in the average even after the player busts.
+   */
+  stackBoost?: boolean;
+  /**
    * Team 1–6 on the one-off FREEROLL TEAM BATTLE of 13 Oct 2026.
    * Other tournaments leave this empty.
    */

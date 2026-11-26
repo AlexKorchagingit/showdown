@@ -241,6 +241,7 @@ function sameSeat(left: Participant, right: Participant): boolean {
     left.comment === right.comment &&
     (left.arrived === true) === (right.arrived === true) &&
     (left.teamPartnerId ?? '') === (right.teamPartnerId ?? '') &&
+    (left.stackBoost === true) === (right.stackBoost === true) &&
     (left.squadNo ?? 0) === (right.squadNo ?? 0) &&
     (left.squadPoints ?? 0) === (right.squadPoints ?? 0) &&
     (left.rosterRevision ?? 0) === (right.rosterRevision ?? 0) &&
@@ -296,6 +297,7 @@ export async function syncParticipantRows(
       comment: row.comment,
       arrived: row.arrived === true,
       team_partner_id: row.team_partner_id ?? player.teamPartnerId?.trim() ?? null,
+      stack_boost: player.stackBoost === true,
       seen_revision: (() => {
         const editedFrom = findRosterSeat(previous, player, tournamentId);
         return typeof editedFrom?.rosterRevision === 'number' && editedFrom.rosterRevision > 0

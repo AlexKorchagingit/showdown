@@ -74,6 +74,7 @@ export type ParticipantRow = {
   comment: string | null;
   arrived?: boolean;
   team_partner_id?: string | null;
+  stack_boost?: boolean | null;
   squad_no?: number | null;
   squad_points?: number | null;
   roster_revision?: number | null;
@@ -375,6 +376,7 @@ export function participantToRow(
     comment: participant.comment ?? null,
     arrived: participant.arrived === true,
     team_partner_id: participant.teamPartnerId?.trim() || null,
+    stack_boost: participant.stackBoost === true,
   };
 }
 
@@ -401,6 +403,7 @@ export function participantFromRow(row: ParticipantRow): Participant {
     comment: row.comment || undefined,
     arrived: row.arrived === true,
     teamPartnerId: row.team_partner_id?.trim() || undefined,
+    stackBoost: row.stack_boost === true || undefined,
     squadNo: squadNumberFromRow(row.squad_no),
     squadPoints: squadPointsFromRow(row.squad_points),
     rosterRevision: typeof row.roster_revision === 'number' ? row.roster_revision : undefined,
@@ -418,6 +421,7 @@ export function resetCopiedParticipant(player: Participant): Participant {
     rating: player.rating,
     equippedAvatar: player.equippedAvatar,
     arrived: false,
+    stackBoost: false,
   };
 }
 

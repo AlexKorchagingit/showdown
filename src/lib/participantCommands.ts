@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 
 export type ParticipantCommandRow={source_id:string|null;seat_id:string;user_id:string|null;nickname:string;
   place:number|null;knockouts:number;comment:string|null;arrived:boolean;team_partner_id:string|null;
-  seen_revision:number|null};
+  seen_revision:number|null;stack_boost?:boolean};
 type ReplaceResult={request_id:string;tournament_id:string;participants:number;stale_seats?:number};
 type Intent={tournamentId:string;rows:ParticipantCommandRow[]};
 type Result=ReplaceResult;

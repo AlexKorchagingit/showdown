@@ -268,6 +268,19 @@ describe('timer totals from the tournament cashier', () => {
     expect(totals.entries).toBe(17);
   });
 
+  it('adds half a starting stack for each early boost in the cashier', () => {
+    const players = field(4, 4).map((player, index) =>
+      index < 2 ? { ...player, stackBoost: true } : player,
+    );
+    const totals = timerChipTotals(
+      tournament(players, { rosterLoaded: true, stackSize: 30000 }),
+      structure([level()]),
+      badges('buy-in', 4),
+    );
+    expect(totals.totalChips).toBe(30000 * 4 + 15000 * 2);
+    expect(totals.avgStack).toBe(37500);
+  });
+
   it('FREEZEOUT: a cancelled entry leaves no chips behind', () => {
     const totals = timerChipTotals(
       tournament(field(10, 4), { features: ['Начальный стек 30000 (300 бб)'] }),

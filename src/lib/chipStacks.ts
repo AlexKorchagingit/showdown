@@ -295,7 +295,11 @@ export function timerChipTotals(
   const rebuyStack = declaredRebuy ?? startingStack * (rebuyMultiplier ?? 1);
   const addonStack = draft.addon ?? declaredStack(sources, ADDON_WORD, startingStack) ?? startingStack;
 
-  const totalChips = startingStack * entries + rebuyStack * rebuys + addonStack * addons;
+  const totalChips =
+    startingStack * entries +
+    Math.round(startingStack * 0.5) * cashierPlayers(tournament.participants).filter((player) => player.stackBoost).length +
+    rebuyStack * rebuys +
+    addonStack * addons;
 
   return {
     entries,

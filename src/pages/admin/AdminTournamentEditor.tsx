@@ -203,6 +203,7 @@ function ParticipantsEditor({
   onPickUser,
   onAddGuestNick,
   onToggleArrived,
+  onToggleStackBoost,
   onBindGuest,
   onRemove,
   onDistributeTeams,
@@ -225,6 +226,7 @@ function ParticipantsEditor({
   onPickUser: (user: MappedUser) => void;
   onAddGuestNick: (nickname: string) => void;
   onToggleArrived: (id: string) => void;
+  onToggleStackBoost: (id: string) => void;
   onBindGuest: (id: string) => void;
   onRemove: (id: string) => void;
   onDistributeTeams: () => void;
@@ -299,12 +301,15 @@ function ParticipantsEditor({
       </div>
 
       <div
-        className="flex items-center px-5 py-3"
+        className="px-3 py-3"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
       >
         <h3 className={SECTION_TITLE} style={{ color: '#F2D8A7' }}>
           Участники ({participants.length}/{totalSeats})
         </h3>
+        <p className="mt-1 text-[11px] font-600 leading-snug" style={{ color: '#8ED0C4' }}>
+          Слайдер справа от галки — +50% к стартовому стеку
+        </p>
       </div>
 
       {isFinalDrawEvent({ id: tournamentId }) ? (
@@ -340,7 +345,7 @@ function ParticipantsEditor({
                 </div>
               ) : null}
               <div
-                className="tma-opaque flex items-center gap-3 px-5 py-3 overflow-hidden"
+                className="tma-opaque flex items-center gap-2 pl-2.5 pr-1.5 py-2.5 overflow-hidden"
                 style={lobbyArrivedRowStyle({ idx, arrived, pairingThis })}
               >
                 <FlatHit
@@ -357,8 +362,37 @@ function ParticipantsEditor({
                   />
                 </FlatHit>
 
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={p.stackBoost === true}
+                  aria-label={
+                    p.stackBoost
+                      ? `Убрать повышенный стек: ${p.nickname}`
+                      : `Повышенный стек: ${p.nickname}`
+                  }
+                  disabled={!arrived}
+                  onClick={() => onToggleStackBoost(p.id)}
+                  className="relative h-9 w-5 shrink-0 rounded-full disabled:opacity-35"
+                  style={{
+                    background: p.stackBoost
+                      ? 'linear-gradient(to top, #8C4C27, #F2D8A7)'
+                      : 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(142,208,196,0.55)',
+                  }}
+                >
+                  <span
+                    className="absolute left-0.5 h-3.5 w-3.5 rounded-full"
+                    style={{
+                      background: '#F4F1EC',
+                      top: p.stackBoost ? 2 : 18,
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.35)',
+                    }}
+                  />
+                </button>
+
                 <span
-                  className="text-[11px] font-700 w-5 text-right shrink-0"
+                  className="text-[11px] font-700 w-4 text-right shrink-0"
                   style={{ color: isFinalTable ? '#D99962' : '#ffffff' }}
                 >
                   {queued ? '—' : idx + 1}
@@ -427,7 +461,7 @@ function ParticipantsEditor({
                   type="button"
                   onClick={() => onRemove(p.id)}
                   aria-label={`Удалить ${p.nickname}`}
-                  className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center active:scale-95 transition-transform"
+                  className="ml-auto shrink-0 w-7 h-7 rounded-lg flex items-center justify-center active:scale-95 transition-transform"
                   style={{
                     background: 'rgba(239,68,68,0.12)',
                     border: '1px solid rgba(239,68,68,0.35)',
@@ -702,6 +736,16 @@ function Editor({ tournament }: { tournament: Tournament }) {
     });
     if (arrived) dropLoneArrivalEntry(player.userId ?? player.id, 'Снята отметка «пришёл»');
     else ensureArrivalEntry(player.userId ?? player.id);
+  };
+
+  const toggleStackBoost = (id: string) => {
+    const player = tournament.participants.find((p) => p.id === id);
+    if (!player || !isArrivedPlayer(player)) return;
+    void patch({
+      participants: tournament.participants.map((p) =>
+        p.id === id ? { ...p, stackBoost: p.stackBoost !== true } : p,
+      ),
+    });
   };
 
   const removeParticipant = (id: string) => {
@@ -1017,6 +1061,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
             onPickUser={(user) => addParticipant(user.id, user.nickname)}
             onAddGuestNick={addGuestByNickname}
             onToggleArrived={toggleArrived}
+            onToggleStackBoost={toggleStackBoost}
             onBindGuest={(id) => {
               setLinkingId(id);
               setAddOpen(true);
