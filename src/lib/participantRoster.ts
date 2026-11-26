@@ -89,6 +89,9 @@ export function rebaseParticipantRoster(
     if ((edited.teamPartnerId ?? '') !== (prior.teamPartnerId ?? '')) {
       row = { ...row, teamPartnerId: edited.teamPartnerId };
     }
+    if ((edited.stackBoost === true) !== (prior.stackBoost === true)) {
+      row = { ...row, stackBoost: edited.stackBoost === true };
+    }
     if ((edited.userId ?? '') !== (prior.userId ?? '')) {
       row = { ...row, userId: edited.userId, id: edited.id };
     } else if (edited.id !== prior.id) {

@@ -362,34 +362,29 @@ function ParticipantsEditor({
                   />
                 </FlatHit>
 
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={p.stackBoost === true}
+                <FlatHit
+                  onClick={() => onToggleStackBoost(p.id)}
+                  aria-pressed={p.stackBoost === true}
                   aria-label={
                     p.stackBoost
                       ? `Убрать повышенный стек: ${p.nickname}`
                       : `Повышенный стек: ${p.nickname}`
                   }
-                  disabled={!arrived}
-                  onClick={() => onToggleStackBoost(p.id)}
-                  className="relative h-9 w-5 shrink-0 rounded-full disabled:opacity-35"
+                  className="relative h-9 w-5 shrink-0 rounded-full"
                   style={{
-                    background: p.stackBoost
-                      ? 'linear-gradient(to top, #8C4C27, #F2D8A7)'
-                      : 'rgba(255,255,255,0.08)',
+                    backgroundColor: p.stackBoost ? '#D99962' : 'rgba(255,255,255,0.08)',
                     border: '1px solid rgba(142,208,196,0.55)',
                   }}
                 >
                   <span
-                    className="absolute left-0.5 h-3.5 w-3.5 rounded-full"
+                    className="pointer-events-none absolute left-0.5 h-3.5 w-3.5 rounded-full transition-[top] duration-150"
                     style={{
                       background: '#F4F1EC',
                       top: p.stackBoost ? 2 : 18,
                       boxShadow: '0 1px 2px rgba(0,0,0,0.35)',
                     }}
                   />
-                </button>
+                </FlatHit>
 
                 <span
                   className="text-[11px] font-700 w-4 text-right shrink-0"
@@ -740,7 +735,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
 
   const toggleStackBoost = (id: string) => {
     const player = tournament.participants.find((p) => p.id === id);
-    if (!player || !isArrivedPlayer(player)) return;
+    if (!player) return;
     void patch({
       participants: tournament.participants.map((p) =>
         p.id === id ? { ...p, stackBoost: p.stackBoost !== true } : p,

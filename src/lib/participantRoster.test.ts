@@ -78,6 +78,17 @@ describe('rebaseParticipantRoster', () => {
     expect(rebased.find((row) => row.id === 'b')?.place).toBe(5);
   });
 
+  it('keeps an early-stack switch when the roster is saved over the live list', () => {
+    const previous = [player('a', { arrived: true, stackBoost: false })];
+    const next = [player('a', { arrived: true, stackBoost: true })];
+    const baseline = [player('a', { arrived: true, stackBoost: false, comment: 'касса' })];
+    const rebased = rebaseParticipantRoster(tournamentId, previous, next, baseline);
+    expect(rebased.find((row) => row.id === 'a')).toMatchObject({
+      stackBoost: true,
+      comment: 'касса',
+    });
+  });
+
   it('matches bound seats by user id even when client ids differ in shape', () => {
     expect(
       rosterSeatKey({ id: `${tournamentId}:u1`, userId: 'u1' }, tournamentId),
