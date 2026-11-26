@@ -259,6 +259,15 @@ describe('timer totals from the tournament cashier', () => {
     expect(totals.avgStack).toBe(90000);
   });
 
+  it('ignores an entry for someone who is no longer in the cashier', () => {
+    const totals = timerChipTotals(
+      tournament(field(17, 14), { rosterLoaded: true }),
+      structure([level()]),
+      [...badges('buy-in', 17), charge('orphan', 'buy-in', { userId: 'alexxx' })],
+    );
+    expect(totals.entries).toBe(17);
+  });
+
   it('FREEZEOUT: a cancelled entry leaves no chips behind', () => {
     const totals = timerChipTotals(
       tournament(field(10, 4), { features: ['Начальный стек 30000 (300 бб)'] }),

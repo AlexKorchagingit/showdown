@@ -16,6 +16,7 @@ import { FeatureListEditor } from '../../components/admin/FeatureListEditor';
 import { StackFeatureFields } from '../../components/admin/StackFeatureFields';
 import { FormatSelect } from '../../components/admin/FormatSelect';
 import { eventFormatOf, isFreerollEvent } from '../../lib/eventFormat';
+import { loneArrivalCharge } from '../../lib/arrivalCharge';
 import { BlindStructurePicker } from '../../components/admin/BlindStructurePicker';
 import { PlayerAvatar } from '../../components/PlayerAvatar';
 import { TOURNAMENT_ART_FADE } from '../../lib/tournamentArt';
@@ -565,19 +566,9 @@ function Editor({ tournament }: { tournament: Tournament }) {
     window.setTimeout(() => entryGuard.current.delete(key), 5000);
   };
 
-  const dropLoneArrivalEntry = (userId: string | null | undefined) => {
-    const uid = ledgerChargeId(userId ?? '');
-    if (!uid) return;
-    const rows = transactions.filter(
-      (tx) => tx.tournamentId === tournament.id && tx.userId === uid && !tx.voidedAt,
-    );
-    const arrivalRows = rows.filter((tx) =>
-      isFreerollEvent(tournament) ? tx.type === 'ticket' : tx.type === 'buy-in' && tx.status === 'unpaid',
-    );
-    const kept = rows.some((tx) => !arrivalRows.includes(tx));
-    if (arrivalRows.length === 1 && !kept) {
-      void voidTransaction(arrivalRows[0]!.id, 'Снята отметка «пришёл»');
-    }
+  const dropLoneArrivalEntry = (userId: string | null | undefined, reason: string) => {
+    const charge = loneArrivalCharge(transactions, tournament, userId);
+    if (charge) void voidTransaction(charge.id, reason);
   };
 
   const handleFileChange = (file: File | undefined) => {
@@ -704,7 +695,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
     void patch({
       participants: alignBustOutPlaces(next, tournament),
     });
-    if (arrived) dropLoneArrivalEntry(player.userId ?? player.id);
+    if (arrived) dropLoneArrivalEntry(player.userId ?? player.id, 'Снята отметка «пришёл»');
     else ensureArrivalEntry(player.userId ?? player.id);
   };
 
@@ -712,6 +703,7 @@ function Editor({ tournament }: { tournament: Tournament }) {
     const player = tournament.participants.find((p) => p.id === id);
     if (!player) return;
     if (!window.confirm(removeTournamentPlayerConfirm(player.nickname, tournament.title))) return;
+    dropLoneArrivalEntry(player.userId ?? player.id, 'Игрок удалён из турнира');
     if (pairingPlayerId === id) setPairingPlayerId(null);
     patch({
       participants: alignBustOutPlaces(

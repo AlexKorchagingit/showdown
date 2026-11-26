@@ -257,9 +257,13 @@ export function timerChipTotals(
 ): TimerChipTotals {
   if (!tournament) return EMPTY_TOTALS;
 
-  const ledger = transactions.filter(
-    (tx) => tx.tournamentId === tournament.id && isActiveTransaction(tx),
-  );
+  const seatedKeys = new Set(cashierPlayers(tournament.participants).flatMap(seatKeys));
+  const rosterKnown = tournament.rosterLoaded === true;
+  const ledger = transactions.filter((tx) => {
+    if (tx.tournamentId !== tournament.id || !isActiveTransaction(tx)) return false;
+    if (!rosterKnown) return true;
+    return identityKeys(tx.userId).some((key) => seatedKeys.has(key));
+  });
   const entryBadges = ledger.filter((tx) => tx.type === 'buy-in' || tx.type === 'ticket');
   const rebuyBadges = ledger.filter((tx) => tx.type === 'rebuy');
   const addons = ledger.filter((tx) => tx.type === 'addon').length;

@@ -37,6 +37,7 @@ import { TimerRunningBadge } from '../../components/TimerRunningBadge';
 import type { PersonnelEntry } from '../../lib/personnel';
 import { playerEmail } from '../../lib/systemPlayers';
 import { isBountyEvent } from '../../lib/calculateRubies';
+import { loneArrivalCharge } from '../../lib/arrivalCharge';
 import { isUnboundGuestSeat } from '../../lib/guestPlayer';
 import { hasGlobalUnpaidDebt, tournamentOffersAddon } from '../../lib/playerAnalytics';
 import { isComplimentaryCharge } from '../../lib/entryFee';
@@ -549,6 +550,8 @@ export function AdminTournamentFinance() {
     const player = tournament.participants.find((p) => p.id === playerId);
     if (!player) return;
     if (!window.confirm(removeTournamentPlayerConfirm(player.nickname, tournament.title))) return;
+    const charge = loneArrivalCharge(transactions, tournament, player.userId ?? player.id);
+    if (charge) void voidTransaction(charge.id, 'Игрок удалён из турнира');
     void updateTournament(tournament.id, {
       participants: alignBustOutPlaces(
         removeSeatKeepingTeams(tournament.participants, playerId, tournament.id),
