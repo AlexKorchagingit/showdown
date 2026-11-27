@@ -1,0 +1,1 @@
+(function(){System.register([`./jsx-runtime-legacy-BZx7q4KN.js`],function(e,t){var n,r;return{setters:[function(e){n=e.n}],execute:function(){r=[[`path`,{d:`m15 18-6-6 6-6`,key:`1wnfg3`}]],e(`t`,n(`chevron-left`,r))}}})})();
