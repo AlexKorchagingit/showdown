@@ -239,16 +239,22 @@ function ParticipantsEditor({
   const seasonById = seasonPointsByUserId(clubUsers, tournaments);
   const withSeason = (player: Participant) => withClubSeasonRating(player, seasonById);
   const queueSplit = splitLobbyQueue(participants, pairingEnabled ? totalSeats : participants.length);
+  const byNickname = <T extends { nickname: string }>(rows: T[]) =>
+    [...rows].sort((a, b) => a.nickname.localeCompare(b.nickname, 'ru', { sensitivity: 'base' }));
+  const fieldByRating = sortByRating(queueSplit.field.map(withSeason));
+  const finalTableIds = new Set(fieldByRating.slice(0, 9).map((player) => player.id));
   const displayRows = [
-    ...sortByRating(queueSplit.field.map(withSeason)).map((player, index) => ({
+    ...byNickname(fieldByRating).map((player, index) => ({
       player,
       queued: false,
       seatIndex: index,
+      finalTable: finalTableIds.has(player.id),
     })),
-    ...queueSplit.queue.map((player, index) => ({
-      player: withSeason(player),
+    ...byNickname(queueSplit.queue.map(withSeason)).map((player, index) => ({
+      player,
       queued: true,
       seatIndex: index,
+      finalTable: false,
     })),
   ];
   const emailById = new Map(clubUsers.map((user) => [user.id, user.email]));
@@ -324,9 +330,9 @@ function ParticipantsEditor({
         </p>
       ) : (
         <div>
-          {displayRows.map(({ player: p, queued, seatIndex }) => {
+          {displayRows.map(({ player: p, queued, seatIndex, finalTable }) => {
             const idx = queued ? seatIndex : seatIndex;
-            const isFinalTable = !queued && seatIndex < 9;
+            const isFinalTable = finalTable;
             const arrived = isArrivedPlayer(p);
             const unboundGuest = isUnboundGuestSeat(p);
             const uid = sanitizeParticipantUserId(p.userId ?? p.id);
